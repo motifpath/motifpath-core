@@ -22,9 +22,9 @@ type LearningPathRepository interface {
 	// by title then id, with the count of all matches across pages.
 	List(ctx context.Context, filter domain.LearningPathFilter, page domain.PageRequest) (domain.Page[domain.LearningPath], error)
 
-	// ListCreatorIDs returns the distinct creator user ids of every path
-	// matching filter, in no particular order.
-	ListCreatorIDs(ctx context.Context, filter domain.LearningPathFilter) ([]string, error)
+	// ListCreatorCounts returns each distinct creator of the paths matching
+	// filter with how many of them they created, in no particular order.
+	ListCreatorCounts(ctx context.Context, filter domain.LearningPathFilter) ([]domain.CreatorCount, error)
 
 	// Replace replaces path's title and items wholesale — its current items
 	// are deleted and path.Items inserted in their place, in one

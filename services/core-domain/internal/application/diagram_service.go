@@ -231,6 +231,9 @@ func (s *DiagramService) ListDiagrams(ctx context.Context, caller domain.User, f
 	if filter.Kind != "" && !filter.Kind.Valid() {
 		return domain.Page[domain.Diagram]{}, domain.NewValidationError("kind", "must be one of: basic, custom")
 	}
+	if !filter.Sort.Valid() {
+		return domain.Page[domain.Diagram]{}, domain.SortValidationError()
+	}
 	if !filter.Purpose.Valid() {
 		return domain.Page[domain.Diagram]{}, domain.NewValidationError("purpose", "must be one of: general, chord_voicing, any")
 	}
@@ -258,6 +261,10 @@ func (s *DiagramService) ListDiagrams(ctx context.Context, caller domain.User, f
 		return domain.Page[domain.Diagram]{}, err
 	}
 	filter.VisibleTo = visibleTo
+	filter.SkillIDs, filter.ConceptIDs, err = withClassificationSubtrees(ctx, s.knowledge, filter.SkillIDs, filter.ConceptIDs)
+	if err != nil {
+		return domain.Page[domain.Diagram]{}, err
+	}
 	return s.diagrams.List(ctx, filter, page)
 }
 
@@ -272,7 +279,7 @@ func (s *DiagramService) ListDiagramCreators(ctx context.Context, caller domain.
 	if err != nil {
 		return nil, err
 	}
-	ids, err := s.diagrams.ListCreatorIDs(ctx, domain.DiagramListFilter{VisibleTo: visibleTo, Purpose: domain.DiagramPurposeFilterGeneral})
+	ids, err := s.diagrams.ListCreatorCounts(ctx, domain.DiagramListFilter{VisibleTo: visibleTo, Purpose: domain.DiagramPurposeFilterGeneral})
 	if err != nil {
 		return nil, err
 	}
@@ -349,6 +356,7 @@ func (s *DiagramService) UpdateDiagram(ctx context.Context, caller domain.User, 
 		return domain.Diagram{}, err
 	}
 
+	updated.UpdatedAt = s.now()
 	if err := s.diagrams.Update(ctx, updated); err != nil {
 		return domain.Diagram{}, err
 	}

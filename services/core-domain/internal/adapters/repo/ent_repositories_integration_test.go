@@ -172,7 +172,7 @@ func TestEntContentNodeRepository_CreateAndGet(t *testing.T) {
 		ID: uuid.NewString(), TeacherID: teacherID, Title: "Intro", ContentType: domain.ContentTypeVideo,
 		Classification: domain.Classification{Skills: []domain.KnowledgeNode{skill}, Concepts: []domain.KnowledgeNode{concept}, DifficultyLevel: domain.DifficultyLevelBeginner, ReviewState: domain.ReviewStatePending},
 		Languages:      []domain.Language{{Code: "en"}, {Code: "pt_BR"}},
-		CreatedAt:      fixedAt,
+		CreatedAt:      fixedAt, UpdatedAt: fixedAt, HasUnpublishedChanges: true,
 	}
 	require.NoError(t, repo.Create(ctx, node))
 
@@ -1326,7 +1326,7 @@ func TestEntCourseVersionRepository_IsLearningPathReferenced(t *testing.T) {
 
 	// Retiring the course never touches its published CourseVersion or
 	// checkpoint rows — the reference (and the guard) must survive it.
-	require.NoError(t, courseRepo.UpdateStatus(ctx, course.ID, domain.CourseStatusRetired))
+	require.NoError(t, courseRepo.UpdateStatus(ctx, course.ID, domain.CourseStatusRetired, fixedAt))
 
 	got, err = repo.IsLearningPathReferenced(ctx, referenced.ID)
 	require.NoError(t, err)
@@ -1351,13 +1351,13 @@ func TestEntCourseRepository_UpdateStatus(t *testing.T) {
 	}
 	require.NoError(t, repo.Create(ctx, course))
 
-	require.NoError(t, repo.UpdateStatus(ctx, course.ID, domain.CourseStatusPublished))
+	require.NoError(t, repo.UpdateStatus(ctx, course.ID, domain.CourseStatusPublished, fixedAt))
 
 	got, err := repo.GetByID(ctx, course.ID)
 	require.NoError(t, err)
 	assert.Equal(t, domain.CourseStatusPublished, got.Status)
 
-	err = repo.UpdateStatus(ctx, uuid.NewString(), domain.CourseStatusPublished)
+	err = repo.UpdateStatus(ctx, uuid.NewString(), domain.CourseStatusPublished, fixedAt)
 	assert.ErrorIs(t, err, domain.ErrNotFound)
 }
 

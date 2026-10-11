@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
+	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
 
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent"
@@ -77,6 +78,7 @@ func (r *EntExerciseRepository) Create(ctx context.Context, ex domain.Exercise) 
 		SetNillableDiagramRef(diagramRefJSON).
 		SetNillableDiagramStackRef(diagramStackRefJSON).
 		SetCreatedAt(ex.CreatedAt).
+		SetUpdatedAt(updatedAtOr(ex.UpdatedAt, ex.CreatedAt)).
 		AddLanguageIDs(edges.languages...).
 		AddSkillIDs(edges.skills...).
 		AddConceptIDs(edges.concepts...).
@@ -434,7 +436,7 @@ func (r *EntExerciseRepository) List(ctx context.Context, filter domain.Exercise
 		WithInstruments().
 		WithSkills(withNodeInstruments).
 		WithConcepts(withNodeInstruments).
-		Order(exercise.ByID()).
+		Order(exerciseOrder(filter.Sort)...).
 		Limit(page.Limit).
 		Offset(page.Offset).
 		All(ctx)
@@ -446,23 +448,32 @@ func (r *EntExerciseRepository) List(ctx context.Context, filter domain.Exercise
 
 // ListCreatorIDs returns the distinct created_by of every exercise that has
 // one recorded.
-func (r *EntExerciseRepository) ListCreatorIDs(ctx context.Context) ([]string, error) {
+func (r *EntExerciseRepository) ListCreatorCounts(ctx context.Context) ([]domain.CreatorCount, error) {
 	var rows []struct {
 		CreatedBy uuid.UUID `json:"created_by"`
+		Count     int       `json:"count"`
 	}
 	err := r.client.Exercise.Query().
 		Where(exercise.CreatedByNotNil()).
-		Unique(true).
-		Select(exercise.FieldCreatedBy).
+		GroupBy(exercise.FieldCreatedBy).
+		Aggregate(ent.Count()).
 		Scan(ctx, &rows)
 	if err != nil {
 		return nil, err
 	}
-	ids := make([]string, len(rows))
+	counts := make([]domain.CreatorCount, len(rows))
 	for i, row := range rows {
-		ids[i] = row.CreatedBy.String()
+		counts[i] = domain.CreatorCount{UserID: row.CreatedBy.String(), Count: row.Count}
 	}
-	return ids, nil
+	return counts, nil
+}
+
+// exerciseOrder is the order a listing in sort is returned in.
+func exerciseOrder(sort domain.ListSort) []exercise.OrderOption {
+	if sort == domain.ListSortUpdated {
+		return []exercise.OrderOption{exercise.ByUpdatedAt(sql.OrderDesc()), exercise.ByID()}
+	}
+	return []exercise.OrderOption{exercise.ByTitle(), exercise.ByID()}
 }
 
 // exerciseFilterPredicates translates filter into query predicates; a
@@ -482,8 +493,6 @@ func exerciseFilterPredicates(filter domain.ExerciseFilter) ([]predicate.Exercis
 		id    string
 		match func(uuid.UUID) predicate.Exercise
 	}{
-		{filter.SkillID, func(id uuid.UUID) predicate.Exercise { return exercise.HasSkillsWith(knowledgenode.ID(id)) }},
-		{filter.ConceptID, func(id uuid.UUID) predicate.Exercise { return exercise.HasConceptsWith(knowledgenode.ID(id)) }},
 		{filter.CreatedBy, exercise.CreatedBy},
 	}
 	for _, f := range byID {
@@ -495,6 +504,12 @@ func exerciseFilterPredicates(filter domain.ExerciseFilter) ([]predicate.Exercis
 			return nil, err
 		}
 		predicates = append(predicates, f.match(parsed))
+	}
+	if len(filter.SkillIDs) > 0 {
+		predicates = append(predicates, exercise.HasSkillsWith(knowledgenode.IDIn(parseUUIDsSkippingInvalid(filter.SkillIDs)...)))
+	}
+	if len(filter.ConceptIDs) > 0 {
+		predicates = append(predicates, exercise.HasConceptsWith(knowledgenode.IDIn(parseUUIDsSkippingInvalid(filter.ConceptIDs)...)))
 	}
 	if len(filter.InstrumentIDs) > 0 {
 		instrumentIDs, err := parseUUIDs(filter.InstrumentIDs)
@@ -548,6 +563,7 @@ func (r *EntExerciseRepository) Update(ctx context.Context, ex domain.Exercise) 
 
 	updateBuilder := tx.Exercise.UpdateOneID(id).
 		SetTitle(ex.Title).
+		SetUpdatedAt(updatedAtOr(ex.UpdatedAt, ex.CreatedAt)).
 		SetPrompt(promptJSON).
 		SetNillableImageURL(ex.ImageURL).
 		SetNillableAudioURL(ex.AudioURL).
@@ -656,6 +672,7 @@ func toDomainExercise(row *ent.Exercise) domain.Exercise {
 		InstrumentIDs:            instrumentIDsOf(row.Edges.Instruments),
 		CreatedBy:                creatorIDString(row.CreatedBy),
 		CreatedAt:                row.CreatedAt,
+		UpdatedAt:                row.UpdatedAt,
 	}
 }
 

@@ -5,6 +5,8 @@ package bdd
 import (
 	"context"
 	"errors"
+	"iter"
+	"maps"
 	"slices"
 	"sort"
 	"strings"
@@ -238,10 +240,7 @@ func (f *fakeContentNodeRepo) List(_ context.Context, filter domain.ContentNodeF
 		if filter.ContentType != "" && n.ContentType != filter.ContentType {
 			continue
 		}
-		if filter.SkillID != "" && !containsID(n.Classification.SkillIDs(), filter.SkillID) {
-			continue
-		}
-		if filter.ConceptID != "" && !containsID(n.Classification.ConceptIDs(), filter.ConceptID) {
+		if !domain.ContainsAny(n.Classification.SkillIDs(), filter.SkillIDs) || !domain.ContainsAny(n.Classification.ConceptIDs(), filter.ConceptIDs) {
 			continue
 		}
 		if !forInstrument(n.InstrumentIDs, filter.InstrumentID) {
@@ -253,15 +252,38 @@ func (f *fakeContentNodeRepo) List(_ context.Context, filter domain.ContentNodeF
 		if !containsFold(n.Title, filter.Query) {
 			continue
 		}
+		if filter.CreatedBy != "" && n.TeacherID != filter.CreatedBy {
+			continue
+		}
+		if filter.Language != "" && !slices.ContainsFunc(n.Languages, func(l domain.Language) bool { return l.Code == filter.Language }) {
+			continue
+		}
+		if !filter.Status.Matches(n) {
+			continue
+		}
 		result = append(result, n)
 	}
-	sort.Slice(result, func(i, j int) bool {
-		if result[i].Title != result[j].Title {
-			return result[i].Title < result[j].Title
-		}
-		return result[i].ID < result[j].ID
-	})
+	sortListed(result, filter.Sort, func(n domain.ContentNode) (string, time.Time, string) { return n.Title, n.UpdatedAt, n.ID })
 	return paginate(result, page), nil
+}
+
+func (f *fakeContentNodeRepo) ListCreatorCounts(_ context.Context) ([]domain.CreatorCount, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return countCreators(maps.Values(f.byID), func(n domain.ContentNode) string { return n.TeacherID }), nil
+}
+
+func (f *fakeContentNodeRepo) MarkPublished(_ context.Context, id string, version int) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	n, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	n.LatestPublishedVersion = &version
+	n.HasUnpublishedChanges = false
+	f.byID[id] = n
+	return nil
 }
 
 // containsFold reports whether s contains substr, ignoring case; an empty
@@ -530,10 +552,7 @@ func (f *fakeExerciseRepo) List(_ context.Context, filter domain.ExerciseFilter,
 		if filter.ExerciseType != "" && e.ExerciseType != filter.ExerciseType {
 			continue
 		}
-		if filter.SkillID != "" && !containsID(exerciseSkillIDs(e), filter.SkillID) {
-			continue
-		}
-		if filter.ConceptID != "" && !slices.ContainsFunc(e.Concepts, func(c domain.KnowledgeNode) bool { return c.ID == filter.ConceptID }) {
+		if !domain.ContainsAny(exerciseSkillIDs(e), filter.SkillIDs) || !domain.ContainsAny(knowledgeIDs(e.Concepts), filter.ConceptIDs) {
 			continue
 		}
 		if filter.Language != "" && !slices.ContainsFunc(e.Languages, func(l domain.Language) bool { return l.Code == filter.Language }) {
@@ -550,22 +569,14 @@ func (f *fakeExerciseRepo) List(_ context.Context, filter domain.ExerciseFilter,
 		}
 		result = append(result, e)
 	}
-	sort.Slice(result, func(i, j int) bool { return result[i].ID < result[j].ID })
+	sortListed(result, filter.Sort, func(e domain.Exercise) (string, time.Time, string) { return e.Title, e.UpdatedAt, e.ID })
 	return paginate(result, page), nil
 }
 
-func (f *fakeExerciseRepo) ListCreatorIDs(_ context.Context) ([]string, error) {
+func (f *fakeExerciseRepo) ListCreatorCounts(_ context.Context) ([]domain.CreatorCount, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	seen := map[string]bool{}
-	ids := []string{}
-	for _, e := range f.byID {
-		if e.CreatedBy != "" && !seen[e.CreatedBy] {
-			seen[e.CreatedBy] = true
-			ids = append(ids, e.CreatedBy)
-		}
-	}
-	return ids, nil
+	return countCreators(maps.Values(f.byID), func(e domain.Exercise) string { return e.CreatedBy }), nil
 }
 
 func exerciseSkillIDs(e domain.Exercise) []string {
@@ -773,10 +784,10 @@ func (f *fakeLearningPathRepo) List(_ context.Context, filter domain.LearningPat
 		}
 	}
 	sort.Slice(result, func(i, j int) bool {
-		if filter.Sort == domain.LearningPathSortUpdated && !result[i].UpdatedAt.Equal(result[j].UpdatedAt) {
+		if filter.Sort == domain.ListSortUpdated && !result[i].UpdatedAt.Equal(result[j].UpdatedAt) {
 			return result[i].UpdatedAt.After(result[j].UpdatedAt)
 		}
-		if filter.Sort != domain.LearningPathSortUpdated && result[i].Title != result[j].Title {
+		if filter.Sort != domain.ListSortUpdated && result[i].Title != result[j].Title {
 			return result[i].Title < result[j].Title
 		}
 		return result[i].ID < result[j].ID
@@ -833,18 +844,16 @@ func (f *fakeLearningPathRepo) Replace(_ context.Context, p domain.LearningPath)
 	return nil
 }
 
-func (f *fakeLearningPathRepo) ListCreatorIDs(_ context.Context, filter domain.LearningPathFilter) ([]string, error) {
+func (f *fakeLearningPathRepo) ListCreatorCounts(_ context.Context, filter domain.LearningPathFilter) ([]domain.CreatorCount, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	seen := map[string]bool{}
-	ids := []string{}
+	matched := []domain.LearningPath{}
 	for _, p := range f.byID {
-		if f.matches(p, filter) && !seen[p.TeacherID] {
-			seen[p.TeacherID] = true
-			ids = append(ids, p.TeacherID)
+		if f.matches(p, filter) {
+			matched = append(matched, p)
 		}
 	}
-	return ids, nil
+	return countCreators(slices.Values(matched), func(p domain.LearningPath) string { return p.TeacherID }), nil
 }
 
 func (f *fakeLearningPathRepo) UpdateStatus(_ context.Context, id string, status domain.LearningPathStatus) error {
@@ -964,12 +973,7 @@ func (f *fakeCourseRepo) List(_ context.Context, filter domain.CourseListFilter,
 		}
 		matches = append(matches, candidate{course: c, title: view.title})
 	}
-	sort.Slice(matches, func(i, j int) bool {
-		if matches[i].title != matches[j].title {
-			return matches[i].title < matches[j].title
-		}
-		return matches[i].course.ID < matches[j].course.ID
-	})
+	sortListed(matches, filter.Sort, func(m candidate) (string, time.Time, string) { return m.title, m.course.UpdatedAt, m.course.ID })
 	courses := make([]domain.Course, len(matches))
 	for i, m := range matches {
 		courses[i] = m.course
@@ -1039,8 +1043,9 @@ func overlaps(have, want []string) bool {
 	return false
 }
 
-// ListCreatorIDs applies the same filters as List, over every matching course.
-func (f *fakeCourseRepo) ListCreatorIDs(ctx context.Context, filter domain.CourseListFilter) ([]string, error) {
+// ListCreatorCounts applies the same filters as List, over every matching
+// course.
+func (f *fakeCourseRepo) ListCreatorCounts(ctx context.Context, filter domain.CourseListFilter) ([]domain.CreatorCount, error) {
 	f.mu.Lock()
 	all := len(f.byID)
 	f.mu.Unlock()
@@ -1048,15 +1053,7 @@ func (f *fakeCourseRepo) ListCreatorIDs(ctx context.Context, filter domain.Cours
 	if err != nil {
 		return nil, err
 	}
-	seen := map[string]bool{}
-	ids := []string{}
-	for _, c := range matches.Items {
-		if !seen[c.CreatedBy] {
-			seen[c.CreatedBy] = true
-			ids = append(ids, c.CreatedBy)
-		}
-	}
-	return ids, nil
+	return countCreators(slices.Values(matches.Items), func(c domain.Course) string { return c.CreatedBy }), nil
 }
 
 func (f *fakeCourseRepo) Replace(_ context.Context, c domain.Course) error {
@@ -1075,7 +1072,7 @@ func (f *fakeCourseRepo) put(c domain.Course) {
 	f.byID[c.ID] = c
 }
 
-func (f *fakeCourseRepo) UpdateStatus(_ context.Context, id string, status domain.CourseStatus) error {
+func (f *fakeCourseRepo) UpdateStatus(_ context.Context, id string, status domain.CourseStatus, updatedAt time.Time) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	c, ok := f.byID[id]
@@ -1083,6 +1080,7 @@ func (f *fakeCourseRepo) UpdateStatus(_ context.Context, id string, status domai
 		return domain.ErrNotFound
 	}
 	c.Status = status
+	c.UpdatedAt = updatedAt
 	f.byID[id] = c
 	return nil
 }
@@ -1661,6 +1659,24 @@ func (f *fakeKnowledgeNodeRepo) Children(_ context.Context, id string) ([]domain
 	return children, nil
 }
 
+func (f *fakeKnowledgeNodeRepo) SubtreeIDs(_ context.Context, rootIDs []string) ([]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	below := []string{}
+	frontier := slices.Clone(rootIDs)
+	for len(frontier) > 0 {
+		var next []string
+		for _, n := range f.byID {
+			if n.ParentID != nil && slices.Contains(frontier, *n.ParentID) {
+				below = append(below, n.ID)
+				next = append(next, n.ID)
+			}
+		}
+		frontier = next
+	}
+	return below, nil
+}
+
 func (f *fakeKnowledgeNodeRepo) InSubtree(_ context.Context, rootID, candidateID string) (bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -2029,28 +2045,22 @@ func (f *fakeDiagramRepo) List(_ context.Context, filter domain.DiagramListFilte
 			matched = append(matched, f.resolveClassification(d))
 		}
 	}
-	sort.Slice(matched, func(a, b int) bool {
-		na, nb := matched[a].Names.Resolve(filter.Locale), matched[b].Names.Resolve(filter.Locale)
-		if na != nb {
-			return na < nb
-		}
-		return matched[a].ID < matched[b].ID
+	sortListed(matched, filter.Sort, func(d domain.Diagram) (string, time.Time, string) {
+		return d.Names.Resolve(filter.Locale), d.UpdatedAt, d.ID
 	})
 	return paginate(matched, page), nil
 }
 
-func (f *fakeDiagramRepo) ListCreatorIDs(_ context.Context, filter domain.DiagramListFilter) ([]string, error) {
+func (f *fakeDiagramRepo) ListCreatorCounts(_ context.Context, filter domain.DiagramListFilter) ([]domain.CreatorCount, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	seen := map[string]bool{}
-	ids := []string{}
+	matched := []domain.Diagram{}
 	for _, d := range f.byID {
-		if filter.Matches(d) && !seen[d.CreatedBy] {
-			seen[d.CreatedBy] = true
-			ids = append(ids, d.CreatedBy)
+		if filter.Matches(d) {
+			matched = append(matched, d)
 		}
 	}
-	return ids, nil
+	return countCreators(slices.Values(matched), func(d domain.Diagram) string { return d.CreatedBy }), nil
 }
 
 func (f *fakeDiagramRepo) Update(_ context.Context, d domain.Diagram) error {
@@ -2087,4 +2097,50 @@ func (discardPracticeReferences) PutDrillThresholds(context.Context, []domain.Dr
 
 func (discardPracticeReferences) PutInstruments(context.Context, []domain.InstrumentReference) error {
 	return nil
+}
+
+// sortListed orders items the way the repositories order a list: by sort's
+// key — title or most recent change first — then by id.
+func sortListed[T any](items []T, order domain.ListSort, key func(T) (title string, updatedAt time.Time, id string)) {
+	sort.Slice(items, func(i, j int) bool {
+		ti, ui, ii := key(items[i])
+		tj, uj, ij := key(items[j])
+		if order == domain.ListSortUpdated && !ui.Equal(uj) {
+			return ui.After(uj)
+		}
+		if order != domain.ListSortUpdated && ti != tj {
+			return ti < tj
+		}
+		return ii < ij
+	})
+}
+
+// countCreators counts items per non-empty creator, the shape every
+// ListCreatorCounts returns.
+func countCreators[T any](items iter.Seq[T], creator func(T) string) []domain.CreatorCount {
+	byCreator := map[string]int{}
+	order := []string{}
+	for item := range items {
+		id := creator(item)
+		if id == "" {
+			continue
+		}
+		if byCreator[id] == 0 {
+			order = append(order, id)
+		}
+		byCreator[id]++
+	}
+	counts := make([]domain.CreatorCount, 0, len(order))
+	for _, id := range order {
+		counts = append(counts, domain.CreatorCount{UserID: id, Count: byCreator[id]})
+	}
+	return counts
+}
+
+func knowledgeIDs(nodes []domain.KnowledgeNode) []string {
+	ids := make([]string, len(nodes))
+	for i, n := range nodes {
+		ids[i] = n.ID
+	}
+	return ids
 }

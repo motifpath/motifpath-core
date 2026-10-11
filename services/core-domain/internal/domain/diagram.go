@@ -207,6 +207,8 @@ type Diagram struct {
 	Skills    []KnowledgeNode
 	Concepts  []KnowledgeNode
 	CreatedAt time.Time
+	// UpdatedAt is when the diagram was created or last edited.
+	UpdatedAt time.Time
 }
 
 // IntervalCodes is every interval a Position may carry: canonical codes
@@ -388,6 +390,7 @@ func NewDiagram(id, createdBy string, instrument Instrument, names map[string]st
 		Skills:            skills,
 		Concepts:          concepts,
 		CreatedAt:         now,
+		UpdatedAt:         now,
 	}, nil
 }
 

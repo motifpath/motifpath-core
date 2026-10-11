@@ -18,7 +18,7 @@ func newCourseService(paths *fakeLearningPathRepository, courses *fakeCourseRepo
 	if len(versions) > 0 {
 		v = versions[0]
 	}
-	return application.NewCourseService(paths, courses, v, courseAuthors(), newFakeLanguageRepository(), seededInstrumentRepository(), idSequence(), func() time.Time { return fixedCreatedAt })
+	return application.NewCourseService(paths, courses, v, courseAuthors(), newFakeLanguageRepository(), seededInstrumentRepository(), seededKnowledgeNodeRepository(), idSequence(), func() time.Time { return fixedCreatedAt })
 }
 
 // courseAuthors registers the users these tests author courses as, since
@@ -50,7 +50,7 @@ func TestCourseService_CheckpointPathOwnership(t *testing.T) {
 		users := newFakeUserRepository()
 		users.put(teacherCaller())
 		users.put(adminCaller())
-		return application.NewCourseService(paths, newFakeCourseRepository(), newFakeCourseVersionRepository(), users, newFakeLanguageRepository(), seededInstrumentRepository(), idSequence(), func() time.Time { return fixedCreatedAt })
+		return application.NewCourseService(paths, newFakeCourseRepository(), newFakeCourseVersionRepository(), users, newFakeLanguageRepository(), seededInstrumentRepository(), seededKnowledgeNodeRepository(), idSequence(), func() time.Time { return fixedCreatedAt })
 	}
 	input := func(ids ...string) application.CourseInput {
 		return application.CourseInput{Language: "en", Title: "Journey", Summary: "Summary", Level: domain.DifficultyLevelBeginner, Checkpoints: checkpointInputs(ids...)}
@@ -253,7 +253,7 @@ func TestCourseService_ListCourseCreators(t *testing.T) {
 		for id, name := range users {
 			userRepo.put(domain.User{ID: id, ClerkUserID: "clerk-" + id, DisplayName: name})
 		}
-		return application.NewCourseService(newFakeLearningPathRepository(), courseRepo, newFakeCourseVersionRepository(), userRepo, newFakeLanguageRepository(), seededInstrumentRepository(),
+		return application.NewCourseService(newFakeLearningPathRepository(), courseRepo, newFakeCourseVersionRepository(), userRepo, newFakeLanguageRepository(), seededInstrumentRepository(), seededKnowledgeNodeRepository(),
 			idSequence(), func() time.Time { return fixedCreatedAt })
 	}
 
@@ -297,7 +297,7 @@ func TestCourseService_ListCourseCreators(t *testing.T) {
 
 			require.NoError(t, err)
 			assert.NotNil(t, got)
-			assert.Equal(t, tc.want, got)
+			assert.Equal(t, tc.want, withoutCounts(got))
 		})
 	}
 
@@ -318,7 +318,7 @@ func TestCourseService_ListCourseCreators(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, []application.CourseCreator{
 			{UserID: "teacher-a", DisplayName: "Ana Lima"}, {UserID: "teacher-b", DisplayName: "Ana Lima"},
-		}, got)
+		}, withoutCounts(got))
 	})
 
 	t.Run("a creator with no user record is an error, never a nameless entry", func(t *testing.T) {
@@ -347,7 +347,7 @@ func TestCourseService_ListCatalogCreators(t *testing.T) {
 	for id, name := range names {
 		users.put(domain.User{ID: id, ClerkUserID: "clerk-" + id, DisplayName: name})
 	}
-	svc := application.NewCourseService(newFakeLearningPathRepository(), courses, newFakeCourseVersionRepository(), users, newFakeLanguageRepository(), seededInstrumentRepository(),
+	svc := application.NewCourseService(newFakeLearningPathRepository(), courses, newFakeCourseVersionRepository(), users, newFakeLanguageRepository(), seededInstrumentRepository(), seededKnowledgeNodeRepository(),
 		idSequence(), func() time.Time { return fixedCreatedAt })
 	creator := func(id string) application.CourseCreator {
 		return application.CourseCreator{UserID: id, DisplayName: names[id]}
@@ -369,7 +369,7 @@ func TestCourseService_ListCatalogCreators(t *testing.T) {
 
 			require.NoError(t, err)
 			assert.NotNil(t, got)
-			assert.Equal(t, tc.want, got)
+			assert.Equal(t, tc.want, withoutCounts(got))
 		})
 	}
 }

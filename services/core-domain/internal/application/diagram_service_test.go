@@ -815,7 +815,7 @@ func TestDiagramService_ListDiagrams(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, byInstrument.Items, 1)
 
-		bySkill, err := f.svc.ListDiagrams(ctx, teacherCaller(), domain.DiagramListFilter{SkillID: "skill-1", Kind: domain.DiagramKindBasic}, page)
+		bySkill, err := f.svc.ListDiagrams(ctx, teacherCaller(), domain.DiagramListFilter{SkillIDs: []string{"skill-1"}, Kind: domain.DiagramKindBasic}, page)
 		require.NoError(t, err)
 		assert.Equal(t, []string{basic.ID}, ids(bySkill))
 	})
@@ -870,7 +870,7 @@ func TestDiagramService_ListDiagramCreators(t *testing.T) {
 			got, err := f.svc.ListDiagramCreators(ctx, tt.caller, tt.query)
 
 			require.NoError(t, err)
-			assert.Equal(t, tt.want, got)
+			assert.Equal(t, tt.want, withoutCounts(got))
 		})
 	}
 
@@ -1363,6 +1363,6 @@ func TestDiagramService_Purpose(t *testing.T) {
 		got, err := f.svc.ListDiagramCreators(ctx, adminCaller(), "")
 
 		require.NoError(t, err)
-		assert.Equal(t, []application.Creator{{UserID: adminCaller().ID, DisplayName: "Ana Admin"}}, got)
+		assert.Equal(t, []application.Creator{{UserID: adminCaller().ID, DisplayName: "Ana Admin"}}, withoutCounts(got))
 	})
 }

@@ -56,6 +56,11 @@ type KnowledgeNodeRepository interface {
 	// Children returns the nodes whose parent is the node with id.
 	Children(ctx context.Context, id string) ([]domain.KnowledgeNode, error)
 
+	// SubtreeIDs returns the ids of every node below any of rootIDs, at any
+	// depth, in no particular order; a root without children, or one that
+	// doesn't exist, adds nothing. The roots themselves are not included.
+	SubtreeIDs(ctx context.Context, rootIDs []string) ([]string, error)
+
 	// InSubtree reports whether candidateID is rootID or one of its
 	// descendants.
 	InSubtree(ctx context.Context, rootID, candidateID string) (bool, error)

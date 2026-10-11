@@ -28,7 +28,7 @@ func newContentServiceWithVersions(nodes *fakeContentNodeRepository, expanded *f
 }
 
 func newContentServiceWithDiagrams(nodes *fakeContentNodeRepository, expanded *fakeExpandedContentRepository, knowledge *fakeKnowledgeNodeRepository, versions *fakeContentNodeVersionRepository, diagrams *fakeDiagramRepository) *application.ContentService {
-	return application.NewContentService(nodes, expanded, knowledge, versions, diagrams, seededInstrumentRepository(), newFakeVoiceRepository(), newFakeSongChartRepository(), idSequence(), func() time.Time { return fixedCreatedAt })
+	return application.NewContentService(nodes, expanded, knowledge, versions, diagrams, seededInstrumentRepository(), newFakeVoiceRepository(), newFakeSongChartRepository(), newFakeUserRepository(), idSequence(), func() time.Time { return fixedCreatedAt })
 }
 
 // seededKnowledgeNodeRepository returns a fake pre-populated with the ids
@@ -357,7 +357,7 @@ func TestContentService_ListContentNodes(t *testing.T) {
 		nodes.put(domain.ContentNode{ID: "node-2", Classification: domain.Classification{Skills: []domain.KnowledgeNode{{ID: "skill-2"}}}})
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 
-		got, err := svc.ListContentNodes(context.Background(), teacherCaller(), domain.ContentNodeFilter{SkillID: "skill-2"}, firstPage)
+		got, err := svc.ListContentNodes(context.Background(), teacherCaller(), domain.ContentNodeFilter{SkillIDs: []string{"skill-2"}}, firstPage)
 
 		require.NoError(t, err)
 		require.Len(t, got.Items, 1)
@@ -370,7 +370,7 @@ func TestContentService_ListContentNodes(t *testing.T) {
 		nodes.put(domain.ContentNode{ID: "node-2", Classification: domain.Classification{Concepts: []domain.KnowledgeNode{{ID: "concept-2"}}}})
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 
-		got, err := svc.ListContentNodes(context.Background(), teacherCaller(), domain.ContentNodeFilter{ConceptID: "concept-2"}, firstPage)
+		got, err := svc.ListContentNodes(context.Background(), teacherCaller(), domain.ContentNodeFilter{ConceptIDs: []string{"concept-2"}}, firstPage)
 
 		require.NoError(t, err)
 		require.Len(t, got.Items, 1)

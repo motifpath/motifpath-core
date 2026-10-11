@@ -205,6 +205,40 @@ func (r *EntKnowledgeNodeRepository) Children(ctx context.Context, id string) ([
 	return domainKnowledgeNodesFromEdges(rows), nil
 }
 
+func (r *EntKnowledgeNodeRepository) SubtreeIDs(ctx context.Context, rootIDs []string) ([]string, error) {
+	roots := parseUUIDsSkippingInvalid(rootIDs)
+	if len(roots) == 0 {
+		return []string{}, nil
+	}
+	ids, err := r.client.KnowledgeNode.Query().Where(belowAnyOf(roots)).IDs(ctx)
+	if err != nil {
+		return nil, err
+	}
+	below := make([]string, len(ids))
+	for i, id := range ids {
+		below[i] = id.String()
+	}
+	return below, nil
+}
+
+// belowAnyOf matches every node below any of roots, at any depth, but not
+// the roots themselves.
+func belowAnyOf(roots []uuid.UUID) predicate.KnowledgeNode {
+	return func(s *sql.Selector) {
+		s.Where(sql.P(func(b *sql.Builder) {
+			b.Ident(s.C(knowledgenode.FieldID)).
+				WriteString(fmt.Sprintf(" IN (WITH RECURSIVE subtree(id) AS (SELECT id FROM %[1]s WHERE parent_id IN (", knowledgenode.Table))
+			for i, root := range roots {
+				if i > 0 {
+					b.WriteString(", ")
+				}
+				b.Arg(root)
+			}
+			b.WriteString(fmt.Sprintf(") UNION SELECT n.id FROM %[1]s n JOIN subtree ON n.parent_id = subtree.id) SELECT id FROM subtree)", knowledgenode.Table))
+		}))
+	}
+}
+
 func (r *EntKnowledgeNodeRepository) InSubtree(ctx context.Context, rootID, candidateID string) (bool, error) {
 	root, err := uuid.Parse(rootID)
 	if err != nil {

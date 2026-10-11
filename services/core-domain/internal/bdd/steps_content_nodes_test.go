@@ -176,7 +176,7 @@ func (w *world) listsContentNodesByType(name, contentType string) error {
 func (w *world) listsContentNodesBySkill(name, skillName string) error {
 	id := w.skillIDFor(skillName)
 	resp, err := w.handler.ListContentNodes(w.ctx(), generated.ListContentNodesRequestObject{
-		Params: generated.ListContentNodesParams{SkillId: &id},
+		Params: generated.ListContentNodesParams{SkillIds: &[]uuid.UUID{id}},
 	})
 	w.lastResp, w.lastErr = resp, err
 	return err
@@ -185,7 +185,7 @@ func (w *world) listsContentNodesBySkill(name, skillName string) error {
 func (w *world) listsContentNodesByConcept(name, conceptName string) error {
 	id := w.conceptIDFor(conceptName)
 	resp, err := w.handler.ListContentNodes(w.ctx(), generated.ListContentNodesRequestObject{
-		Params: generated.ListContentNodesParams{ConceptId: &id},
+		Params: generated.ListContentNodesParams{ConceptIds: &[]uuid.UUID{id}},
 	})
 	w.lastResp, w.lastErr = resp, err
 	return err

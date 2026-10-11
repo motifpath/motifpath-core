@@ -306,7 +306,7 @@ func (w *world) requestRefusedForbidden() error {
 		generated.PublishCourse403JSONResponse,
 		generated.RetireCourse403JSONResponse,
 		generated.ReactivateCourse403JSONResponse,
-		generated.ListCourseCreators403JSONResponse, generated.ListDiagramCreators403JSONResponse, generated.ListExerciseCreators403JSONResponse,
+		generated.ListCourseCreators403JSONResponse, generated.ListDiagramCreators403JSONResponse, generated.ListExerciseCreators403JSONResponse, generated.ListContentNodeCreators403JSONResponse,
 		generated.ListLearningPathCreators403JSONResponse,
 		generated.PublishLearningPath403JSONResponse,
 		generated.UnpublishLearningPath403JSONResponse,

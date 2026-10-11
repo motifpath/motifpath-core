@@ -35,7 +35,7 @@ func TestInstrumentTagging_Repositories(t *testing.T) {
 			LevelSnapshot: domain.DifficultyLevelBeginner, LanguageSnapshot: "en", InstrumentIDsSnapshot: ids,
 			Checkpoints: versionCheckpointsOf(path), PublishedAt: fixedAt, AvailableForNewEnrollments: true,
 		}))
-		require.NoError(t, f.courses.UpdateStatus(f.ctx, c.ID, domain.CourseStatusPublished))
+		require.NoError(t, f.courses.UpdateStatus(f.ctx, c.ID, domain.CourseStatusPublished, fixedAt))
 	}
 	guitarCourse, theoryCourse, pianoCourse := course("Guitar", guitar.ID), course("Theory"), course("Piano", piano.ID)
 

@@ -44,7 +44,7 @@ func TestLearningPathLibraryMapping(t *testing.T) {
 
 		assert.Equal(t, domain.LearningPathFilter{
 			Query: "chords", CreatedBy: creator.String(), Levels: []domain.DifficultyLevel{"beginner", "expert"},
-			SkillIDs: []string{skill.String()}, ConceptIDs: []string{concept.String()}, Sort: domain.LearningPathSortUpdated,
+			SkillIDs: []string{skill.String()}, ConceptIDs: []string{concept.String()}, Sort: domain.ListSortUpdated,
 		}, got)
 	})
 

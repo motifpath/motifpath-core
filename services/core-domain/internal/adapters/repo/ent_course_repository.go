@@ -3,6 +3,7 @@ package repo
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -55,6 +56,7 @@ func (r *EntCourseRepository) Create(ctx context.Context, c domain.Course) error
 		SetStatus(course.Status(c.Status)).
 		SetCreatedBy(createdBy).
 		SetCreatedAt(c.CreatedAt).
+		SetUpdatedAt(updatedAtOr(c.UpdatedAt, c.CreatedAt)).
 		SetNillableThumbnailURL(c.ThumbnailURL).
 		AddInstrumentIDs(instrumentIDs...).
 		Save(ctx); err != nil {
@@ -197,26 +199,27 @@ func (r *EntCourseRepository) GetCreatorIDs(ctx context.Context, ids []string) (
 	return creators, nil
 }
 
-func (r *EntCourseRepository) ListCreatorIDs(ctx context.Context, filter domain.CourseListFilter) ([]string, error) {
+func (r *EntCourseRepository) ListCreatorCounts(ctx context.Context, filter domain.CourseListFilter) ([]domain.CreatorCount, error) {
 	predicates, err := courseListPredicates(filter)
 	if err != nil {
 		return nil, err
 	}
 	var rows []struct {
 		CreatedBy uuid.UUID `json:"created_by"`
+		Count     int       `json:"count"`
 	}
 	if err := r.client.Course.Query().
 		Where(predicates...).
-		Unique(true).
-		Select(course.FieldCreatedBy).
+		GroupBy(course.FieldCreatedBy).
+		Aggregate(ent.Count()).
 		Scan(ctx, &rows); err != nil {
 		return nil, err
 	}
-	ids := make([]string, len(rows))
+	counts := make([]domain.CreatorCount, len(rows))
 	for i, row := range rows {
-		ids[i] = row.CreatedBy.String()
+		counts[i] = domain.CreatorCount{UserID: row.CreatedBy.String(), Count: row.Count}
 	}
-	return ids, nil
+	return counts, nil
 }
 
 // Replace deletes course's current checkpoints and inserts
@@ -244,6 +247,7 @@ func (r *EntCourseRepository) Replace(ctx context.Context, c domain.Course) erro
 
 	update := tx.Course.UpdateOneID(id).
 		SetTitle(c.Title).
+		SetUpdatedAt(updatedAtOr(c.UpdatedAt, c.CreatedAt)).
 		SetSummary(c.Summary).
 		SetLevel(course.Level(c.Level)).
 		SetLanguage(c.Language).
@@ -274,8 +278,9 @@ func (r *EntCourseRepository) Replace(ctx context.Context, c domain.Course) erro
 	return tx.Commit()
 }
 
-// UpdateStatus sets the status of the course with the given id.
-func (r *EntCourseRepository) UpdateStatus(ctx context.Context, id string, status domain.CourseStatus) error {
+// UpdateStatus sets the status of the course with the given id and records
+// updatedAt as its last change.
+func (r *EntCourseRepository) UpdateStatus(ctx context.Context, id string, status domain.CourseStatus, updatedAt time.Time) error {
 	parsed, err := uuid.Parse(id)
 	if err != nil {
 		return domain.ErrNotFound
@@ -283,6 +288,7 @@ func (r *EntCourseRepository) UpdateStatus(ctx context.Context, id string, statu
 
 	_, err = r.client.Course.UpdateOneID(parsed).
 		SetStatus(course.Status(status)).
+		SetUpdatedAt(updatedAt).
 		Save(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -370,6 +376,7 @@ func toDomainCourse(row *ent.Course, checkpoints []domain.CourseCheckpoint) doma
 		Status:        domain.CourseStatus(row.Status),
 		CreatedBy:     row.CreatedBy.String(),
 		CreatedAt:     row.CreatedAt,
+		UpdatedAt:     row.UpdatedAt,
 		Checkpoints:   checkpoints,
 	}
 }

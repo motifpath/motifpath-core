@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/cucumber/godog"
 	"github.com/google/uuid"
@@ -606,7 +607,7 @@ func (w *world) retiresCourse(name, courseSlug string) error {
 		return fmt.Errorf("no course was seeded for slug %q", courseSlug)
 	}
 	w.lastCourseSlug = courseSlug
-	return w.courses.UpdateStatus(context.Background(), id.String(), domain.CourseStatusRetired)
+	return w.courses.UpdateStatus(context.Background(), id.String(), domain.CourseStatusRetired, time.Now())
 }
 
 // attemptsRetireCourse calls the real RetireCourse handler — unlike

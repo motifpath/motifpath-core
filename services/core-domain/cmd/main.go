@@ -294,15 +294,15 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 
 	identityService := application.NewIdentityService(userRepo, languageRepo, newID, now)
 	songChartRepo := repo.NewEntSongChartRepository(entClient)
-	contentService := application.NewContentService(nodeRepo, expandedRepo, knowledgeNodeRepo, contentNodeVersionRepo, diagramRepo, instrumentRepo, voiceRepo, songChartRepo, newID, now)
+	contentService := application.NewContentService(nodeRepo, expandedRepo, knowledgeNodeRepo, contentNodeVersionRepo, diagramRepo, instrumentRepo, voiceRepo, songChartRepo, userRepo, newID, now)
 	challengeService := application.NewChallengeService(nodeRepo, challengeRepo, exerciseRepo, newID, now)
 	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, knowledgeNodeRepo, diagramRepo, instrumentRepo, voiceRepo, userRepo, practiceReferences, newID, now, mathrand.Shuffle)
 	knowledgeNodeService := application.NewKnowledgeNodeService(knowledgeNodeRepo, instrumentRepo, languageRepo, newID)
 	knowledgeEdgeService := application.NewKnowledgeEdgeService(knowledgeEdgeRepo, knowledgeNodeRepo, newID)
 	mediaService := application.NewMediaService(exerciseRepo, mediaStorage, newID)
-	pathService := application.NewLearningPathService(nodeRepo, pathRepo, courseVersionRepo, contentNodeVersionRepo, languageRepo, userRepo, instrumentRepo, newID, now)
+	pathService := application.NewLearningPathService(nodeRepo, pathRepo, courseVersionRepo, contentNodeVersionRepo, languageRepo, userRepo, instrumentRepo, knowledgeNodeRepo, newID, now)
 	studentPathService := application.NewStudentPathService(userRepo, pathRepo, studentPathRepo, contentNodeVersionRepo, studentLearningStateRepo, courseEnrollmentRepo, courseVersionRepo, nodeRepo, exerciseRepo, completionReader, newID, now)
-	courseService := application.NewCourseService(pathRepo, courseRepo, courseVersionRepo, userRepo, languageRepo, instrumentRepo, newID, now)
+	courseService := application.NewCourseService(pathRepo, courseRepo, courseVersionRepo, userRepo, languageRepo, instrumentRepo, knowledgeNodeRepo, newID, now)
 	courseEnrollmentService := application.NewCourseEnrollmentService(courseRepo, courseVersionRepo, pathRepo, studentPathRepo, courseEnrollmentRepo, studentPathService, studentLearningStateRepo, completionReader, newID, now)
 	instrumentService := application.NewInstrumentService(instrumentRepo, voiceRepo, languageRepo, practiceReferences, newID)
 	// Voice samples are served from the same public media address as
@@ -321,7 +321,7 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 	appConfigService := application.NewAppConfigService(appConfigRepo, now, application.NewStartingPointsKey(instrumentRepo, languageRepo, pathRepo, courseRepo))
 	startingPointsService := application.NewStartingPointsService(appConfigRepo, languageRepo, pathRepo, courseRepo)
 
-	return appHTTP.NewHandler(identityService, contentService, challengeService, exerciseService, knowledgeNodeService, knowledgeEdgeService, mediaService, pathService, application.NewPathCatalogService(pathRepo, userRepo), studentPathService,
+	return appHTTP.NewHandler(identityService, contentService, challengeService, exerciseService, knowledgeNodeService, knowledgeEdgeService, mediaService, pathService, application.NewPathCatalogService(pathRepo, userRepo, knowledgeNodeRepo), studentPathService,
 		courseService, courseEnrollmentService, instrumentService, voiceService, diagramService, practiceSessionService, practiceSummaryService, chordCatalogService, songChartService, appConfigService, startingPointsService, learningGraphPinger, completionReader), nil
 }
 

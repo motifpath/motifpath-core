@@ -2410,6 +2410,24 @@ func (e VoiceFamily) Valid() bool {
 	}
 }
 
+// Defines values for AuthoringSort.
+const (
+	AuthoringSortTitle   AuthoringSort = "title"
+	AuthoringSortUpdated AuthoringSort = "updated"
+)
+
+// Valid indicates whether the value is a known member of the AuthoringSort enum.
+func (e AuthoringSort) Valid() bool {
+	switch e {
+	case AuthoringSortTitle:
+		return true
+	case AuthoringSortUpdated:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListCatalogCoursesParamsLevels.
 const (
 	ListCatalogCoursesParamsLevelsAdvanced          ListCatalogCoursesParamsLevels = "advanced"
@@ -2464,6 +2482,45 @@ func (e ListCatalogPathsParamsLevels) Valid() bool {
 	}
 }
 
+// Defines values for ListContentNodesParamsSort.
+const (
+	ListContentNodesParamsSortTitle   ListContentNodesParamsSort = "title"
+	ListContentNodesParamsSortUpdated ListContentNodesParamsSort = "updated"
+)
+
+// Valid indicates whether the value is a known member of the ListContentNodesParamsSort enum.
+func (e ListContentNodesParamsSort) Valid() bool {
+	switch e {
+	case ListContentNodesParamsSortTitle:
+		return true
+	case ListContentNodesParamsSortUpdated:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListContentNodesParamsStatus.
+const (
+	ListContentNodesParamsStatusDraft              ListContentNodesParamsStatus = "draft"
+	ListContentNodesParamsStatusPublished          ListContentNodesParamsStatus = "published"
+	ListContentNodesParamsStatusUnpublishedChanges ListContentNodesParamsStatus = "unpublished_changes"
+)
+
+// Valid indicates whether the value is a known member of the ListContentNodesParamsStatus enum.
+func (e ListContentNodesParamsStatus) Valid() bool {
+	switch e {
+	case ListContentNodesParamsStatusDraft:
+		return true
+	case ListContentNodesParamsStatusPublished:
+		return true
+	case ListContentNodesParamsStatusUnpublishedChanges:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListContentNodesParamsContentType.
 const (
 	ListContentNodesParamsContentTypeArticle ListContentNodesParamsContentType = "article"
@@ -2503,6 +2560,24 @@ func (e ListContentNodesParamsDifficultyLevel) Valid() bool {
 	case ListContentNodesParamsDifficultyLevelExpert:
 		return true
 	case ListContentNodesParamsDifficultyLevelIntermediate:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListCoursesParamsSort.
+const (
+	ListCoursesParamsSortTitle   ListCoursesParamsSort = "title"
+	ListCoursesParamsSortUpdated ListCoursesParamsSort = "updated"
+)
+
+// Valid indicates whether the value is a known member of the ListCoursesParamsSort enum.
+func (e ListCoursesParamsSort) Valid() bool {
+	switch e {
+	case ListCoursesParamsSortTitle:
+		return true
+	case ListCoursesParamsSortUpdated:
 		return true
 	default:
 		return false
@@ -2575,6 +2650,24 @@ func (e ListDiagramsParamsKind) Valid() bool {
 	}
 }
 
+// Defines values for ListDiagramsParamsSort.
+const (
+	ListDiagramsParamsSortTitle   ListDiagramsParamsSort = "title"
+	ListDiagramsParamsSortUpdated ListDiagramsParamsSort = "updated"
+)
+
+// Valid indicates whether the value is a known member of the ListDiagramsParamsSort enum.
+func (e ListDiagramsParamsSort) Valid() bool {
+	switch e {
+	case ListDiagramsParamsSortTitle:
+		return true
+	case ListDiagramsParamsSortUpdated:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListDiagramsParamsPurpose.
 const (
 	ListDiagramsParamsPurposeAny          ListDiagramsParamsPurpose = "any"
@@ -2590,6 +2683,24 @@ func (e ListDiagramsParamsPurpose) Valid() bool {
 	case ListDiagramsParamsPurposeChordVoicing:
 		return true
 	case ListDiagramsParamsPurposeGeneral:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListExercisesParamsSort.
+const (
+	ListExercisesParamsSortTitle   ListExercisesParamsSort = "title"
+	ListExercisesParamsSortUpdated ListExercisesParamsSort = "updated"
+)
+
+// Valid indicates whether the value is a known member of the ListExercisesParamsSort enum.
+func (e ListExercisesParamsSort) Valid() bool {
+	switch e {
+	case ListExercisesParamsSortTitle:
+		return true
+	case ListExercisesParamsSortUpdated:
 		return true
 	default:
 		return false
@@ -2652,16 +2763,16 @@ func (e ListLearningPathsParamsLevels) Valid() bool {
 
 // Defines values for ListLearningPathsParamsSort.
 const (
-	Title   ListLearningPathsParamsSort = "title"
-	Updated ListLearningPathsParamsSort = "updated"
+	ListLearningPathsParamsSortTitle   ListLearningPathsParamsSort = "title"
+	ListLearningPathsParamsSortUpdated ListLearningPathsParamsSort = "updated"
 )
 
 // Valid indicates whether the value is a known member of the ListLearningPathsParamsSort enum.
 func (e ListLearningPathsParamsSort) Valid() bool {
 	switch e {
-	case Title:
+	case ListLearningPathsParamsSortTitle:
 		return true
-	case Updated:
+	case ListLearningPathsParamsSortUpdated:
 		return true
 	default:
 		return false
@@ -3123,6 +3234,9 @@ type ContentNode struct {
 	// CreatedAt Timestamp at which the content node was created.
 	CreatedAt time.Time `json:"created_at"`
 
+	// HasUnpublishedChanges True when the content node differs from its latest published version in anything a version records (title, classification, media_url or rich_content, languages, instruments or thumbnail), or nothing has been published yet. Publishing makes it false.
+	HasUnpublishedChanges bool `json:"has_unpublished_changes"`
+
 	// InstrumentIds The instruments this item is for, by Instrument.instrument_id. An
 	// empty list means it suits every instrument (for example, music
 	// theory). Every id must reference an existing instrument, and none
@@ -3159,6 +3273,9 @@ type ContentNode struct {
 
 	// Title Human-readable title of the content node.
 	Title string `json:"title"`
+
+	// UpdatedAt Timestamp of the last change to the content node; equal to created_at until the first change. GET lists sort by it with sort=updated.
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // ContentNodeContentType The media format of this content node.
@@ -3318,6 +3435,9 @@ type CourseCatalogEntry struct {
 
 	// Title Title of the course.
 	Title string `json:"title"`
+
+	// UpdatedAt Timestamp of the last change to the course: its details, its live draft, publishing or retiring. GET /courses sorts by it with sort=updated. Present only in the authoring list, GET /courses; GET /catalog/courses never returns it.
+	UpdatedAt *time.Time `json:"updated_at,omitempty"`
 }
 
 // CourseCatalogEntryLevel The level a student should be at to start this course.
@@ -4109,6 +4229,20 @@ type CreatePracticeSessionPlanRequest struct {
 	Minutes int `json:"minutes"`
 }
 
+// CreatorRef An author offered by a creator filter: a UserRef plus how many
+// items of the list's section they created that the caller can see.
+type CreatorRef struct {
+	// DisplayName The user's full name, as held by Clerk. User-supplied text: render
+	// it escaped and never use it as an identifier.
+	DisplayName string `json:"display_name"`
+
+	// ItemCount Number of items in the section created by this user that the caller can see, whatever other filters the section's list is given. At least 1, since only creators of a visible item are listed.
+	ItemCount int `json:"item_count"`
+
+	// UserId Stable MotifPath identifier of the referenced user.
+	UserId openapi_types.UUID `json:"user_id"`
+}
+
 // Diagram A prebuilt, reusable diagram — structured position data for a scale,
 // chord, or similar pattern on a specific instrument. Never stores a
 // rendered image or SVG; motifpath-web renders positions client-side
@@ -4233,6 +4367,9 @@ type Diagram struct {
 	// to the root of the diagram it came from. Null for a diagram with
 	// no recorded root (e.g. created before this field existed).
 	RootNote *string `json:"root_note"`
+
+	// UpdatedAt Timestamp of the last change to the diagram; equal to created_at until the first change. GET lists sort by it with sort=updated.
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // DiagramKind basic diagrams are curated templates: every teacher can find and
@@ -4750,6 +4887,9 @@ type Exercise struct {
 
 	// Title Short, authoring-only name for this exercise. Not shown to students.
 	Title string `json:"title"`
+
+	// UpdatedAt Timestamp of the last change to the exercise; equal to created_at until the first change. GET lists sort by it with sort=updated.
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // ExerciseExerciseType The type of practice interaction.
@@ -7593,6 +7733,12 @@ type WithdrawSongChartRequest struct {
 	Reason string `json:"reason"`
 }
 
+// AuthoringSort defines model for AuthoringSort.
+type AuthoringSort string
+
+// ConceptIds defines model for ConceptIds.
+type ConceptIds = []openapi_types.UUID
+
 // Limit defines model for Limit.
 type Limit = int
 
@@ -7601,6 +7747,9 @@ type Offset = int
 
 // SearchText defines model for SearchText.
 type SearchText = string
+
+// SkillIds defines model for SkillIds.
+type SkillIds = []openapi_types.UUID
 
 // SongChartId defines model for SongChartId.
 type SongChartId = openapi_types.UUID
@@ -7622,10 +7771,10 @@ type ListCatalogCoursesParams struct {
 	// CreatedBy Restricts the results to courses created by this user.
 	CreatedBy *openapi_types.UUID `form:"created_by,omitempty" json:"created_by,omitempty"`
 
-	// SkillIds Restricts the results to courses classified with at least one of these skills.
+	// SkillIds Restricts the results to courses classified with at least one of these skills, or a skill below one of them.
 	SkillIds *[]openapi_types.UUID `form:"skill_ids,omitempty" json:"skill_ids,omitempty"`
 
-	// ConceptIds Restricts the results to courses classified with at least one of these concepts.
+	// ConceptIds Restricts the results to courses classified with at least one of these concepts, or a concept below one of them.
 	ConceptIds *[]openapi_types.UUID `form:"concept_ids,omitempty" json:"concept_ids,omitempty"`
 
 	// Language Restricts the results to courses written in this language
@@ -7668,10 +7817,10 @@ type ListCatalogPathsParams struct {
 	// CreatedBy Restricts the results to paths created by this user.
 	CreatedBy *openapi_types.UUID `form:"created_by,omitempty" json:"created_by,omitempty"`
 
-	// SkillIds Restricts the results to paths with a content node classified with at least one of these skills.
+	// SkillIds Restricts the results to paths with a content node classified with at least one of these skills, or a skill below one of them.
 	SkillIds *[]openapi_types.UUID `form:"skill_ids,omitempty" json:"skill_ids,omitempty"`
 
-	// ConceptIds Restricts the results to paths with a content node classified with at least one of these concepts.
+	// ConceptIds Restricts the results to paths with a content node classified with at least one of these concepts, or a concept below one of them.
 	ConceptIds *[]openapi_types.UUID `form:"concept_ids,omitempty" json:"concept_ids,omitempty"`
 
 	// Language Restricts the results to paths written in this language
@@ -7714,14 +7863,34 @@ type ListContentNodesParams struct {
 	// Offset Number of matching items to skip before this page (ADR-031).
 	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
 
+	// Sort title orders by title (for diagrams, the name the caller reads), then id. updated orders by updated_at, most recent change first, then id.
+	Sort *ListContentNodesParamsSort `form:"sort,omitempty" json:"sort,omitempty"`
+
+	// SkillIds Restricts the results to items classified with at least one of these skills, or a skill below one of them in the skill tree. Repeat the parameter for several skills.
+	SkillIds *SkillIds `form:"skill_ids,omitempty" json:"skill_ids,omitempty"`
+
+	// ConceptIds Restricts the results to items classified with at least one of these concepts, or a concept below one of them in the concept tree. Repeat the parameter for several concepts.
+	ConceptIds *ConceptIds `form:"concept_ids,omitempty" json:"concept_ids,omitempty"`
+
+	// CreatedBy Restricts the results to content nodes created by this user.
+	// GET /content-nodes/creators lists the creators to offer.
+	CreatedBy *openapi_types.UUID `form:"created_by,omitempty" json:"created_by,omitempty"`
+
+	// Language Restricts the results to content nodes available in this
+	// language (a Language.code other than "any"): those that list
+	// it among their languages. A language-agnostic node (languages
+	// "any") never matches.
+	Language *string `form:"language,omitempty" json:"language,omitempty"`
+
+	// Status Restricts the results by publishing status. draft: never
+	// published (no latest_published_version). published: published
+	// and not edited since its latest version. unpublished_changes:
+	// published, then edited after its latest version was published
+	// (has_unpublished_changes).
+	Status *ListContentNodesParamsStatus `form:"status,omitempty" json:"status,omitempty"`
+
 	// ContentType When given, only content nodes of this type are returned.
 	ContentType *ListContentNodesParamsContentType `form:"content_type,omitempty" json:"content_type,omitempty"`
-
-	// SkillId When given, only content nodes with this exact skill id among their linked skills are returned. Matches that node only, not its ancestors or descendants.
-	SkillId *openapi_types.UUID `form:"skill_id,omitempty" json:"skill_id,omitempty"`
-
-	// ConceptId When given, only content nodes with this exact concept id among their linked concepts are returned. Matches that node only, not its ancestors or descendants.
-	ConceptId *openapi_types.UUID `form:"concept_id,omitempty" json:"concept_id,omitempty"`
 
 	// DifficultyLevel When given, only content nodes at this difficulty level are returned.
 	DifficultyLevel *ListContentNodesParamsDifficultyLevel `form:"difficulty_level,omitempty" json:"difficulty_level,omitempty"`
@@ -7730,11 +7899,23 @@ type ListContentNodesParams struct {
 	InstrumentId *openapi_types.UUID `form:"instrument_id,omitempty" json:"instrument_id,omitempty"`
 }
 
+// ListContentNodesParamsSort defines parameters for ListContentNodes.
+type ListContentNodesParamsSort string
+
+// ListContentNodesParamsStatus defines parameters for ListContentNodes.
+type ListContentNodesParamsStatus string
+
 // ListContentNodesParamsContentType defines parameters for ListContentNodes.
 type ListContentNodesParamsContentType string
 
 // ListContentNodesParamsDifficultyLevel defines parameters for ListContentNodes.
 type ListContentNodesParamsDifficultyLevel string
+
+// ListContentNodeCreatorsParams defines parameters for ListContentNodeCreators.
+type ListContentNodeCreatorsParams struct {
+	// Q Restricts the results to creators whose display_name contains this text, ignoring case and accents ("jose" matches "José").
+	Q *string `form:"q,omitempty" json:"q,omitempty"`
+}
 
 // ListCoursesParams defines parameters for ListCourses.
 type ListCoursesParams struct {
@@ -7747,16 +7928,19 @@ type ListCoursesParams struct {
 	// Offset Number of matching items to skip before this page (ADR-031).
 	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
 
+	// Sort title orders by title (for diagrams, the name the caller reads), then id. updated orders by updated_at, most recent change first, then id.
+	Sort *ListCoursesParamsSort `form:"sort,omitempty" json:"sort,omitempty"`
+
 	// Levels Restricts the results to courses at any of these levels.
 	Levels *[]ListCoursesParamsLevels `form:"levels,omitempty" json:"levels,omitempty"`
 
 	// CreatedBy Restricts the results to courses created by this user.
 	CreatedBy *openapi_types.UUID `form:"created_by,omitempty" json:"created_by,omitempty"`
 
-	// SkillIds Restricts the results to courses classified with at least one of these skills.
+	// SkillIds Restricts the results to courses classified with at least one of these skills, or a skill below one of them.
 	SkillIds *[]openapi_types.UUID `form:"skill_ids,omitempty" json:"skill_ids,omitempty"`
 
-	// ConceptIds Restricts the results to courses classified with at least one of these concepts.
+	// ConceptIds Restricts the results to courses classified with at least one of these concepts, or a concept below one of them.
 	ConceptIds *[]openapi_types.UUID `form:"concept_ids,omitempty" json:"concept_ids,omitempty"`
 
 	// Status Restricts the results to courses in this status.
@@ -7769,6 +7953,9 @@ type ListCoursesParams struct {
 	// InstrumentId Restricts the results to items for this instrument, or for every instrument (an empty instrument_ids).
 	InstrumentId *openapi_types.UUID `form:"instrument_id,omitempty" json:"instrument_id,omitempty"`
 }
+
+// ListCoursesParamsSort defines parameters for ListCourses.
+type ListCoursesParamsSort string
 
 // ListCoursesParamsLevels defines parameters for ListCourses.
 type ListCoursesParamsLevels string
@@ -7817,11 +8004,14 @@ type ListDiagramsParams struct {
 	// InstrumentId When given, only diagrams authored against this instrument are returned.
 	InstrumentId *openapi_types.UUID `form:"instrument_id,omitempty" json:"instrument_id,omitempty"`
 
-	// SkillId When given, only diagrams with this exact skill id among their linked skills are returned.
-	SkillId *openapi_types.UUID `form:"skill_id,omitempty" json:"skill_id,omitempty"`
+	// Sort title orders by title (for diagrams, the name the caller reads), then id. updated orders by updated_at, most recent change first, then id.
+	Sort *ListDiagramsParamsSort `form:"sort,omitempty" json:"sort,omitempty"`
 
-	// ConceptId When given, only diagrams with this exact concept id among their linked concepts are returned.
-	ConceptId *openapi_types.UUID `form:"concept_id,omitempty" json:"concept_id,omitempty"`
+	// SkillIds Restricts the results to items classified with at least one of these skills, or a skill below one of them in the skill tree. Repeat the parameter for several skills.
+	SkillIds *SkillIds `form:"skill_ids,omitempty" json:"skill_ids,omitempty"`
+
+	// ConceptIds Restricts the results to items classified with at least one of these concepts, or a concept below one of them in the concept tree. Repeat the parameter for several concepts.
+	ConceptIds *ConceptIds `form:"concept_ids,omitempty" json:"concept_ids,omitempty"`
 
 	// Purpose Restricts the results to diagrams of this purpose (see
 	// Diagram.purpose). Omitted, it is general, so chord voicings are
@@ -7831,6 +8021,9 @@ type ListDiagramsParams struct {
 
 // ListDiagramsParamsKind defines parameters for ListDiagrams.
 type ListDiagramsParamsKind string
+
+// ListDiagramsParamsSort defines parameters for ListDiagrams.
+type ListDiagramsParamsSort string
 
 // ListDiagramsParamsPurpose defines parameters for ListDiagrams.
 type ListDiagramsParamsPurpose string
@@ -7852,13 +8045,14 @@ type ListExercisesParams struct {
 	// Offset Number of matching items to skip before this page (ADR-031).
 	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
 
-	// SkillId When given, only exercises linked to this exact skill id are
-	// returned.
-	SkillId *openapi_types.UUID `form:"skill_id,omitempty" json:"skill_id,omitempty"`
+	// Sort title orders by title (for diagrams, the name the caller reads), then id. updated orders by updated_at, most recent change first, then id.
+	Sort *ListExercisesParamsSort `form:"sort,omitempty" json:"sort,omitempty"`
 
-	// ConceptId When given, only exercises linked to this exact concept id are
-	// returned.
-	ConceptId *openapi_types.UUID `form:"concept_id,omitempty" json:"concept_id,omitempty"`
+	// SkillIds Restricts the results to items classified with at least one of these skills, or a skill below one of them in the skill tree. Repeat the parameter for several skills.
+	SkillIds *SkillIds `form:"skill_ids,omitempty" json:"skill_ids,omitempty"`
+
+	// ConceptIds Restricts the results to items classified with at least one of these concepts, or a concept below one of them in the concept tree. Repeat the parameter for several concepts.
+	ConceptIds *ConceptIds `form:"concept_ids,omitempty" json:"concept_ids,omitempty"`
 
 	// Language Restricts the results to exercises written in this language (a
 	// Language.code other than "any").
@@ -7879,6 +8073,9 @@ type ListExercisesParams struct {
 	// for several instruments. Omit for exercises of every scope.
 	InstrumentId *[]openapi_types.UUID `form:"instrument_id,omitempty" json:"instrument_id,omitempty"`
 }
+
+// ListExercisesParamsSort defines parameters for ListExercises.
+type ListExercisesParamsSort string
 
 // ListExercisesParamsExerciseType defines parameters for ListExercises.
 type ListExercisesParamsExerciseType string
@@ -7930,13 +8127,13 @@ type ListLearningPathsParams struct {
 	// Levels Restricts the results to learning paths at any of these levels.
 	Levels *[]ListLearningPathsParamsLevels `form:"levels,omitempty" json:"levels,omitempty"`
 
-	// SkillIds Restricts the results to learning paths with a content node classified with at least one of these skills.
+	// SkillIds Restricts the results to learning paths with a content node classified with at least one of these skills, or a skill below one of them.
 	SkillIds *[]openapi_types.UUID `form:"skill_ids,omitempty" json:"skill_ids,omitempty"`
 
-	// ConceptIds Restricts the results to learning paths with a content node classified with at least one of these concepts.
+	// ConceptIds Restricts the results to learning paths with a content node classified with at least one of these concepts, or a concept below one of them.
 	ConceptIds *[]openapi_types.UUID `form:"concept_ids,omitempty" json:"concept_ids,omitempty"`
 
-	// Sort title orders by title, then id. updated orders by updated_at, most recent first, then id.
+	// Sort title orders by title (for diagrams, the name the caller reads), then id. updated orders by updated_at, most recent change first, then id.
 	Sort *ListLearningPathsParamsSort `form:"sort,omitempty" json:"sort,omitempty"`
 
 	// InstrumentId Restricts the results to items for this instrument, or for every instrument (an empty instrument_ids).
@@ -8268,6 +8465,9 @@ type ServerInterface interface {
 	// CreateContentNode Create a content node
 	// (POST /content-nodes)
 	CreateContentNode(w http.ResponseWriter, r *http.Request)
+	// ListContentNodeCreators List the creators of the content nodes in the library
+	// (GET /content-nodes/creators)
+	ListContentNodeCreators(w http.ResponseWriter, r *http.Request, params ListContentNodeCreatorsParams)
 	// GetContentNode Get a content node by ID
 	// (GET /content-nodes/{content_node_id})
 	GetContentNode(w http.ResponseWriter, r *http.Request, contentNodeId openapi_types.UUID)
@@ -8634,6 +8834,12 @@ func (_ Unimplemented) ListContentNodes(w http.ResponseWriter, r *http.Request, 
 // CreateContentNode Create a content node
 // (POST /content-nodes)
 func (_ Unimplemented) CreateContentNode(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListContentNodeCreators List the creators of the content nodes in the library
+// (GET /content-nodes/creators)
+func (_ Unimplemented) ListContentNodeCreators(w http.ResponseWriter, r *http.Request, params ListContentNodeCreatorsParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -9902,6 +10108,84 @@ func (siw *ServerInterfaceWrapper) ListContentNodes(w http.ResponseWriter, r *ht
 		return
 	}
 
+	// ------------- Optional query parameter "sort" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "sort", r.URL.Query(), &params.Sort, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "sort"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sort", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "skill_ids" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "skill_ids", r.URL.Query(), &params.SkillIds, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "skill_ids"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "skill_ids", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "concept_ids" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "concept_ids", r.URL.Query(), &params.ConceptIds, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "concept_ids"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "concept_ids", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "created_by" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "created_by", r.URL.Query(), &params.CreatedBy, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "created_by"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "created_by", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "language" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "language", r.URL.Query(), &params.Language, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "language"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "language", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "status" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "status", r.URL.Query(), &params.Status, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "status"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "status", Err: err})
+		}
+		return
+	}
+
 	// ------------- Optional query parameter "content_type" -------------
 
 	err = runtime.BindQueryParameterWithOptions("form", true, false, "content_type", r.URL.Query(), &params.ContentType, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
@@ -9911,32 +10195,6 @@ func (siw *ServerInterfaceWrapper) ListContentNodes(w http.ResponseWriter, r *ht
 			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "content_type"})
 		} else {
 			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "content_type", Err: err})
-		}
-		return
-	}
-
-	// ------------- Optional query parameter "skill_id" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "skill_id", r.URL.Query(), &params.SkillId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "skill_id"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "skill_id", Err: err})
-		}
-		return
-	}
-
-	// ------------- Optional query parameter "concept_id" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "concept_id", r.URL.Query(), &params.ConceptId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "concept_id"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "concept_id", Err: err})
 		}
 		return
 	}
@@ -9983,6 +10241,39 @@ func (siw *ServerInterfaceWrapper) CreateContentNode(w http.ResponseWriter, r *h
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreateContentNode(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListContentNodeCreators operation middleware
+func (siw *ServerInterfaceWrapper) ListContentNodeCreators(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListContentNodeCreatorsParams
+
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "q", r.URL.Query(), &params.Q, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "q"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "q", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListContentNodeCreators(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -10340,6 +10631,19 @@ func (siw *ServerInterfaceWrapper) ListCourses(w http.ResponseWriter, r *http.Re
 			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "offset"})
 		} else {
 			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "sort" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "sort", r.URL.Query(), &params.Sort, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "sort"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sort", Err: err})
 		}
 		return
 	}
@@ -10762,28 +11066,41 @@ func (siw *ServerInterfaceWrapper) ListDiagrams(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	// ------------- Optional query parameter "skill_id" -------------
+	// ------------- Optional query parameter "sort" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "skill_id", r.URL.Query(), &params.SkillId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "sort", r.URL.Query(), &params.Sort, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
 	if err != nil {
 		var requiredError *runtime.RequiredParameterError
 		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "skill_id"})
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "sort"})
 		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "skill_id", Err: err})
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sort", Err: err})
 		}
 		return
 	}
 
-	// ------------- Optional query parameter "concept_id" -------------
+	// ------------- Optional query parameter "skill_ids" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "concept_id", r.URL.Query(), &params.ConceptId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "skill_ids", r.URL.Query(), &params.SkillIds, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
 	if err != nil {
 		var requiredError *runtime.RequiredParameterError
 		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "concept_id"})
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "skill_ids"})
 		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "concept_id", Err: err})
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "skill_ids", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "concept_ids" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "concept_ids", r.URL.Query(), &params.ConceptIds, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "concept_ids"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "concept_ids", Err: err})
 		}
 		return
 	}
@@ -10959,28 +11276,41 @@ func (siw *ServerInterfaceWrapper) ListExercises(w http.ResponseWriter, r *http.
 		return
 	}
 
-	// ------------- Optional query parameter "skill_id" -------------
+	// ------------- Optional query parameter "sort" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "skill_id", r.URL.Query(), &params.SkillId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "sort", r.URL.Query(), &params.Sort, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
 	if err != nil {
 		var requiredError *runtime.RequiredParameterError
 		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "skill_id"})
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "sort"})
 		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "skill_id", Err: err})
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sort", Err: err})
 		}
 		return
 	}
 
-	// ------------- Optional query parameter "concept_id" -------------
+	// ------------- Optional query parameter "skill_ids" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "concept_id", r.URL.Query(), &params.ConceptId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "skill_ids", r.URL.Query(), &params.SkillIds, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
 	if err != nil {
 		var requiredError *runtime.RequiredParameterError
 		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "concept_id"})
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "skill_ids"})
 		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "concept_id", Err: err})
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "skill_ids", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "concept_ids" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "concept_ids", r.URL.Query(), &params.ConceptIds, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "concept_ids"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "concept_ids", Err: err})
 		}
 		return
 	}
@@ -12725,6 +13055,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/content-nodes", wrapper.CreateContentNode)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/content-nodes/creators", wrapper.ListContentNodeCreators)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/content-nodes/{content_node_id}", wrapper.GetContentNode)
 	})
 	r.Group(func(r chi.Router) {
@@ -13306,7 +13639,7 @@ type ListCatalogCreatorsResponseObject interface {
 	VisitListCatalogCreatorsResponse(w http.ResponseWriter) error
 }
 
-type ListCatalogCreators200JSONResponse []UserRef
+type ListCatalogCreators200JSONResponse []CreatorRef
 
 func (response ListCatalogCreators200JSONResponse) VisitListCatalogCreatorsResponse(w http.ResponseWriter) error {
 
@@ -13342,7 +13675,7 @@ type ListCatalogPathCreatorsResponseObject interface {
 	VisitListCatalogPathCreatorsResponse(w http.ResponseWriter) error
 }
 
-type ListCatalogPathCreators200JSONResponse []UserRef
+type ListCatalogPathCreators200JSONResponse []CreatorRef
 
 func (response ListCatalogPathCreators200JSONResponse) VisitListCatalogPathCreatorsResponse(w http.ResponseWriter) error {
 
@@ -14124,6 +14457,70 @@ func (response CreateContentNode401JSONResponse) VisitCreateContentNodeResponse(
 type CreateContentNode403JSONResponse ForbiddenError
 
 func (response CreateContentNode403JSONResponse) VisitCreateContentNodeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListContentNodeCreatorsRequestObject struct {
+	Params ListContentNodeCreatorsParams
+}
+
+type ListContentNodeCreatorsResponseObject interface {
+	VisitListContentNodeCreatorsResponse(w http.ResponseWriter) error
+}
+
+type ListContentNodeCreators200JSONResponse []CreatorRef
+
+func (response ListContentNodeCreators200JSONResponse) VisitListContentNodeCreatorsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListContentNodeCreators400JSONResponse ValidationError
+
+func (response ListContentNodeCreators400JSONResponse) VisitListContentNodeCreatorsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListContentNodeCreators401JSONResponse UnauthorizedError
+
+func (response ListContentNodeCreators401JSONResponse) VisitListContentNodeCreatorsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListContentNodeCreators403JSONResponse ForbiddenError
+
+func (response ListContentNodeCreators403JSONResponse) VisitListContentNodeCreatorsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -14994,7 +15391,7 @@ type ListCourseCreatorsResponseObject interface {
 	VisitListCourseCreatorsResponse(w http.ResponseWriter) error
 }
 
-type ListCourseCreators200JSONResponse []UserRef
+type ListCourseCreators200JSONResponse []CreatorRef
 
 func (response ListCourseCreators200JSONResponse) VisitListCourseCreatorsResponse(w http.ResponseWriter) error {
 
@@ -15585,7 +15982,7 @@ type ListDiagramCreatorsResponseObject interface {
 	VisitListDiagramCreatorsResponse(w http.ResponseWriter) error
 }
 
-type ListDiagramCreators200JSONResponse []UserRef
+type ListDiagramCreators200JSONResponse []CreatorRef
 
 func (response ListDiagramCreators200JSONResponse) VisitListDiagramCreatorsResponse(w http.ResponseWriter) error {
 
@@ -15920,7 +16317,7 @@ type ListExerciseCreatorsResponseObject interface {
 	VisitListExerciseCreatorsResponse(w http.ResponseWriter) error
 }
 
-type ListExerciseCreators200JSONResponse []UserRef
+type ListExerciseCreators200JSONResponse []CreatorRef
 
 func (response ListExerciseCreators200JSONResponse) VisitListExerciseCreatorsResponse(w http.ResponseWriter) error {
 
@@ -17249,7 +17646,7 @@ type ListLearningPathCreatorsResponseObject interface {
 	VisitListLearningPathCreatorsResponse(w http.ResponseWriter) error
 }
 
-type ListLearningPathCreators200JSONResponse []UserRef
+type ListLearningPathCreators200JSONResponse []CreatorRef
 
 func (response ListLearningPathCreators200JSONResponse) VisitListLearningPathCreatorsResponse(w http.ResponseWriter) error {
 
@@ -19837,6 +20234,9 @@ type StrictServerInterface interface {
 	// CreateContentNode Create a content node
 	// (POST /content-nodes)
 	CreateContentNode(ctx context.Context, request CreateContentNodeRequestObject) (CreateContentNodeResponseObject, error)
+	// ListContentNodeCreators List the creators of the content nodes in the library
+	// (GET /content-nodes/creators)
+	ListContentNodeCreators(ctx context.Context, request ListContentNodeCreatorsRequestObject) (ListContentNodeCreatorsResponseObject, error)
 	// GetContentNode Get a content node by ID
 	// (GET /content-nodes/{content_node_id})
 	GetContentNode(ctx context.Context, request GetContentNodeRequestObject) (GetContentNodeResponseObject, error)
@@ -20613,6 +21013,32 @@ func (sh *strictHandler) CreateContentNode(w http.ResponseWriter, r *http.Reques
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(CreateContentNodeResponseObject); ok {
 		if err := validResponse.VisitCreateContentNodeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListContentNodeCreators operation middleware
+func (sh *strictHandler) ListContentNodeCreators(w http.ResponseWriter, r *http.Request, params ListContentNodeCreatorsParams) {
+	var request ListContentNodeCreatorsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListContentNodeCreators(ctx, request.(ListContentNodeCreatorsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListContentNodeCreators")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListContentNodeCreatorsResponseObject); ok {
+		if err := validResponse.VisitListContentNodeCreatorsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

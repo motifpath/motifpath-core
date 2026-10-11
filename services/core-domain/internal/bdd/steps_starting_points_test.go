@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/cucumber/godog"
 	"github.com/google/uuid"
@@ -120,7 +121,7 @@ func (w *world) spPublishedCourse(slug, level, language, instrument string) erro
 }
 
 func (w *world) spRetireCourse(slug string) error {
-	return w.courses.UpdateStatus(context.Background(), spCourseID(slug).String(), domain.CourseStatusRetired)
+	return w.courses.UpdateStatus(context.Background(), spCourseID(slug).String(), domain.CourseStatusRetired, time.Now())
 }
 
 func (w *world) spNumberedPaths(count int, language, instrument string) error {

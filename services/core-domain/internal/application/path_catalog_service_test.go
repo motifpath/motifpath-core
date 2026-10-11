@@ -22,7 +22,7 @@ func catalogFixture(t *testing.T) (*application.PathCatalogService, *fakeLearnin
 	paths.put(domain.LearningPath{ID: "open-chords", TeacherID: "teacher-bob", Title: "Open Chords", Status: domain.LearningPathStatusPublished, Language: strPtr("en")})
 	paths.put(domain.LearningPath{ID: "acordes", TeacherID: "teacher-carol", Title: "Acordes", Status: domain.LearningPathStatusPublished, Language: strPtr("pt_BR")})
 	paths.put(domain.LearningPath{ID: "theory", TeacherID: "teacher-dave", Title: "Theory", Status: domain.LearningPathStatusDraft})
-	return application.NewPathCatalogService(paths, users), paths
+	return application.NewPathCatalogService(paths, users, seededKnowledgeNodeRepository()), paths
 }
 
 func TestPathCatalogService_ListCatalogPaths(t *testing.T) {

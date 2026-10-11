@@ -109,8 +109,12 @@ func classificationPredicate(filter domain.CourseListFilter) (predicate.Course, 
 }
 
 // courseListOrder orders by title then id — the published version's title
-// for a published view, since that is the title the entry displays.
+// for a published view, since that is the title the entry displays — or, for
+// sort updated, by the most recent change first, then id.
 func courseListOrder(filter domain.CourseListFilter) []course.OrderOption {
+	if filter.Sort == domain.ListSortUpdated {
+		return []course.OrderOption{course.ByUpdatedAt(sql.OrderDesc()), course.ByID()}
+	}
 	if !filter.PublishedView {
 		return []course.OrderOption{course.ByTitle(), course.ByID()}
 	}

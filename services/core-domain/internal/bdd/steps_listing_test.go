@@ -49,7 +49,7 @@ func registerListingSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" lists learning paths( with .*| matching text .*)$`, w.listsLearningPathsWith)
 
 	// ── Courses ──────────────────────────────────────────────────────────
-	sc.Step(`^a course "([^"]+)" exists(?: (as a draft)|, (published))(, (?:created by|at level|titled|classified with skill) .*)$`, w.courseExistsWith)
+	sc.Step(`^a course "([^"]+)" exists(?: (as a draft)|, (published))(, (?:created by|at level|titled|classified with skill|last changed on) .*)$`, w.courseExistsWith)
 	sc.Step(`^(\d+) courses exist, published$`, w.bulkCourses)
 	sc.Step(`^courses exist, published, at levels (.+)$`, w.coursesAtLevels)
 	sc.Step(`^(\d+) courses exist, published, at level "([^"]+)" and (\d+) at level "([^"]+)"$`, w.bulkCoursesAtTwoLevels)
@@ -423,6 +423,7 @@ var (
 	atLevelClause    = regexp.MustCompile(`, at level "([^"]+)"`)
 	titledClause     = regexp.MustCompile(`, titled "([^"]+)"`)
 	classifiedClause = regexp.MustCompile(`, classified with skill "([^"]+)"`)
+	changedClause    = regexp.MustCompile(`, last changed on "([^"]+)"`)
 	checkpointClause = regexp.MustCompile(`, with checkpoints ((?:"[^"]+"(?:, )?)+)`)
 )
 
@@ -464,11 +465,30 @@ func (w *world) courseExistsWith(slug, draft, _ string, clauses string) error {
 			return err
 		}
 	}
-	_, err := w.seedCourseFrom(courseSeed{
+	id, err := w.seedCourseFrom(courseSeed{
 		slug: slug, title: title, creator: creator, level: generated.CreateCourseRequestLevel(level),
 		pathSlugs: pathSlugs, publish: draft == "",
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	if day := firstMatch(changedClause, clauses); day != "" {
+		return w.courseLastChanged(id.String(), day)
+	}
+	return nil
+}
+
+// courseLastChanged records day as when the course last changed.
+func (w *world) courseLastChanged(id, day string) error {
+	course, err := w.courses.GetByID(context.Background(), id)
+	if err != nil {
+		return err
+	}
+	if course.UpdatedAt, err = parseDay(day); err != nil {
+		return err
+	}
+	w.courses.put(course)
+	return nil
 }
 
 func (w *world) ensurePaths(slugs []string) error {
@@ -585,6 +605,8 @@ type courseListQuery struct {
 	createdBy     *uuid.UUID
 	language      *string
 	instrument    *uuid.UUID
+	// updatedFirst asks for the most recently changed first.
+	updatedFirst bool
 }
 
 func (w *world) parseCourseListQuery(tail string) (courseListQuery, error) {
@@ -592,7 +614,7 @@ func (w *world) parseCourseListQuery(tail string) (courseListQuery, error) {
 	if err != nil {
 		return courseListQuery{}, err
 	}
-	query := courseListQuery{limit: limit, offset: offset, q: searchParam(tail)}
+	query := courseListQuery{limit: limit, offset: offset, q: searchParam(tail), updatedFirst: strings.Contains(tail, "sorted by most recently changed")}
 	for _, m := range filterClauses.FindAllStringSubmatch(tail, -1) {
 		values := quotedValues(m[2])
 		switch m[1] {
@@ -671,6 +693,9 @@ func (w *world) listsManagedCoursesWith(_ string, tail string) error {
 	params := generated.ListCoursesParams{
 		Limit: query.limit, Offset: query.offset, Q: query.q,
 		SkillIds: query.skillIDs, ConceptIds: query.conceptIDs, CreatedBy: query.createdBy, Language: query.language, InstrumentId: query.instrument,
+	}
+	if query.updatedFirst {
+		params.Sort = ptrTo(generated.ListCoursesParamsSortUpdated)
 	}
 	if query.levels != nil {
 		levels := make([]generated.ListCoursesParamsLevels, len(query.levels))
@@ -816,7 +841,7 @@ func (w *world) creatorsReturnedAre(list string) error {
 	}
 	for i, name := range names {
 		want := generated.UserRef{UserId: w.ensureRegistered(name, domain.RoleTeacher), DisplayName: w.nameClaim(name)}
-		if resp[i] != want {
+		if got := (generated.UserRef{UserId: resp[i].UserId, DisplayName: resp[i].DisplayName}); got != want {
 			return fmt.Errorf("expected creator %d to be %#v, got %#v", i+1, want, resp[i])
 		}
 	}

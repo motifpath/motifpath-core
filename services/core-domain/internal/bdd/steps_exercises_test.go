@@ -68,7 +68,7 @@ func registerExerciseSteps(sc *godog.ScenarioContext, w *world) {
 	})
 	sc.Step(`^"([^"]+)" lists exercises filtered by concept "([^"]+)"$`, func(_, concept string) error {
 		id := w.conceptIDFor(concept)
-		return w.listExercises(generated.ListExercisesParams{ConceptId: &id})
+		return w.listExercises(generated.ListExercisesParams{ConceptIds: &[]uuid.UUID{id}})
 	})
 	sc.Step(`^"([^"]+)" lists exercises filtered by language "([^"]+)"$`, func(_, language string) error {
 		return w.listExercises(generated.ListExercisesParams{Language: &language})
@@ -1080,7 +1080,7 @@ func (w *world) unauthListsAllExercises() error {
 func (w *world) listsExercisesBySkill(name, skillName string) error {
 	id := w.skillIDFor(skillName)
 	resp, err := w.handler.ListExercises(w.ctx(), generated.ListExercisesRequestObject{
-		Params: generated.ListExercisesParams{SkillId: &id},
+		Params: generated.ListExercisesParams{SkillIds: &[]uuid.UUID{id}},
 	})
 	w.lastResp, w.lastErr = resp, err
 	return err

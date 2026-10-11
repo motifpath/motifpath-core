@@ -32,7 +32,7 @@ func chartsForEmbedding() *fakeSongChartRepository {
 
 func contentServiceWithCharts(nodes *fakeContentNodeRepository, expanded *fakeExpandedContentRepository) *application.ContentService {
 	return application.NewContentService(nodes, expanded, seededKnowledgeNodeRepository(), newFakeContentNodeVersionRepository(), newFakeDiagramRepository(),
-		seededInstrumentRepository(), newFakeVoiceRepository(), chartsForEmbedding(), idSequence(), func() time.Time { return fixedCreatedAt })
+		seededInstrumentRepository(), newFakeVoiceRepository(), chartsForEmbedding(), newFakeUserRepository(), idSequence(), func() time.Time { return fixedCreatedAt })
 }
 
 func bodyEmbedding(chartID string) *domain.PromptDocument {

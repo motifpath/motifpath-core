@@ -72,6 +72,6 @@ func TestEntLearningPathRepository_Library(t *testing.T) {
 
 	t.Run("orders by title by default, or by most recent update", func(t *testing.T) {
 		assert.Equal(t, []string{alpha.ID, beta.ID, legacy.ID}, ids(domain.LearningPathFilter{}))
-		assert.Equal(t, []string{beta.ID, legacy.ID, alpha.ID}, ids(domain.LearningPathFilter{Sort: domain.LearningPathSortUpdated}))
+		assert.Equal(t, []string{beta.ID, legacy.ID, alpha.ID}, ids(domain.LearningPathFilter{Sort: domain.ListSortUpdated}))
 	})
 }

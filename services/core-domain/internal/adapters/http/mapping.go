@@ -169,6 +169,10 @@ func toContentNode(n domain.ContentNode, names userNames) generated.ContentNode 
 		InstrumentIds: toUUIDs(n.InstrumentIDs),
 		ThumbnailUrl:  n.ThumbnailURL,
 		CreatedAt:     n.CreatedAt,
+		UpdatedAt:     n.UpdatedAt,
+
+		LatestPublishedVersion: n.LatestPublishedVersion,
+		HasUnpublishedChanges:  n.HasUnpublishedChanges,
 	}
 	if n.RichContent != nil {
 		doc := toGeneratedPromptDocument(*n.RichContent)
@@ -291,6 +295,7 @@ func toExercise(e domain.Exercise, names userNames) generated.Exercise {
 		EstimatedDurationSeconds: e.EstimatedDurationSeconds,
 		RemediationTargets:       toRemediationTargets(e.RemediationTargets),
 		CreatedAt:                e.CreatedAt,
+		UpdatedAt:                e.UpdatedAt,
 		DiagramRef:               toGeneratedDiagramRefPtr(e.DiagramRef),
 		DiagramStackRef:          toGeneratedDiagramStackRefPtr(e.DiagramStackRef),
 	}
@@ -471,10 +476,13 @@ func toLearningPath(p domain.LearningPath, names userNames) generated.LearningPa
 // filter.
 func exerciseListFilter(params generated.ListExercisesParams) domain.ExerciseFilter {
 	filter := domain.ExerciseFilter{
-		Query:     searchQuery(params.Q),
-		SkillID:   uuidPtrToString(params.SkillId),
-		ConceptID: uuidPtrToString(params.ConceptId),
-		CreatedBy: uuidPtrToString(params.CreatedBy),
+		Query:      searchQuery(params.Q),
+		SkillIDs:   optionalUUIDStrings(params.SkillIds),
+		ConceptIDs: optionalUUIDStrings(params.ConceptIds),
+		CreatedBy:  uuidPtrToString(params.CreatedBy),
+	}
+	if params.Sort != nil {
+		filter.Sort = domain.ListSort(*params.Sort)
 	}
 	if params.ExerciseType != nil {
 		filter.ExerciseType = domain.ExerciseType(*params.ExerciseType)
@@ -507,7 +515,7 @@ func learningPathListFilter(params generated.ListLearningPathsParams) domain.Lea
 		filter.ConceptIDs = uuidStrings(*params.ConceptIds)
 	}
 	if params.Sort != nil {
-		filter.Sort = domain.LearningPathSort(*params.Sort)
+		filter.Sort = domain.ListSort(*params.Sort)
 	}
 	if params.Language != nil {
 		filter.Language = *params.Language
@@ -795,9 +803,12 @@ func toDomainDiagramKind(kind *generated.CreateDiagramRequestKind) domain.Diagra
 func diagramListFilter(params generated.ListDiagramsParams) (domain.DiagramListFilter, error) {
 	filter := domain.DiagramListFilter{
 		InstrumentID: uuidPtrToString(params.InstrumentId),
-		SkillID:      uuidPtrToString(params.SkillId),
-		ConceptID:    uuidPtrToString(params.ConceptId),
+		SkillIDs:     optionalUUIDStrings(params.SkillIds),
+		ConceptIDs:   optionalUUIDStrings(params.ConceptIds),
 		CreatedBy:    uuidPtrToString(params.CreatedBy),
+	}
+	if params.Sort != nil {
+		filter.Sort = domain.ListSort(*params.Sort)
 	}
 	if params.Kind != nil {
 		filter.Kind = domain.DiagramKind(*params.Kind)
@@ -877,6 +888,7 @@ func toGeneratedDiagram(d domain.Diagram, names userNames) generated.Diagram {
 		Playbacks:         toGeneratedPlaybacks(d.Playbacks),
 		DefaultPlaybackId: uuidPtrFromStringPtr(d.DefaultPlaybackID),
 		CreatedAt:         d.CreatedAt,
+		UpdatedAt:         d.UpdatedAt,
 		ChordVoicing:      toGeneratedDiagramVoicing(d.ChordVoicing),
 	}
 }
@@ -1229,6 +1241,8 @@ func toCourseCatalogEntry(c domain.Course, view catalogEntryView, latest *domain
 	if view == authoringListView {
 		hasUnpublishedChanges := domain.HasUnpublishedChanges(c, latest)
 		entry.HasUnpublishedChanges = &hasUnpublishedChanges
+		updatedAt := c.UpdatedAt
+		entry.UpdatedAt = &updatedAt
 	}
 	return entry
 }
@@ -1321,6 +1335,9 @@ func toCourseDetail(courseID string, view application.PublishedCourseView, names
 // this mapping's.
 func courseListFilter(params generated.ListCoursesParams) domain.CourseListFilter {
 	filter := domain.CourseListFilter{Query: searchQuery(params.Q), InstrumentID: uuidPtrToString(params.InstrumentId)}
+	if params.Sort != nil {
+		filter.Sort = domain.ListSort(*params.Sort)
+	}
 	if params.Status != nil {
 		status := domain.CourseStatus(*params.Status)
 		filter.Status = &status
@@ -1367,6 +1384,15 @@ func catalogCourseListFilter(params generated.ListCatalogCoursesParams) domain.C
 		filter.ConceptIDs = uuidStrings(*params.ConceptIds)
 	}
 	return filter
+}
+
+// optionalUUIDStrings is uuidStrings for an optional repeated parameter; an
+// absent one is no filter.
+func optionalUUIDStrings(ids *[]uuid.UUID) []string {
+	if ids == nil {
+		return nil
+	}
+	return uuidStrings(*ids)
 }
 
 func uuidStrings(ids []uuid.UUID) []string {

@@ -268,14 +268,6 @@ func (h *Handler) ListContentNodes(ctx context.Context, request generated.ListCo
 	if request.Params.ContentType != nil {
 		contentType = domain.ContentType(*request.Params.ContentType)
 	}
-	var skillID string
-	if request.Params.SkillId != nil {
-		skillID = request.Params.SkillId.String()
-	}
-	var conceptID string
-	if request.Params.ConceptId != nil {
-		conceptID = request.Params.ConceptId.String()
-	}
 	var difficulty domain.DifficultyLevel
 	if request.Params.DifficultyLevel != nil {
 		difficulty = domain.DifficultyLevel(*request.Params.DifficultyLevel)
@@ -289,17 +281,31 @@ func (h *Handler) ListContentNodes(ctx context.Context, request generated.ListCo
 	}
 	filter := domain.ContentNodeFilter{
 		ContentType:  contentType,
-		SkillID:      skillID,
-		ConceptID:    conceptID,
+		SkillIDs:     optionalUUIDStrings(request.Params.SkillIds),
+		ConceptIDs:   optionalUUIDStrings(request.Params.ConceptIds),
 		Difficulty:   difficulty,
 		Query:        searchQuery(request.Params.Q),
 		InstrumentID: uuidPtrToString(request.Params.InstrumentId),
+		CreatedBy:    uuidPtrToString(request.Params.CreatedBy),
+	}
+	if request.Params.Language != nil {
+		filter.Language = *request.Params.Language
+	}
+	if request.Params.Status != nil {
+		filter.Status = domain.ContentNodeStatus(*request.Params.Status)
+	}
+	if request.Params.Sort != nil {
+		filter.Sort = domain.ListSort(*request.Params.Sort)
 	}
 
 	result, err := h.content.ListContentNodes(ctx, caller, filter, page)
 	if err != nil {
-		if kind, _ := classify(err); kind == errKindForbidden {
+		switch kind, valErr := classify(err); kind {
+		case errKindForbidden:
 			return generated.ListContentNodes403JSONResponse(forbiddenError("only teachers and admins may list content nodes")), nil
+		case errKindValidation:
+			return generated.ListContentNodes400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindNotFound, errKindOther:
 		}
 		return nil, err
 	}
@@ -499,8 +505,12 @@ func (h *Handler) ListExercises(ctx context.Context, request generated.ListExerc
 
 	result, err := h.exercise.ListExercises(ctx, caller, exerciseListFilter(request.Params), page)
 	if err != nil {
-		if kind, _ := classify(err); kind == errKindForbidden {
+		switch kind, valErr := classify(err); kind {
+		case errKindForbidden:
 			return generated.ListExercises403JSONResponse(forbiddenError("only teachers and admins may list exercises")), nil
+		case errKindValidation:
+			return generated.ListExercises400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindNotFound, errKindOther:
 		}
 		return nil, err
 	}
@@ -533,7 +543,27 @@ func (h *Handler) ListExerciseCreators(ctx context.Context, request generated.Li
 		}
 		return nil, err
 	}
-	return generated.ListExerciseCreators200JSONResponse(toUserRefs(creators)), nil
+	return generated.ListExerciseCreators200JSONResponse(toCreatorRefs(creators)), nil
+}
+
+func (h *Handler) ListContentNodeCreators(ctx context.Context, request generated.ListContentNodeCreatorsRequestObject) (generated.ListContentNodeCreatorsResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ListContentNodeCreators401JSONResponse(unauthorizedError()), nil
+	}
+
+	query := ""
+	if request.Params.Q != nil {
+		query = *request.Params.Q
+	}
+	creators, err := h.content.ListContentNodeCreators(ctx, caller, query)
+	if err != nil {
+		if kind, _ := classify(err); kind == errKindForbidden {
+			return generated.ListContentNodeCreators403JSONResponse(forbiddenError("students may not list content node creators")), nil
+		}
+		return nil, err
+	}
+	return generated.ListContentNodeCreators200JSONResponse(toCreatorRefs(creators)), nil
 }
 
 func (h *Handler) UpdateExercise(ctx context.Context, request generated.UpdateExerciseRequestObject) (generated.UpdateExerciseResponseObject, error) {
@@ -1142,8 +1172,12 @@ func (h *Handler) ListCourses(ctx context.Context, request generated.ListCourses
 
 	result, err := h.course.ListCourses(ctx, caller, courseListFilter(request.Params), page)
 	if err != nil {
-		if kind, _ := classify(err); kind == errKindForbidden {
+		switch kind, valErr := classify(err); kind {
+		case errKindForbidden:
 			return generated.ListCourses403JSONResponse(forbiddenError("the authoring course list is for teachers and admins, and a teacher may only list courses they created")), nil
+		case errKindValidation:
+			return generated.ListCourses400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindNotFound, errKindOther:
 		}
 		return nil, err
 	}
@@ -1248,7 +1282,7 @@ func (h *Handler) ListCourseCreators(ctx context.Context, request generated.List
 		}
 		return nil, err
 	}
-	return generated.ListCourseCreators200JSONResponse(toUserRefs(creators)), nil
+	return generated.ListCourseCreators200JSONResponse(toCreatorRefs(creators)), nil
 }
 
 // ListLearningPathCreators returns the creators of the paths in the
@@ -1267,7 +1301,7 @@ func (h *Handler) ListLearningPathCreators(ctx context.Context, request generate
 		}
 		return nil, err
 	}
-	return generated.ListLearningPathCreators200JSONResponse(toUserRefs(creators)), nil
+	return generated.ListLearningPathCreators200JSONResponse(toCreatorRefs(creators)), nil
 }
 
 // ListCatalogCreators returns the creators of the published courses, the
@@ -1281,13 +1315,13 @@ func (h *Handler) ListCatalogCreators(ctx context.Context, request generated.Lis
 	if err != nil {
 		return nil, err
 	}
-	return generated.ListCatalogCreators200JSONResponse(toUserRefs(creators)), nil
+	return generated.ListCatalogCreators200JSONResponse(toCreatorRefs(creators)), nil
 }
 
-func toUserRefs(creators []application.CourseCreator) []generated.UserRef {
-	refs := make([]generated.UserRef, len(creators))
+func toCreatorRefs(creators []application.Creator) []generated.CreatorRef {
+	refs := make([]generated.CreatorRef, len(creators))
 	for i, c := range creators {
-		refs[i] = generated.UserRef{UserId: mustUUID(c.UserID), DisplayName: c.DisplayName}
+		refs[i] = generated.CreatorRef{UserId: mustUUID(c.UserID), DisplayName: c.DisplayName, ItemCount: c.ItemCount}
 	}
 	return refs
 }
@@ -2123,7 +2157,7 @@ func (h *Handler) ListDiagramCreators(ctx context.Context, request generated.Lis
 		}
 		return nil, err
 	}
-	return generated.ListDiagramCreators200JSONResponse(toUserRefs(creators)), nil
+	return generated.ListDiagramCreators200JSONResponse(toCreatorRefs(creators)), nil
 }
 
 func (h *Handler) CreateDiagram(ctx context.Context, request generated.CreateDiagramRequestObject) (generated.CreateDiagramResponseObject, error) {

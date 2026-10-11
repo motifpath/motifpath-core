@@ -369,7 +369,7 @@ func (s *PracticeSessionService) skillCandidates(ctx context.Context, skillID, i
 	if err != nil {
 		return nil, err
 	}
-	filter := domain.ExerciseFilter{SkillID: skillID}
+	filter := domain.ExerciseFilter{SkillIDs: []string{skillID}}
 	if instrumentID != "" {
 		filter.InstrumentIDs = []string{instrumentID}
 	}
@@ -393,7 +393,7 @@ func (s *PracticeSessionService) diagramCandidates(ctx context.Context, skillID,
 	if instrumentID == "" {
 		return nil, nil, nil
 	}
-	diagrams, err := s.listDiagrams(ctx, domain.DiagramListFilter{SkillID: skillID, InstrumentID: instrumentID, Kind: domain.DiagramKindBasic, Purpose: domain.DiagramPurposeFilterGeneral})
+	diagrams, err := s.listDiagrams(ctx, domain.DiagramListFilter{SkillIDs: []string{skillID}, InstrumentID: instrumentID, Kind: domain.DiagramKindBasic, Purpose: domain.DiagramPurposeFilterGeneral})
 	if err != nil {
 		return nil, nil, err
 	}

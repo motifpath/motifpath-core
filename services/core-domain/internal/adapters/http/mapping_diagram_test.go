@@ -97,13 +97,13 @@ func TestDiagramOwnershipMapping(t *testing.T) {
 		name, root := "pentatonic", "A"
 
 		got, err := diagramListFilter(generated.ListDiagramsParams{
-			InstrumentId: &instrument, SkillId: &skill, ConceptId: &concept, CreatedBy: &creator, Kind: &kind,
+			InstrumentId: &instrument, SkillIds: &[]uuid.UUID{skill}, ConceptIds: &[]uuid.UUID{concept}, CreatedBy: &creator, Kind: &kind,
 			Name: &name, RootNote: &root,
 		})
 
 		require.NoError(t, err)
 		assert.Equal(t, domain.DiagramListFilter{
-			InstrumentID: instrument.String(), SkillID: skill.String(), ConceptID: concept.String(),
+			InstrumentID: instrument.String(), SkillIDs: []string{skill.String()}, ConceptIDs: []string{concept.String()},
 			CreatedBy: creator.String(), Kind: domain.DiagramKindCustom, Name: "pentatonic", RootNote: "A",
 		}, got)
 	})

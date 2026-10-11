@@ -2,6 +2,7 @@ package ports
 
 import (
 	"context"
+	"time"
 
 	"github.com/motifpath/core-domain/internal/domain"
 )
@@ -26,10 +27,10 @@ type CourseRepository interface {
 	// set), with the count of all matches across pages.
 	List(ctx context.Context, filter domain.CourseListFilter, page domain.PageRequest) (domain.Page[domain.Course], error)
 
-	// ListCreatorIDs returns the distinct creator user ids of every course
-	// matching filter, in no particular order; an empty, non-nil slice when
-	// nothing matches.
-	ListCreatorIDs(ctx context.Context, filter domain.CourseListFilter) ([]string, error)
+	// ListCreatorCounts returns each distinct creator of the courses
+	// matching filter with how many of them they created, in no particular
+	// order; an empty, non-nil slice when nothing matches.
+	ListCreatorCounts(ctx context.Context, filter domain.CourseListFilter) ([]domain.CreatorCount, error)
 
 	// Replace replaces course's title, summary, level, and checkpoints
 	// wholesale — its current checkpoints are deleted and
@@ -37,7 +38,8 @@ type CourseRepository interface {
 	// Returns domain.ErrNotFound if no course exists with the given id.
 	Replace(ctx context.Context, course domain.Course) error
 
-	// UpdateStatus sets the status of the course with the given id.
-	// Returns domain.ErrNotFound if no course exists with that id.
-	UpdateStatus(ctx context.Context, id string, status domain.CourseStatus) error
+	// UpdateStatus sets the status of the course with the given id and
+	// records updatedAt as its last change. Returns domain.ErrNotFound if no
+	// course exists with that id.
+	UpdateStatus(ctx context.Context, id string, status domain.CourseStatus, updatedAt time.Time) error
 }
