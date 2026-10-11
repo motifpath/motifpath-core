@@ -124,6 +124,48 @@ func (_c *ContentNodeCreate) SetNillableCreatedAt(v *time.Time) *ContentNodeCrea
 	return _c
 }
 
+// SetUpdatedAt sets the "updated_at" field.
+func (_c *ContentNodeCreate) SetUpdatedAt(v time.Time) *ContentNodeCreate {
+	_c.mutation.SetUpdatedAt(v)
+	return _c
+}
+
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
+func (_c *ContentNodeCreate) SetNillableUpdatedAt(v *time.Time) *ContentNodeCreate {
+	if v != nil {
+		_c.SetUpdatedAt(*v)
+	}
+	return _c
+}
+
+// SetLatestPublishedVersion sets the "latest_published_version" field.
+func (_c *ContentNodeCreate) SetLatestPublishedVersion(v int) *ContentNodeCreate {
+	_c.mutation.SetLatestPublishedVersion(v)
+	return _c
+}
+
+// SetNillableLatestPublishedVersion sets the "latest_published_version" field if the given value is not nil.
+func (_c *ContentNodeCreate) SetNillableLatestPublishedVersion(v *int) *ContentNodeCreate {
+	if v != nil {
+		_c.SetLatestPublishedVersion(*v)
+	}
+	return _c
+}
+
+// SetHasUnpublishedChanges sets the "has_unpublished_changes" field.
+func (_c *ContentNodeCreate) SetHasUnpublishedChanges(v bool) *ContentNodeCreate {
+	_c.mutation.SetHasUnpublishedChanges(v)
+	return _c
+}
+
+// SetNillableHasUnpublishedChanges sets the "has_unpublished_changes" field if the given value is not nil.
+func (_c *ContentNodeCreate) SetNillableHasUnpublishedChanges(v *bool) *ContentNodeCreate {
+	if v != nil {
+		_c.SetHasUnpublishedChanges(*v)
+	}
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *ContentNodeCreate) SetID(v uuid.UUID) *ContentNodeCreate {
 	_c.mutation.SetID(v)
@@ -331,6 +373,14 @@ func (_c *ContentNodeCreate) defaults() {
 		v := contentnode.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
 	}
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
+		v := contentnode.DefaultUpdatedAt()
+		_c.mutation.SetUpdatedAt(v)
+	}
+	if _, ok := _c.mutation.HasUnpublishedChanges(); !ok {
+		v := contentnode.DefaultHasUnpublishedChanges
+		_c.mutation.SetHasUnpublishedChanges(v)
+	}
 	if _, ok := _c.mutation.ID(); !ok {
 		v := contentnode.DefaultID()
 		_c.mutation.SetID(v)
@@ -371,6 +421,12 @@ func (_c *ContentNodeCreate) check() error {
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "ContentNode.created_at"`)}
+	}
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
+		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "ContentNode.updated_at"`)}
+	}
+	if _, ok := _c.mutation.HasUnpublishedChanges(); !ok {
+		return &ValidationError{Name: "has_unpublished_changes", err: errors.New(`ent: missing required field "ContentNode.has_unpublished_changes"`)}
 	}
 	return nil
 }
@@ -442,6 +498,18 @@ func (_c *ContentNodeCreate) createSpec() (*ContentNode, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(contentnode.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
+	}
+	if value, ok := _c.mutation.UpdatedAt(); ok {
+		_spec.SetField(contentnode.FieldUpdatedAt, field.TypeTime, value)
+		_node.UpdatedAt = value
+	}
+	if value, ok := _c.mutation.LatestPublishedVersion(); ok {
+		_spec.SetField(contentnode.FieldLatestPublishedVersion, field.TypeInt, value)
+		_node.LatestPublishedVersion = &value
+	}
+	if value, ok := _c.mutation.HasUnpublishedChanges(); ok {
+		_spec.SetField(contentnode.FieldHasUnpublishedChanges, field.TypeBool, value)
+		_node.HasUnpublishedChanges = value
 	}
 	if nodes := _c.mutation.PathExercisesIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

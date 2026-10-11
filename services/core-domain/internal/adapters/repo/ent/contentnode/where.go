@@ -86,6 +86,21 @@ func CreatedAt(v time.Time) predicate.ContentNode {
 	return predicate.ContentNode(sql.FieldEQ(FieldCreatedAt, v))
 }
 
+// UpdatedAt applies equality check predicate on the "updated_at" field. It's identical to UpdatedAtEQ.
+func UpdatedAt(v time.Time) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldEQ(FieldUpdatedAt, v))
+}
+
+// LatestPublishedVersion applies equality check predicate on the "latest_published_version" field. It's identical to LatestPublishedVersionEQ.
+func LatestPublishedVersion(v int) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldEQ(FieldLatestPublishedVersion, v))
+}
+
+// HasUnpublishedChanges applies equality check predicate on the "has_unpublished_changes" field. It's identical to HasUnpublishedChangesEQ.
+func HasUnpublishedChanges(v bool) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldEQ(FieldHasUnpublishedChanges, v))
+}
+
 // TeacherIDEQ applies the EQ predicate on the "teacher_id" field.
 func TeacherIDEQ(v uuid.UUID) predicate.ContentNode {
 	return predicate.ContentNode(sql.FieldEQ(FieldTeacherID, v))
@@ -514,6 +529,106 @@ func CreatedAtLT(v time.Time) predicate.ContentNode {
 // CreatedAtLTE applies the LTE predicate on the "created_at" field.
 func CreatedAtLTE(v time.Time) predicate.ContentNode {
 	return predicate.ContentNode(sql.FieldLTE(FieldCreatedAt, v))
+}
+
+// UpdatedAtEQ applies the EQ predicate on the "updated_at" field.
+func UpdatedAtEQ(v time.Time) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldEQ(FieldUpdatedAt, v))
+}
+
+// UpdatedAtNEQ applies the NEQ predicate on the "updated_at" field.
+func UpdatedAtNEQ(v time.Time) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldNEQ(FieldUpdatedAt, v))
+}
+
+// UpdatedAtIn applies the In predicate on the "updated_at" field.
+func UpdatedAtIn(vs ...time.Time) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldIn(FieldUpdatedAt, vs...))
+}
+
+// UpdatedAtNotIn applies the NotIn predicate on the "updated_at" field.
+func UpdatedAtNotIn(vs ...time.Time) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldNotIn(FieldUpdatedAt, vs...))
+}
+
+// UpdatedAtGT applies the GT predicate on the "updated_at" field.
+func UpdatedAtGT(v time.Time) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldGT(FieldUpdatedAt, v))
+}
+
+// UpdatedAtGTE applies the GTE predicate on the "updated_at" field.
+func UpdatedAtGTE(v time.Time) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldGTE(FieldUpdatedAt, v))
+}
+
+// UpdatedAtLT applies the LT predicate on the "updated_at" field.
+func UpdatedAtLT(v time.Time) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldLT(FieldUpdatedAt, v))
+}
+
+// UpdatedAtLTE applies the LTE predicate on the "updated_at" field.
+func UpdatedAtLTE(v time.Time) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldLTE(FieldUpdatedAt, v))
+}
+
+// LatestPublishedVersionEQ applies the EQ predicate on the "latest_published_version" field.
+func LatestPublishedVersionEQ(v int) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldEQ(FieldLatestPublishedVersion, v))
+}
+
+// LatestPublishedVersionNEQ applies the NEQ predicate on the "latest_published_version" field.
+func LatestPublishedVersionNEQ(v int) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldNEQ(FieldLatestPublishedVersion, v))
+}
+
+// LatestPublishedVersionIn applies the In predicate on the "latest_published_version" field.
+func LatestPublishedVersionIn(vs ...int) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldIn(FieldLatestPublishedVersion, vs...))
+}
+
+// LatestPublishedVersionNotIn applies the NotIn predicate on the "latest_published_version" field.
+func LatestPublishedVersionNotIn(vs ...int) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldNotIn(FieldLatestPublishedVersion, vs...))
+}
+
+// LatestPublishedVersionGT applies the GT predicate on the "latest_published_version" field.
+func LatestPublishedVersionGT(v int) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldGT(FieldLatestPublishedVersion, v))
+}
+
+// LatestPublishedVersionGTE applies the GTE predicate on the "latest_published_version" field.
+func LatestPublishedVersionGTE(v int) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldGTE(FieldLatestPublishedVersion, v))
+}
+
+// LatestPublishedVersionLT applies the LT predicate on the "latest_published_version" field.
+func LatestPublishedVersionLT(v int) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldLT(FieldLatestPublishedVersion, v))
+}
+
+// LatestPublishedVersionLTE applies the LTE predicate on the "latest_published_version" field.
+func LatestPublishedVersionLTE(v int) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldLTE(FieldLatestPublishedVersion, v))
+}
+
+// LatestPublishedVersionIsNil applies the IsNil predicate on the "latest_published_version" field.
+func LatestPublishedVersionIsNil() predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldIsNull(FieldLatestPublishedVersion))
+}
+
+// LatestPublishedVersionNotNil applies the NotNil predicate on the "latest_published_version" field.
+func LatestPublishedVersionNotNil() predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldNotNull(FieldLatestPublishedVersion))
+}
+
+// HasUnpublishedChangesEQ applies the EQ predicate on the "has_unpublished_changes" field.
+func HasUnpublishedChangesEQ(v bool) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldEQ(FieldHasUnpublishedChanges, v))
+}
+
+// HasUnpublishedChangesNEQ applies the NEQ predicate on the "has_unpublished_changes" field.
+func HasUnpublishedChangesNEQ(v bool) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldNEQ(FieldHasUnpublishedChanges, v))
 }
 
 // HasPathExercises applies the HasEdge predicate on the "path_exercises" edge.

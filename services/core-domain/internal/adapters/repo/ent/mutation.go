@@ -4662,6 +4662,10 @@ type ContentNodeMutation struct {
 	review_state                    *contentnode.ReviewState
 	thumbnail_url                   *string
 	created_at                      *time.Time
+	updated_at                      *time.Time
+	latest_published_version        *int
+	addlatest_published_version     *int
+	has_unpublished_changes         *bool
 	clearedFields                   map[string]struct{}
 	path_exercises                  map[uuid.UUID]struct{}
 	removedpath_exercises           map[uuid.UUID]struct{}
@@ -5163,6 +5167,148 @@ func (m *ContentNodeMutation) OldCreatedAt(ctx context.Context) (v time.Time, er
 // ResetCreatedAt resets all changes to the "created_at" field.
 func (m *ContentNodeMutation) ResetCreatedAt() {
 	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *ContentNodeMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *ContentNodeMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the ContentNode entity.
+// If the ContentNode object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ContentNodeMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *ContentNodeMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetLatestPublishedVersion sets the "latest_published_version" field.
+func (m *ContentNodeMutation) SetLatestPublishedVersion(i int) {
+	m.latest_published_version = &i
+	m.addlatest_published_version = nil
+}
+
+// LatestPublishedVersion returns the value of the "latest_published_version" field in the mutation.
+func (m *ContentNodeMutation) LatestPublishedVersion() (r int, exists bool) {
+	v := m.latest_published_version
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLatestPublishedVersion returns the old "latest_published_version" field's value of the ContentNode entity.
+// If the ContentNode object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ContentNodeMutation) OldLatestPublishedVersion(ctx context.Context) (v *int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLatestPublishedVersion is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLatestPublishedVersion requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLatestPublishedVersion: %w", err)
+	}
+	return oldValue.LatestPublishedVersion, nil
+}
+
+// AddLatestPublishedVersion adds i to the "latest_published_version" field.
+func (m *ContentNodeMutation) AddLatestPublishedVersion(i int) {
+	if m.addlatest_published_version != nil {
+		*m.addlatest_published_version += i
+	} else {
+		m.addlatest_published_version = &i
+	}
+}
+
+// AddedLatestPublishedVersion returns the value that was added to the "latest_published_version" field in this mutation.
+func (m *ContentNodeMutation) AddedLatestPublishedVersion() (r int, exists bool) {
+	v := m.addlatest_published_version
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearLatestPublishedVersion clears the value of the "latest_published_version" field.
+func (m *ContentNodeMutation) ClearLatestPublishedVersion() {
+	m.latest_published_version = nil
+	m.addlatest_published_version = nil
+	m.clearedFields[contentnode.FieldLatestPublishedVersion] = struct{}{}
+}
+
+// LatestPublishedVersionCleared returns if the "latest_published_version" field was cleared in this mutation.
+func (m *ContentNodeMutation) LatestPublishedVersionCleared() bool {
+	_, ok := m.clearedFields[contentnode.FieldLatestPublishedVersion]
+	return ok
+}
+
+// ResetLatestPublishedVersion resets all changes to the "latest_published_version" field.
+func (m *ContentNodeMutation) ResetLatestPublishedVersion() {
+	m.latest_published_version = nil
+	m.addlatest_published_version = nil
+	delete(m.clearedFields, contentnode.FieldLatestPublishedVersion)
+}
+
+// SetHasUnpublishedChanges sets the "has_unpublished_changes" field.
+func (m *ContentNodeMutation) SetHasUnpublishedChanges(b bool) {
+	m.has_unpublished_changes = &b
+}
+
+// HasUnpublishedChanges returns the value of the "has_unpublished_changes" field in the mutation.
+func (m *ContentNodeMutation) HasUnpublishedChanges() (r bool, exists bool) {
+	v := m.has_unpublished_changes
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldHasUnpublishedChanges returns the old "has_unpublished_changes" field's value of the ContentNode entity.
+// If the ContentNode object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ContentNodeMutation) OldHasUnpublishedChanges(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldHasUnpublishedChanges is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldHasUnpublishedChanges requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldHasUnpublishedChanges: %w", err)
+	}
+	return oldValue.HasUnpublishedChanges, nil
+}
+
+// ResetHasUnpublishedChanges resets all changes to the "has_unpublished_changes" field.
+func (m *ContentNodeMutation) ResetHasUnpublishedChanges() {
+	m.has_unpublished_changes = nil
 }
 
 // AddPathExerciseIDs adds the "path_exercises" edge to the Exercise entity by ids.
@@ -5739,7 +5885,7 @@ func (m *ContentNodeMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ContentNodeMutation) Fields() []string {
-	fields := make([]string, 0, 9)
+	fields := make([]string, 0, 12)
 	if m.teacher_id != nil {
 		fields = append(fields, contentnode.FieldTeacherID)
 	}
@@ -5767,6 +5913,15 @@ func (m *ContentNodeMutation) Fields() []string {
 	if m.created_at != nil {
 		fields = append(fields, contentnode.FieldCreatedAt)
 	}
+	if m.updated_at != nil {
+		fields = append(fields, contentnode.FieldUpdatedAt)
+	}
+	if m.latest_published_version != nil {
+		fields = append(fields, contentnode.FieldLatestPublishedVersion)
+	}
+	if m.has_unpublished_changes != nil {
+		fields = append(fields, contentnode.FieldHasUnpublishedChanges)
+	}
 	return fields
 }
 
@@ -5793,6 +5948,12 @@ func (m *ContentNodeMutation) Field(name string) (ent.Value, bool) {
 		return m.ThumbnailURL()
 	case contentnode.FieldCreatedAt:
 		return m.CreatedAt()
+	case contentnode.FieldUpdatedAt:
+		return m.UpdatedAt()
+	case contentnode.FieldLatestPublishedVersion:
+		return m.LatestPublishedVersion()
+	case contentnode.FieldHasUnpublishedChanges:
+		return m.HasUnpublishedChanges()
 	}
 	return nil, false
 }
@@ -5820,6 +5981,12 @@ func (m *ContentNodeMutation) OldField(ctx context.Context, name string) (ent.Va
 		return m.OldThumbnailURL(ctx)
 	case contentnode.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
+	case contentnode.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	case contentnode.FieldLatestPublishedVersion:
+		return m.OldLatestPublishedVersion(ctx)
+	case contentnode.FieldHasUnpublishedChanges:
+		return m.OldHasUnpublishedChanges(ctx)
 	}
 	return nil, fmt.Errorf("unknown ContentNode field %s", name)
 }
@@ -5892,6 +6059,27 @@ func (m *ContentNodeMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetCreatedAt(v)
 		return nil
+	case contentnode.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	case contentnode.FieldLatestPublishedVersion:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLatestPublishedVersion(v)
+		return nil
+	case contentnode.FieldHasUnpublishedChanges:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetHasUnpublishedChanges(v)
+		return nil
 	}
 	return fmt.Errorf("unknown ContentNode field %s", name)
 }
@@ -5899,13 +6087,21 @@ func (m *ContentNodeMutation) SetField(name string, value ent.Value) error {
 // AddedFields returns all numeric fields that were incremented/decremented during
 // this mutation.
 func (m *ContentNodeMutation) AddedFields() []string {
-	return nil
+	var fields []string
+	if m.addlatest_published_version != nil {
+		fields = append(fields, contentnode.FieldLatestPublishedVersion)
+	}
+	return fields
 }
 
 // AddedField returns the numeric value that was incremented/decremented on a field
 // with the given name. The second boolean return value indicates that this field
 // was not set, or was not defined in the schema.
 func (m *ContentNodeMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case contentnode.FieldLatestPublishedVersion:
+		return m.AddedLatestPublishedVersion()
+	}
 	return nil, false
 }
 
@@ -5914,6 +6110,13 @@ func (m *ContentNodeMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *ContentNodeMutation) AddField(name string, value ent.Value) error {
 	switch name {
+	case contentnode.FieldLatestPublishedVersion:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddLatestPublishedVersion(v)
+		return nil
 	}
 	return fmt.Errorf("unknown ContentNode numeric field %s", name)
 }
@@ -5930,6 +6133,9 @@ func (m *ContentNodeMutation) ClearedFields() []string {
 	}
 	if m.FieldCleared(contentnode.FieldThumbnailURL) {
 		fields = append(fields, contentnode.FieldThumbnailURL)
+	}
+	if m.FieldCleared(contentnode.FieldLatestPublishedVersion) {
+		fields = append(fields, contentnode.FieldLatestPublishedVersion)
 	}
 	return fields
 }
@@ -5953,6 +6159,9 @@ func (m *ContentNodeMutation) ClearField(name string) error {
 		return nil
 	case contentnode.FieldThumbnailURL:
 		m.ClearThumbnailURL()
+		return nil
+	case contentnode.FieldLatestPublishedVersion:
+		m.ClearLatestPublishedVersion()
 		return nil
 	}
 	return fmt.Errorf("unknown ContentNode nullable field %s", name)
@@ -5988,6 +6197,15 @@ func (m *ContentNodeMutation) ResetField(name string) error {
 		return nil
 	case contentnode.FieldCreatedAt:
 		m.ResetCreatedAt()
+		return nil
+	case contentnode.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	case contentnode.FieldLatestPublishedVersion:
+		m.ResetLatestPublishedVersion()
+		return nil
+	case contentnode.FieldHasUnpublishedChanges:
+		m.ResetHasUnpublishedChanges()
 		return nil
 	}
 	return fmt.Errorf("unknown ContentNode field %s", name)
@@ -10091,6 +10309,7 @@ type CourseMutation struct {
 	thumbnail_url             *string
 	created_by                *uuid.UUID
 	created_at                *time.Time
+	updated_at                *time.Time
 	clearedFields             map[string]struct{}
 	instruments               map[uuid.UUID]struct{}
 	removedinstruments        map[uuid.UUID]struct{}
@@ -10508,6 +10727,42 @@ func (m *CourseMutation) ResetCreatedAt() {
 	m.created_at = nil
 }
 
+// SetUpdatedAt sets the "updated_at" field.
+func (m *CourseMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *CourseMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the Course entity.
+// If the Course object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CourseMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *CourseMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
 // AddInstrumentIDs adds the "instruments" edge to the Instrument entity by ids.
 func (m *CourseMutation) AddInstrumentIDs(ids ...uuid.UUID) {
 	if m.instruments == nil {
@@ -10650,7 +10905,7 @@ func (m *CourseMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *CourseMutation) Fields() []string {
-	fields := make([]string, 0, 8)
+	fields := make([]string, 0, 9)
 	if m.title != nil {
 		fields = append(fields, course.FieldTitle)
 	}
@@ -10674,6 +10929,9 @@ func (m *CourseMutation) Fields() []string {
 	}
 	if m.created_at != nil {
 		fields = append(fields, course.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, course.FieldUpdatedAt)
 	}
 	return fields
 }
@@ -10699,6 +10957,8 @@ func (m *CourseMutation) Field(name string) (ent.Value, bool) {
 		return m.CreatedBy()
 	case course.FieldCreatedAt:
 		return m.CreatedAt()
+	case course.FieldUpdatedAt:
+		return m.UpdatedAt()
 	}
 	return nil, false
 }
@@ -10724,6 +10984,8 @@ func (m *CourseMutation) OldField(ctx context.Context, name string) (ent.Value, 
 		return m.OldCreatedBy(ctx)
 	case course.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
+	case course.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
 	}
 	return nil, fmt.Errorf("unknown Course field %s", name)
 }
@@ -10788,6 +11050,13 @@ func (m *CourseMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetCreatedAt(v)
+		return nil
+	case course.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Course field %s", name)
@@ -10870,6 +11139,9 @@ func (m *CourseMutation) ResetField(name string) error {
 		return nil
 	case course.FieldCreatedAt:
 		m.ResetCreatedAt()
+		return nil
+	case course.FieldUpdatedAt:
+		m.ResetUpdatedAt()
 		return nil
 	}
 	return fmt.Errorf("unknown Course field %s", name)
@@ -14425,6 +14697,7 @@ type DiagramMutation struct {
 	appendplaybacks               []schema.Playback
 	default_playback_id           *string
 	created_at                    *time.Time
+	updated_at                    *time.Time
 	clearedFields                 map[string]struct{}
 	instrument                    *uuid.UUID
 	clearedinstrument             bool
@@ -15062,6 +15335,42 @@ func (m *DiagramMutation) ResetCreatedAt() {
 	m.created_at = nil
 }
 
+// SetUpdatedAt sets the "updated_at" field.
+func (m *DiagramMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *DiagramMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the Diagram entity.
+// If the Diagram object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *DiagramMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
 // ClearInstrument clears the "instrument" edge to the Instrument entity.
 func (m *DiagramMutation) ClearInstrument() {
 	m.clearedinstrument = true
@@ -15594,7 +15903,7 @@ func (m *DiagramMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *DiagramMutation) Fields() []string {
-	fields := make([]string, 0, 12)
+	fields := make([]string, 0, 13)
 	if m.instrument != nil {
 		fields = append(fields, diagram.FieldInstrumentID)
 	}
@@ -15631,6 +15940,9 @@ func (m *DiagramMutation) Fields() []string {
 	if m.created_at != nil {
 		fields = append(fields, diagram.FieldCreatedAt)
 	}
+	if m.updated_at != nil {
+		fields = append(fields, diagram.FieldUpdatedAt)
+	}
 	return fields
 }
 
@@ -15663,6 +15975,8 @@ func (m *DiagramMutation) Field(name string) (ent.Value, bool) {
 		return m.DefaultPlaybackID()
 	case diagram.FieldCreatedAt:
 		return m.CreatedAt()
+	case diagram.FieldUpdatedAt:
+		return m.UpdatedAt()
 	}
 	return nil, false
 }
@@ -15696,6 +16010,8 @@ func (m *DiagramMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldDefaultPlaybackID(ctx)
 	case diagram.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
+	case diagram.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
 	}
 	return nil, fmt.Errorf("unknown Diagram field %s", name)
 }
@@ -15788,6 +16104,13 @@ func (m *DiagramMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetCreatedAt(v)
+		return nil
+	case diagram.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Diagram field %s", name)
@@ -15900,6 +16223,9 @@ func (m *DiagramMutation) ResetField(name string) error {
 		return nil
 	case diagram.FieldCreatedAt:
 		m.ResetCreatedAt()
+		return nil
+	case diagram.FieldUpdatedAt:
+		m.ResetUpdatedAt()
 		return nil
 	}
 	return fmt.Errorf("unknown Diagram field %s", name)
@@ -21582,6 +21908,7 @@ type ExerciseMutation struct {
 	diagram_stack_ref             *string
 	created_by                    *uuid.UUID
 	created_at                    *time.Time
+	updated_at                    *time.Time
 	clearedFields                 map[string]struct{}
 	challenges                    map[uuid.UUID]struct{}
 	removedchallenges             map[uuid.UUID]struct{}
@@ -22237,6 +22564,42 @@ func (m *ExerciseMutation) OldCreatedAt(ctx context.Context) (v time.Time, err e
 // ResetCreatedAt resets all changes to the "created_at" field.
 func (m *ExerciseMutation) ResetCreatedAt() {
 	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *ExerciseMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *ExerciseMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the Exercise entity.
+// If the Exercise object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ExerciseMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *ExerciseMutation) ResetUpdatedAt() {
+	m.updated_at = nil
 }
 
 // AddChallengeIDs adds the "challenges" edge to the Challenge entity by ids.
@@ -22975,7 +23338,7 @@ func (m *ExerciseMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ExerciseMutation) Fields() []string {
-	fields := make([]string, 0, 11)
+	fields := make([]string, 0, 12)
 	if m.title != nil {
 		fields = append(fields, exercise.FieldTitle)
 	}
@@ -23009,6 +23372,9 @@ func (m *ExerciseMutation) Fields() []string {
 	if m.created_at != nil {
 		fields = append(fields, exercise.FieldCreatedAt)
 	}
+	if m.updated_at != nil {
+		fields = append(fields, exercise.FieldUpdatedAt)
+	}
 	return fields
 }
 
@@ -23039,6 +23405,8 @@ func (m *ExerciseMutation) Field(name string) (ent.Value, bool) {
 		return m.CreatedBy()
 	case exercise.FieldCreatedAt:
 		return m.CreatedAt()
+	case exercise.FieldUpdatedAt:
+		return m.UpdatedAt()
 	}
 	return nil, false
 }
@@ -23070,6 +23438,8 @@ func (m *ExerciseMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldCreatedBy(ctx)
 	case exercise.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
+	case exercise.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
 	}
 	return nil, fmt.Errorf("unknown Exercise field %s", name)
 }
@@ -23155,6 +23525,13 @@ func (m *ExerciseMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetCreatedAt(v)
+		return nil
+	case exercise.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Exercise field %s", name)
@@ -23297,6 +23674,9 @@ func (m *ExerciseMutation) ResetField(name string) error {
 		return nil
 	case exercise.FieldCreatedAt:
 		m.ResetCreatedAt()
+		return nil
+	case exercise.FieldUpdatedAt:
+		m.ResetUpdatedAt()
 		return nil
 	}
 	return fmt.Errorf("unknown Exercise field %s", name)

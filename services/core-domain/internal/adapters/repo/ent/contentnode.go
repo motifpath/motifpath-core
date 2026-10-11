@@ -36,6 +36,12 @@ type ContentNode struct {
 	ThumbnailURL *string `json:"thumbnail_url,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
+	// UpdatedAt holds the value of the "updated_at" field.
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
+	// LatestPublishedVersion holds the value of the "latest_published_version" field.
+	LatestPublishedVersion *int `json:"latest_published_version,omitempty"`
+	// HasUnpublishedChanges holds the value of the "has_unpublished_changes" field.
+	HasUnpublishedChanges bool `json:"has_unpublished_changes,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the ContentNodeQuery when eager-loading is set.
 	Edges        ContentNodeEdges `json:"edges"`
@@ -164,9 +170,13 @@ func (*ContentNode) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case contentnode.FieldHasUnpublishedChanges:
+			values[i] = new(sql.NullBool)
+		case contentnode.FieldLatestPublishedVersion:
+			values[i] = new(sql.NullInt64)
 		case contentnode.FieldTitle, contentnode.FieldContentType, contentnode.FieldMediaURL, contentnode.FieldRichContent, contentnode.FieldDifficultyLevel, contentnode.FieldReviewState, contentnode.FieldThumbnailURL:
 			values[i] = new(sql.NullString)
-		case contentnode.FieldCreatedAt:
+		case contentnode.FieldCreatedAt, contentnode.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
 		case contentnode.FieldID, contentnode.FieldTeacherID:
 			values[i] = new(uuid.UUID)
@@ -247,6 +257,25 @@ func (_m *ContentNode) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
 				_m.CreatedAt = value.Time
+			}
+		case contentnode.FieldUpdatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
+			} else if value.Valid {
+				_m.UpdatedAt = value.Time
+			}
+		case contentnode.FieldLatestPublishedVersion:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field latest_published_version", values[i])
+			} else if value.Valid {
+				_m.LatestPublishedVersion = new(int)
+				*_m.LatestPublishedVersion = int(value.Int64)
+			}
+		case contentnode.FieldHasUnpublishedChanges:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field has_unpublished_changes", values[i])
+			} else if value.Valid {
+				_m.HasUnpublishedChanges = value.Bool
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -366,6 +395,17 @@ func (_m *ContentNode) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("updated_at=")
+	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	if v := _m.LatestPublishedVersion; v != nil {
+		builder.WriteString("latest_published_version=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
+	builder.WriteString(", ")
+	builder.WriteString("has_unpublished_changes=")
+	builder.WriteString(fmt.Sprintf("%v", _m.HasUnpublishedChanges))
 	builder.WriteByte(')')
 	return builder.String()
 }

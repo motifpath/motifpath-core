@@ -103,6 +103,20 @@ func (_c *CourseCreate) SetNillableCreatedAt(v *time.Time) *CourseCreate {
 	return _c
 }
 
+// SetUpdatedAt sets the "updated_at" field.
+func (_c *CourseCreate) SetUpdatedAt(v time.Time) *CourseCreate {
+	_c.mutation.SetUpdatedAt(v)
+	return _c
+}
+
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
+func (_c *CourseCreate) SetNillableUpdatedAt(v *time.Time) *CourseCreate {
+	if v != nil {
+		_c.SetUpdatedAt(*v)
+	}
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *CourseCreate) SetID(v uuid.UUID) *CourseCreate {
 	_c.mutation.SetID(v)
@@ -194,6 +208,10 @@ func (_c *CourseCreate) defaults() {
 		v := course.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
 	}
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
+		v := course.DefaultUpdatedAt()
+		_c.mutation.SetUpdatedAt(v)
+	}
 	if _, ok := _c.mutation.ID(); !ok {
 		v := course.DefaultID()
 		_c.mutation.SetID(v)
@@ -232,6 +250,9 @@ func (_c *CourseCreate) check() error {
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Course.created_at"`)}
+	}
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
+		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Course.updated_at"`)}
 	}
 	return nil
 }
@@ -299,6 +320,10 @@ func (_c *CourseCreate) createSpec() (*Course, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(course.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
+	}
+	if value, ok := _c.mutation.UpdatedAt(); ok {
+		_spec.SetField(course.FieldUpdatedAt, field.TypeTime, value)
+		_node.UpdatedAt = value
 	}
 	if nodes := _c.mutation.InstrumentsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

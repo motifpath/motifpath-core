@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -136,6 +137,61 @@ func (_u *ContentNodeUpdate) SetNillableThumbnailURL(v *string) *ContentNodeUpda
 // ClearThumbnailURL clears the value of the "thumbnail_url" field.
 func (_u *ContentNodeUpdate) ClearThumbnailURL() *ContentNodeUpdate {
 	_u.mutation.ClearThumbnailURL()
+	return _u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (_u *ContentNodeUpdate) SetUpdatedAt(v time.Time) *ContentNodeUpdate {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
+}
+
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
+func (_u *ContentNodeUpdate) SetNillableUpdatedAt(v *time.Time) *ContentNodeUpdate {
+	if v != nil {
+		_u.SetUpdatedAt(*v)
+	}
+	return _u
+}
+
+// SetLatestPublishedVersion sets the "latest_published_version" field.
+func (_u *ContentNodeUpdate) SetLatestPublishedVersion(v int) *ContentNodeUpdate {
+	_u.mutation.ResetLatestPublishedVersion()
+	_u.mutation.SetLatestPublishedVersion(v)
+	return _u
+}
+
+// SetNillableLatestPublishedVersion sets the "latest_published_version" field if the given value is not nil.
+func (_u *ContentNodeUpdate) SetNillableLatestPublishedVersion(v *int) *ContentNodeUpdate {
+	if v != nil {
+		_u.SetLatestPublishedVersion(*v)
+	}
+	return _u
+}
+
+// AddLatestPublishedVersion adds value to the "latest_published_version" field.
+func (_u *ContentNodeUpdate) AddLatestPublishedVersion(v int) *ContentNodeUpdate {
+	_u.mutation.AddLatestPublishedVersion(v)
+	return _u
+}
+
+// ClearLatestPublishedVersion clears the value of the "latest_published_version" field.
+func (_u *ContentNodeUpdate) ClearLatestPublishedVersion() *ContentNodeUpdate {
+	_u.mutation.ClearLatestPublishedVersion()
+	return _u
+}
+
+// SetHasUnpublishedChanges sets the "has_unpublished_changes" field.
+func (_u *ContentNodeUpdate) SetHasUnpublishedChanges(v bool) *ContentNodeUpdate {
+	_u.mutation.SetHasUnpublishedChanges(v)
+	return _u
+}
+
+// SetNillableHasUnpublishedChanges sets the "has_unpublished_changes" field if the given value is not nil.
+func (_u *ContentNodeUpdate) SetNillableHasUnpublishedChanges(v *bool) *ContentNodeUpdate {
+	if v != nil {
+		_u.SetHasUnpublishedChanges(*v)
+	}
 	return _u
 }
 
@@ -584,6 +640,21 @@ func (_u *ContentNodeUpdate) sqlSave(ctx context.Context) (_node int, err error)
 	}
 	if _u.mutation.ThumbnailURLCleared() {
 		_spec.ClearField(contentnode.FieldThumbnailURL, field.TypeString)
+	}
+	if value, ok := _u.mutation.UpdatedAt(); ok {
+		_spec.SetField(contentnode.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if value, ok := _u.mutation.LatestPublishedVersion(); ok {
+		_spec.SetField(contentnode.FieldLatestPublishedVersion, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedLatestPublishedVersion(); ok {
+		_spec.AddField(contentnode.FieldLatestPublishedVersion, field.TypeInt, value)
+	}
+	if _u.mutation.LatestPublishedVersionCleared() {
+		_spec.ClearField(contentnode.FieldLatestPublishedVersion, field.TypeInt)
+	}
+	if value, ok := _u.mutation.HasUnpublishedChanges(); ok {
+		_spec.SetField(contentnode.FieldHasUnpublishedChanges, field.TypeBool, value)
 	}
 	if _u.mutation.PathExercisesCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -1217,6 +1288,61 @@ func (_u *ContentNodeUpdateOne) ClearThumbnailURL() *ContentNodeUpdateOne {
 	return _u
 }
 
+// SetUpdatedAt sets the "updated_at" field.
+func (_u *ContentNodeUpdateOne) SetUpdatedAt(v time.Time) *ContentNodeUpdateOne {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
+}
+
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
+func (_u *ContentNodeUpdateOne) SetNillableUpdatedAt(v *time.Time) *ContentNodeUpdateOne {
+	if v != nil {
+		_u.SetUpdatedAt(*v)
+	}
+	return _u
+}
+
+// SetLatestPublishedVersion sets the "latest_published_version" field.
+func (_u *ContentNodeUpdateOne) SetLatestPublishedVersion(v int) *ContentNodeUpdateOne {
+	_u.mutation.ResetLatestPublishedVersion()
+	_u.mutation.SetLatestPublishedVersion(v)
+	return _u
+}
+
+// SetNillableLatestPublishedVersion sets the "latest_published_version" field if the given value is not nil.
+func (_u *ContentNodeUpdateOne) SetNillableLatestPublishedVersion(v *int) *ContentNodeUpdateOne {
+	if v != nil {
+		_u.SetLatestPublishedVersion(*v)
+	}
+	return _u
+}
+
+// AddLatestPublishedVersion adds value to the "latest_published_version" field.
+func (_u *ContentNodeUpdateOne) AddLatestPublishedVersion(v int) *ContentNodeUpdateOne {
+	_u.mutation.AddLatestPublishedVersion(v)
+	return _u
+}
+
+// ClearLatestPublishedVersion clears the value of the "latest_published_version" field.
+func (_u *ContentNodeUpdateOne) ClearLatestPublishedVersion() *ContentNodeUpdateOne {
+	_u.mutation.ClearLatestPublishedVersion()
+	return _u
+}
+
+// SetHasUnpublishedChanges sets the "has_unpublished_changes" field.
+func (_u *ContentNodeUpdateOne) SetHasUnpublishedChanges(v bool) *ContentNodeUpdateOne {
+	_u.mutation.SetHasUnpublishedChanges(v)
+	return _u
+}
+
+// SetNillableHasUnpublishedChanges sets the "has_unpublished_changes" field if the given value is not nil.
+func (_u *ContentNodeUpdateOne) SetNillableHasUnpublishedChanges(v *bool) *ContentNodeUpdateOne {
+	if v != nil {
+		_u.SetHasUnpublishedChanges(*v)
+	}
+	return _u
+}
+
 // AddPathExerciseIDs adds the "path_exercises" edge to the Exercise entity by IDs.
 func (_u *ContentNodeUpdateOne) AddPathExerciseIDs(ids ...uuid.UUID) *ContentNodeUpdateOne {
 	_u.mutation.AddPathExerciseIDs(ids...)
@@ -1692,6 +1818,21 @@ func (_u *ContentNodeUpdateOne) sqlSave(ctx context.Context) (_node *ContentNode
 	}
 	if _u.mutation.ThumbnailURLCleared() {
 		_spec.ClearField(contentnode.FieldThumbnailURL, field.TypeString)
+	}
+	if value, ok := _u.mutation.UpdatedAt(); ok {
+		_spec.SetField(contentnode.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if value, ok := _u.mutation.LatestPublishedVersion(); ok {
+		_spec.SetField(contentnode.FieldLatestPublishedVersion, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedLatestPublishedVersion(); ok {
+		_spec.AddField(contentnode.FieldLatestPublishedVersion, field.TypeInt, value)
+	}
+	if _u.mutation.LatestPublishedVersionCleared() {
+		_spec.ClearField(contentnode.FieldLatestPublishedVersion, field.TypeInt)
+	}
+	if value, ok := _u.mutation.HasUnpublishedChanges(); ok {
+		_spec.SetField(contentnode.FieldHasUnpublishedChanges, field.TypeBool, value)
 	}
 	if _u.mutation.PathExercisesCleared() {
 		edge := &sqlgraph.EdgeSpec{

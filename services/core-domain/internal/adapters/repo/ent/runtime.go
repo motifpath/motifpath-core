@@ -203,6 +203,14 @@ func init() {
 	contentnodeDescCreatedAt := contentnodeFields[9].Descriptor()
 	// contentnode.DefaultCreatedAt holds the default value on creation for the created_at field.
 	contentnode.DefaultCreatedAt = contentnodeDescCreatedAt.Default.(func() time.Time)
+	// contentnodeDescUpdatedAt is the schema descriptor for updated_at field.
+	contentnodeDescUpdatedAt := contentnodeFields[10].Descriptor()
+	// contentnode.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	contentnode.DefaultUpdatedAt = contentnodeDescUpdatedAt.Default.(func() time.Time)
+	// contentnodeDescHasUnpublishedChanges is the schema descriptor for has_unpublished_changes field.
+	contentnodeDescHasUnpublishedChanges := contentnodeFields[12].Descriptor()
+	// contentnode.DefaultHasUnpublishedChanges holds the default value on creation for the has_unpublished_changes field.
+	contentnode.DefaultHasUnpublishedChanges = contentnodeDescHasUnpublishedChanges.Default.(bool)
 	// contentnodeDescID is the schema descriptor for id field.
 	contentnodeDescID := contentnodeFields[0].Descriptor()
 	// contentnode.DefaultID holds the default value on creation for the id field.
@@ -257,6 +265,10 @@ func init() {
 	courseDescCreatedAt := courseFields[8].Descriptor()
 	// course.DefaultCreatedAt holds the default value on creation for the created_at field.
 	course.DefaultCreatedAt = courseDescCreatedAt.Default.(func() time.Time)
+	// courseDescUpdatedAt is the schema descriptor for updated_at field.
+	courseDescUpdatedAt := courseFields[9].Descriptor()
+	// course.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	course.DefaultUpdatedAt = courseDescUpdatedAt.Default.(func() time.Time)
 	// courseDescID is the schema descriptor for id field.
 	courseDescID := courseFields[0].Descriptor()
 	// course.DefaultID holds the default value on creation for the id field.
@@ -317,6 +329,10 @@ func init() {
 	diagramDescCreatedAt := diagramFields[12].Descriptor()
 	// diagram.DefaultCreatedAt holds the default value on creation for the created_at field.
 	diagram.DefaultCreatedAt = diagramDescCreatedAt.Default.(func() time.Time)
+	// diagramDescUpdatedAt is the schema descriptor for updated_at field.
+	diagramDescUpdatedAt := diagramFields[13].Descriptor()
+	// diagram.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	diagram.DefaultUpdatedAt = diagramDescUpdatedAt.Default.(func() time.Time)
 	// diagramDescID is the schema descriptor for id field.
 	diagramDescID := diagramFields[0].Descriptor()
 	// diagram.DefaultID holds the default value on creation for the id field.
@@ -437,6 +453,10 @@ func init() {
 	exerciseDescCreatedAt := exerciseFields[11].Descriptor()
 	// exercise.DefaultCreatedAt holds the default value on creation for the created_at field.
 	exercise.DefaultCreatedAt = exerciseDescCreatedAt.Default.(func() time.Time)
+	// exerciseDescUpdatedAt is the schema descriptor for updated_at field.
+	exerciseDescUpdatedAt := exerciseFields[12].Descriptor()
+	// exercise.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	exercise.DefaultUpdatedAt = exerciseDescUpdatedAt.Default.(func() time.Time)
 	// exerciseDescID is the schema descriptor for id field.
 	exerciseDescID := exerciseFields[0].Descriptor()
 	// exercise.DefaultID holds the default value on creation for the id field.

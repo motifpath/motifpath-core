@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -192,6 +193,20 @@ func (_u *ExerciseUpdate) SetNillableDiagramStackRef(v *string) *ExerciseUpdate 
 // ClearDiagramStackRef clears the value of the "diagram_stack_ref" field.
 func (_u *ExerciseUpdate) ClearDiagramStackRef() *ExerciseUpdate {
 	_u.mutation.ClearDiagramStackRef()
+	return _u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (_u *ExerciseUpdate) SetUpdatedAt(v time.Time) *ExerciseUpdate {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
+}
+
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
+func (_u *ExerciseUpdate) SetNillableUpdatedAt(v *time.Time) *ExerciseUpdate {
+	if v != nil {
+		_u.SetUpdatedAt(*v)
+	}
 	return _u
 }
 
@@ -751,6 +766,9 @@ func (_u *ExerciseUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.CreatedByCleared() {
 		_spec.ClearField(exercise.FieldCreatedBy, field.TypeUUID)
+	}
+	if value, ok := _u.mutation.UpdatedAt(); ok {
+		_spec.SetField(exercise.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if _u.mutation.ChallengesCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -1584,6 +1602,20 @@ func (_u *ExerciseUpdateOne) ClearDiagramStackRef() *ExerciseUpdateOne {
 	return _u
 }
 
+// SetUpdatedAt sets the "updated_at" field.
+func (_u *ExerciseUpdateOne) SetUpdatedAt(v time.Time) *ExerciseUpdateOne {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
+}
+
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
+func (_u *ExerciseUpdateOne) SetNillableUpdatedAt(v *time.Time) *ExerciseUpdateOne {
+	if v != nil {
+		_u.SetUpdatedAt(*v)
+	}
+	return _u
+}
+
 // AddChallengeIDs adds the "challenges" edge to the Challenge entity by IDs.
 func (_u *ExerciseUpdateOne) AddChallengeIDs(ids ...uuid.UUID) *ExerciseUpdateOne {
 	_u.mutation.AddChallengeIDs(ids...)
@@ -2170,6 +2202,9 @@ func (_u *ExerciseUpdateOne) sqlSave(ctx context.Context) (_node *Exercise, err 
 	}
 	if _u.mutation.CreatedByCleared() {
 		_spec.ClearField(exercise.FieldCreatedBy, field.TypeUUID)
+	}
+	if value, ok := _u.mutation.UpdatedAt(); ok {
+		_spec.SetField(exercise.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if _u.mutation.ChallengesCleared() {
 		edge := &sqlgraph.EdgeSpec{
