@@ -173,6 +173,10 @@ type Diagram struct {
 	// Purpose is set by whoever installs the diagram, never by a request:
 	// NewDiagram always makes a general one.
 	Purpose DiagramPurpose
+	// ChordVoicing is the catalog voicing a chord voicing diagram is the
+	// fingering of, attached when the diagram is read on its own; nil for
+	// every general diagram and in lists.
+	ChordVoicing *ChordVoicing
 	// RootNote is the note this Diagram's positions are authored relative
 	// to (e.g. "A"); nil means none is recorded.
 	RootNote *string

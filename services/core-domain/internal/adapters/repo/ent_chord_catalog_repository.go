@@ -67,6 +67,21 @@ func (r *EntChordCatalogRepository) GetVoicings(ctx context.Context, ids []strin
 	return found, nil
 }
 
+func (r *EntChordCatalogRepository) GetVoicingByDiagramID(ctx context.Context, diagramID string) (domain.ChordVoicing, error) {
+	id, err := uuid.Parse(diagramID)
+	if err != nil {
+		return domain.ChordVoicing{}, domain.ErrNotFound
+	}
+	row, err := r.client.ChordVoicing.Query().Where(chordvoicing.DiagramID(id)).Only(ctx)
+	if ent.IsNotFound(err) {
+		return domain.ChordVoicing{}, domain.ErrNotFound
+	}
+	if err != nil {
+		return domain.ChordVoicing{}, err
+	}
+	return toDomainVoicing(row), nil
+}
+
 func activeVoicingsBestFirst(q *ent.ChordVoicingQuery) {
 	q.Where(chordvoicing.StatusEQ(chordvoicing.StatusActive)).
 		Order(ent.Asc(chordvoicing.FieldRecommendedRank), ent.Asc(chordvoicing.FieldID))
