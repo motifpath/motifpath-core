@@ -309,7 +309,10 @@ func (w *world) requestRefusedForbidden() error {
 		generated.ListCourseCreators403JSONResponse, generated.ListDiagramCreators403JSONResponse, generated.ListExerciseCreators403JSONResponse,
 		generated.ListLearningPathCreators403JSONResponse,
 		generated.PublishLearningPath403JSONResponse,
-		generated.UnpublishLearningPath403JSONResponse:
+		generated.UnpublishLearningPath403JSONResponse,
+		generated.ListAppConfig403JSONResponse,
+		generated.GetAppConfig403JSONResponse,
+		generated.SetAppConfig403JSONResponse:
 		return nil
 	default:
 		return fmt.Errorf("expected a 403 response, got %#v (err=%v)", w.lastResp, w.lastErr)
@@ -323,6 +326,8 @@ func (w *world) requestRefusedNotFound() error {
 		generated.GetPracticeSummary404JSONResponse,
 		generated.GetFretboardMap404JSONResponse,
 		generated.UpdateInstrument404JSONResponse,
+		generated.GetAppConfig404JSONResponse,
+		generated.SetAppConfig404JSONResponse,
 		generated.ListContentNodeVersions404JSONResponse,
 		generated.CreateChallenge404JSONResponse,
 		generated.GetChallenge404JSONResponse,
@@ -522,6 +527,10 @@ func (w *world) validationErrors() ([]struct {
 	case generated.CreatePracticeSessionPlan400JSONResponse:
 		return resp.Errors, nil
 	case generated.ListCatalogPaths400JSONResponse:
+		return resp.Errors, nil
+	case generated.SetAppConfig400JSONResponse:
+		return resp.Errors, nil
+	case generated.ListStartingPoints400JSONResponse:
 		return resp.Errors, nil
 	case generated.EnrollInLearningPath400JSONResponse:
 		return resp.Errors, nil

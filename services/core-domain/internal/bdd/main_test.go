@@ -101,6 +101,7 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	registerLearningPathSteps(sc, w)
 	registerPathPublishingSteps(sc, w)
 	registerPathCatalogSteps(sc, w)
+	registerStartingPointsSteps(sc, w)
 	registerPathEnrollmentSteps(sc, w)
 	registerCourseSteps(sc, w)
 	registerCourseReactivationSteps(sc, w)
