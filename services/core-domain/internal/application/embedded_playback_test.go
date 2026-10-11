@@ -35,6 +35,22 @@ func withEmbeddedPlayback(playback *domain.DiagramRefPlayback, diagramID string)
 	return &doc
 }
 
+// withEmbeddedView is withEmbeddedDiagram with the embed shown as view.
+func withEmbeddedView(view domain.DiagramView, diagramID string) *domain.PromptDocument {
+	doc := withEmbeddedPlayback(nil, diagramID)
+	doc.Content[1].Content[0].Content[0].Attrs.DiagramRef.View = &view
+	return doc
+}
+
+// makeChordVoicing turns the seeded diagram id into a chord voicing's.
+func makeChordVoicing(t *testing.T, diagrams *fakeDiagramRepository, id string) {
+	t.Helper()
+	d, err := diagrams.GetByID(context.Background(), id)
+	require.NoError(t, err)
+	d.Purpose = domain.DiagramPurposeChordVoicing
+	require.NoError(t, diagrams.Update(context.Background(), d))
+}
+
 // givePlaybacks gives the seeded diagram id the playbacks ids, the first
 // the default.
 func givePlaybacks(t *testing.T, diagrams *fakeDiagramRepository, id string, ids ...string) {
@@ -65,6 +81,8 @@ func TestEmbeddedDiagramPlayback(t *testing.T) {
 		nodes, expanded, diagrams := newFakeContentNodeRepository(), newFakeExpandedContentRepository(), newFakeDiagramRepository()
 		seedContentDiagram(t, diagrams, "diagram-1", "guitar")
 		givePlaybacks(t, diagrams, "diagram-1", "pb-strum", "pb-arp")
+		seedContentDiagram(t, diagrams, "chord-1", "guitar")
+		makeChordVoicing(t, diagrams, "chord-1")
 		return newContentServiceWithDiagrams(nodes, expanded, seededKnowledgeNodeRepository(), newFakeContentNodeVersionRepository(), diagrams), nodes, expanded
 	}
 	exerciseService := func(t *testing.T) (*application.ExerciseService, *fakeExerciseRepository) {
@@ -72,6 +90,8 @@ func TestEmbeddedDiagramPlayback(t *testing.T) {
 		exercises, diagrams := newFakeExerciseRepository(), newFakeDiagramRepository()
 		seedDiagram(t, diagrams, "diagram-1", "guitar", nil)
 		givePlaybacks(t, diagrams, "diagram-1", "pb-strum", "pb-arp")
+		seedDiagram(t, diagrams, "chord-1", "guitar", nil)
+		makeChordVoicing(t, diagrams, "chord-1")
 		return newExerciseServiceWithDiagrams(newFakeChallengeRepository(), exercises, newFakeContentNodeRepository(), diagrams), exercises
 	}
 	article := func(doc *domain.PromptDocument) application.ContentNodeInput {
@@ -152,7 +172,20 @@ func TestEmbeddedDiagramPlayback(t *testing.T) {
 		embedded := withEmbeddedPlayback(choosing(playbackID), diagramID)
 		return embedded.Content[1].Content[0].Content[0].Attrs.DiagramRef
 	}
+	optionViewing := func(view domain.DiagramView, diagramID string) *domain.DiagramRef {
+		return withEmbeddedView(view, diagramID).Content[1].Content[0].Content[0].Attrs.DiagramRef
+	}
 	for _, d := range doors {
+		t.Run(d.name+" shows a chord voicing as a chord box", func(t *testing.T) {
+			require.NoError(t, d.save(t, withEmbeddedView(domain.DiagramViewChordBox, "chord-1"), optionViewing(domain.DiagramViewChordBox, "chord-1")))
+		})
+		t.Run(d.name+" rejects a chord box on a diagram that isn't a chord voicing", func(t *testing.T) {
+			err := d.save(t, withEmbeddedView(domain.DiagramViewChordBox, "diagram-1"), optionViewing(domain.DiagramViewChordBox, "diagram-1"))
+
+			var valErr *domain.ValidationError
+			require.ErrorAs(t, err, &valErr)
+			assert.Equal(t, d.field, valErr.Fields[0].Field)
+		})
 		t.Run(d.name+" accepts a voice of its diagram's family", func(t *testing.T) {
 			require.NoError(t, d.save(t, withEmbeddedDiagram(strPtr("acoustic-guitar"), "diagram-1"), optionPlaying(strPtr("acoustic-guitar"), "diagram-1")))
 		})

@@ -150,9 +150,29 @@ func resolveDiagrams(ctx context.Context, diagrams ports.DiagramRepository, diag
 		} else if diagram.InstrumentID != instrumentID {
 			return nil, domain.NewValidationError("diagram_stack_ref", "every diagram in a stack must share the same instrument")
 		}
+		if err := checkView(missingDiagramField, diagramStackRef != nil, ref, diagram); err != nil {
+			return nil, err
+		}
 		resolved = append(resolved, diagramRefWithDiagram{ref: ref, diagram: diagram})
 	}
 	return resolved, nil
+}
+
+// checkView returns a validation error on field when ref shows diagram as a
+// chord box but diagram isn't a chord voicing (only a voicing gives a box
+// its fingering), or when ref is a stack entry: a stack is drawn on one
+// fretboard.
+func checkView(field string, inStack bool, ref domain.DiagramRef, diagram domain.Diagram) error {
+	if !ref.ShowsChordBox() {
+		return nil
+	}
+	if inStack {
+		return domain.NewValidationError(field, "a diagram in a stack is shown on the fretboard, never as a chord box")
+	}
+	if diagram.Purpose != domain.DiagramPurposeChordVoicing {
+		return domain.NewValidationError(field, "only a chord voicing diagram can be shown as a chord box: "+ref.DiagramID)
+	}
+	return nil
 }
 
 // checkDiagramRefs is resolveDiagramRefs for a caller that only needs its
@@ -162,14 +182,16 @@ func checkDiagramRefs(ctx context.Context, repos diagramRefRepos, diagramRef *do
 	return err
 }
 
-// checkEmbeddedPlaybacks applies checkPlayback to every diagram embedded in
-// a document or an option, reporting under field. An embed that picks no
-// voice and chooses no playback isn't resolved at all, so its diagram need
-// not exist; one that does needs its diagram, to know which family plays it
-// and which playbacks it has.
+// checkEmbeddedPlaybacks applies checkPlayback and checkView to every
+// diagram embedded in a document or an option, reporting under field. An
+// embed that picks no voice, chooses no playback and isn't shown as a chord
+// box isn't resolved at all, so its diagram need not exist; one that does
+// needs its diagram, to know which family plays it, which playbacks it has
+// and whether it is a chord voicing.
 func checkEmbeddedPlaybacks(ctx context.Context, repos diagramRefRepos, field string, refs []domain.DiagramRef, stored storedPlaybacks) error {
 	for _, ref := range refs {
-		if ref.Playback == nil || (ref.Playback.VoiceID == nil && ref.Playback.PlaybackID == nil) {
+		choosesPlayback := ref.Playback != nil && (ref.Playback.VoiceID != nil || ref.Playback.PlaybackID != nil)
+		if !choosesPlayback && !ref.ShowsChordBox() {
 			continue
 		}
 		diagram, err := repos.diagrams.GetByID(ctx, ref.DiagramID)
@@ -177,6 +199,9 @@ func checkEmbeddedPlaybacks(ctx context.Context, repos diagramRefRepos, field st
 			return domain.NewValidationError(field, "embeds a diagram that does not exist, playing with a voice or playback of its own: "+ref.DiagramID)
 		}
 		if err != nil {
+			return err
+		}
+		if err := checkView(field, false, ref, diagram); err != nil {
 			return err
 		}
 		if err := checkPlayback(ctx, repos, field, diagramRefWithDiagram{ref: ref, diagram: diagram}, stored); err != nil {
