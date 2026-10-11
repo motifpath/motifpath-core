@@ -9,6 +9,19 @@ import (
 )
 
 var (
+	// AppConfigsColumns holds the columns for the "app_configs" table.
+	AppConfigsColumns = []*schema.Column{
+		{Name: "key", Type: field.TypeString},
+		{Name: "value", Type: field.TypeJSON},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "updated_by", Type: field.TypeUUID},
+	}
+	// AppConfigsTable holds the schema information for the "app_configs" table.
+	AppConfigsTable = &schema.Table{
+		Name:       "app_configs",
+		Columns:    AppConfigsColumns,
+		PrimaryKey: []*schema.Column{AppConfigsColumns[0]},
+	}
 	// ChallengesColumns holds the columns for the "challenges" table.
 	ChallengesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -1455,6 +1468,7 @@ var (
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
+		AppConfigsTable,
 		ChallengesTable,
 		ChallengeExercisesTable,
 		ChordDefinitionsTable,

@@ -16,6 +16,7 @@ import (
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/appconfig"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challenge"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challengeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/chorddefinition"
@@ -73,6 +74,8 @@ type Client struct {
 	config
 	// Schema is the client for creating, migrating and dropping schema.
 	Schema *migrate.Schema
+	// AppConfig is the client for interacting with the AppConfig builders.
+	AppConfig *AppConfigClient
 	// Challenge is the client for interacting with the Challenge builders.
 	Challenge *ChallengeClient
 	// ChallengeExercise is the client for interacting with the ChallengeExercise builders.
@@ -184,6 +187,7 @@ func NewClient(opts ...Option) *Client {
 
 func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
+	c.AppConfig = NewAppConfigClient(c.config)
 	c.Challenge = NewChallengeClient(c.config)
 	c.ChallengeExercise = NewChallengeExerciseClient(c.config)
 	c.ChordDefinition = NewChordDefinitionClient(c.config)
@@ -326,6 +330,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	return &Tx{
 		ctx:                     ctx,
 		config:                  cfg,
+		AppConfig:               NewAppConfigClient(cfg),
 		Challenge:               NewChallengeClient(cfg),
 		ChallengeExercise:       NewChallengeExerciseClient(cfg),
 		ChordDefinition:         NewChordDefinitionClient(cfg),
@@ -395,6 +400,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	return &Tx{
 		ctx:                     ctx,
 		config:                  cfg,
+		AppConfig:               NewAppConfigClient(cfg),
 		Challenge:               NewChallengeClient(cfg),
 		ChallengeExercise:       NewChallengeExerciseClient(cfg),
 		ChordDefinition:         NewChordDefinitionClient(cfg),
@@ -451,7 +457,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 // Debug returns a new debug-client. It's used to get verbose logging on specific operations.
 //
 //	client.Debug().
-//		Challenge.
+//		AppConfig.
 //		Query().
 //		Count(ctx)
 func (c *Client) Debug() *Client {
@@ -474,8 +480,8 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.Challenge, c.ChallengeExercise, c.ChordDefinition, c.ChordVoicing,
-		c.ContentNode, c.ContentNodeConcept, c.ContentNodeExercise,
+		c.AppConfig, c.Challenge, c.ChallengeExercise, c.ChordDefinition,
+		c.ChordVoicing, c.ContentNode, c.ContentNodeConcept, c.ContentNodeExercise,
 		c.ContentNodeInstrument, c.ContentNodeLanguage, c.ContentNodeSkill,
 		c.ContentNodeVersion, c.Course, c.CourseCheckpoint, c.CourseEnrollment,
 		c.CourseInstrument, c.CourseVersion, c.CourseVersionCheckpoint, c.Diagram,
@@ -496,8 +502,8 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.Challenge, c.ChallengeExercise, c.ChordDefinition, c.ChordVoicing,
-		c.ContentNode, c.ContentNodeConcept, c.ContentNodeExercise,
+		c.AppConfig, c.Challenge, c.ChallengeExercise, c.ChordDefinition,
+		c.ChordVoicing, c.ContentNode, c.ContentNodeConcept, c.ContentNodeExercise,
 		c.ContentNodeInstrument, c.ContentNodeLanguage, c.ContentNodeSkill,
 		c.ContentNodeVersion, c.Course, c.CourseCheckpoint, c.CourseEnrollment,
 		c.CourseInstrument, c.CourseVersion, c.CourseVersionCheckpoint, c.Diagram,
@@ -517,6 +523,8 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 // Mutate implements the ent.Mutator interface.
 func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 	switch m := m.(type) {
+	case *AppConfigMutation:
+		return c.AppConfig.mutate(ctx, m)
 	case *ChallengeMutation:
 		return c.Challenge.mutate(ctx, m)
 	case *ChallengeExerciseMutation:
@@ -619,6 +627,139 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Voice.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
+	}
+}
+
+// AppConfigClient is a client for the AppConfig schema.
+type AppConfigClient struct {
+	config
+}
+
+// NewAppConfigClient returns a client for the AppConfig from the given config.
+func NewAppConfigClient(c config) *AppConfigClient {
+	return &AppConfigClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `appconfig.Hooks(f(g(h())))`.
+func (c *AppConfigClient) Use(hooks ...Hook) {
+	c.hooks.AppConfig = append(c.hooks.AppConfig, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `appconfig.Intercept(f(g(h())))`.
+func (c *AppConfigClient) Intercept(interceptors ...Interceptor) {
+	c.inters.AppConfig = append(c.inters.AppConfig, interceptors...)
+}
+
+// Create returns a builder for creating a AppConfig entity.
+func (c *AppConfigClient) Create() *AppConfigCreate {
+	mutation := newAppConfigMutation(c.config, OpCreate)
+	return &AppConfigCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of AppConfig entities.
+func (c *AppConfigClient) CreateBulk(builders ...*AppConfigCreate) *AppConfigCreateBulk {
+	return &AppConfigCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *AppConfigClient) MapCreateBulk(slice any, setFunc func(*AppConfigCreate, int)) *AppConfigCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &AppConfigCreateBulk{err: fmt.Errorf("calling to AppConfigClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*AppConfigCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &AppConfigCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for AppConfig.
+func (c *AppConfigClient) Update() *AppConfigUpdate {
+	mutation := newAppConfigMutation(c.config, OpUpdate)
+	return &AppConfigUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *AppConfigClient) UpdateOne(_m *AppConfig) *AppConfigUpdateOne {
+	mutation := newAppConfigMutation(c.config, OpUpdateOne, withAppConfig(_m))
+	return &AppConfigUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *AppConfigClient) UpdateOneID(id string) *AppConfigUpdateOne {
+	mutation := newAppConfigMutation(c.config, OpUpdateOne, withAppConfigID(id))
+	return &AppConfigUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for AppConfig.
+func (c *AppConfigClient) Delete() *AppConfigDelete {
+	mutation := newAppConfigMutation(c.config, OpDelete)
+	return &AppConfigDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *AppConfigClient) DeleteOne(_m *AppConfig) *AppConfigDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *AppConfigClient) DeleteOneID(id string) *AppConfigDeleteOne {
+	builder := c.Delete().Where(appconfig.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &AppConfigDeleteOne{builder}
+}
+
+// Query returns a query builder for AppConfig.
+func (c *AppConfigClient) Query() *AppConfigQuery {
+	return &AppConfigQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeAppConfig},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a AppConfig entity by its id.
+func (c *AppConfigClient) Get(ctx context.Context, id string) (*AppConfig, error) {
+	return c.Query().Where(appconfig.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *AppConfigClient) GetX(ctx context.Context, id string) *AppConfig {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *AppConfigClient) Hooks() []Hook {
+	return c.hooks.AppConfig
+}
+
+// Interceptors returns the client interceptors.
+func (c *AppConfigClient) Interceptors() []Interceptor {
+	return c.inters.AppConfig
+}
+
+func (c *AppConfigClient) mutate(ctx context.Context, m *AppConfigMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&AppConfigCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&AppConfigUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&AppConfigUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&AppConfigDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown AppConfig mutation op: %q", m.Op())
 	}
 }
 
@@ -9307,8 +9448,8 @@ func (c *VoiceClient) mutate(ctx context.Context, m *VoiceMutation) (Value, erro
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Challenge, ChallengeExercise, ChordDefinition, ChordVoicing, ContentNode,
-		ContentNodeConcept, ContentNodeExercise, ContentNodeInstrument,
+		AppConfig, Challenge, ChallengeExercise, ChordDefinition, ChordVoicing,
+		ContentNode, ContentNodeConcept, ContentNodeExercise, ContentNodeInstrument,
 		ContentNodeLanguage, ContentNodeSkill, ContentNodeVersion, Course,
 		CourseCheckpoint, CourseEnrollment, CourseInstrument, CourseVersion,
 		CourseVersionCheckpoint, Diagram, DiagramConcept, DiagramInstrument,
@@ -9321,8 +9462,8 @@ type (
 		StudentPath, StudentPathItem, User, Voice []ent.Hook
 	}
 	inters struct {
-		Challenge, ChallengeExercise, ChordDefinition, ChordVoicing, ContentNode,
-		ContentNodeConcept, ContentNodeExercise, ContentNodeInstrument,
+		AppConfig, Challenge, ChallengeExercise, ChordDefinition, ChordVoicing,
+		ContentNode, ContentNodeConcept, ContentNodeExercise, ContentNodeInstrument,
 		ContentNodeLanguage, ContentNodeSkill, ContentNodeVersion, Course,
 		CourseCheckpoint, CourseEnrollment, CourseInstrument, CourseVersion,
 		CourseVersionCheckpoint, Diagram, DiagramConcept, DiagramInstrument,

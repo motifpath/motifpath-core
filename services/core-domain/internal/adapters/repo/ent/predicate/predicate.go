@@ -6,6 +6,9 @@ import (
 	"entgo.io/ent/dialect/sql"
 )
 
+// AppConfig is the predicate function for appconfig builders.
+type AppConfig func(*sql.Selector)
+
 // Challenge is the predicate function for challenge builders.
 type Challenge func(*sql.Selector)
 

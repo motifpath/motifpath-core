@@ -12,6 +12,8 @@ import (
 // Tx is a transactional client that is created by calling Client.Tx().
 type Tx struct {
 	config
+	// AppConfig is the client for interacting with the AppConfig builders.
+	AppConfig *AppConfigClient
 	// Challenge is the client for interacting with the Challenge builders.
 	Challenge *ChallengeClient
 	// ChallengeExercise is the client for interacting with the ChallengeExercise builders.
@@ -243,6 +245,7 @@ func (tx *Tx) Client() *Client {
 }
 
 func (tx *Tx) init() {
+	tx.AppConfig = NewAppConfigClient(tx.config)
 	tx.Challenge = NewChallengeClient(tx.config)
 	tx.ChallengeExercise = NewChallengeExerciseClient(tx.config)
 	tx.ChordDefinition = NewChordDefinitionClient(tx.config)
@@ -302,7 +305,7 @@ func (tx *Tx) init() {
 // of them in order to commit or rollback the transaction.
 //
 // If a closed transaction is embedded in one of the generated entities, and the entity
-// applies a query, for example: Challenge.QueryXXX(), the query will be executed
+// applies a query, for example: AppConfig.QueryXXX(), the query will be executed
 // through the driver which created this transaction.
 //
 // Note that txDriver is not goroutine safe.

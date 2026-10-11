@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/appconfig"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challenge"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challengeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/chorddefinition"
@@ -122,6 +123,7 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
+			appconfig.Table:               appconfig.ValidColumn,
 			challenge.Table:               challenge.ValidColumn,
 			challengeexercise.Table:       challengeexercise.ValidColumn,
 			chorddefinition.Table:         chorddefinition.ValidColumn,
