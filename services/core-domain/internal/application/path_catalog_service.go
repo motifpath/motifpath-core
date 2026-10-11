@@ -23,9 +23,15 @@ func NewPathCatalogService(paths ports.LearningPathRepository, users ports.UserR
 // ordered by title then id. Whatever status or sort filter carries, the
 // catalog lists published paths only, by title.
 func (s *PathCatalogService) ListCatalogPaths(ctx context.Context, filter domain.LearningPathFilter, page domain.PageRequest) (domain.Page[domain.LearningPath], error) {
+	return s.paths.List(ctx, catalogPathFilter(filter), page)
+}
+
+// catalogPathFilter narrows filter to what the learner catalog shows: published paths only, by
+// title.
+func catalogPathFilter(filter domain.LearningPathFilter) domain.LearningPathFilter {
 	filter.Status = domain.LearningPathStatusPublished
 	filter.Sort = domain.LearningPathSortTitle
-	return s.paths.List(ctx, filter, page)
+	return filter
 }
 
 // GetCatalogPath returns the published path with the given id. A draft is

@@ -125,10 +125,16 @@ func (s *CourseService) ListCourses(ctx context.Context, caller domain.User, fil
 // for every caller whatever their role — anyone can learn — so it takes no
 // caller, and a status in filter never widens it beyond published.
 func (s *CourseService) ListCatalogCourses(ctx context.Context, filter domain.CourseListFilter, page domain.PageRequest) (domain.Page[domain.Course], error) {
+	return s.courses.List(ctx, catalogCourseFilter(filter), page)
+}
+
+// catalogCourseFilter narrows filter to what the learner catalog shows: published courses only,
+// every filter evaluated against each course's latest published version.
+func catalogCourseFilter(filter domain.CourseListFilter) domain.CourseListFilter {
 	published := domain.CourseStatusPublished
 	filter.Status = &published
 	filter.PublishedView = true
-	return s.courses.List(ctx, filter, page)
+	return filter
 }
 
 // CourseCreator is a user who created at least one course, with their
