@@ -51,6 +51,9 @@ func registerChordSteps(sc *godog.ScenarioContext, w *world) {
 		return w.retrievesDiagram(caller, voicingSlug(key))
 	})
 	sc.Step(`^the response is the diagram of voicing "([^"]+)", with its positions and playbacks$`, w.responseIsVoicingDiagram)
+	sc.Step(`^"([^"]+)" retrieves the new diagram$`, w.retrievesNewDiagram)
+	sc.Step(`^the diagram carries voicing "([^"]+)", with its fingering and fret window$`, w.diagramCarriesVoicing)
+	sc.Step(`^the diagram carries no voicing$`, w.diagramCarriesNoVoicing)
 
 	// Searching and reading the catalog.
 	sc.Step(`^"([^"]+)" searches the chord catalog for "([^"]*)"$`, w.searchesChords)
@@ -114,6 +117,26 @@ func (w *world) seedVoicingDiagram(key, instrumentName string, frets map[int]int
 	return diagram, nil
 }
 
+// fingeringOf fingers a seeded voicing's fretted positions one finger per
+// fret above the lowest, and gives the frets they span; open strings take none.
+func fingeringOf(diagram domain.Diagram) (lowest, highest int, fingering []domain.VoicingFinger) {
+	for _, p := range diagram.Positions {
+		if p.Fret == nil || *p.Fret == 0 {
+			continue
+		}
+		if lowest == 0 || *p.Fret < lowest {
+			lowest = *p.Fret
+		}
+		highest = max(highest, *p.Fret)
+	}
+	for _, p := range diagram.Positions {
+		if p.Fret != nil && *p.Fret > 0 {
+			fingering = append(fingering, domain.VoicingFinger{PositionID: p.ID, Finger: fmt.Sprint(*p.Fret - lowest + 1)})
+		}
+	}
+	return lowest, highest, fingering
+}
+
 func (w *world) chordCatalogHasVoicing(key, instrumentName string) error {
 	_, err := w.seedVoicingDiagram(key, instrumentName, map[int]int{5: 0, 4: 2, 3: 2, 2: 1, 1: 0}, "A")
 	return err
@@ -153,12 +176,14 @@ func (w *world) seedCatalogChord(symbol string, keys ...string) error {
 	chord := domain.ChordDefinition{ID: chordID(symbol).String(), CanonicalSymbol: p.CanonicalSymbol, Root: p.Root, RootPitchClass: p.RootPitchClass,
 		Quality: p.Quality, Formula: scenarioFormulas[p.Quality], Bass: p.Bass, BassPitchClass: p.BassPitchClass}
 	for i, key := range keys {
-		diagram, err := w.seedVoicingDiagram(key, "guitar", map[int]int{5: 0}, p.Root)
+		diagram, err := w.seedVoicingDiagram(key, "guitar", map[int]int{5: 0, 4: 2}, p.Root)
 		if err != nil {
 			return err
 		}
+		lowest, highest, fingering := fingeringOf(diagram)
 		chord.Voicings = append(chord.Voicings, domain.ChordVoicing{ID: voicingID(key).String(), ChordDefinitionID: chord.ID, DiagramID: diagram.ID,
-			InstrumentID: diagram.InstrumentID, TuningFingerprint: "E2-A2-D3-G3-B3-E4", Difficulty: "beginner", RecommendedRank: i + 1, Status: domain.ChordVoicingActive})
+			InstrumentID: diagram.InstrumentID, TuningFingerprint: "E2-A2-D3-G3-B3-E4", LowestFret: lowest, HighestFret: highest, Fingering: fingering,
+			Difficulty: "beginner", RecommendedRank: i + 1, Status: domain.ChordVoicingActive})
 	}
 	w.chords.put(chord)
 	return nil
@@ -431,6 +456,45 @@ func (w *world) eachVoicingNamesItsDiagram() error {
 		if d.Purpose != domain.DiagramPurposeChordVoicing {
 			return fmt.Errorf("voicing %s names a %q diagram", v.ChordVoicingId, d.Purpose)
 		}
+	}
+	return nil
+}
+
+func (w *world) retrievesNewDiagram(caller string) error {
+	created, ok := w.lastResp.(generated.CreateDiagram201JSONResponse)
+	if !ok {
+		return fmt.Errorf("expected a new diagram, got %#v (err=%v)", w.lastResp, w.lastErr)
+	}
+	resp, err := w.handler.GetDiagram(w.ctx(), generated.GetDiagramRequestObject{DiagramId: created.DiagramId})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) diagramCarriesVoicing(key string) error {
+	diagram, err := w.currentDiagram()
+	if err != nil {
+		return err
+	}
+	voicing := diagram.ChordVoicing
+	if voicing == nil {
+		return fmt.Errorf("expected the diagram to carry voicing %q, got none", key)
+	}
+	if voicing.ChordVoicingId != voicingID(key) {
+		return fmt.Errorf("expected voicing %q, got %s", key, voicing.ChordVoicingId)
+	}
+	if len(voicing.Fingering) == 0 || voicing.FretWindow.HighestFret == 0 {
+		return fmt.Errorf("expected voicing %q with its fingering and fret window, got %+v", key, *voicing)
+	}
+	return nil
+}
+
+func (w *world) diagramCarriesNoVoicing() error {
+	diagram, err := w.currentDiagram()
+	if err != nil {
+		return err
+	}
+	if diagram.ChordVoicing != nil {
+		return fmt.Errorf("expected no voicing, got %s", diagram.ChordVoicing.ChordVoicingId)
 	}
 	return nil
 }

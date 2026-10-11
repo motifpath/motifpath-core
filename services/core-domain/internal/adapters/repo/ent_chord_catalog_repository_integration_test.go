@@ -123,4 +123,20 @@ func TestEntChordCatalogRepository(t *testing.T) {
 		assert.Equal(t, domain.ChordVoicingWithdrawn, got[withdrawn.String()].Status)
 		assert.Equal(t, d.ID.String(), got[first.String()].ChordDefinitionID)
 	})
+
+	t.Run("a voicing is found by its diagram, withdrawn or not; any other diagram has none", func(t *testing.T) {
+		voicings, err := chords.GetVoicings(ctx, []string{first.String(), withdrawn.String()})
+		require.NoError(t, err)
+
+		for _, want := range []domain.ChordVoicing{voicings[first.String()], voicings[withdrawn.String()]} {
+			got, err := chords.GetVoicingByDiagramID(ctx, want.DiagramID)
+
+			require.NoError(t, err)
+			assert.Equal(t, want, got)
+		}
+		for _, id := range []string{uuid.NewString(), "not-a-uuid"} {
+			_, err := chords.GetVoicingByDiagramID(ctx, id)
+			require.ErrorIs(t, err, domain.ErrNotFound)
+		}
+	})
 }
