@@ -3995,6 +3995,14 @@ type CreatePracticeSessionPlanRequest struct {
 // per the layer/styling/playback config carried in whatever diagram_ref
 // points at this diagram.
 type Diagram struct {
+	// ChordVoicing The catalog voicing this diagram is the fingering of, so a
+	// client can draw it as a chord box (fingers, fret window)
+	// without a search of the chord catalog. Present exactly when
+	// purpose is chord_voicing, on GET /diagrams/{diagram_id}; absent
+	// from list responses and from every general diagram, a copy
+	// saved from a chord_voicing diagram included.
+	ChordVoicing *ChordVoicing `json:"chord_voicing,omitempty"`
+
 	// Classification A Diagram's classification as returned by the API — skills/concepts
 	// embedded as full KnowledgeNodes, the same convention
 	// Classification uses for ContentNode.
@@ -4088,7 +4096,9 @@ type Diagram struct {
 	// chord_voicing exactly when the chord catalog installed it as a
 	// voicing, and a diagram created through createDiagram, including
 	// a copy saved from a chord_voicing diagram, is general. A
-	// diagram's purpose doesn't change how it renders or plays.
+	// diagram's purpose doesn't change how it plays; it only picks
+	// the view a student first sees it in (a chord_voicing diagram
+	// opens as a chord box, any other as a fretboard).
 	Purpose DiagramPurpose `json:"purpose"`
 
 	// Regions The diagram's highlighted regions, in drawing order (later ones
@@ -4128,7 +4138,9 @@ type DiagramLabelDisplay string
 // chord_voicing exactly when the chord catalog installed it as a
 // voicing, and a diagram created through createDiagram, including
 // a copy saved from a chord_voicing diagram, is general. A
-// diagram's purpose doesn't change how it renders or plays.
+// diagram's purpose doesn't change how it plays; it only picks
+// the view a student first sees it in (a chord_voicing diagram
+// opens as a chord box, any other as a fretboard).
 type DiagramPurpose string
 
 // DiagramClassification A Diagram's classification as returned by the API — skills/concepts
