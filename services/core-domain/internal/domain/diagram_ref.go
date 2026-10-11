@@ -124,29 +124,6 @@ type DiagramRef struct {
 	// positions with these intervals. A stimulus given it without
 	// CorrectPositionIDs is converted to positions once, at save.
 	CorrectIntervals *[]string `json:"correct_intervals"`
-	// View is how this usage shows its diagram, chosen by its author; nil
-	// means the fretboard. A chord box is only for a chord voicing diagram,
-	// which takes a repository round trip to know, so the application layer
-	// checks it.
-	View *DiagramView `json:"view,omitempty"`
-}
-
-// DiagramView is how a usage shows its diagram.
-type DiagramView string
-
-const (
-	DiagramViewFretboard DiagramView = "fretboard"
-	DiagramViewChordBox  DiagramView = "chord_box"
-)
-
-// Valid reports whether v is a known view.
-func (v DiagramView) Valid() bool {
-	return v == DiagramViewFretboard || v == DiagramViewChordBox
-}
-
-// ShowsChordBox reports whether ref shows its diagram as a chord box.
-func (ref DiagramRef) ShowsChordBox() bool {
-	return ref.View != nil && *ref.View == DiagramViewChordBox
 }
 
 // DiagramStackRef composites two or more DiagramRefs into one view. Every
@@ -168,9 +145,6 @@ func ValidateDiagramRef(ref DiagramRef) error {
 	}
 	if ref.Layers.Label != nil && !ref.Layers.Label.Valid() {
 		return NewValidationError("layers", "label must be one of: interval, note, custom, none")
-	}
-	if ref.View != nil && !ref.View.Valid() {
-		return NewValidationError("view", "must be one of: fretboard, chord_box")
 	}
 	if ref.Playback != nil {
 		if reason := playbackProblem(*ref.Playback); reason != "" {

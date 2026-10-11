@@ -931,56 +931,6 @@ func richTextContent(text string) domain.PromptDocument {
 	}
 }
 
-// A usage's view is set by its author: a chord box only for a chord voicing,
-// whose voicing gives the box its fingering, and never in a stack.
-func TestContentService_CreateExpandedContent_DiagramView(t *testing.T) {
-	chordBox, sideways := domain.DiagramViewChordBox, domain.DiagramView("sideways")
-	single := func(id string, view *domain.DiagramView) *domain.DiagramRef {
-		return &domain.DiagramRef{DiagramID: id, Layers: domain.DiagramLayers{Intervals: true}, View: view}
-	}
-	tests := []struct {
-		name      string
-		ref       *domain.DiagramRef
-		stack     *domain.DiagramStackRef
-		wantView  *domain.DiagramView
-		wantField string
-	}{
-		{name: "a usage without a view is shown on the fretboard", ref: single("scale", nil)},
-		{name: "a chord voicing is shown as a chord box", ref: single("chord", &chordBox), wantView: &chordBox},
-		{name: "only a chord voicing can be shown as a chord box", ref: single("scale", &chordBox), wantField: "diagram_ref"},
-		{name: "an unknown view is rejected", ref: single("scale", &sideways), wantField: "diagram_ref"},
-		{
-			name:      "a stack can't be shown as a chord box",
-			stack:     &domain.DiagramStackRef{Stack: []domain.DiagramRef{*single("chord", &chordBox), *single("scale", nil)}},
-			wantField: "diagram_stack_ref",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			nodes := newFakeContentNodeRepository()
-			nodes.put(videoNode("node-1"))
-			diagrams := newFakeDiagramRepository()
-			seedContentDiagram(t, diagrams, "scale", "guitar")
-			chord := seedContentDiagram(t, diagrams, "chord", "guitar")
-			chord.Purpose = domain.DiagramPurposeChordVoicing
-			require.NoError(t, diagrams.Update(context.Background(), chord))
-			svc := newContentServiceWithDiagrams(nodes, newFakeExpandedContentRepository(), seededKnowledgeNodeRepository(), newFakeContentNodeVersionRepository(), diagrams)
-
-			item, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
-				domain.ExpandedContentTypeDiagram, nil, nil, tt.ref, tt.stack, intPtr(150), intPtr(165), nil, nil, nil)
-
-			if tt.wantField != "" {
-				var valErr *domain.ValidationError
-				require.True(t, errors.As(err, &valErr), "expected a validation error, got %v", err)
-				assertHasField(t, valErr, tt.wantField)
-				return
-			}
-			require.NoError(t, err)
-			assert.Equal(t, tt.wantView, item.DiagramRef.View)
-		})
-	}
-}
-
 func TestContentService_CreateExpandedContent_RichText(t *testing.T) {
 	t.Run("a teacher adds rich text content to a video lesson at a specific timestamp", func(t *testing.T) {
 		nodes := newFakeContentNodeRepository()
