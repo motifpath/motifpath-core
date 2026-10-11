@@ -21,12 +21,13 @@ type DiagramService struct {
 	languages   ports.LanguageRepository
 	users       ports.UserRepository
 	references  ports.PracticeReferenceWriter
+	chords      ports.ChordCatalogRepository
 	newID       func() string
 	now         func() time.Time
 }
 
-func NewDiagramService(diagrams ports.DiagramRepository, instruments ports.InstrumentRepository, knowledge ports.KnowledgeNodeRepository, languages ports.LanguageRepository, users ports.UserRepository, references ports.PracticeReferenceWriter, newID func() string, now func() time.Time) *DiagramService {
-	return &DiagramService{diagrams: diagrams, instruments: instruments, knowledge: knowledge, languages: languages, users: users, references: references, newID: newID, now: now}
+func NewDiagramService(diagrams ports.DiagramRepository, instruments ports.InstrumentRepository, knowledge ports.KnowledgeNodeRepository, languages ports.LanguageRepository, users ports.UserRepository, references ports.PracticeReferenceWriter, chords ports.ChordCatalogRepository, newID func() string, now func() time.Time) *DiagramService {
+	return &DiagramService{diagrams: diagrams, instruments: instruments, knowledge: knowledge, languages: languages, users: users, references: references, chords: chords, newID: newID, now: now}
 }
 
 const (
@@ -197,9 +198,24 @@ func (s *DiagramService) validateCompatibleInstruments(ctx context.Context, layo
 // GetDiagram returns the diagram with the given id, or domain.ErrNotFound.
 // Any authenticated user may call it for a specific known id, whatever the
 // diagram's kind or creator: students render the diagrams embedded in their
-// content. ListDiagrams' role scoping governs discovery only.
+// content. ListDiagrams' role scoping governs discovery only. A chord voicing
+// diagram comes with the voicing it is the fingering of, so it can be drawn
+// as a chord box.
 func (s *DiagramService) GetDiagram(ctx context.Context, id string) (domain.Diagram, error) {
-	return s.diagrams.GetByID(ctx, id)
+	diagram, err := s.diagrams.GetByID(ctx, id)
+	if err != nil || diagram.Purpose != domain.DiagramPurposeChordVoicing {
+		return diagram, err
+	}
+	voicing, err := s.chords.GetVoicingByDiagramID(ctx, id)
+	if errors.Is(err, domain.ErrNotFound) {
+		// The catalog installs a voicing's diagram with its voicing; a lone one still draws.
+		return diagram, nil
+	}
+	if err != nil {
+		return domain.Diagram{}, err
+	}
+	diagram.ChordVoicing = &voicing
+	return diagram, nil
 }
 
 // ListDiagrams returns one page of the diagrams matching filter that caller

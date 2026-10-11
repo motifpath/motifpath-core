@@ -1983,6 +1983,15 @@ func (f *fakeChordCatalogRepository) GetVoicings(_ context.Context, ids []string
 	return found, nil
 }
 
+func (f *fakeChordCatalogRepository) GetVoicingByDiagramID(_ context.Context, diagramID string) (domain.ChordVoicing, error) {
+	for _, v := range f.voicings {
+		if v.DiagramID == diagramID {
+			return v, nil
+		}
+	}
+	return domain.ChordVoicing{}, domain.ErrNotFound
+}
+
 // withdraw marks a voicing withdrawn, as the catalog would.
 func (f *fakeChordCatalogRepository) withdraw(id string) {
 	v := f.voicings[id]

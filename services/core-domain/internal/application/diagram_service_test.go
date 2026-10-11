@@ -19,6 +19,7 @@ type diagramFixture struct {
 	instruments *fakeInstrumentRepository
 	users       *fakeUserRepository
 	references  *fakePracticeReferenceWriter
+	chords      *fakeChordCatalogRepository
 	svc         *application.DiagramService
 }
 
@@ -40,8 +41,9 @@ func newDiagramFixture() diagramFixture {
 	knowledge.put(domain.KnowledgeNode{ID: "pedal-sustain", Kind: domain.KnowledgeNodeKindSkill, Key: "pedal-sustain", InstrumentIDs: []string{"piano"}})
 	diagrams.knowledge = knowledge
 	references := newFakePracticeReferenceWriter()
-	svc := application.NewDiagramService(diagrams, instruments, knowledge, newFakeLanguageRepository(), users, references, idSequence(), func() time.Time { return fixedCreatedAt })
-	return diagramFixture{diagrams: diagrams, instruments: instruments, users: users, references: references, svc: svc}
+	chords := &fakeChordCatalogRepository{voicings: map[string]domain.ChordVoicing{}}
+	svc := application.NewDiagramService(diagrams, instruments, knowledge, newFakeLanguageRepository(), users, references, chords, idSequence(), func() time.Time { return fixedCreatedAt })
+	return diagramFixture{diagrams: diagrams, instruments: instruments, users: users, references: references, chords: chords, svc: svc}
 }
 
 // names names a diagram name in both offered languages, which every kind of
@@ -327,6 +329,53 @@ func TestDiagramService_GetDiagram(t *testing.T) {
 		require.ErrorIs(t, err, domain.ErrNotFound)
 	})
 
+	// A voicing's diagram carries the voicing it is the fingering of, so a
+	// client can draw it as a chord box; no other diagram carries one.
+	voicing := domain.ChordVoicing{ID: "d-open", DiagramID: "d-open-diagram", LowestFret: 2, HighestFret: 3,
+		Fingering: []domain.VoicingFinger{{PositionID: "p1", Finger: "1"}}, Status: domain.ChordVoicingActive}
+	tests := []struct {
+		name        string
+		seed        func(t *testing.T, f diagramFixture) string
+		wantVoicing *domain.ChordVoicing
+	}{
+		{
+			name: "a voicing's diagram carries its voicing",
+			seed: func(t *testing.T, f diagramFixture) string {
+				require.NoError(t, f.diagrams.Create(ctx, domain.Diagram{ID: "d-open-diagram", Purpose: domain.DiagramPurposeChordVoicing, InstrumentID: "guitar"}))
+				f.chords.voicings[voicing.ID] = voicing
+				return "d-open-diagram"
+			},
+			wantVoicing: &voicing,
+		},
+		{
+			name: "a general diagram carries none",
+			seed: func(t *testing.T, f diagramFixture) string {
+				d, err := f.svc.CreateDiagram(ctx, teacherCaller(), "guitar", names("Mine"), []domain.Position{frettedPos(6, 5)}, []string{"skill-1"}, []string{"concept-1"}, domain.DiagramOptions{})
+				require.NoError(t, err)
+				return d.ID
+			},
+		},
+		{
+			name: "a copy of a voicing's diagram, being general, carries none",
+			seed: func(t *testing.T, f diagramFixture) string {
+				f.chords.voicings[voicing.ID] = voicing
+				d, err := f.svc.CreateDiagram(ctx, teacherCaller(), "guitar", names("D copy"), []domain.Position{frettedPos(4, 0)}, []string{"skill-1"}, []string{"concept-1"}, domain.DiagramOptions{})
+				require.NoError(t, err)
+				return d.ID
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := newDiagramFixture()
+			id := tt.seed(t, f)
+
+			got, err := f.svc.GetDiagram(ctx, id)
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantVoicing, got.ChordVoicing)
+		})
+	}
 }
 
 func TestDiagramService_UpdateDiagram(t *testing.T) {

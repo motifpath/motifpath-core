@@ -72,6 +72,17 @@ func (f *fakeChordCatalog) GetVoicings(_ context.Context, ids []string) (map[str
 	return found, nil
 }
 
+func (f *fakeChordCatalog) GetVoicingByDiagramID(_ context.Context, diagramID string) (domain.ChordVoicing, error) {
+	for _, chordID := range f.order {
+		for _, v := range f.chords[chordID].Voicings {
+			if v.DiagramID == diagramID {
+				return v, nil
+			}
+		}
+	}
+	return domain.ChordVoicing{}, domain.ErrNotFound
+}
+
 func withActiveVoicings(c domain.ChordDefinition) domain.ChordDefinition {
 	active := slices.DeleteFunc(slices.Clone(c.Voicings), func(v domain.ChordVoicing) bool { return v.Status != domain.ChordVoicingActive })
 	slices.SortFunc(active, func(a, b domain.ChordVoicing) int { return a.RecommendedRank - b.RecommendedRank })
