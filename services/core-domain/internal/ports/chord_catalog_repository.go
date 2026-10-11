@@ -21,4 +21,8 @@ type ChordCatalogRepository interface {
 	// GetVoicings returns the voicings with these ids, withdrawn ones
 	// included, keyed by id; an id with no voicing is left out.
 	GetVoicings(ctx context.Context, ids []string) (map[string]domain.ChordVoicing, error)
+	// GetVoicingByDiagramID returns the voicing, withdrawn or not, whose
+	// fingering is the diagram with diagramID, or domain.ErrNotFound. A
+	// diagram is the fingering of at most one voicing.
+	GetVoicingByDiagramID(ctx context.Context, diagramID string) (domain.ChordVoicing, error)
 }

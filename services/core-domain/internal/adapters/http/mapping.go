@@ -877,6 +877,7 @@ func toGeneratedDiagram(d domain.Diagram, names userNames) generated.Diagram {
 		Playbacks:         toGeneratedPlaybacks(d.Playbacks),
 		DefaultPlaybackId: uuidPtrFromStringPtr(d.DefaultPlaybackID),
 		CreatedAt:         d.CreatedAt,
+		ChordVoicing:      toGeneratedDiagramVoicing(d.ChordVoicing),
 	}
 }
 
@@ -1384,4 +1385,14 @@ func toUUIDs(ids []string) []uuid.UUID {
 		result[i] = mustUUID(id)
 	}
 	return result
+}
+
+// toGeneratedDiagramVoicing maps the voicing a chord voicing diagram carries,
+// or nil for any other diagram.
+func toGeneratedDiagramVoicing(v *domain.ChordVoicing) *generated.ChordVoicing {
+	if v == nil {
+		return nil
+	}
+	out := toGeneratedVoicing(*v)
+	return &out
 }
