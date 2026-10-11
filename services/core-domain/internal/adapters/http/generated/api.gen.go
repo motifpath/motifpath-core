@@ -2134,6 +2134,81 @@ func (e SongChartTextType) Valid() bool {
 	}
 }
 
+// Defines values for StartingPointKind.
+const (
+	StartingPointKindCourse StartingPointKind = "course"
+	StartingPointKindPath   StartingPointKind = "path"
+)
+
+// Valid indicates whether the value is a known member of the StartingPointKind enum.
+func (e StartingPointKind) Valid() bool {
+	switch e {
+	case StartingPointKindCourse:
+		return true
+	case StartingPointKindPath:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for StartingPointExperience.
+const (
+	NeverPlayed StartingPointExperience = "never_played"
+	PlaysABit   StartingPointExperience = "plays_a_bit"
+	PlaysWell   StartingPointExperience = "plays_well"
+)
+
+// Valid indicates whether the value is a known member of the StartingPointExperience enum.
+func (e StartingPointExperience) Valid() bool {
+	switch e {
+	case NeverPlayed:
+		return true
+	case PlaysABit:
+		return true
+	case PlaysWell:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for StartingPointRefKind.
+const (
+	StartingPointRefKindCourse StartingPointRefKind = "course"
+	StartingPointRefKindPath   StartingPointRefKind = "path"
+)
+
+// Valid indicates whether the value is a known member of the StartingPointRefKind enum.
+func (e StartingPointRefKind) Valid() bool {
+	switch e {
+	case StartingPointRefKindCourse:
+		return true
+	case StartingPointRefKindPath:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for StartingPointsSource.
+const (
+	Catalog StartingPointsSource = "catalog"
+	Curated StartingPointsSource = "curated"
+)
+
+// Valid indicates whether the value is a known member of the StartingPointsSource enum.
+func (e StartingPointsSource) Valid() bool {
+	switch e {
+	case Catalog:
+		return true
+	case Curated:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for StudentPathLevel.
 const (
 	StudentPathLevelAdvanced          StudentPathLevel = "advanced"
@@ -2623,6 +2698,51 @@ type ActivityDay struct {
 	// Practised Whether the student finished a practice session on this day, on any instrument
 	// or without one, by the rule practice_days_last_7 counts.
 	Practised bool `json:"practised"`
+}
+
+// AppConfigEntry One of the app's settings with its value.
+type AppConfigEntry struct {
+	// Key The setting's key.
+	Key string `json:"key"`
+
+	// UpdatedAt When the setting was last changed. Absent when it was never set.
+	UpdatedAt *time.Time `json:"updated_at,omitempty"`
+
+	// UpdatedBy A reference to another MotifPath user, as it appears in any response
+	// that points at a user (ADR-035). display_name is read from the
+	// user's record when the response is built, never copied onto the
+	// referencing entity, so a rename shows everywhere at once. A UserRef
+	// appears only in responses the caller is already authorized to
+	// receive.
+	UpdatedBy *UserRef `json:"updated_by,omitempty"`
+
+	// Value A setting's value. Its schema depends on the key — starting_points takes a StartingPointsConfig. Absent from an AppConfigEntry whose setting was never set.
+	Value *AppConfigValue `json:"value,omitempty"`
+}
+
+// AppConfigSummary One of the app's settings, without its value.
+type AppConfigSummary struct {
+	// IsSet Whether the setting has ever been given a value.
+	IsSet bool `json:"is_set"`
+
+	// Key The setting's key.
+	Key string `json:"key"`
+
+	// UpdatedAt When the setting was last changed. Absent when it was never set.
+	UpdatedAt *time.Time `json:"updated_at,omitempty"`
+
+	// UpdatedBy A reference to another MotifPath user, as it appears in any response
+	// that points at a user (ADR-035). display_name is read from the
+	// user's record when the response is built, never copied onto the
+	// referencing entity, so a rename shows everywhere at once. A UserRef
+	// appears only in responses the caller is already authorized to
+	// receive.
+	UpdatedBy *UserRef `json:"updated_by,omitempty"`
+}
+
+// AppConfigValue A setting's value. Its schema depends on the key — starting_points takes a StartingPointsConfig. Absent from an AppConfigEntry whose setting was never set.
+type AppConfigValue struct {
+	union json.RawMessage
 }
 
 // AssignLearningPathRequest Payload for assigning a learning path to a student.
@@ -3995,6 +4115,15 @@ type CreatePracticeSessionPlanRequest struct {
 // per the layer/styling/playback config carried in whatever diagram_ref
 // points at this diagram.
 type Diagram struct {
+	// ChordVoicing The catalog voicing this diagram is the fingering of: its
+	// chord data (fingers, muted strings, fret window). A diagram
+	// that carries it is shown as a chord box by default, drawn from
+	// it without a search of the chord catalog. Present exactly when
+	// purpose is chord_voicing, on GET /diagrams/{diagram_id}; absent
+	// from list responses and from every general diagram, a copy
+	// saved from a chord_voicing diagram included.
+	ChordVoicing *ChordVoicing `json:"chord_voicing,omitempty"`
+
 	// Classification A Diagram's classification as returned by the API — skills/concepts
 	// embedded as full KnowledgeNodes, the same convention
 	// Classification uses for ContentNode.
@@ -4088,7 +4217,9 @@ type Diagram struct {
 	// chord_voicing exactly when the chord catalog installed it as a
 	// voicing, and a diagram created through createDiagram, including
 	// a copy saved from a chord_voicing diagram, is general. A
-	// diagram's purpose doesn't change how it renders or plays.
+	// diagram's purpose doesn't change how it plays. Only a
+	// chord_voicing diagram carries chord data (chord_voicing), and
+	// a diagram with chord data is shown as a chord box by default.
 	Purpose DiagramPurpose `json:"purpose"`
 
 	// Regions The diagram's highlighted regions, in drawing order (later ones
@@ -4128,7 +4259,9 @@ type DiagramLabelDisplay string
 // chord_voicing exactly when the chord catalog installed it as a
 // voicing, and a diagram created through createDiagram, including
 // a copy saved from a chord_voicing diagram, is general. A
-// diagram's purpose doesn't change how it renders or plays.
+// diagram's purpose doesn't change how it plays. Only a
+// chord_voicing diagram carries chord data (chord_voicing), and
+// a diagram with chord data is shown as a chord box by default.
 type DiagramPurpose string
 
 // DiagramClassification A Diagram's classification as returned by the API — skills/concepts
@@ -6738,6 +6871,72 @@ type SongChartWithdrawal struct {
 	WithdrawnBy UserRef `json:"withdrawn_by"`
 }
 
+// StartingPoint A path or a course a new student can start with, as the catalog shows it. path is present when kind is path, course when kind is course.
+type StartingPoint struct {
+	// Course A course as it appears in the catalog list — enough to browse
+	// and pick one, never authoring detail such as a checkpoint's
+	// learning_path_id. Returned by GET /catalog/courses to every
+	// caller and by GET /courses to teachers and admins.
+	Course *CourseCatalogEntry `json:"course,omitempty"`
+
+	// Kind Whether this entry is a learning path or a course.
+	Kind StartingPointKind `json:"kind"`
+
+	// Path A published learning path as it appears in the path catalog — enough to browse and pick one, never authoring detail such as an item's content_node_id.
+	Path *PathCatalogEntry `json:"path,omitempty"`
+}
+
+// StartingPointKind Whether this entry is a learning path or a course.
+type StartingPointKind string
+
+// StartingPointExperience How much a student has played an instrument, as they answer it on their first visit: never, a bit, or well.
+type StartingPointExperience string
+
+// StartingPointRef One path or course in a list of starting points.
+type StartingPointRef struct {
+	// Id The learning_path_id or course_id of the entry.
+	Id openapi_types.UUID `json:"id"`
+
+	// Kind Whether id names a learning path or a course.
+	Kind StartingPointRefKind `json:"kind"`
+}
+
+// StartingPointRefKind Whether id names a learning path or a course.
+type StartingPointRefKind string
+
+// StartingPoints Where a new student should start, in order.
+type StartingPoints struct {
+	// Items The paths and courses, first shown first: as many as the curated list holds, or at most five from the catalog.
+	Items []StartingPoint `json:"items"`
+
+	// Source curated when the list the team configured answered; catalog when none was configured or none of its entries is still published.
+	Source StartingPointsSource `json:"source"`
+}
+
+// StartingPointsSource curated when the list the team configured answered; catalog when none was configured or none of its entries is still published.
+type StartingPointsSource string
+
+// StartingPointsConfig The value of the starting_points setting: the paths and courses a student who has never started anything sees first, one list per instrument, experience and language.
+type StartingPointsConfig struct {
+	// Lists Every list. No two lists may share the same instrument_id, experience and language.
+	Lists []StartingPointsList `json:"lists"`
+}
+
+// StartingPointsList The starting points for one instrument, experience and language, in order.
+type StartingPointsList struct {
+	// Experience How much a student has played an instrument, as they answer it on their first visit: never, a bit, or well.
+	Experience StartingPointExperience `json:"experience"`
+
+	// InstrumentId The instrument this list is for. It must exist.
+	InstrumentId openapi_types.UUID `json:"instrument_id"`
+
+	// Items The entries, first shown first; as many as the team chooses. Each must name a published path or course.
+	Items []StartingPointRef `json:"items"`
+
+	// Language The language this list is for, as a Language.code other than "any".
+	Language string `json:"language"`
+}
+
 // StudentPath A student's own copy of a learning path template's items. Created by
 // copying a LearningPath at assign time; independently editable
 // afterwards and never affected by later changes to the template it
@@ -7486,6 +7685,18 @@ type ListCatalogPathsParams struct {
 // ListCatalogPathsParamsLevels defines parameters for ListCatalogPaths.
 type ListCatalogPathsParamsLevels string
 
+// ListStartingPointsParams defines parameters for ListStartingPoints.
+type ListStartingPointsParams struct {
+	// InstrumentId The instrument the student wants to play.
+	InstrumentId openapi_types.UUID `form:"instrument_id" json:"instrument_id"`
+
+	// Experience How much the student has played that instrument.
+	Experience StartingPointExperience `form:"experience" json:"experience"`
+
+	// Language The language the student reads, as a Language.code other than "any". Only paths and courses in this language are returned.
+	Language string `form:"language" json:"language"`
+}
+
 // SearchChordsParams defines parameters for SearchChords.
 type SearchChordsParams struct {
 	// Symbol The chord symbol as written, e.g. "Bbmaj7", "F#m7♭5", "D/F#".
@@ -7801,6 +8012,9 @@ type GetPracticeSummaryParams struct {
 	TimeZone *string `form:"time_zone,omitempty" json:"time_zone,omitempty"`
 }
 
+// SetAppConfigJSONRequestBody defines body for SetAppConfig for application/json ContentType.
+type SetAppConfigJSONRequestBody = AppConfigValue
+
 // UpdateChallengeJSONRequestBody defines body for UpdateChallenge for application/json ContentType.
 type UpdateChallengeJSONRequestBody = UpdateChallengeRequest
 
@@ -7900,6 +8114,42 @@ type RegisterUserJSONRequestBody = RegisterUserRequest
 // UpdateMyLocaleJSONRequestBody defines body for UpdateMyLocale for application/json ContentType.
 type UpdateMyLocaleJSONRequestBody = UpdateMyLocaleRequest
 
+// AsStartingPointsConfig returns the union data inside the AppConfigValue as a StartingPointsConfig
+func (t AppConfigValue) AsStartingPointsConfig() (StartingPointsConfig, error) {
+	var body StartingPointsConfig
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromStartingPointsConfig overwrites any union data inside the AppConfigValue as the provided StartingPointsConfig
+func (t *AppConfigValue) FromStartingPointsConfig(v StartingPointsConfig) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeStartingPointsConfig performs a merge with any union data inside the AppConfigValue, using the provided StartingPointsConfig
+func (t *AppConfigValue) MergeStartingPointsConfig(v StartingPointsConfig) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t AppConfigValue) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *AppConfigValue) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
 // AsSongChartLyricLine returns the union data inside the SongChartSection_Content_Item as a SongChartLyricLine
 func (t SongChartSection_Content_Item) AsSongChartLyricLine() (SongChartLyricLine, error) {
 	var body SongChartLyricLine
@@ -7964,6 +8214,15 @@ func (t *SongChartSection_Content_Item) UnmarshalJSON(b []byte) error {
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// ListAppConfig List the app's settings
+	// (GET /admin/config)
+	ListAppConfig(w http.ResponseWriter, r *http.Request)
+	// GetAppConfig Get one of the app's settings
+	// (GET /admin/config/{key})
+	GetAppConfig(w http.ResponseWriter, r *http.Request, key string)
+	// SetAppConfig Replace one of the app's settings
+	// (PUT /admin/config/{key})
+	SetAppConfig(w http.ResponseWriter, r *http.Request, key string)
 	// ListCatalogCourses Browse the published course catalog
 	// (GET /catalog/courses)
 	ListCatalogCourses(w http.ResponseWriter, r *http.Request, params ListCatalogCoursesParams)
@@ -7979,6 +8238,9 @@ type ServerInterface interface {
 	// GetCatalogPath Get a published path as learners see it
 	// (GET /catalog/paths/{learning_path_id})
 	GetCatalogPath(w http.ResponseWriter, r *http.Request, learningPathId openapi_types.UUID)
+	// ListStartingPoints List where a new student should start
+	// (GET /catalog/starting-points)
+	ListStartingPoints(w http.ResponseWriter, r *http.Request, params ListStartingPointsParams)
 	// GetChallenge Get a challenge by ID
 	// (GET /challenges/{challenge_id})
 	GetChallenge(w http.ResponseWriter, r *http.Request, challengeId openapi_types.UUID)
@@ -8267,6 +8529,24 @@ type ServerInterface interface {
 
 type Unimplemented struct{}
 
+// ListAppConfig List the app's settings
+// (GET /admin/config)
+func (_ Unimplemented) ListAppConfig(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetAppConfig Get one of the app's settings
+// (GET /admin/config/{key})
+func (_ Unimplemented) GetAppConfig(w http.ResponseWriter, r *http.Request, key string) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// SetAppConfig Replace one of the app's settings
+// (PUT /admin/config/{key})
+func (_ Unimplemented) SetAppConfig(w http.ResponseWriter, r *http.Request, key string) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // ListCatalogCourses Browse the published course catalog
 // (GET /catalog/courses)
 func (_ Unimplemented) ListCatalogCourses(w http.ResponseWriter, r *http.Request, params ListCatalogCoursesParams) {
@@ -8294,6 +8574,12 @@ func (_ Unimplemented) ListCatalogPaths(w http.ResponseWriter, r *http.Request, 
 // GetCatalogPath Get a published path as learners see it
 // (GET /catalog/paths/{learning_path_id})
 func (_ Unimplemented) GetCatalogPath(w http.ResponseWriter, r *http.Request, learningPathId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListStartingPoints List where a new student should start
+// (GET /catalog/starting-points)
+func (_ Unimplemented) ListStartingPoints(w http.ResponseWriter, r *http.Request, params ListStartingPointsParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -8870,6 +9156,72 @@ type ServerInterfaceWrapper struct {
 
 type MiddlewareFunc func(http.Handler) http.Handler
 
+// ListAppConfig operation middleware
+func (siw *ServerInterfaceWrapper) ListAppConfig(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListAppConfig(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetAppConfig operation middleware
+func (siw *ServerInterfaceWrapper) GetAppConfig(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "key" -------------
+	var key string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "key", chi.URLParam(r, "key"), &key, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAppConfig(w, r, key)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SetAppConfig operation middleware
+func (siw *ServerInterfaceWrapper) SetAppConfig(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "key" -------------
+	var key string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "key", chi.URLParam(r, "key"), &key, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SetAppConfig(w, r, key)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListCatalogCourses operation middleware
 func (siw *ServerInterfaceWrapper) ListCatalogCourses(w http.ResponseWriter, r *http.Request) {
 
@@ -9227,6 +9579,65 @@ func (siw *ServerInterfaceWrapper) GetCatalogPath(w http.ResponseWriter, r *http
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetCatalogPath(w, r, learningPathId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListStartingPoints operation middleware
+func (siw *ServerInterfaceWrapper) ListStartingPoints(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListStartingPointsParams
+
+	// ------------- Required query parameter "instrument_id" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "instrument_id", r.URL.Query(), &params.InstrumentId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "instrument_id"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "instrument_id", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "experience" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "experience", r.URL.Query(), &params.Experience, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "experience"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "experience", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "language" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "language", r.URL.Query(), &params.Language, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "language"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "language", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListStartingPoints(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -12524,6 +12935,18 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/catalog/path-creators", wrapper.ListCatalogPathCreators)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/catalog/starting-points", wrapper.ListStartingPoints)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/admin/config", wrapper.ListAppConfig)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/admin/config/{key}", wrapper.GetAppConfig)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/admin/config/{key}", wrapper.SetAppConfig)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/courses", wrapper.ListCourses)
 	})
 	r.Group(func(r chi.Router) {
@@ -12603,6 +13026,226 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 
 	return r
+}
+
+type ListAppConfigRequestObject struct {
+}
+
+type ListAppConfigResponseObject interface {
+	VisitListAppConfigResponse(w http.ResponseWriter) error
+}
+
+type ListAppConfig200JSONResponse []AppConfigSummary
+
+func (response ListAppConfig200JSONResponse) VisitListAppConfigResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListAppConfig400JSONResponse ValidationError
+
+func (response ListAppConfig400JSONResponse) VisitListAppConfigResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListAppConfig401JSONResponse UnauthorizedError
+
+func (response ListAppConfig401JSONResponse) VisitListAppConfigResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListAppConfig403JSONResponse ForbiddenError
+
+func (response ListAppConfig403JSONResponse) VisitListAppConfigResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAppConfigRequestObject struct {
+	Key string `json:"key"`
+}
+
+type GetAppConfigResponseObject interface {
+	VisitGetAppConfigResponse(w http.ResponseWriter) error
+}
+
+type GetAppConfig200JSONResponse AppConfigEntry
+
+func (response GetAppConfig200JSONResponse) VisitGetAppConfigResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAppConfig400JSONResponse ValidationError
+
+func (response GetAppConfig400JSONResponse) VisitGetAppConfigResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAppConfig401JSONResponse UnauthorizedError
+
+func (response GetAppConfig401JSONResponse) VisitGetAppConfigResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAppConfig403JSONResponse ForbiddenError
+
+func (response GetAppConfig403JSONResponse) VisitGetAppConfigResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAppConfig404JSONResponse NotFoundError
+
+func (response GetAppConfig404JSONResponse) VisitGetAppConfigResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetAppConfigRequestObject struct {
+	Key  string `json:"key"`
+	Body *SetAppConfigJSONRequestBody
+}
+
+type SetAppConfigResponseObject interface {
+	VisitSetAppConfigResponse(w http.ResponseWriter) error
+}
+
+type SetAppConfig200JSONResponse AppConfigEntry
+
+func (response SetAppConfig200JSONResponse) VisitSetAppConfigResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetAppConfig400JSONResponse ValidationError
+
+func (response SetAppConfig400JSONResponse) VisitSetAppConfigResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetAppConfig401JSONResponse UnauthorizedError
+
+func (response SetAppConfig401JSONResponse) VisitSetAppConfigResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetAppConfig403JSONResponse ForbiddenError
+
+func (response SetAppConfig403JSONResponse) VisitSetAppConfigResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetAppConfig404JSONResponse NotFoundError
+
+func (response SetAppConfig404JSONResponse) VisitSetAppConfigResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
 }
 
 type ListCatalogCoursesRequestObject struct {
@@ -12851,6 +13494,56 @@ func (response GetCatalogPath404JSONResponse) VisitGetCatalogPathResponse(w http
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListStartingPointsRequestObject struct {
+	Params ListStartingPointsParams
+}
+
+type ListStartingPointsResponseObject interface {
+	VisitListStartingPointsResponse(w http.ResponseWriter) error
+}
+
+type ListStartingPoints200JSONResponse StartingPoints
+
+func (response ListStartingPoints200JSONResponse) VisitListStartingPointsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListStartingPoints400JSONResponse ValidationError
+
+func (response ListStartingPoints400JSONResponse) VisitListStartingPointsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListStartingPoints401JSONResponse UnauthorizedError
+
+func (response ListStartingPoints401JSONResponse) VisitListStartingPointsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -19090,6 +19783,15 @@ func (response ListVoices401JSONResponse) VisitListVoicesResponse(w http.Respons
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
+	// ListAppConfig List the app's settings
+	// (GET /admin/config)
+	ListAppConfig(ctx context.Context, request ListAppConfigRequestObject) (ListAppConfigResponseObject, error)
+	// GetAppConfig Get one of the app's settings
+	// (GET /admin/config/{key})
+	GetAppConfig(ctx context.Context, request GetAppConfigRequestObject) (GetAppConfigResponseObject, error)
+	// SetAppConfig Replace one of the app's settings
+	// (PUT /admin/config/{key})
+	SetAppConfig(ctx context.Context, request SetAppConfigRequestObject) (SetAppConfigResponseObject, error)
 	// ListCatalogCourses Browse the published course catalog
 	// (GET /catalog/courses)
 	ListCatalogCourses(ctx context.Context, request ListCatalogCoursesRequestObject) (ListCatalogCoursesResponseObject, error)
@@ -19105,6 +19807,9 @@ type StrictServerInterface interface {
 	// GetCatalogPath Get a published path as learners see it
 	// (GET /catalog/paths/{learning_path_id})
 	GetCatalogPath(ctx context.Context, request GetCatalogPathRequestObject) (GetCatalogPathResponseObject, error)
+	// ListStartingPoints List where a new student should start
+	// (GET /catalog/starting-points)
+	ListStartingPoints(ctx context.Context, request ListStartingPointsRequestObject) (ListStartingPointsResponseObject, error)
 	// GetChallenge Get a challenge by ID
 	// (GET /challenges/{challenge_id})
 	GetChallenge(ctx context.Context, request GetChallengeRequestObject) (GetChallengeResponseObject, error)
@@ -19428,6 +20133,89 @@ type strictHandler struct {
 	options     StrictHTTPServerOptions
 }
 
+// ListAppConfig operation middleware
+func (sh *strictHandler) ListAppConfig(w http.ResponseWriter, r *http.Request) {
+	var request ListAppConfigRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListAppConfig(ctx, request.(ListAppConfigRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListAppConfig")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListAppConfigResponseObject); ok {
+		if err := validResponse.VisitListAppConfigResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetAppConfig operation middleware
+func (sh *strictHandler) GetAppConfig(w http.ResponseWriter, r *http.Request, key string) {
+	var request GetAppConfigRequestObject
+
+	request.Key = key
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetAppConfig(ctx, request.(GetAppConfigRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetAppConfig")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetAppConfigResponseObject); ok {
+		if err := validResponse.VisitGetAppConfigResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SetAppConfig operation middleware
+func (sh *strictHandler) SetAppConfig(w http.ResponseWriter, r *http.Request, key string) {
+	var request SetAppConfigRequestObject
+
+	request.Key = key
+
+	var body SetAppConfigJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SetAppConfig(ctx, request.(SetAppConfigRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SetAppConfig")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SetAppConfigResponseObject); ok {
+		if err := validResponse.VisitSetAppConfigResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // ListCatalogCourses operation middleware
 func (sh *strictHandler) ListCatalogCourses(w http.ResponseWriter, r *http.Request, params ListCatalogCoursesParams) {
 	var request ListCatalogCoursesRequestObject
@@ -19551,6 +20339,32 @@ func (sh *strictHandler) GetCatalogPath(w http.ResponseWriter, r *http.Request, 
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetCatalogPathResponseObject); ok {
 		if err := validResponse.VisitGetCatalogPathResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListStartingPoints operation middleware
+func (sh *strictHandler) ListStartingPoints(w http.ResponseWriter, r *http.Request, params ListStartingPointsParams) {
+	var request ListStartingPointsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListStartingPoints(ctx, request.(ListStartingPointsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListStartingPoints")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListStartingPointsResponseObject); ok {
+		if err := validResponse.VisitListStartingPointsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
