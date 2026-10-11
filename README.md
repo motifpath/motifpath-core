@@ -269,6 +269,22 @@ make lint
 make ci
 ```
 
+### App settings (admin)
+
+Editorial and operational settings — today only `starting_points`, the paths and courses a
+brand-new student sees first per instrument, experience and language — have no screen. Keep each
+environment's values in a JSON file (ids differ per environment) and set them with an admin's
+Clerk session token (`await Clerk.session.getToken()` in the browser console, valid ~1 minute):
+
+```bash
+ADMIN_TOKEN=... scripts/app-config.sh list
+ADMIN_TOKEN=... scripts/app-config.sh get starting_points
+ADMIN_TOKEN=... scripts/app-config.sh set starting_points starting-points.local.json
+```
+
+A refused value comes back 400 with every problem listed and nothing stored. Until production
+exists, `make db:reset` wipes the settings with everything else — set them again afterwards.
+
 ## Architecture
 
 Each service follows hexagonal architecture:

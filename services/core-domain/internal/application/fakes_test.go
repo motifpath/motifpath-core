@@ -746,6 +746,12 @@ func (f *fakeLearningPathRepository) List(_ context.Context, filter domain.Learn
 		if filter.Language != "" && (path.Language == nil || *path.Language != filter.Language) {
 			continue
 		}
+		if len(filter.Levels) > 0 && (path.Level == nil || !containsLevel(filter.Levels, *path.Level)) {
+			continue
+		}
+		if !forInstrument(path.InstrumentIDs, filter.InstrumentID) {
+			continue
+		}
 		if filter.CreatedBy != "" && path.TeacherID != filter.CreatedBy {
 			continue
 		}
@@ -876,6 +882,12 @@ func (f *fakeCourseRepository) List(_ context.Context, filter domain.CourseListF
 		if len(filter.Levels) > 0 && !containsLevel(filter.Levels, course.Level) {
 			continue
 		}
+		if filter.Language != "" && course.Language != filter.Language {
+			continue
+		}
+		if !forInstrument(course.InstrumentIDs, filter.InstrumentID) {
+			continue
+		}
 		if !containsFold(course.Title, filter.Query) && !containsFold(course.Summary, filter.Query) {
 			continue
 		}
@@ -905,6 +917,20 @@ func (f *fakeCourseRepository) ListCreatorIDs(ctx context.Context, filter domain
 		}
 	}
 	return ids, nil
+}
+
+// forInstrument mirrors the repositories' instrument filter: no filter matches everything, and an
+// item for every instrument (none listed) matches any instrument.
+func forInstrument(instrumentIDs []string, instrumentID string) bool {
+	if instrumentID == "" || len(instrumentIDs) == 0 {
+		return true
+	}
+	for _, id := range instrumentIDs {
+		if id == instrumentID {
+			return true
+		}
+	}
+	return false
 }
 
 func containsLevel(levels []domain.DifficultyLevel, level domain.DifficultyLevel) bool {

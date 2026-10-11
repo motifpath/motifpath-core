@@ -32,6 +32,8 @@ type world struct {
 	users             *fakeUserRepo
 	chords            *fakeChordCatalog
 	songChartRepo     *fakeSongChartRepo
+	appConfig         *fakeAppConfigRepo
+	sp                *startingPointsWorld
 	nodes             *fakeContentNodeRepo
 	challenges        *fakeChallengeRepo
 	exercises         *fakeExerciseRepo
@@ -269,6 +271,8 @@ func newWorld() *world {
 		diagrams:          newFakeDiagramRepo(knowledge),
 		chords:            newFakeChordCatalog(),
 		songChartRepo:     newFakeSongChartRepo(),
+		appConfig:         newFakeAppConfigRepo(),
+		sp:                &startingPointsWorld{kindBySlug: map[string]string{}},
 		pgPinger:          &fakePinger{},
 		mongoPinger:       &fakePinger{},
 		userMotifID:       map[string]uuid.UUID{},
@@ -317,7 +321,10 @@ func newWorld() *world {
 	practiceSummary := application.NewPracticeSummaryService(w.instruments, w.studentPaths, w.courseEnrollments, w.paths, w.courseVersions, w.nodes, summaryRollup, w.practiceActivity, w.songChartRepo, summaryNow)
 
 	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, knowledgeNode, knowledgeEdge, media, path, application.NewPathCatalogService(w.paths, w.users), studentPath, course, courseEnrollment, instrument, voice, diagram, practiceSession, practiceSummary, application.NewChordCatalogService(w.chords),
-		application.NewSongChartService(w.songChartRepo, w.chords, w.diagrams, newFakeLanguageRepo(), newID, now), w.pgPinger, w.mongoPinger)
+		application.NewSongChartService(w.songChartRepo, w.chords, w.diagrams, newFakeLanguageRepo(), newID, now),
+		application.NewAppConfigService(w.appConfig, now, application.NewStartingPointsKey(w.instruments, newFakeLanguageRepo(), w.paths, w.courses)),
+		application.NewStartingPointsService(w.appConfig, newFakeLanguageRepo(), w.paths, w.courses),
+		w.pgPinger, w.mongoPinger)
 	return w
 }
 

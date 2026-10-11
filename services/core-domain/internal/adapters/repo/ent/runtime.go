@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/appconfig"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challenge"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challengeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/chorddefinition"
@@ -62,6 +63,12 @@ import (
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
+	appconfigFields := schema.AppConfig{}.Fields()
+	_ = appconfigFields
+	// appconfigDescID is the schema descriptor for id field.
+	appconfigDescID := appconfigFields[0].Descriptor()
+	// appconfig.IDValidator is a validator for the "id" field. It is called by the builders before save.
+	appconfig.IDValidator = appconfigDescID.Validators[0].(func(string) error)
 	challengeFields := schema.Challenge{}.Fields()
 	_ = challengeFields
 	// challengeDescShuffleExercises is the schema descriptor for shuffle_exercises field.
