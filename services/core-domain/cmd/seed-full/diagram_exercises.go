@@ -19,8 +19,10 @@ import (
 //     count, so the last one sits alone on its row);
 //   - image_recognition on the E major chord that offers Play: its sequence
 //     plays reversed and loops, and the open high E sounds though it isn't
-//     drawn (it stays an empty answer cell). The major third is correct.
-func seedDiagramExercises(ctx context.Context, teacher domain.User, exerciseSvc *application.ExerciseService, classifier *classificationSeeder, diagrams seededDiagrams, challengeID string) error {
+//     drawn (it stays an empty answer cell). The major third is correct;
+//
+// then the practice diagram exercises (seedPracticeDiagramExercises).
+func seedDiagramExercises(ctx context.Context, teacher domain.User, exerciseSvc *application.ExerciseService, chords *application.ChordCatalogService, classifier *classificationSeeder, diagrams seededDiagrams, challengeID string) error {
 	scalesID, err := classifier.skillID(ctx, "play-pentatonic-positions")
 	if err != nil {
 		return err
@@ -70,6 +72,9 @@ func seedDiagramExercises(ctx context.Context, teacher domain.User, exerciseSvc 
 		if _, err := exerciseSvc.LinkExerciseToChallenge(ctx, teacher, challengeID, exercise.ID); err != nil {
 			return fmt.Errorf("link exercise %q to challenge: %w", exercise.Title, err)
 		}
+	}
+	if _, err := seedPracticeDiagramExercises(ctx, teacher, exerciseSvc, chords, classifier, diagrams, challengeID); err != nil {
+		return fmt.Errorf("seed practice diagram exercises: %w", err)
 	}
 	return nil
 }

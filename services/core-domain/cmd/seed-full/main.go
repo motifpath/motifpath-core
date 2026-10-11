@@ -77,6 +77,7 @@ type services struct {
 	instrument  *application.InstrumentService
 	diagram     *application.DiagramService
 	songChart   *application.SongChartService
+	chords      *application.ChordCatalogService
 }
 
 func run() error {
@@ -214,6 +215,7 @@ func wireServices(res resources) (services, seedDeps) {
 		instrument:  application.NewInstrumentService(instrumentRepo, voiceRepo, languageRepo, repo.NewMongoPracticeReferenceWriter(res.mongoDB, now), newID),
 		diagram:     application.NewDiagramService(diagramRepo, instrumentRepo, knowledgeRepo, languageRepo, userRepo, repo.NewMongoPracticeReferenceWriter(res.mongoDB, now), repo.NewEntChordCatalogRepository(entClient), newID, now),
 		songChart:   application.NewSongChartService(repo.NewEntSongChartRepository(entClient), repo.NewEntChordCatalogRepository(entClient), diagramRepo, languageRepo, newID, now),
+		chords:      application.NewChordCatalogService(repo.NewEntChordCatalogRepository(entClient)),
 	}
 
 	return svc, seedDeps{
@@ -286,10 +288,11 @@ func seedAll(ctx context.Context, svc services, deps seedDeps, res resources, ad
 	}
 	log.Println("used the installed acoustic guitar and electric bass; seeded 6 basic diagram templates (regions, notes, custom labels, every shape and label display, a joined two-shape diagram, a bass scale) and 2 custom diagrams (one per teacher)")
 
-	if err := seedDiagramExercises(ctx, teacher, svc.exercise, classifier, diagrams, videoIntermediateChallenge.ID); err != nil {
+	if err := seedDiagramExercises(ctx, teacher, svc.exercise, svc.chords, classifier, diagrams, videoIntermediateChallenge.ID); err != nil {
 		return fmt.Errorf("seed diagram exercises: %w", err)
 	}
-	log.Println("seeded 3 diagram exercises (tap the roots on a diagram; pick the diagram from 3 thumbnails; hear the E major chord and tap its third), linked to the shared practice challenge")
+	log.Println("seeded 6 diagram exercises (tap the roots on a diagram; pick the diagram from 3 thumbnails; hear the E major chord and tap its third; " +
+		"a full-neck pentatonic to tap, too wide for a phone; two boxes stacked in a prompt, with a legend; a catalog A chord voicing, shown as a chord box), linked to the shared practice challenge")
 
 	lessons, err := seedDiagramLessons(ctx, teacher, svc.content, classifier, diagrams)
 	if err != nil {
