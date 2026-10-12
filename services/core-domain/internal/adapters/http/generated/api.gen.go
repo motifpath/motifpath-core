@@ -890,6 +890,7 @@ func (e CreateLearningPathRequestLevel) Valid() bool {
 const (
 	CreateMediaUploadUrlRequestContentTypeAudio CreateMediaUploadUrlRequestContentType = "audio"
 	CreateMediaUploadUrlRequestContentTypeImage CreateMediaUploadUrlRequestContentType = "image"
+	CreateMediaUploadUrlRequestContentTypeVideo CreateMediaUploadUrlRequestContentType = "video"
 )
 
 // Valid indicates whether the value is a known member of the CreateMediaUploadUrlRequestContentType enum.
@@ -899,6 +900,8 @@ func (e CreateMediaUploadUrlRequestContentType) Valid() bool {
 		return true
 	case CreateMediaUploadUrlRequestContentTypeImage:
 		return true
+	case CreateMediaUploadUrlRequestContentTypeVideo:
+		return true
 	default:
 		return false
 	}
@@ -907,6 +910,7 @@ func (e CreateMediaUploadUrlRequestContentType) Valid() bool {
 // Defines values for CreateMediaUploadUrlRequestPurpose.
 const (
 	ExerciseAsset CreateMediaUploadUrlRequestPurpose = "exercise_asset"
+	LessonVideo   CreateMediaUploadUrlRequestPurpose = "lesson_video"
 	LibraryAsset  CreateMediaUploadUrlRequestPurpose = "library_asset"
 	Thumbnail     CreateMediaUploadUrlRequestPurpose = "thumbnail"
 )
@@ -915,6 +919,8 @@ const (
 func (e CreateMediaUploadUrlRequestPurpose) Valid() bool {
 	switch e {
 	case ExerciseAsset:
+		return true
+	case LessonVideo:
 		return true
 	case LibraryAsset:
 		return true
@@ -4185,10 +4191,12 @@ type CreateLearningPathRequest struct {
 type CreateLearningPathRequestLevel string
 
 // CreateMediaUploadUrlRequest Payload requesting a presigned URL to upload a content-authoring media
-// asset (exercise/prompt image or audio, or an addition to the shared
-// image-picker library).
+// asset (exercise/prompt image or audio, an addition to the shared
+// image-picker library, a thumbnail, or a video lesson's video).
 type CreateMediaUploadUrlRequest struct {
-	// ContentType The media type of the file being uploaded.
+	// ContentType The media type of the file being uploaded. video means an MP4
+	// file (H.264 video, AAC audio), uploaded with the Content-Type
+	// video/mp4; it requires purpose lesson_video and file_size.
 	ContentType CreateMediaUploadUrlRequestContentType `json:"content_type"`
 
 	// ExerciseId The exercise this upload belongs to. Required when purpose is
@@ -4196,19 +4204,30 @@ type CreateMediaUploadUrlRequest struct {
 	ExerciseId *openapi_types.UUID `json:"exercise_id,omitempty"`
 
 	// FileName The original file name, used to derive the stored object's file
-	// extension. Not used as the object's storage key.
+	// extension. Not used as the object's storage key. For video it
+	// must end in .mp4 (any case).
 	FileName string `json:"file_name"`
+
+	// FileSize The file's size in bytes. Required when content_type is video,
+	// where it may be at most 1073741824 (1 GB); optional otherwise.
+	// When given, the issued URL only accepts an upload of exactly this
+	// many bytes.
+	FileSize *int64 `json:"file_size,omitempty"`
 
 	// Purpose What the uploaded object is for. exercise_asset requires
 	// exercise_id and stores the object under that exercise's prefix.
 	// library_asset stores the object under the shared, predefined
 	// image-picker library's prefix. thumbnail stores an image shown for
 	// a course, learning path or content node in lists and cards; its
-	// content_type must be image.
+	// content_type must be image. lesson_video stores the video a video
+	// content node plays; its content_type must be video, and it is the
+	// only purpose that accepts video.
 	Purpose CreateMediaUploadUrlRequestPurpose `json:"purpose"`
 }
 
-// CreateMediaUploadUrlRequestContentType The media type of the file being uploaded.
+// CreateMediaUploadUrlRequestContentType The media type of the file being uploaded. video means an MP4
+// file (H.264 video, AAC audio), uploaded with the Content-Type
+// video/mp4; it requires purpose lesson_video and file_size.
 type CreateMediaUploadUrlRequestContentType string
 
 // CreateMediaUploadUrlRequestPurpose What the uploaded object is for. exercise_asset requires
@@ -4216,7 +4235,9 @@ type CreateMediaUploadUrlRequestContentType string
 // library_asset stores the object under the shared, predefined
 // image-picker library's prefix. thumbnail stores an image shown for
 // a course, learning path or content node in lists and cards; its
-// content_type must be image.
+// content_type must be image. lesson_video stores the video a video
+// content node plays; its content_type must be video, and it is the
+// only purpose that accepts video.
 type CreateMediaUploadUrlRequestPurpose string
 
 // CreatePracticeSessionPlanRequest What the student chose before practising.
