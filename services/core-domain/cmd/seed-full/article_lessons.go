@@ -33,13 +33,14 @@ type textQuestion struct{ title, right, wrong string }
 
 // seedTextChallenge gives node a practice challenge of text_response
 // exercises on one skill and concept, so finishing the lesson's step goes
-// through a short practice run.
+// through a short practice run. The challenge assesses both the skill and
+// the concept, so node must be classified under both.
 func seedTextChallenge(ctx context.Context, teacher domain.User, challengeSvc *application.ChallengeService, exerciseSvc *application.ExerciseService, classifier *classificationSeeder, node domain.ContentNode, keys exerciseClassification, questions []textQuestion) error {
 	skillID, conceptID, err := classifier.ids(ctx, keys)
 	if err != nil {
 		return err
 	}
-	challenge, err := challengeSvc.CreateChallenge(ctx, teacher, node.ID, &skillID, nil, 70, nil, false, false)
+	challenge, err := challengeSvc.CreateChallenge(ctx, teacher, node.ID, &skillID, &conceptID, 70, nil, false, false)
 	if err != nil {
 		return fmt.Errorf("create challenge for %q: %w", node.Title, err)
 	}
