@@ -11,9 +11,9 @@ import (
 )
 
 // Challenge is the assessment unit for a content node: it groups exercises
-// and carries the subject (a reference to exactly one Skill or Concept tree
-// node — subject_skill_id/subject_concept_id are mutually exclusive, one of
-// them always set) and pass threshold used by the rules-based recommendation
+// and carries the subject (a Skill tree node, a Concept tree node, or one of
+// each — at least one of subject_skill_id/subject_concept_id is always set)
+// and pass threshold used by the rules-based recommendation
 // engine, plus an optional, purely informational time threshold. Remediation
 // targets are not modeled here — see Exercise's remediation_targets, which
 // attaches remediation to the specific exercise a student struggled with

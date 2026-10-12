@@ -100,16 +100,40 @@ func TestChallengeService_CreateChallenge(t *testing.T) {
 		assertHasField(t, valErr, "subject_skill_id")
 	})
 
-	t.Run("creating a challenge with both a subject skill and a subject concept is rejected", func(t *testing.T) {
+	t.Run("a teacher creates a challenge that assesses both a skill and a concept", func(t *testing.T) {
 		nodes := newFakeContentNodeRepository()
 		nodes.put(classifiedVideoNode("node-1", "skill-1", "concept-1"))
 		svc := newChallengeService(nodes, newFakeChallengeRepository(), newFakeExerciseRepository())
 
-		_, err := svc.CreateChallenge(context.Background(), teacherCaller(), "node-1", strPtr("skill-1"), strPtr("concept-1"), 70, nil, false, false)
+		challenge, err := svc.CreateChallenge(context.Background(), teacherCaller(), "node-1", strPtr("skill-1"), strPtr("concept-1"), 70, nil, false, false)
+
+		require.NoError(t, err)
+		assert.Equal(t, strPtr("skill-1"), challenge.SubjectSkillID)
+		assert.Equal(t, strPtr("concept-1"), challenge.SubjectConceptID)
+	})
+
+	t.Run("creating a challenge whose subject concept is not linked to its content node is rejected, even with a linked subject skill", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(classifiedVideoNode("node-1", "skill-1", "concept-1"))
+		svc := newChallengeService(nodes, newFakeChallengeRepository(), newFakeExerciseRepository())
+
+		_, err := svc.CreateChallenge(context.Background(), teacherCaller(), "node-1", strPtr("skill-1"), strPtr("concept-unrelated"), 70, nil, false, false)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
 		assertHasField(t, valErr, "subject_concept_id")
+	})
+
+	t.Run("creating a challenge whose subject skill is not linked to its content node is rejected, even with a linked subject concept", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(classifiedVideoNode("node-1", "skill-1", "concept-1"))
+		svc := newChallengeService(nodes, newFakeChallengeRepository(), newFakeExerciseRepository())
+
+		_, err := svc.CreateChallenge(context.Background(), teacherCaller(), "node-1", strPtr("skill-unrelated"), strPtr("concept-1"), 70, nil, false, false)
+
+		var valErr *domain.ValidationError
+		require.True(t, errors.As(err, &valErr))
+		assertHasField(t, valErr, "subject_skill_id")
 	})
 
 	t.Run("creating a challenge with a subject skill not linked to its content node is rejected", func(t *testing.T) {
@@ -388,14 +412,28 @@ func TestChallengeService_UpdateChallenge(t *testing.T) {
 		assertHasField(t, valErr, "subject_skill_id")
 	})
 
-	t.Run("updating a challenge with both a subject skill and a subject concept is rejected", func(t *testing.T) {
+	t.Run("a teacher adds a subject concept to a challenge that assesses a skill", func(t *testing.T) {
 		nodes := newFakeContentNodeRepository()
 		nodes.put(classifiedVideoNode("node-1", "skill-1", "concept-1"))
 		challenges := newFakeChallengeRepository()
 		challenges.put(domain.Challenge{ID: "challenge-1", ContentNodeID: "node-1", SubjectSkillID: strPtr("skill-1"), PassThreshold: 70})
 		svc := newChallengeService(nodes, challenges, newFakeExerciseRepository())
 
-		_, err := svc.UpdateChallenge(context.Background(), teacherCaller(), "challenge-1", strPtr("skill-1"), strPtr("concept-1"), 70, nil, false, false)
+		updated, err := svc.UpdateChallenge(context.Background(), teacherCaller(), "challenge-1", strPtr("skill-1"), strPtr("concept-1"), 70, nil, false, false)
+
+		require.NoError(t, err)
+		assert.Equal(t, strPtr("skill-1"), updated.SubjectSkillID)
+		assert.Equal(t, strPtr("concept-1"), updated.SubjectConceptID)
+	})
+
+	t.Run("updating a challenge whose subject concept is not linked to its content node is rejected, even with a linked subject skill", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(classifiedVideoNode("node-1", "skill-1", "concept-1"))
+		challenges := newFakeChallengeRepository()
+		challenges.put(domain.Challenge{ID: "challenge-1", ContentNodeID: "node-1", SubjectSkillID: strPtr("skill-1"), PassThreshold: 70})
+		svc := newChallengeService(nodes, challenges, newFakeExerciseRepository())
+
+		_, err := svc.UpdateChallenge(context.Background(), teacherCaller(), "challenge-1", strPtr("skill-1"), strPtr("concept-unrelated"), 70, nil, false, false)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))

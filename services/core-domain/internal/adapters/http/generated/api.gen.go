@@ -2892,10 +2892,10 @@ type Challenge struct {
 	// ShuffleOptions Whether each exercise's option order varies per request, independent of shuffle_exercises.
 	ShuffleOptions bool `json:"shuffle_options"`
 
-	// SubjectConceptId The concept-kind KnowledgeNode this challenge assesses. Exactly one of subject_skill_id/subject_concept_id is set.
+	// SubjectConceptId The concept-kind KnowledgeNode this challenge assesses. At least one of subject_skill_id/subject_concept_id is set; both may be.
 	SubjectConceptId *openapi_types.UUID `json:"subject_concept_id,omitempty"`
 
-	// SubjectSkillId The skill-kind KnowledgeNode this challenge assesses. Exactly one of subject_skill_id/subject_concept_id is set.
+	// SubjectSkillId The skill-kind KnowledgeNode this challenge assesses. At least one of subject_skill_id/subject_concept_id is set; both may be.
 	SubjectSkillId *openapi_types.UUID `json:"subject_skill_id,omitempty"`
 
 	// TimeThresholdMs An informational time expectation for this challenge, in
@@ -3660,8 +3660,8 @@ type CourseVersion struct {
 // CourseVersionLevelSnapshot The course's level at the moment of publishing.
 type CourseVersionLevelSnapshot string
 
-// CreateChallengeRequest Payload for creating a challenge within a content node. Exactly one
-// of subject_skill_id or subject_concept_id must be set.
+// CreateChallengeRequest Payload for creating a challenge within a content node. At least one
+// of subject_skill_id or subject_concept_id must be set; both may be set.
 type CreateChallengeRequest struct {
 	// PassThreshold The minimum score (as a percentage of exercises answered correctly)
 	// required to pass this challenge.
@@ -3678,12 +3678,12 @@ type CreateChallengeRequest struct {
 	ShuffleOptions *bool `json:"shuffle_options,omitempty"`
 
 	// SubjectConceptId The concept-kind KnowledgeNode this challenge assesses. Must be one of the parent
-	// content node's linked concept_ids. Exactly one of
+	// content node's linked concept_ids. At least one of
 	// subject_skill_id/subject_concept_id must be set.
 	SubjectConceptId *openapi_types.UUID `json:"subject_concept_id,omitempty"`
 
 	// SubjectSkillId The skill-kind KnowledgeNode this challenge assesses. Must be one of the parent
-	// content node's linked skill_ids. Exactly one of
+	// content node's linked skill_ids. At least one of
 	// subject_skill_id/subject_concept_id must be set — the subject is
 	// the minimum required for gap detection, a challenge without one
 	// produces analytically meaningless outcomes.
@@ -7326,8 +7326,8 @@ type UnauthorizedError struct {
 // configuration. Linked exercises are not part of this payload — they
 // are changed via POST/DELETE
 // /challenges/{challenge_id}/exercises/{exercise_id}, not by resending
-// them here. Exactly one of subject_skill_id or subject_concept_id
-// must be set.
+// them here. At least one of subject_skill_id or subject_concept_id
+// must be set; both may be set.
 type UpdateChallengeRequest struct {
 	// PassThreshold The minimum score (as a percentage of exercises answered
 	// correctly) required to pass this challenge.

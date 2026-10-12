@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"slices"
 	"time"
 
 	"github.com/motifpath/core-domain/internal/domain"
@@ -52,27 +53,21 @@ func (s *ChallengeService) CreateChallenge(ctx context.Context, caller domain.Us
 	return challenge, nil
 }
 
-// checkSubjectInClassification reports a domain.ValidationError unless the
-// challenge's subject id (whichever of subjectSkillID/subjectConceptID is
-// set — domain.NewChallenge already rejects "both" or "neither") appears
-// among node's own classification. Reports under subject_skill_id or
-// subject_concept_id to match whichever one was actually supplied.
+// checkSubjectInClassification reports a domain.ValidationError unless each
+// subject id that is set appears among node's own classification: the skill
+// among its skill_ids and the concept among its concept_ids. Both are
+// checked when both are set, and each failure is reported under its own
+// field.
 func checkSubjectInClassification(node domain.ContentNode, subjectSkillID, subjectConceptID *string) error {
-	if subjectSkillID != nil && *subjectSkillID != "" {
-		for _, id := range node.Classification.SkillIDs() {
-			if id == *subjectSkillID {
-				return nil
-			}
-		}
-		return domain.NewValidationError("subject_skill_id", "must be one of the parent content node's linked skill_ids")
+	var errs []domain.FieldError
+	if subjectSkillID != nil && *subjectSkillID != "" && !slices.Contains(node.Classification.SkillIDs(), *subjectSkillID) {
+		errs = append(errs, domain.FieldError{Field: "subject_skill_id", Reason: "must be one of the parent content node's linked skill_ids"})
 	}
-	if subjectConceptID != nil && *subjectConceptID != "" {
-		for _, id := range node.Classification.ConceptIDs() {
-			if id == *subjectConceptID {
-				return nil
-			}
-		}
-		return domain.NewValidationError("subject_concept_id", "must be one of the parent content node's linked concept_ids")
+	if subjectConceptID != nil && *subjectConceptID != "" && !slices.Contains(node.Classification.ConceptIDs(), *subjectConceptID) {
+		errs = append(errs, domain.FieldError{Field: "subject_concept_id", Reason: "must be one of the parent content node's linked concept_ids"})
+	}
+	if len(errs) > 0 {
+		return &domain.ValidationError{Fields: errs}
 	}
 	return nil
 }
