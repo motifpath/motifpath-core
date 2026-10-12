@@ -64,6 +64,8 @@ type ExerciseRepository interface {
 	// skipping exercises with none recorded.
 	ListCreatorCounts(ctx context.Context) ([]domain.CreatorCount, error)
 
+	SoundUseFinder
+
 	// Update replaces exercise's title, prompt, skill/concept links,
 	// image_url, audio_url, options, and estimated_duration_seconds. exercise.ID
 	// identifies which row to update; exercise.ExerciseType,
@@ -73,4 +75,13 @@ type ExerciseRepository interface {
 	// LinkContentNode/UnlinkContentNode. Returns domain.ErrNotFound if no
 	// exercise exists with the given id.
 	Update(ctx context.Context, exercise domain.Exercise) error
+}
+
+// SoundUseFinder finds the exercises that play a diagram as their sound.
+type SoundUseFinder interface {
+	// ListSoundUses returns every playback of diagramID that an exercise
+	// plays as its sound (an audio_recognition stimulus or an
+	// audio_selection option), one entry per exercise and playback, in no
+	// particular order.
+	ListSoundUses(ctx context.Context, diagramID string) ([]domain.ExerciseSoundUse, error)
 }

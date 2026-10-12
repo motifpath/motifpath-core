@@ -118,6 +118,9 @@ type world struct {
 	// assertions type-switch on it, same as every other feature file's
 	// steps already do.
 	lastResp any
+	// soundExerciseID is the listening exercise a scenario's sound steps
+	// created or seeded, so a later step reads it back by id.
+	soundExerciseID uuid.UUID
 	// lastPathSlug is the learning path the scenario last published,
 	// unpublished or replaced by slug, so a later status check reads it.
 	lastPathSlug string
@@ -309,7 +312,7 @@ func newWorld() *world {
 
 	instrument := application.NewInstrumentService(w.instruments, w.voices, newFakeLanguageRepo(), discardPracticeReferences{}, newID)
 	voice := application.NewVoiceService(w.voices, voiceSamplesBaseURL)
-	diagram := application.NewDiagramService(w.diagrams, w.instruments, w.knowledge, newFakeLanguageRepo(), w.users, discardPracticeReferences{}, w.chords, newID, now)
+	diagram := application.NewDiagramService(w.diagrams, w.instruments, w.knowledge, newFakeLanguageRepo(), w.users, discardPracticeReferences{}, w.chords, w.exercises, newID, now)
 
 	w.practiceItems = newFakeNodeItemSource(w.diagrams, w.exercises)
 	w.rollup = application.NewKnowledgeRollupService(w.knowledge, w.knowledgeEdges, w.practiceItems, w.practiceStates, now)

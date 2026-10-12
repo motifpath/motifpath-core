@@ -446,6 +446,43 @@ func (r *EntExerciseRepository) List(ctx context.Context, filter domain.Exercise
 	return domain.Page[domain.Exercise]{Items: toDomainExercises(rows), Total: total}, nil
 }
 
+// ListSoundUses narrows the exercises to those whose stored sound names
+// diagramID — an audio_recognition stimulus, or an audio_selection option —
+// and lets the domain read which playbacks they play.
+func (r *EntExerciseRepository) ListSoundUses(ctx context.Context, diagramID string) ([]domain.ExerciseSoundUse, error) {
+	rows, err := r.client.Exercise.Query().
+		Where(exercise.Or(
+			exercise.And(
+				exercise.ExerciseTypeEQ(exercise.ExerciseTypeAudioRecognition),
+				diagramRefNames(exercise.FieldDiagramRef, diagramID),
+			),
+			exercise.And(
+				exercise.ExerciseTypeEQ(exercise.ExerciseTypeAudioSelection),
+				exercise.HasOptionsWith(diagramRefNames(exerciseoption.FieldDiagramRef, diagramID)),
+			),
+		)).
+		WithOptions().
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var uses []domain.ExerciseSoundUse
+	for _, e := range toDomainExercises(rows) {
+		uses = append(uses, e.SoundUses(diagramID)...)
+	}
+	return uses, nil
+}
+
+// diagramRefNames matches rows whose JSON diagram_ref column, field, names
+// diagramID.
+func diagramRefNames(field, diagramID string) func(*sql.Selector) {
+	return func(s *sql.Selector) {
+		s.Where(sql.P(func(b *sql.Builder) {
+			b.WriteString("(").Ident(s.C(field)).WriteString(")::jsonb ->> 'diagram_id' = ").Arg(diagramID)
+		}))
+	}
+}
+
 // ListCreatorIDs returns the distinct created_by of every exercise that has
 // one recorded.
 func (r *EntExerciseRepository) ListCreatorCounts(ctx context.Context) ([]domain.CreatorCount, error) {

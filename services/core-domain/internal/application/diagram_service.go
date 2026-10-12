@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strconv"
+	"strings"
 	"time"
 	"unicode/utf8"
 
@@ -22,12 +24,13 @@ type DiagramService struct {
 	users       ports.UserRepository
 	references  ports.PracticeReferenceWriter
 	chords      ports.ChordCatalogRepository
+	sounds      ports.SoundUseFinder
 	newID       func() string
 	now         func() time.Time
 }
 
-func NewDiagramService(diagrams ports.DiagramRepository, instruments ports.InstrumentRepository, knowledge ports.KnowledgeNodeRepository, languages ports.LanguageRepository, users ports.UserRepository, references ports.PracticeReferenceWriter, chords ports.ChordCatalogRepository, newID func() string, now func() time.Time) *DiagramService {
-	return &DiagramService{diagrams: diagrams, instruments: instruments, knowledge: knowledge, languages: languages, users: users, references: references, chords: chords, newID: newID, now: now}
+func NewDiagramService(diagrams ports.DiagramRepository, instruments ports.InstrumentRepository, knowledge ports.KnowledgeNodeRepository, languages ports.LanguageRepository, users ports.UserRepository, references ports.PracticeReferenceWriter, chords ports.ChordCatalogRepository, sounds ports.SoundUseFinder, newID func() string, now func() time.Time) *DiagramService {
+	return &DiagramService{diagrams: diagrams, instruments: instruments, knowledge: knowledge, languages: languages, users: users, references: references, chords: chords, sounds: sounds, newID: newID, now: now}
 }
 
 const (
@@ -345,6 +348,9 @@ func (s *DiagramService) UpdateDiagram(ctx context.Context, caller domain.User, 
 	if err != nil {
 		return domain.Diagram{}, err
 	}
+	if err := s.checkSoundsKept(ctx, current, update, opts.Playbacks); err != nil {
+		return domain.Diagram{}, err
+	}
 	updated, err := domain.NewDiagram(current.ID, current.CreatedBy, instrument, names, offered, positions, skillIDs, conceptIDs, opts, current.CreatedAt)
 	if err != nil {
 		return domain.Diagram{}, err
@@ -440,6 +446,64 @@ func updatedDefaultPlaybackID(current domain.Diagram, update DiagramUpdate, play
 	}
 }
 
+// checkSoundsKept refuses, with domain.ErrConflict, an update whose
+// playbacks leave out a playback of current some exercise plays as its
+// sound: the exercise would otherwise silently sound different, and so
+// change its answer. The playback may still change; it only has to stay. An
+// update that doesn't replace the playbacks is never refused.
+func (s *DiagramService) checkSoundsKept(ctx context.Context, current domain.Diagram, update DiagramUpdate, playbacks []domain.DiagramPlayback) error {
+	if update.Playbacks == nil {
+		return nil
+	}
+	kept := map[string]bool{}
+	for _, p := range playbacks {
+		kept[p.ID] = true
+	}
+	removed := map[string]domain.DiagramPlayback{}
+	for _, p := range current.Playbacks {
+		if !kept[p.ID] {
+			removed[p.ID] = p
+		}
+	}
+	if len(removed) == 0 {
+		return nil
+	}
+	uses, err := s.sounds.ListSoundUses(ctx, current.ID)
+	if err != nil {
+		return err
+	}
+	byPlayback := map[string][]string{}
+	var order []string
+	for _, use := range uses {
+		if _, ok := removed[use.PlaybackID]; !ok {
+			continue
+		}
+		if byPlayback[use.PlaybackID] == nil {
+			order = append(order, use.PlaybackID)
+		}
+		byPlayback[use.PlaybackID] = append(byPlayback[use.PlaybackID], strconv.Quote(use.Title))
+	}
+	if len(order) == 0 {
+		return nil
+	}
+	slices.Sort(order)
+	parts := make([]string, len(order))
+	for i, id := range order {
+		titles := byPlayback[id]
+		slices.Sort(titles)
+		parts[i] = fmt.Sprintf("playback %s is the sound of %s", strconv.Quote(playbackName(removed[id])), strings.Join(titles, ", "))
+	}
+	return fmt.Errorf("%w: a playback an exercise plays can't be removed: %s", domain.ErrConflict, strings.Join(parts, "; "))
+}
+
+// playbackName is p's English name (or another, if it has none), else its id.
+func playbackName(p domain.DiagramPlayback) string {
+	if name := p.Names.Resolve("en"); name != "" {
+		return name
+	}
+	return p.ID
+}
+
 // editableDiagram returns the diagram caller is about to update: refused
 // with domain.ErrForbidden unless caller may edit it, and with
 // domain.ErrConflict when it is a chord voicing, which only the chord
@@ -453,7 +517,7 @@ func (s *DiagramService) editableDiagram(ctx context.Context, caller domain.User
 		return domain.Diagram{}, err
 	}
 	if current.Purpose == domain.DiagramPurposeChordVoicing {
-		return domain.Diagram{}, fmt.Errorf("%w: a chord voicing's diagram changes only through the chord catalog", domain.ErrConflict)
+		return domain.Diagram{}, fmt.Errorf("%w: this diagram is a chord voicing, which only the chord catalog can change", domain.ErrConflict)
 	}
 	return current, nil
 }
