@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/studentpath"
 )
@@ -62,6 +63,113 @@ func (_u *StudentPathUpdate) ClearArchivedAt() *StudentPathUpdate {
 	return _u
 }
 
+// SetCourseCheckpointPosition sets the "course_checkpoint_position" field.
+func (_u *StudentPathUpdate) SetCourseCheckpointPosition(v int) *StudentPathUpdate {
+	_u.mutation.ResetCourseCheckpointPosition()
+	_u.mutation.SetCourseCheckpointPosition(v)
+	return _u
+}
+
+// SetNillableCourseCheckpointPosition sets the "course_checkpoint_position" field if the given value is not nil.
+func (_u *StudentPathUpdate) SetNillableCourseCheckpointPosition(v *int) *StudentPathUpdate {
+	if v != nil {
+		_u.SetCourseCheckpointPosition(*v)
+	}
+	return _u
+}
+
+// AddCourseCheckpointPosition adds value to the "course_checkpoint_position" field.
+func (_u *StudentPathUpdate) AddCourseCheckpointPosition(v int) *StudentPathUpdate {
+	_u.mutation.AddCourseCheckpointPosition(v)
+	return _u
+}
+
+// ClearCourseCheckpointPosition clears the value of the "course_checkpoint_position" field.
+func (_u *StudentPathUpdate) ClearCourseCheckpointPosition() *StudentPathUpdate {
+	_u.mutation.ClearCourseCheckpointPosition()
+	return _u
+}
+
+// SetSummarySnapshot sets the "summary_snapshot" field.
+func (_u *StudentPathUpdate) SetSummarySnapshot(v string) *StudentPathUpdate {
+	_u.mutation.SetSummarySnapshot(v)
+	return _u
+}
+
+// SetNillableSummarySnapshot sets the "summary_snapshot" field if the given value is not nil.
+func (_u *StudentPathUpdate) SetNillableSummarySnapshot(v *string) *StudentPathUpdate {
+	if v != nil {
+		_u.SetSummarySnapshot(*v)
+	}
+	return _u
+}
+
+// ClearSummarySnapshot clears the value of the "summary_snapshot" field.
+func (_u *StudentPathUpdate) ClearSummarySnapshot() *StudentPathUpdate {
+	_u.mutation.ClearSummarySnapshot()
+	return _u
+}
+
+// SetLevelSnapshot sets the "level_snapshot" field.
+func (_u *StudentPathUpdate) SetLevelSnapshot(v studentpath.LevelSnapshot) *StudentPathUpdate {
+	_u.mutation.SetLevelSnapshot(v)
+	return _u
+}
+
+// SetNillableLevelSnapshot sets the "level_snapshot" field if the given value is not nil.
+func (_u *StudentPathUpdate) SetNillableLevelSnapshot(v *studentpath.LevelSnapshot) *StudentPathUpdate {
+	if v != nil {
+		_u.SetLevelSnapshot(*v)
+	}
+	return _u
+}
+
+// ClearLevelSnapshot clears the value of the "level_snapshot" field.
+func (_u *StudentPathUpdate) ClearLevelSnapshot() *StudentPathUpdate {
+	_u.mutation.ClearLevelSnapshot()
+	return _u
+}
+
+// SetThumbnailURLSnapshot sets the "thumbnail_url_snapshot" field.
+func (_u *StudentPathUpdate) SetThumbnailURLSnapshot(v string) *StudentPathUpdate {
+	_u.mutation.SetThumbnailURLSnapshot(v)
+	return _u
+}
+
+// SetNillableThumbnailURLSnapshot sets the "thumbnail_url_snapshot" field if the given value is not nil.
+func (_u *StudentPathUpdate) SetNillableThumbnailURLSnapshot(v *string) *StudentPathUpdate {
+	if v != nil {
+		_u.SetThumbnailURLSnapshot(*v)
+	}
+	return _u
+}
+
+// ClearThumbnailURLSnapshot clears the value of the "thumbnail_url_snapshot" field.
+func (_u *StudentPathUpdate) ClearThumbnailURLSnapshot() *StudentPathUpdate {
+	_u.mutation.ClearThumbnailURLSnapshot()
+	return _u
+}
+
+// SetCreatedBySnapshot sets the "created_by_snapshot" field.
+func (_u *StudentPathUpdate) SetCreatedBySnapshot(v uuid.UUID) *StudentPathUpdate {
+	_u.mutation.SetCreatedBySnapshot(v)
+	return _u
+}
+
+// SetNillableCreatedBySnapshot sets the "created_by_snapshot" field if the given value is not nil.
+func (_u *StudentPathUpdate) SetNillableCreatedBySnapshot(v *uuid.UUID) *StudentPathUpdate {
+	if v != nil {
+		_u.SetCreatedBySnapshot(*v)
+	}
+	return _u
+}
+
+// ClearCreatedBySnapshot clears the value of the "created_by_snapshot" field.
+func (_u *StudentPathUpdate) ClearCreatedBySnapshot() *StudentPathUpdate {
+	_u.mutation.ClearCreatedBySnapshot()
+	return _u
+}
+
 // Mutation returns the StudentPathMutation object of the builder.
 func (_u *StudentPathUpdate) Mutation() *StudentPathMutation {
 	return _u.mutation
@@ -94,7 +202,20 @@ func (_u *StudentPathUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *StudentPathUpdate) check() error {
+	if v, ok := _u.mutation.LevelSnapshot(); ok {
+		if err := studentpath.LevelSnapshotValidator(v); err != nil {
+			return &ValidationError{Name: "level_snapshot", err: fmt.Errorf(`ent: validator failed for field "StudentPath.level_snapshot": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (_u *StudentPathUpdate) sqlSave(ctx context.Context) (_node int, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(studentpath.Table, studentpath.Columns, sqlgraph.NewFieldSpec(studentpath.FieldID, field.TypeUUID))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
@@ -115,17 +236,35 @@ func (_u *StudentPathUpdate) sqlSave(ctx context.Context) (_node int, err error)
 	if _u.mutation.SourceCourseEnrollmentIDCleared() {
 		_spec.ClearField(studentpath.FieldSourceCourseEnrollmentID, field.TypeUUID)
 	}
+	if value, ok := _u.mutation.CourseCheckpointPosition(); ok {
+		_spec.SetField(studentpath.FieldCourseCheckpointPosition, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedCourseCheckpointPosition(); ok {
+		_spec.AddField(studentpath.FieldCourseCheckpointPosition, field.TypeInt, value)
+	}
 	if _u.mutation.CourseCheckpointPositionCleared() {
 		_spec.ClearField(studentpath.FieldCourseCheckpointPosition, field.TypeInt)
+	}
+	if value, ok := _u.mutation.SummarySnapshot(); ok {
+		_spec.SetField(studentpath.FieldSummarySnapshot, field.TypeString, value)
 	}
 	if _u.mutation.SummarySnapshotCleared() {
 		_spec.ClearField(studentpath.FieldSummarySnapshot, field.TypeString)
 	}
+	if value, ok := _u.mutation.LevelSnapshot(); ok {
+		_spec.SetField(studentpath.FieldLevelSnapshot, field.TypeEnum, value)
+	}
 	if _u.mutation.LevelSnapshotCleared() {
 		_spec.ClearField(studentpath.FieldLevelSnapshot, field.TypeEnum)
 	}
+	if value, ok := _u.mutation.ThumbnailURLSnapshot(); ok {
+		_spec.SetField(studentpath.FieldThumbnailURLSnapshot, field.TypeString, value)
+	}
 	if _u.mutation.ThumbnailURLSnapshotCleared() {
 		_spec.ClearField(studentpath.FieldThumbnailURLSnapshot, field.TypeString)
+	}
+	if value, ok := _u.mutation.CreatedBySnapshot(); ok {
+		_spec.SetField(studentpath.FieldCreatedBySnapshot, field.TypeUUID, value)
 	}
 	if _u.mutation.CreatedBySnapshotCleared() {
 		_spec.ClearField(studentpath.FieldCreatedBySnapshot, field.TypeUUID)
@@ -184,6 +323,113 @@ func (_u *StudentPathUpdateOne) ClearArchivedAt() *StudentPathUpdateOne {
 	return _u
 }
 
+// SetCourseCheckpointPosition sets the "course_checkpoint_position" field.
+func (_u *StudentPathUpdateOne) SetCourseCheckpointPosition(v int) *StudentPathUpdateOne {
+	_u.mutation.ResetCourseCheckpointPosition()
+	_u.mutation.SetCourseCheckpointPosition(v)
+	return _u
+}
+
+// SetNillableCourseCheckpointPosition sets the "course_checkpoint_position" field if the given value is not nil.
+func (_u *StudentPathUpdateOne) SetNillableCourseCheckpointPosition(v *int) *StudentPathUpdateOne {
+	if v != nil {
+		_u.SetCourseCheckpointPosition(*v)
+	}
+	return _u
+}
+
+// AddCourseCheckpointPosition adds value to the "course_checkpoint_position" field.
+func (_u *StudentPathUpdateOne) AddCourseCheckpointPosition(v int) *StudentPathUpdateOne {
+	_u.mutation.AddCourseCheckpointPosition(v)
+	return _u
+}
+
+// ClearCourseCheckpointPosition clears the value of the "course_checkpoint_position" field.
+func (_u *StudentPathUpdateOne) ClearCourseCheckpointPosition() *StudentPathUpdateOne {
+	_u.mutation.ClearCourseCheckpointPosition()
+	return _u
+}
+
+// SetSummarySnapshot sets the "summary_snapshot" field.
+func (_u *StudentPathUpdateOne) SetSummarySnapshot(v string) *StudentPathUpdateOne {
+	_u.mutation.SetSummarySnapshot(v)
+	return _u
+}
+
+// SetNillableSummarySnapshot sets the "summary_snapshot" field if the given value is not nil.
+func (_u *StudentPathUpdateOne) SetNillableSummarySnapshot(v *string) *StudentPathUpdateOne {
+	if v != nil {
+		_u.SetSummarySnapshot(*v)
+	}
+	return _u
+}
+
+// ClearSummarySnapshot clears the value of the "summary_snapshot" field.
+func (_u *StudentPathUpdateOne) ClearSummarySnapshot() *StudentPathUpdateOne {
+	_u.mutation.ClearSummarySnapshot()
+	return _u
+}
+
+// SetLevelSnapshot sets the "level_snapshot" field.
+func (_u *StudentPathUpdateOne) SetLevelSnapshot(v studentpath.LevelSnapshot) *StudentPathUpdateOne {
+	_u.mutation.SetLevelSnapshot(v)
+	return _u
+}
+
+// SetNillableLevelSnapshot sets the "level_snapshot" field if the given value is not nil.
+func (_u *StudentPathUpdateOne) SetNillableLevelSnapshot(v *studentpath.LevelSnapshot) *StudentPathUpdateOne {
+	if v != nil {
+		_u.SetLevelSnapshot(*v)
+	}
+	return _u
+}
+
+// ClearLevelSnapshot clears the value of the "level_snapshot" field.
+func (_u *StudentPathUpdateOne) ClearLevelSnapshot() *StudentPathUpdateOne {
+	_u.mutation.ClearLevelSnapshot()
+	return _u
+}
+
+// SetThumbnailURLSnapshot sets the "thumbnail_url_snapshot" field.
+func (_u *StudentPathUpdateOne) SetThumbnailURLSnapshot(v string) *StudentPathUpdateOne {
+	_u.mutation.SetThumbnailURLSnapshot(v)
+	return _u
+}
+
+// SetNillableThumbnailURLSnapshot sets the "thumbnail_url_snapshot" field if the given value is not nil.
+func (_u *StudentPathUpdateOne) SetNillableThumbnailURLSnapshot(v *string) *StudentPathUpdateOne {
+	if v != nil {
+		_u.SetThumbnailURLSnapshot(*v)
+	}
+	return _u
+}
+
+// ClearThumbnailURLSnapshot clears the value of the "thumbnail_url_snapshot" field.
+func (_u *StudentPathUpdateOne) ClearThumbnailURLSnapshot() *StudentPathUpdateOne {
+	_u.mutation.ClearThumbnailURLSnapshot()
+	return _u
+}
+
+// SetCreatedBySnapshot sets the "created_by_snapshot" field.
+func (_u *StudentPathUpdateOne) SetCreatedBySnapshot(v uuid.UUID) *StudentPathUpdateOne {
+	_u.mutation.SetCreatedBySnapshot(v)
+	return _u
+}
+
+// SetNillableCreatedBySnapshot sets the "created_by_snapshot" field if the given value is not nil.
+func (_u *StudentPathUpdateOne) SetNillableCreatedBySnapshot(v *uuid.UUID) *StudentPathUpdateOne {
+	if v != nil {
+		_u.SetCreatedBySnapshot(*v)
+	}
+	return _u
+}
+
+// ClearCreatedBySnapshot clears the value of the "created_by_snapshot" field.
+func (_u *StudentPathUpdateOne) ClearCreatedBySnapshot() *StudentPathUpdateOne {
+	_u.mutation.ClearCreatedBySnapshot()
+	return _u
+}
+
 // Mutation returns the StudentPathMutation object of the builder.
 func (_u *StudentPathUpdateOne) Mutation() *StudentPathMutation {
 	return _u.mutation
@@ -229,7 +475,20 @@ func (_u *StudentPathUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *StudentPathUpdateOne) check() error {
+	if v, ok := _u.mutation.LevelSnapshot(); ok {
+		if err := studentpath.LevelSnapshotValidator(v); err != nil {
+			return &ValidationError{Name: "level_snapshot", err: fmt.Errorf(`ent: validator failed for field "StudentPath.level_snapshot": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (_u *StudentPathUpdateOne) sqlSave(ctx context.Context) (_node *StudentPath, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(studentpath.Table, studentpath.Columns, sqlgraph.NewFieldSpec(studentpath.FieldID, field.TypeUUID))
 	id, ok := _u.mutation.ID()
 	if !ok {
@@ -267,17 +526,35 @@ func (_u *StudentPathUpdateOne) sqlSave(ctx context.Context) (_node *StudentPath
 	if _u.mutation.SourceCourseEnrollmentIDCleared() {
 		_spec.ClearField(studentpath.FieldSourceCourseEnrollmentID, field.TypeUUID)
 	}
+	if value, ok := _u.mutation.CourseCheckpointPosition(); ok {
+		_spec.SetField(studentpath.FieldCourseCheckpointPosition, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedCourseCheckpointPosition(); ok {
+		_spec.AddField(studentpath.FieldCourseCheckpointPosition, field.TypeInt, value)
+	}
 	if _u.mutation.CourseCheckpointPositionCleared() {
 		_spec.ClearField(studentpath.FieldCourseCheckpointPosition, field.TypeInt)
+	}
+	if value, ok := _u.mutation.SummarySnapshot(); ok {
+		_spec.SetField(studentpath.FieldSummarySnapshot, field.TypeString, value)
 	}
 	if _u.mutation.SummarySnapshotCleared() {
 		_spec.ClearField(studentpath.FieldSummarySnapshot, field.TypeString)
 	}
+	if value, ok := _u.mutation.LevelSnapshot(); ok {
+		_spec.SetField(studentpath.FieldLevelSnapshot, field.TypeEnum, value)
+	}
 	if _u.mutation.LevelSnapshotCleared() {
 		_spec.ClearField(studentpath.FieldLevelSnapshot, field.TypeEnum)
 	}
+	if value, ok := _u.mutation.ThumbnailURLSnapshot(); ok {
+		_spec.SetField(studentpath.FieldThumbnailURLSnapshot, field.TypeString, value)
+	}
 	if _u.mutation.ThumbnailURLSnapshotCleared() {
 		_spec.ClearField(studentpath.FieldThumbnailURLSnapshot, field.TypeString)
+	}
+	if value, ok := _u.mutation.CreatedBySnapshot(); ok {
+		_spec.SetField(studentpath.FieldCreatedBySnapshot, field.TypeUUID, value)
 	}
 	if _u.mutation.CreatedBySnapshotCleared() {
 		_spec.ClearField(studentpath.FieldCreatedBySnapshot, field.TypeUUID)
