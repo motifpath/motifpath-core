@@ -3,9 +3,9 @@ package domain
 import "time"
 
 // Challenge is the assessment unit for a content node: it groups exercises
-// and carries the subject (a reference to exactly one Skill or Concept tree
-// node — SubjectSkillID/SubjectConceptID are mutually exclusive, exactly one
-// always set) and pass threshold used by the rules-based recommendation
+// and carries the subject (a Skill tree node, a Concept tree node, or one of
+// each — at least one of SubjectSkillID/SubjectConceptID is always set) and
+// pass threshold used by the rules-based recommendation
 // engine, plus an optional, purely informational time threshold.
 // Remediation targets are not modeled here — see Exercise.RemediationTargets,
 // which attaches remediation to the specific exercise a student struggled
@@ -14,7 +14,7 @@ type Challenge struct {
 	ID            string
 	ContentNodeID string
 	// SubjectSkillID/SubjectConceptID reference a node in the shared
-	// Skill/Concept tree — exactly one is set. Whether the referenced id
+	// Skill/Concept tree — at least one is set. Whether each referenced id
 	// actually belongs to the parent ContentNode's own classification is an
 	// application-layer concern, requiring a repository round trip this
 	// constructor can't perform.
@@ -83,21 +83,17 @@ func (c Challenge) Update(subjectSkillID, subjectConceptID *string, passThreshol
 	return updated, nil
 }
 
-// validateChallengeContent checks that exactly one of subjectSkillID/
+// validateChallengeContent checks that at least one of subjectSkillID/
 // subjectConceptID is set (non-nil and non-empty), plus passThreshold and
-// timeThresholdMS. When neither is set, the failure is reported against
-// subject_skill_id; when both are set, against subject_concept_id — the
-// shape the merged Gherkin scenarios pin for each case.
+// timeThresholdMS. A challenge may assess a skill and a concept at once.
+// When neither is set, the failure is reported against subject_skill_id.
 func validateChallengeContent(subjectSkillID, subjectConceptID *string, passThreshold int, timeThresholdMS *int) []FieldError {
 	var errs []FieldError
 
 	hasSkill := subjectSkillID != nil && *subjectSkillID != ""
 	hasConcept := subjectConceptID != nil && *subjectConceptID != ""
-	switch {
-	case !hasSkill && !hasConcept:
-		errs = append(errs, FieldError{Field: "subject_skill_id", Reason: "exactly one of subject_skill_id or subject_concept_id must be set"})
-	case hasSkill && hasConcept:
-		errs = append(errs, FieldError{Field: "subject_concept_id", Reason: "exactly one of subject_skill_id or subject_concept_id must be set"})
+	if !hasSkill && !hasConcept {
+		errs = append(errs, FieldError{Field: "subject_skill_id", Reason: "at least one of subject_skill_id or subject_concept_id must be set"})
 	}
 
 	if passThreshold < 1 || passThreshold > 100 {

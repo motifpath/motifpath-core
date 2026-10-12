@@ -344,6 +344,34 @@ func TestEntChallengeRepository_CreateAndGet(t *testing.T) {
 	assert.Equal(t, challenge, got)
 }
 
+func TestEntChallengeRepository_SubjectSkillAndConceptBothPersist(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	nodeRepo := NewEntContentNodeRepository(client)
+	repo := NewEntChallengeRepository(client)
+
+	node := seedContentNode(t, ctx, nodeRepo)
+	challenge := domain.Challenge{
+		ID: uuid.NewString(), ContentNodeID: node.ID, SubjectSkillID: strPtr(uuid.NewString()), PassThreshold: 70,
+		CreatedAt: fixedAt,
+	}
+	require.NoError(t, repo.Create(ctx, challenge))
+
+	challenge.SubjectConceptID = strPtr(uuid.NewString())
+	require.NoError(t, repo.Update(ctx, challenge))
+	got, err := repo.GetByID(ctx, challenge.ID)
+	require.NoError(t, err)
+	assert.Equal(t, challenge.SubjectSkillID, got.SubjectSkillID)
+	assert.Equal(t, challenge.SubjectConceptID, got.SubjectConceptID)
+
+	challenge.SubjectSkillID = nil
+	require.NoError(t, repo.Update(ctx, challenge))
+	got, err = repo.GetByID(ctx, challenge.ID)
+	require.NoError(t, err)
+	assert.Nil(t, got.SubjectSkillID)
+	assert.Equal(t, challenge.SubjectConceptID, got.SubjectConceptID)
+}
+
 func TestEntChallengeRepository_CreateWithShufflingAndListByContentNodeID(t *testing.T) {
 	client := setupPostgres(t)
 	ctx := context.Background()

@@ -17,12 +17,12 @@ func registerChallengeSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" creates a challenge for "([^"]+)" with subject skill "([^"]+)" and pass threshold (\d+)$`, w.createsChallengeWithSubjectSkill)
 	sc.Step(`^"([^"]+)" creates a challenge for "([^"]+)" with subject skill "([^"]+)", pass threshold (\d+), and time threshold (\d+) ms$`, w.createsChallengeWithTimeThreshold)
 	sc.Step(`^"([^"]+)" creates a challenge for "([^"]+)" with subject skill "([^"]+)", pass threshold (\d+), shuffled exercises, and shuffled options$`, w.createsChallengeWithShuffle)
+	sc.Step(`^"([^"]+)" creates a challenge for "([^"]+)" with subject skill "([^"]+)", subject concept "([^"]+)", and pass threshold (\d+)$`, w.createsChallengeWithSkillAndConcept)
 	sc.Step(`^"([^"]+)" retrieves the challenge "([^"]+)"$`, w.retrievesChallenge)
 	sc.Step(`^"([^"]+)" lists the challenges for content node "([^"]+)"$`, w.listsContentNodeChallenges)
 	sc.Step(`^"([^"]+)" lists the challenges for a content node ID that does not exist$`, w.listsContentNodeChallengesMissing)
 	sc.Step(`^an unauthenticated request attempts to list the challenges for content node "([^"]+)"$`, w.unauthListsContentNodeChallenges)
 	sc.Step(`^"([^"]+)" submits a create challenge request with neither subject_skill_id nor subject_concept_id set$`, w.submitsChallengeMissingSubject)
-	sc.Step(`^"([^"]+)" submits a create challenge request with both subject_skill_id and subject_concept_id set$`, w.submitsChallengeBothSubjects)
 	sc.Step(`^"([^"]+)" submits a create challenge request with the pass_threshold field omitted$`, w.submitsChallengeMissingPassThreshold)
 	sc.Step(`^"([^"]+)" submits a create challenge request with pass_threshold (\d+)$`, w.submitsChallengeWithPassThreshold)
 	sc.Step(`^"([^"]+)" creates a challenge for a content node ID that does not exist$`, w.createsChallengeForMissingNode)
@@ -46,11 +46,11 @@ func registerChallengeSteps(sc *godog.ScenarioContext, w *world) {
 
 	sc.Step(`^"([^"]+)" updates challenge "([^"]+)" with subject skill "([^"]+)" and pass threshold (\d+)$`, w.updatesChallengeWithSubjectSkill)
 	sc.Step(`^"([^"]+)" updates challenge "([^"]+)" with subject concept "([^"]+)" and pass threshold (\d+)$`, w.updatesChallengeWithSubjectConcept)
+	sc.Step(`^"([^"]+)" updates challenge "([^"]+)" with subject skill "([^"]+)", subject concept "([^"]+)", and pass threshold (\d+)$`, w.updatesChallengeWithSkillAndConcept)
 	sc.Step(`^"([^"]+)" updates challenge "([^"]+)" with subject skill "([^"]+)" and pass threshold (\d+) and time threshold (\d+) ms$`, w.updatesChallengeWithTimeThreshold)
 	sc.Step(`^"([^"]+)" updates challenge "([^"]+)" with subject skill "([^"]+)" and pass threshold (\d+) and the time_threshold_ms field omitted$`, w.updatesChallengeWithSubjectSkill)
 	sc.Step(`^"([^"]+)" updates challenge "([^"]+)" with subject skill "([^"]+)", pass threshold (\d+), shuffled exercises, and shuffled options$`, w.updatesChallengeWithShuffle)
 	sc.Step(`^"([^"]+)" submits an update challenge request for "([^"]+)" with neither subject_skill_id nor subject_concept_id set$`, w.submitsUpdateChallengeMissingSubject)
-	sc.Step(`^"([^"]+)" submits an update challenge request for "([^"]+)" with both subject_skill_id and subject_concept_id set$`, w.submitsUpdateChallengeBothSubjects)
 	sc.Step(`^"([^"]+)" submits an update challenge request for "([^"]+)" with pass_threshold (\d+)$`, w.submitsUpdateChallengeWithPassThreshold)
 	sc.Step(`^"([^"]+)" attempts to update a challenge with an ID that does not exist$`, w.attemptsUpdateMissingChallenge)
 	sc.Step(`^"([^"]+)" attempts to update challenge "([^"]+)" with subject skill "([^"]+)"$`, w.attemptsUpdateChallenge)
@@ -58,6 +58,7 @@ func registerChallengeSteps(sc *godog.ScenarioContext, w *world) {
 
 	sc.Step(`^the challenge's subject skill is "([^"]+)"$`, w.challengeSubjectSkillIs)
 	sc.Step(`^the challenge's subject concept is "([^"]+)"$`, w.challengeSubjectConceptIs)
+	sc.Step(`^the challenge has no subject skill$`, w.challengeHasNoSubjectSkill)
 	sc.Step(`^the challenge's pass threshold is (\d+)$`, w.challengePassThresholdIs)
 	sc.Step(`^the challenge's time_threshold_ms is (\d+)$`, w.challengeTimeThresholdIs)
 }
@@ -147,6 +148,20 @@ func (w *world) updatesChallengeWithSubjectConcept(name, challengeSlug, conceptN
 	return err
 }
 
+func (w *world) updatesChallengeWithSkillAndConcept(name, challengeSlug, skillName, conceptName, passThresholdStr string) error {
+	passThreshold, err := parseInt(passThresholdStr)
+	if err != nil {
+		return err
+	}
+	skillID, conceptID := w.skillIDFor(skillName), w.conceptIDFor(conceptName)
+	resp, err := w.handler.UpdateChallenge(w.ctx(), generated.UpdateChallengeRequestObject{
+		ChallengeId: challengeID(challengeSlug),
+		Body:        &generated.UpdateChallengeRequest{SubjectSkillId: &skillID, SubjectConceptId: &conceptID, PassThreshold: passThreshold},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
 func (w *world) updatesChallengeWithTimeThreshold(name, challengeSlug, skillName, passThresholdStr, timeThresholdStr string) error {
 	passThreshold, err := parseInt(passThresholdStr)
 	if err != nil {
@@ -195,17 +210,6 @@ func (w *world) submitsUpdateChallengeMissingSubject(name, challengeSlug string)
 	return err
 }
 
-func (w *world) submitsUpdateChallengeBothSubjects(name, challengeSlug string) error {
-	skillID := w.skillIDFor("triad-shapes")
-	conceptID := w.conceptIDFor("chord-theory")
-	resp, err := w.handler.UpdateChallenge(w.ctx(), generated.UpdateChallengeRequestObject{
-		ChallengeId: challengeID(challengeSlug),
-		Body:        &generated.UpdateChallengeRequest{SubjectSkillId: &skillID, SubjectConceptId: &conceptID, PassThreshold: 70},
-	})
-	w.lastResp, w.lastErr = resp, err
-	return err
-}
-
 func (w *world) submitsUpdateChallengeWithPassThreshold(name, challengeSlug, passThresholdStr string) error {
 	passThreshold, err := parseInt(passThresholdStr)
 	if err != nil {
@@ -245,10 +249,22 @@ func (w *world) unauthUpdatesChallenge(challengeSlug, skillName string) error {
 	return w.attemptsUpdateChallenge("", challengeSlug, skillName)
 }
 
+// savedChallenge returns the challenge from the last create (201) or update
+// (200) response, so the subject assertions read either.
+func (w *world) savedChallenge() (generated.Challenge, error) {
+	switch resp := w.lastResp.(type) {
+	case generated.CreateChallenge201JSONResponse:
+		return generated.Challenge(resp), nil
+	case generated.UpdateChallenge200JSONResponse:
+		return generated.Challenge(resp), nil
+	}
+	return generated.Challenge{}, fmt.Errorf("expected a 201 or 200 challenge response, got %#v (err=%v)", w.lastResp, w.lastErr)
+}
+
 func (w *world) challengeSubjectSkillIs(want string) error {
-	resp, ok := w.lastResp.(generated.UpdateChallenge200JSONResponse)
-	if !ok {
-		return fmt.Errorf("expected a 200 response, got %#v (err=%v)", w.lastResp, w.lastErr)
+	resp, err := w.savedChallenge()
+	if err != nil {
+		return err
 	}
 	wantID := w.skillIDFor(want)
 	if resp.SubjectSkillId == nil || *resp.SubjectSkillId != wantID {
@@ -258,13 +274,24 @@ func (w *world) challengeSubjectSkillIs(want string) error {
 }
 
 func (w *world) challengeSubjectConceptIs(want string) error {
-	resp, ok := w.lastResp.(generated.UpdateChallenge200JSONResponse)
-	if !ok {
-		return fmt.Errorf("expected a 200 response, got %#v (err=%v)", w.lastResp, w.lastErr)
+	resp, err := w.savedChallenge()
+	if err != nil {
+		return err
 	}
 	wantID := w.conceptIDFor(want)
 	if resp.SubjectConceptId == nil || *resp.SubjectConceptId != wantID {
 		return fmt.Errorf("expected subject_concept_id %s, got %#v", wantID, resp.SubjectConceptId)
+	}
+	return nil
+}
+
+func (w *world) challengeHasNoSubjectSkill() error {
+	resp, err := w.savedChallenge()
+	if err != nil {
+		return err
+	}
+	if resp.SubjectSkillId != nil {
+		return fmt.Errorf("expected no subject_skill_id, got %s", *resp.SubjectSkillId)
 	}
 	return nil
 }
@@ -365,17 +392,6 @@ func (w *world) submitsChallengeMissingSubject(string) error {
 	resp, err := w.handler.CreateChallenge(w.ctx(), generated.CreateChallengeRequestObject{
 		ContentNodeId: nodeID("intro-to-triads"),
 		Body:          &generated.CreateChallengeRequest{PassThreshold: 70},
-	})
-	w.lastResp, w.lastErr = resp, err
-	return err
-}
-
-func (w *world) submitsChallengeBothSubjects(string) error {
-	skillID := w.skillIDFor("triad-shapes")
-	conceptID := w.conceptIDFor("chord-theory")
-	resp, err := w.handler.CreateChallenge(w.ctx(), generated.CreateChallengeRequestObject{
-		ContentNodeId: nodeID("intro-to-triads"),
-		Body:          &generated.CreateChallengeRequest{SubjectSkillId: &skillID, SubjectConceptId: &conceptID, PassThreshold: 70},
 	})
 	w.lastResp, w.lastErr = resp, err
 	return err
@@ -493,6 +509,20 @@ func (w *world) createsChallengeWithShuffle(name, nodeSlug, skillName, passThres
 			SubjectSkillId: &skillID, PassThreshold: passThreshold,
 			ShuffleExercises: &shuffle, ShuffleOptions: &shuffle,
 		},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) createsChallengeWithSkillAndConcept(name, nodeSlug, skillName, conceptName, passThresholdStr string) error {
+	passThreshold, err := parseInt(passThresholdStr)
+	if err != nil {
+		return err
+	}
+	skillID, conceptID := w.skillIDFor(skillName), w.conceptIDFor(conceptName)
+	resp, err := w.handler.CreateChallenge(w.ctx(), generated.CreateChallengeRequestObject{
+		ContentNodeId: nodeID(nodeSlug),
+		Body:          &generated.CreateChallengeRequest{SubjectSkillId: &skillID, SubjectConceptId: &conceptID, PassThreshold: passThreshold},
 	})
 	w.lastResp, w.lastErr = resp, err
 	return err
