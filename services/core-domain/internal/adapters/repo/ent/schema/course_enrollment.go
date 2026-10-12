@@ -28,8 +28,9 @@ func (CourseEnrollment) Fields() []ent.Field {
 		field.UUID("course_id", uuid.UUID{}).
 			Immutable(),
 
-		field.String("course_title").
-			Immutable(),
+		// course_title, course_thumbnail_url and course_version_number change
+		// only when the learner updates the enrollment to a newer version.
+		field.String("course_title"),
 
 		// course_thumbnail_url is the pinned version's thumbnail, copied at
 		// enrollment like course_title; NULL = none.
@@ -37,8 +38,7 @@ func (CourseEnrollment) Fields() []ent.Field {
 			Optional().
 			Nillable(),
 
-		field.Int("course_version_number").
-			Immutable(),
+		field.Int("course_version_number"),
 
 		field.Enum("status").
 			Values("active", "completed", "abandoned").
