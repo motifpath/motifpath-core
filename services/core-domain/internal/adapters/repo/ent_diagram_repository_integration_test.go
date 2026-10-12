@@ -235,6 +235,13 @@ func TestEntDiagramRepository_List(t *testing.T) {
 		Positions: []domain.Position{{ID: uuid.NewString(), Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtr(5), Fret: intPtr(7)}},
 		Skills:    []domain.KnowledgeNode{skillA}, Concepts: []domain.KnowledgeNode{conceptB}, CreatedAt: fixedAt, UpdatedAt: fixedAt,
 	}
+	// Only theirs plays, so a listening exercise could take it as its sound.
+	strumID := uuid.NewString()
+	theirs.Playbacks = []domain.DiagramPlayback{{
+		ID: strumID, Names: domain.LocalizedText{"en": "Strum", "pt_BR": "Batida"}, TempoBPM: 90, TimeSignature: domain.DefaultTimeSignature,
+		Steps: []domain.SequenceStep{{PositionIDs: []string{theirs.Positions[0].ID}, Value: domain.NoteValue{Num: 1, Den: 1}, Strum: domain.StrumDown}},
+	}}
+	theirs.DefaultPlaybackID = &strumID
 	for _, d := range []domain.Diagram{basic, mine, theirs} {
 		require.NoError(t, diagrams.Create(ctx, d))
 	}
@@ -256,6 +263,8 @@ func TestEntDiagramRepository_List(t *testing.T) {
 		{name: "filters combine with AND", filter: domain.DiagramListFilter{InstrumentID: guitar.ID, SkillIDs: []string{skillB.ID}}, want: []domain.Diagram{}},
 		{name: "by language: only diagrams named in it", filter: domain.DiagramListFilter{Language: "pt_BR"}, want: []domain.Diagram{theirs}},
 		{name: "by root note: only an exact recorded root", filter: domain.DiagramListFilter{RootNote: "A"}, want: []domain.Diagram{basic}},
+		{name: "playable: only diagrams with a playback", filter: domain.DiagramListFilter{Playable: true}, want: []domain.Diagram{theirs}},
+		{name: "playable combines with the other filters", filter: domain.DiagramListFilter{Playable: true, RootNote: "A"}, want: []domain.Diagram{}},
 		{name: "by name: part of a name in any language, ignoring case and accents", filter: domain.DiagramListFilter{Name: "DELES"}, want: []domain.Diagram{theirs}},
 		{name: "by name: combines with visibility", filter: domain.DiagramListFilter{Name: "i", VisibleTo: me}, want: []domain.Diagram{mine, basic}},
 		{name: "ordered by the names a pt_BR reader sees", filter: domain.DiagramListFilter{Locale: "pt_BR"}, want: []domain.Diagram{theirs, mine, basic}},

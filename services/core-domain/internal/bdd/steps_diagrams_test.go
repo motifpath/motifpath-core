@@ -3,6 +3,7 @@
 package bdd
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -80,6 +81,12 @@ func registerDiagramSteps(sc *godog.ScenarioContext, w *world) {
 
 	sc.Step(`^"([^"]+)" lists diagrams filtered by instrument "([^"]+)"$`, w.listsDiagramsByInstrument)
 	sc.Step(`^"([^"]+)" lists all diagrams$`, w.listsAllDiagrams)
+	sc.Step(`^a basic diagram "([^"]+)" exists on instrument "([^"]+)" with a playback "([^"]+)"$`, w.aBasicDiagramWithPlayback)
+	sc.Step(`^a basic diagram "([^"]+)" exists on instrument "([^"]+)" with no playbacks$`, w.aBasicDiagramWithoutPlaybacks)
+	sc.Step(`^a basic diagram "([^"]+)" exists on instrument "([^"]+)" with root note "([^"]+)" and a playback "([^"]+)"$`, w.aBasicDiagramWithRootAndPlayback)
+	sc.Step(`^a basic diagram "([^"]+)" exists on instrument "([^"]+)" with root note "([^"]+)" and no playbacks$`, w.aBasicDiagramWithRoot)
+	sc.Step(`^"([^"]+)" lists diagrams that can play$`, w.listsPlayableDiagrams)
+	sc.Step(`^"([^"]+)" lists diagrams that can play with root note "([^"]+)"$`, w.listsPlayableDiagramsWithRoot)
 	sc.Step(`^"([^"]+)" lists diagrams of kind "([^"]+)"$`, w.listsDiagramsOfKind)
 	sc.Step(`^"([^"]+)" lists diagrams filtered by creator "([^"]+)"$`, w.listsDiagramsByCreator)
 	sc.Step(`^"([^"]+)" lists diagrams whose name contains "([^"]+)"$`, w.listsDiagramsNamed)
@@ -201,6 +208,55 @@ func (w *world) aBasicDiagramNamedWithRoot(slug, instrumentName, englishName, po
 func (w *world) aCustomDiagramNamedWithRoot(slug, instrumentName, creator, englishName, root string) error {
 	owner := w.ensureRegistered(creator, domain.RoleTeacher).String()
 	return w.seedDiagram(slug, map[string]string{"en": englishName}, instrumentName, domain.DiagramKindCustom, owner, &root)
+}
+
+func (w *world) aBasicDiagramWithPlayback(slug, instrumentName, playbackName string) error {
+	return w.seedDiagramWithPlaybacks(slug, instrumentName, nil, playbackName)
+}
+
+func (w *world) aBasicDiagramWithoutPlaybacks(slug, instrumentName string) error {
+	return w.seedDiagramWithPlaybacks(slug, instrumentName, nil, "")
+}
+
+func (w *world) aBasicDiagramWithRootAndPlayback(slug, instrumentName, root, playbackName string) error {
+	return w.seedDiagramWithPlaybacks(slug, instrumentName, &root, playbackName)
+}
+
+func (w *world) listsPlayableDiagrams(string) error {
+	playable := true
+	return w.listDiagrams(generated.ListDiagramsParams{Playable: &playable})
+}
+
+func (w *world) listsPlayableDiagramsWithRoot(_, root string) error {
+	playable := true
+	return w.listDiagrams(generated.ListDiagramsParams{Playable: &playable, RootNote: &root})
+}
+
+// seedDiagramWithPlaybacks seeds a basic one-position diagram with root as its
+// recorded root note (nil for none) and, unless playbackName is empty, one
+// playback of that name sounding its position.
+func (w *world) seedDiagramWithPlaybacks(slug, instrumentName string, root *string, playbackName string) error {
+	if err := w.seedDiagram(slug, bothLanguages(slug), instrumentName, domain.DiagramKindBasic, w.curatorID(), root); err != nil {
+		return err
+	}
+	if playbackName == "" {
+		return nil
+	}
+	diagram, err := w.diagrams.GetByID(context.Background(), diagramID(slug).String())
+	if err != nil {
+		return err
+	}
+	diagram.Playbacks = []domain.DiagramPlayback{{
+		ID:            deterministicUUID("playback", slug).String(),
+		Names:         domain.LocalizedText{"en": playbackName, "pt_BR": playbackName},
+		TempoBPM:      90,
+		TimeSignature: domain.DefaultTimeSignature,
+		Steps:         []domain.SequenceStep{{PositionIDs: []string{diagram.Positions[0].ID}, Value: domain.NoteValue{Num: 1, Den: 1}, Strum: domain.StrumDown}},
+	}}
+	defaultID := diagram.Playbacks[0].ID
+	diagram.DefaultPlaybackID = &defaultID
+	w.diagrams.put(diagram)
+	return nil
 }
 
 func (w *world) seedOnePositionDiagram(slug string, names map[string]string, instrumentName string, kind domain.DiagramKind, owner string) error {

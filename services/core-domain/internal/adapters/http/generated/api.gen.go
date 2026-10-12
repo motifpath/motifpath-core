@@ -8080,6 +8080,12 @@ type ListDiagramsParams struct {
 	// Diagram.purpose). Omitted, it is general, so chord voicings are
 	// listed only when asked for; any lists both.
 	Purpose *ListDiagramsParamsPurpose `form:"purpose,omitempty" json:"purpose,omitempty"`
+
+	// Playable true lists only diagrams with at least one playback, the ones a
+	// listening exercise can play as its sound; the total counts only
+	// those. Omitted or false lists diagrams whether they have
+	// playbacks or not.
+	Playable *bool `form:"playable,omitempty" json:"playable,omitempty"`
 }
 
 // ListDiagramsParamsKind defines parameters for ListDiagrams.
@@ -11177,6 +11183,19 @@ func (siw *ServerInterfaceWrapper) ListDiagrams(w http.ResponseWriter, r *http.R
 			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "purpose"})
 		} else {
 			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "purpose", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "playable" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "playable", r.URL.Query(), &params.Playable, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "playable"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "playable", Err: err})
 		}
 		return
 	}

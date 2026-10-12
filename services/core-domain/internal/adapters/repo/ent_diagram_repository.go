@@ -239,6 +239,10 @@ func diagramListPredicates(filter domain.DiagramListFilter) ([]predicate.Diagram
 	if filter.Purpose != "" && filter.Purpose != domain.DiagramPurposeFilterAny {
 		predicates = append(predicates, diagram.PurposeEQ(diagram.Purpose(filter.Purpose)))
 	}
+	// A diagram has a default playback exactly when it has playbacks.
+	if filter.Playable {
+		predicates = append(predicates, diagram.DefaultPlaybackIDNotNil())
+	}
 	byID := []struct {
 		value string
 		match func(uuid.UUID) predicate.Diagram

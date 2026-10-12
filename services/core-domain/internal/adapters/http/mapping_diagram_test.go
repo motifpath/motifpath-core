@@ -313,4 +313,16 @@ func TestDiagramPurposeMapping(t *testing.T) {
 			assert.Equal(t, want, got.Purpose, string(param))
 		}
 	})
+
+	t.Run("the playable list parameter maps onto the filter", func(t *testing.T) {
+		for _, playable := range []bool{true, false} {
+			got, err := diagramListFilter(generated.ListDiagramsParams{Playable: &playable})
+
+			require.NoError(t, err)
+			assert.Equal(t, playable, got.Playable)
+		}
+		got, err := diagramListFilter(generated.ListDiagramsParams{})
+		require.NoError(t, err)
+		assert.False(t, got.Playable)
+	})
 }
