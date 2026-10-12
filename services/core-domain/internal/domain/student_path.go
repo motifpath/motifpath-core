@@ -76,6 +76,50 @@ func NewStudentPathFromTemplate(id, studentID string, template LearningPath, ass
 	}, nil
 }
 
+// DiffersFromTemplate reports whether template, as it is now, would give a
+// different copy than sp: other lessons, another order or other section
+// labels, or another title, summary, level or thumbnail. A lesson's own
+// title and content are not compared, because a copy always shows them
+// live.
+func (sp StudentPath) DiffersFromTemplate(template LearningPath) bool {
+	if sp.Title != template.Title ||
+		!equalOptional(sp.SummarySnapshot, template.Summary) ||
+		!equalOptional(sp.LevelSnapshot, template.Level) ||
+		!equalOptional(sp.ThumbnailURLSnapshot, template.ThumbnailURL) ||
+		len(sp.Items) != len(template.Items) {
+		return true
+	}
+	for i, item := range sp.Items {
+		latest := template.Items[i]
+		if item.ContentNodeID != latest.ContentNodeID || !equalOptional(item.SectionLabel, latest.SectionLabel) {
+			return true
+		}
+	}
+	return false
+}
+
+// RefreshedFrom returns sp with template's current items and presentation,
+// keeping who owns, assigned and archived it and which course part it is.
+// contentNodeVersionIDs follows NewStudentPathFromTemplate's contract: one
+// latest published version per content node the template references.
+func (sp StudentPath) RefreshedFrom(template LearningPath, contentNodeVersionIDs map[string]string) (StudentPath, error) {
+	fresh, err := NewStudentPathFromTemplate(sp.ID, sp.StudentID, template, sp.AssignedBy, sp.AssignedAt, contentNodeVersionIDs)
+	if err != nil {
+		return StudentPath{}, err
+	}
+	fresh.ArchivedAt = sp.ArchivedAt
+	fresh.SourceCourseEnrollmentID = sp.SourceCourseEnrollmentID
+	fresh.CourseCheckpointPosition = sp.CourseCheckpointPosition
+	return fresh, nil
+}
+
+func equalOptional[T comparable](a, b *T) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
+}
+
 // CompletionStatus is a student's progress on a single content node. The
 // three non-locked values mirror exactly what the Aggregation Worker writes
 // to MongoDB `aggregates` per ADR-011 (see CompletionStateReader) —
