@@ -21,8 +21,10 @@ import (
 //     plays reversed and loops, and the open high E sounds though it isn't
 //     drawn (it stays an empty answer cell). The major third is correct;
 //
-// then the practice diagram exercises (seedPracticeDiagramExercises).
-func seedDiagramExercises(ctx context.Context, teacher domain.User, exerciseSvc *application.ExerciseService, chords *application.ChordCatalogService, classifier *classificationSeeder, diagrams seededDiagrams, challengeID string) error {
+// then the practice diagram exercises (seedPracticeDiagramExercises) and the
+// listening exercises that play a chord voicing (seedListeningDiagramExercises).
+func seedDiagramExercises(ctx context.Context, teacher domain.User, exerciseSvc *application.ExerciseService, diagramSvc *application.DiagramService,
+	chords *application.ChordCatalogService, classifier *classificationSeeder, diagrams seededDiagrams, challengeID string) error {
 	scalesID, err := classifier.skillID(ctx, "play-pentatonic-positions")
 	if err != nil {
 		return err
@@ -75,6 +77,9 @@ func seedDiagramExercises(ctx context.Context, teacher domain.User, exerciseSvc 
 	}
 	if _, err := seedPracticeDiagramExercises(ctx, teacher, exerciseSvc, chords, classifier, diagrams, challengeID); err != nil {
 		return fmt.Errorf("seed practice diagram exercises: %w", err)
+	}
+	if _, err := seedListeningDiagramExercises(ctx, teacher, exerciseSvc, diagramSvc, chords, classifier, challengeID); err != nil {
+		return fmt.Errorf("seed listening diagram exercises: %w", err)
 	}
 	return nil
 }
