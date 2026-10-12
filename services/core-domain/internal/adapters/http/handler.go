@@ -1640,7 +1640,8 @@ func (h *Handler) AbandonCourseEnrollment(ctx context.Context, request generated
 
 // courseEnrollmentPresentations resolves each enrollment's pinned course
 // version before rendering it, then loads both the student and course
-// creator display names in one identity lookup.
+// creator display names in one identity lookup, and whether each enrollment
+// can be updated to its course's latest content.
 func (h *Handler) courseEnrollmentPresentations(ctx context.Context, enrollments []domain.CourseEnrollment) ([]generated.CourseEnrollment, error) {
 	presentations, err := h.courseEnrollment.PresentationsFor(ctx, enrollments)
 	if err != nil {
@@ -1654,7 +1655,11 @@ func (h *Handler) courseEnrollmentPresentations(ctx context.Context, enrollments
 	if err != nil {
 		return nil, err
 	}
-	return toCourseEnrollments(enrollments, presentations, names), nil
+	updateAvailable, err := h.courseEnrollment.UpdateAvailable(ctx, enrollments)
+	if err != nil {
+		return nil, err
+	}
+	return toCourseEnrollments(enrollments, presentations, names, updateAvailable), nil
 }
 
 func (h *Handler) SetCurrentPath(ctx context.Context, request generated.SetCurrentPathRequestObject) (generated.SetCurrentPathResponseObject, error) {

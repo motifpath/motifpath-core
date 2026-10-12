@@ -72,12 +72,26 @@ func TestToCourseEnrollment_Presentation(t *testing.T) {
 			CheckpointCount: 4,
 		},
 		userNames{studentID.String(): "Alice Martins", creatorID.String(): "Bob Ferreira"},
+		false,
 	)
 
 	assert.Equal(t, "Build foundational skills.", entry.CourseSummary)
 	assert.EqualValues(t, domain.DifficultyLevelEarlyIntermediate, entry.CourseLevel)
 	assert.Equal(t, generated.UserRef{UserId: creatorID, DisplayName: "Bob Ferreira"}, entry.CourseCreatedBy)
 	assert.Equal(t, 4, entry.CheckpointCount)
+}
+
+func TestUpdateAvailable_Mapping(t *testing.T) {
+	for _, available := range []bool{true, false} {
+		enrollment := toCourseEnrollment(
+			domain.CourseEnrollment{ID: uuid.NewString(), StudentID: uuid.NewString(), CourseID: uuid.NewString(), Status: domain.CourseEnrollmentStatusActive},
+			application.CourseEnrollmentPresentation{CourseCreatedBy: uuid.NewString()}, userNames{}, available,
+		)
+		assert.Equal(t, available, enrollment.UpdateAvailable)
+
+		path := toStudentPath(domain.StudentPath{ID: uuid.NewString(), StudentID: uuid.NewString(), SourceTemplateID: uuid.NewString(), AssignedBy: uuid.NewString()}, userNames{}, 0, available)
+		assert.Equal(t, available, path.UpdateAvailable)
+	}
 }
 
 func TestToCourseDetail_Presentation(t *testing.T) {
@@ -126,14 +140,14 @@ func TestUserRefMapping(t *testing.T) {
 		{
 			name: "student path student",
 			got: func() generated.UserRef {
-				return toStudentPath(domain.StudentPath{ID: uuid.NewString(), StudentID: studentID.String(), SourceTemplateID: uuid.NewString(), AssignedBy: teacherID.String()}, names, 0).Student
+				return toStudentPath(domain.StudentPath{ID: uuid.NewString(), StudentID: studentID.String(), SourceTemplateID: uuid.NewString(), AssignedBy: teacherID.String()}, names, 0, false).Student
 			},
 			want: student,
 		},
 		{
 			name: "student path assigner",
 			got: func() generated.UserRef {
-				return toStudentPath(domain.StudentPath{ID: uuid.NewString(), StudentID: studentID.String(), SourceTemplateID: uuid.NewString(), AssignedBy: teacherID.String()}, names, 0).AssignedBy
+				return toStudentPath(domain.StudentPath{ID: uuid.NewString(), StudentID: studentID.String(), SourceTemplateID: uuid.NewString(), AssignedBy: teacherID.String()}, names, 0, false).AssignedBy
 			},
 			want: teacher,
 		},
@@ -154,7 +168,7 @@ func TestUserRefMapping(t *testing.T) {
 		{
 			name: "course enrollment student",
 			got: func() generated.UserRef {
-				return toCourseEnrollment(domain.CourseEnrollment{ID: uuid.NewString(), StudentID: studentID.String(), CourseID: courseID, Status: domain.CourseEnrollmentStatusActive}, application.CourseEnrollmentPresentation{CourseCreatedBy: teacherID.String()}, names).Student
+				return toCourseEnrollment(domain.CourseEnrollment{ID: uuid.NewString(), StudentID: studentID.String(), CourseID: courseID, Status: domain.CourseEnrollmentStatusActive}, application.CourseEnrollmentPresentation{CourseCreatedBy: teacherID.String()}, names, false).Student
 			},
 			want: student,
 		},
