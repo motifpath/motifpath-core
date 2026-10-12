@@ -1170,6 +1170,24 @@ func (f *fakeStudentPathRepository) ListStandaloneByStudentID(_ context.Context,
 	return result, nil
 }
 
+func (f *fakeStudentPathRepository) ReplaceContent(_ context.Context, path domain.StudentPath) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	stored, ok := f.byID[path.ID]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	stored.Title = path.Title
+	stored.SummarySnapshot = path.SummarySnapshot
+	stored.LevelSnapshot = path.LevelSnapshot
+	stored.ThumbnailURLSnapshot = path.ThumbnailURLSnapshot
+	stored.CreatedBySnapshot = path.CreatedBySnapshot
+	stored.CourseCheckpointPosition = path.CourseCheckpointPosition
+	stored.Items = append([]domain.StudentPathItemRecord(nil), path.Items...)
+	f.byID[path.ID] = stored
+	return nil
+}
+
 func (f *fakeStudentPathRepository) Archive(_ context.Context, id string, archivedAt time.Time) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -1268,6 +1286,20 @@ func (f *fakeCourseEnrollmentRepository) AdvanceCheckpoint(_ context.Context, id
 	}
 	e.ActiveCheckpointStudentPathID = &studentPathID
 	e.ActiveCheckpointPosition = &position
+	f.byID[id] = e
+	return nil
+}
+
+func (f *fakeCourseEnrollmentRepository) Repin(_ context.Context, id string, versionNumber int, title string, thumbnailURL *string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	e, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	e.CourseVersionNumber = versionNumber
+	e.CourseTitle = title
+	e.CourseThumbnailURL = thumbnailURL
 	f.byID[id] = e
 	return nil
 }

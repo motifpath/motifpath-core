@@ -46,6 +46,13 @@ type CourseEnrollmentRepository interface {
 	// id.
 	AdvanceCheckpoint(ctx context.Context, id, studentPathID string, position int) error
 
+	// Repin moves the CourseEnrollment with the given id to another
+	// published version of its course, taking that version's title and
+	// thumbnail (nil clears it). Its status and active checkpoint are left
+	// as they are. Returns domain.ErrNotFound if no CourseEnrollment exists
+	// with that id.
+	Repin(ctx context.Context, id string, versionNumber int, title string, thumbnailURL *string) error
+
 	// Complete sets the CourseEnrollment with the given id to completed,
 	// clearing its active checkpoint pointer and position — every
 	// checkpoint has now been finished. Returns domain.ErrNotFound if no

@@ -35,6 +35,13 @@ type StudentPathRepository interface {
 	// empty slice if there are none.
 	ListStandaloneByStudentID(ctx context.Context, studentID string) ([]domain.StudentPath, error)
 
+	// ReplaceContent overwrites the title, presentation snapshots, course
+	// checkpoint position and items of the StudentPath with path.ID, in one
+	// step, when the copy is updated to its template's latest content. Its
+	// owner, assigner, course enrollment and archive state are left as they
+	// are. Returns domain.ErrNotFound if no StudentPath exists with that id.
+	ReplaceContent(ctx context.Context, path domain.StudentPath) error
+
 	// Archive sets archivedAt on the StudentPath with the given id.
 	// Returns domain.ErrNotFound if no StudentPath exists with that id.
 	Archive(ctx context.Context, id string, archivedAt time.Time) error

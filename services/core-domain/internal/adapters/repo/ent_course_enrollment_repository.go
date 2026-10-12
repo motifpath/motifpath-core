@@ -182,6 +182,30 @@ func (r *EntCourseEnrollmentRepository) AdvanceCheckpoint(ctx context.Context, i
 	return nil
 }
 
+func (r *EntCourseEnrollmentRepository) Repin(ctx context.Context, id string, versionNumber int, title string, thumbnailURL *string) error {
+	parsed, err := uuid.Parse(id)
+	if err != nil {
+		return domain.ErrNotFound
+	}
+
+	update := r.client.CourseEnrollment.Update().
+		Where(courseenrollment.ID(parsed)).
+		SetCourseVersionNumber(versionNumber).
+		SetCourseTitle(title).
+		SetNillableCourseThumbnailURL(thumbnailURL)
+	if thumbnailURL == nil {
+		update = update.ClearCourseThumbnailURL()
+	}
+	n, err := update.Save(ctx)
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return domain.ErrNotFound
+	}
+	return nil
+}
+
 func (r *EntCourseEnrollmentRepository) Complete(ctx context.Context, id string) error {
 	parsed, err := uuid.Parse(id)
 	if err != nil {
