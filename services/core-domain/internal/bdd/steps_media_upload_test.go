@@ -19,7 +19,12 @@ func registerMediaUploadSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" attempts to request a media upload URL for purpose "([^"]+)"$`, w.attemptsRequestMediaUploadURL)
 	sc.Step(`^an unauthenticated request attempts to request a media upload URL$`, w.unauthRequestsMediaUploadURL)
 
+	sc.Step(`^"([^"]+)" requests a media upload URL for purpose "([^"]+)" with content type "([^"]+)", file name "([^"]+)" and file size (\d+) MB$`, w.requestsMediaUploadURLWithSize)
+	sc.Step(`^"([^"]+)" requests a media upload URL for purpose "([^"]+)" on exercise "([^"]+)" with content type "([^"]+)", file name "([^"]+)" and file size (\d+) MB$`, w.requestsMediaUploadURLForExerciseWithSize)
+	sc.Step(`^"([^"]+)" requests a media upload URL for purpose "([^"]+)" with content type "([^"]+)", file name "([^"]+)" and no file size$`, w.requestsMediaUploadURLWithoutSize)
+
 	sc.Step(`^a presigned upload URL is returned$`, w.presignedUploadURLReturned)
+	sc.Step(`^the upload URL only accepts a file of exactly (\d+) MB$`, w.uploadURLBoundToSize)
 	sc.Step(`^the response includes the object's read URL and an expiry time$`, w.mediaUploadResponseComplete)
 }
 
@@ -34,6 +39,43 @@ func (w *world) createMediaUploadURLRequest(purpose, exerciseSlug, contentType, 
 		req.ExerciseId = &id
 	}
 	return generated.CreateMediaUploadUrlRequestObject{Body: req}
+}
+
+// bytesPerMB matches the feature's unit: 1 MB = 1,048,576 bytes, so 1024 MB
+// is the 1 GB video limit.
+const bytesPerMB = int64(1 << 20)
+
+func (w *world) requestMediaUploadURL(purpose, exerciseSlug, contentType, fileName string, fileSize *int64) error {
+	req := w.createMediaUploadURLRequest(purpose, exerciseSlug, contentType, fileName)
+	req.Body.FileSize = fileSize
+	resp, err := w.handler.CreateMediaUploadUrl(w.ctx(), req)
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) requestsMediaUploadURLWithSize(name, purpose, contentType, fileName string, sizeMB int64) error {
+	size := sizeMB * bytesPerMB
+	return w.requestMediaUploadURL(purpose, "", contentType, fileName, &size)
+}
+
+func (w *world) requestsMediaUploadURLForExerciseWithSize(name, purpose, exerciseSlug, contentType, fileName string, sizeMB int64) error {
+	size := sizeMB * bytesPerMB
+	return w.requestMediaUploadURL(purpose, exerciseSlug, contentType, fileName, &size)
+}
+
+func (w *world) requestsMediaUploadURLWithoutSize(name, purpose, contentType, fileName string) error {
+	return w.requestMediaUploadURL(purpose, "", contentType, fileName, nil)
+}
+
+func (w *world) uploadURLBoundToSize(sizeMB int64) error {
+	if err := w.presignedUploadURLReturned(); err != nil {
+		return err
+	}
+	got := w.mediaStorage.lastContentLength
+	if want := sizeMB * bytesPerMB; got == nil || *got != want {
+		return fmt.Errorf("expected the upload URL bound to %d bytes, got %v", want, got)
+	}
+	return nil
 }
 
 func (w *world) requestsMediaUploadURLForExercise(name, purpose, exerciseSlug, contentType, fileName string) error {

@@ -11,6 +11,8 @@ import (
 // dev — so no calling code branches on environment.
 type MediaStorage interface {
 	// PresignUpload issues a short-lived presigned PUT URL for objectKey,
-	// along with the URL the object will be readable at once uploaded.
-	PresignUpload(ctx context.Context, objectKey string, contentType domain.MediaContentType) (domain.MediaUploadURL, error)
+	// along with the URL the object will be readable at once uploaded. A
+	// non-nil contentLength is signed into the URL, so storage refuses an
+	// upload of any other size.
+	PresignUpload(ctx context.Context, objectKey string, contentType domain.MediaContentType, contentLength *int64) (domain.MediaUploadURL, error)
 }

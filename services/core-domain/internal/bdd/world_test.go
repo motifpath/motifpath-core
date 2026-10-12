@@ -29,6 +29,7 @@ func noShuffle(int, func(i, j int)) {}
 // by InitializeScenario for every scenario godog runs, giving each scenario
 // full isolation without an explicit teardown step.
 type world struct {
+	mediaStorage      *fakeMediaStorage
 	users             *fakeUserRepo
 	chords            *fakeChordCatalog
 	songChartRepo     *fakeSongChartRepo
@@ -299,7 +300,8 @@ func newWorld() *world {
 	exercise := application.NewExerciseService(w.challenges, w.exercises, w.nodes, w.knowledge, w.diagrams, w.instruments, w.voices, w.users, discardPracticeReferences{}, newID, now, noShuffle)
 	knowledgeNode := application.NewKnowledgeNodeService(w.knowledge, w.instruments, newFakeLanguageRepo(), newID)
 	knowledgeEdge := application.NewKnowledgeEdgeService(w.knowledgeEdges, w.knowledge, newID)
-	media := application.NewMediaService(w.exercises, &fakeMediaStorage{}, newID)
+	w.mediaStorage = &fakeMediaStorage{}
+	media := application.NewMediaService(w.exercises, w.mediaStorage, newID)
 	path := application.NewLearningPathService(w.nodes, w.paths, w.courseVersions, w.versions, newFakeLanguageRepo(), w.users, w.instruments, w.knowledge, newID, now)
 	studentPath := application.NewStudentPathService(w.users, w.paths, w.studentPaths, w.versions, w.learningState, w.courseEnrollments, w.courseVersions, w.nodes, w.exercises, w.completion, newID, now)
 	course := application.NewCourseService(w.paths, w.courses, w.courseVersions, w.users, newFakeLanguageRepo(), w.instruments, w.knowledge, newID, now)

@@ -669,7 +669,7 @@ func (h *Handler) CreateMediaUploadUrl(ctx context.Context, request generated.Cr
 		exerciseID = &s
 	}
 	url, err := h.media.CreateUploadURL(ctx, caller, domain.MediaUploadPurpose(body.Purpose), exerciseID,
-		domain.MediaContentType(body.ContentType), body.FileName)
+		domain.MediaContentType(body.ContentType), body.FileName, body.FileSize)
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {

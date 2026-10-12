@@ -1402,13 +1402,14 @@ type fakeMediaStorage struct {
 	presignErr  error
 	lastKey     string
 	lastContent domain.MediaContentType
+	lastSize    *int64
 }
 
 func newFakeMediaStorage() *fakeMediaStorage {
 	return &fakeMediaStorage{}
 }
 
-func (f *fakeMediaStorage) PresignUpload(_ context.Context, objectKey string, contentType domain.MediaContentType) (domain.MediaUploadURL, error) {
+func (f *fakeMediaStorage) PresignUpload(_ context.Context, objectKey string, contentType domain.MediaContentType, contentLength *int64) (domain.MediaUploadURL, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.presignErr != nil {
@@ -1416,6 +1417,7 @@ func (f *fakeMediaStorage) PresignUpload(_ context.Context, objectKey string, co
 	}
 	f.lastKey = objectKey
 	f.lastContent = contentType
+	f.lastSize = contentLength
 	return domain.MediaUploadURL{
 		UploadURL: "https://storage.example.com/" + objectKey + "?presigned=1",
 		ObjectURL: "https://cdn.example.com/" + objectKey,

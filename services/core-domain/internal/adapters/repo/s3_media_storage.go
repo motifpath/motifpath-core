@@ -36,11 +36,15 @@ func NewS3MediaStorage(client *s3.Client, bucket, publicBaseURL string) *S3Media
 	}
 }
 
-func (s *S3MediaStorage) PresignUpload(ctx context.Context, objectKey string, contentType domain.MediaContentType) (domain.MediaUploadURL, error) {
+// PresignUpload signs contentLength, when given, as the request's exact
+// Content-Length: a presigned PUT cannot carry a size range, but storage
+// rejects a signed request whose body is any other size.
+func (s *S3MediaStorage) PresignUpload(ctx context.Context, objectKey string, contentType domain.MediaContentType, contentLength *int64) (domain.MediaUploadURL, error) {
 	req, err := s.presign.PresignPutObject(ctx, &s3.PutObjectInput{
-		Bucket:      &s.bucket,
-		Key:         &objectKey,
-		ContentType: mimeType(contentType),
+		Bucket:        &s.bucket,
+		Key:           &objectKey,
+		ContentType:   mimeType(contentType),
+		ContentLength: contentLength,
 	}, s3.WithPresignExpires(presignTTL))
 	if err != nil {
 		return domain.MediaUploadURL{}, err
@@ -66,6 +70,8 @@ func mimeType(contentType domain.MediaContentType) *string {
 		mt = "audio/mpeg"
 	case domain.MediaContentTypeImage:
 		mt = "image/png"
+	case domain.MediaContentTypeVideo:
+		mt = "video/mp4"
 	default:
 		mt = "application/octet-stream"
 	}
