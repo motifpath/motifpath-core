@@ -309,7 +309,7 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 	// uploaded media.
 	voiceService := application.NewVoiceService(voiceRepo, cfg.mediaPublicBaseURL)
 	chordCatalogRepo := repo.NewEntChordCatalogRepository(entClient)
-	diagramService := application.NewDiagramService(diagramRepo, instrumentRepo, knowledgeNodeRepo, languageRepo, userRepo, practiceReferences, chordCatalogRepo, newID, now)
+	diagramService := application.NewDiagramService(diagramRepo, instrumentRepo, knowledgeNodeRepo, languageRepo, userRepo, practiceReferences, chordCatalogRepo, exerciseRepo, newID, now)
 	rollupService := application.NewKnowledgeRollupService(knowledgeNodeRepo, knowledgeEdgeRepo, repo.NewEntNodeItemSource(entClient), repo.NewMongoPracticeItemStateReader(mongoClient.Database(cfg.mongoDatabase)), now)
 	practiceActivity := repo.NewMongoPracticeActivityReader(mongoClient.Database(cfg.mongoDatabase))
 	practiceSessionService := application.NewPracticeSessionService(instrumentRepo, studentPathRepo, courseEnrollmentRepo, pathRepo, courseVersionRepo, nodeRepo, diagramRepo, exerciseRepo, rollupService, practiceActivity, practiceActivity, newID, now)

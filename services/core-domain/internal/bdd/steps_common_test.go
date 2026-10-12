@@ -399,7 +399,8 @@ func (w *world) requestRefusedConflict() error {
 		generated.CreateKnowledgeNode409JSONResponse,
 		generated.UpdateKnowledgeNode409JSONResponse,
 		generated.DeleteKnowledgeNode409JSONResponse,
-		generated.CreateKnowledgeEdge409JSONResponse:
+		generated.CreateKnowledgeEdge409JSONResponse,
+		generated.UpdateDiagram409JSONResponse:
 		return nil
 	default:
 		return fmt.Errorf("expected a 409 response, got %#v (err=%v)", w.lastResp, w.lastErr)

@@ -956,13 +956,20 @@ func (w *world) playbackIsRemoved(name, diagramSlug string) error {
 		}
 	}
 	updated, err := w.handler.UpdateDiagram(curator, generated.UpdateDiagramRequestObject{DiagramId: diagramID(diagramSlug), Body: &generated.UpdateDiagramRequest{Playbacks: &kept}})
+	w.lastResp, w.lastErr = updated, err
 	if err != nil {
 		return err
 	}
-	if _, ok := updated.(generated.UpdateDiagram200JSONResponse); !ok {
-		return fmt.Errorf("expected removing playback %q to succeed, got %#v", name, updated)
+	switch updated.(type) {
+	case generated.UpdateDiagram200JSONResponse:
+		return nil
+	case generated.UpdateDiagram409JSONResponse:
+		// Refused because an exercise plays the playback; a later step
+		// asserts the refusal.
+		return nil
+	default:
+		return fmt.Errorf("expected removing playback %q to succeed or be refused, got %#v", name, updated)
 	}
-	return nil
 }
 
 // updatesCaptionResendingDiagram updates the playing item's caption as an

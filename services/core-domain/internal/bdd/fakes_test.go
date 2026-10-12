@@ -2148,3 +2148,13 @@ func knowledgeIDs(nodes []domain.KnowledgeNode) []string {
 	}
 	return ids
 }
+
+func (f *fakeExerciseRepo) ListSoundUses(_ context.Context, diagramID string) ([]domain.ExerciseSoundUse, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var uses []domain.ExerciseSoundUse
+	for _, e := range f.byID {
+		uses = append(uses, e.SoundUses(diagramID)...)
+	}
+	return uses, nil
+}

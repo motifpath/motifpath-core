@@ -2222,7 +2222,7 @@ func (h *Handler) UpdateDiagram(ctx context.Context, request generated.UpdateDia
 	diagram, err := h.diagram.UpdateDiagram(ctx, caller, request.DiagramId.String(), update)
 	if err != nil {
 		if errors.Is(err, domain.ErrConflict) {
-			return generated.UpdateDiagram409JSONResponse(conflictError("this diagram is a chord voicing, which only the chord catalog can change")), nil
+			return generated.UpdateDiagram409JSONResponse(conflictError(conflictMessage(err))), nil
 		}
 		kind, valErr := classify(err)
 		switch kind {

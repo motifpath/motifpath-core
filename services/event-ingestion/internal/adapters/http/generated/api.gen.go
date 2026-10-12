@@ -1109,7 +1109,9 @@ type NotFoundError struct {
 // several, and is right only when the selection matches its correct options exactly.
 type OptionChoiceResponse struct {
 	// AudioMs Milliseconds of audio a listening exercise asks the student to hear once before
-	// answering: the length of its sound. Hearing it is not part of the time spent knowing
+	// answering: the length of its sound. For an uploaded clip, the clip's length; for a
+	// diagram's playback, the sum of its steps' durations at the exercise's tempo, whatever
+	// tempo the student chose. Hearing it is not part of the time spent knowing
 	// the answer, so it is taken off the latency before the answer is judged against the
 	// drill's fluent time. Replays are not taken off. Absent for exercises without audio,
 	// and for exercises whose options are sounds, whose latency already starts after the

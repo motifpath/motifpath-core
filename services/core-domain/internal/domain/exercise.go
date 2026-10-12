@@ -541,14 +541,50 @@ func validateStimulusMedia(exerciseType ExerciseType, imageURL, audioURL *string
 				errs = append(errs, validateDiagramStimulusRef(ref)...)
 			}
 		}
+	} else if exerciseType == ExerciseTypeAudioRecognition {
+		errs = append(errs, validateStimulusSound(audioURL, diagramRef, diagramStackRef)...)
 	} else if diagramRef != nil || diagramStackRef != nil {
-		errs = append(errs, FieldError{Field: "diagram_ref", Reason: "only meaningful when exercise_type is image_recognition"})
-	}
-
-	if exerciseType == ExerciseTypeAudioRecognition && (audioURL == nil || *audioURL == "") {
-		errs = append(errs, FieldError{Field: "audio_url", Reason: "required when exercise_type is audio_recognition"})
+		errs = append(errs, FieldError{Field: "diagram_ref", Reason: "only meaningful when exercise_type is image_recognition or audio_recognition"})
 	}
 	return errs
+}
+
+// validateStimulusSound checks an audio_recognition stimulus: exactly one of
+// an uploaded clip or a diagram that plays, and never a stack.
+func validateStimulusSound(audioURL *string, diagramRef *DiagramRef, diagramStackRef *DiagramStackRef) []FieldError {
+	hasClip := audioURL != nil && *audioURL != ""
+	switch {
+	case diagramStackRef != nil:
+		return []FieldError{{Field: "diagram_stack_ref", Reason: "only meaningful when exercise_type is image_recognition"}}
+	case hasClip && diagramRef != nil:
+		return []FieldError{{Field: "diagram_ref", Reason: "must not be given together with audio_url"}}
+	case !hasClip && diagramRef == nil:
+		return []FieldError{{Field: "audio_url", Reason: "one of audio_url or diagram_ref is required when exercise_type is audio_recognition"}}
+	case diagramRef != nil:
+		if reason := soundRefProblem(*diagramRef); reason != "" {
+			return []FieldError{{Field: "diagram_ref", Reason: reason}}
+		}
+	}
+	return nil
+}
+
+// soundRefProblem returns why ref can't be a listening exercise's sound, or
+// "" if it can. A sound plays one named playback once: naming it, rather
+// than following the diagram's default, keeps the sound — and so the
+// answer — unchanged when the diagram's default changes.
+func soundRefProblem(ref DiagramRef) string {
+	if err := ValidateDiagramRef(ref); err != nil {
+		return err.Error()
+	}
+	switch {
+	case ref.Playback == nil:
+		return "playback is required when the diagram is a sound"
+	case ref.Playback.PlaybackID == nil || *ref.Playback.PlaybackID == "":
+		return "playback.playback_id is required when the diagram is a sound"
+	case ref.Playback.Loop:
+		return "playback.loop must be false when the diagram is a sound"
+	}
+	return ""
 }
 
 // validateDiagramStimulusRef checks that ref is structurally valid and
@@ -611,8 +647,9 @@ func validateOptions(exerciseType ExerciseType, diagramRef *DiagramRef, diagramS
 // region on the exercise's image, or — when diagramDriven — are entirely
 // server-derived (diagram_id/diagram_position_id) from the exercise's
 // diagram stimulus; image_choice options each carry their own image or
-// diagram_ref; audio_selection options each carry their own audio clip;
-// text_response and audio_recognition options carry a text label.
+// diagram_ref; audio_selection options each carry their own sound, a clip
+// or a diagram that plays; text_response and audio_recognition options
+// carry a text label.
 func optionShapeError(exerciseType ExerciseType, diagramDriven bool, opt Option) string {
 	switch exerciseType {
 	case ExerciseTypeImageRecognition:
@@ -620,12 +657,28 @@ func optionShapeError(exerciseType ExerciseType, diagramDriven bool, opt Option)
 	case ExerciseTypeImageChoice:
 		return imageChoiceOptionShapeError(opt)
 	case ExerciseTypeAudioSelection:
-		if opt.AudioURL == nil || *opt.AudioURL == "" {
-			return "audio_selection options must carry an audio_url"
-		}
+		return audioSelectionOptionShapeError(opt)
 	case ExerciseTypeTextResponse, ExerciseTypeAudioRecognition:
 		if opt.Label == nil || *opt.Label == "" {
 			return "text_response and audio_recognition options must carry a label"
+		}
+	}
+	return ""
+}
+
+// audioSelectionOptionShapeError reports the reason an audio_selection
+// option's shape is invalid, or "" if it's valid: exactly one sound, an
+// uploaded clip or a diagram that plays.
+func audioSelectionOptionShapeError(opt Option) string {
+	hasClip := opt.AudioURL != nil && *opt.AudioURL != ""
+	switch {
+	case hasClip && opt.DiagramRef != nil:
+		return "audio_selection options must not carry both an audio_url and a diagram_ref"
+	case !hasClip && opt.DiagramRef == nil:
+		return "audio_selection options must carry an audio_url or a diagram_ref"
+	case opt.DiagramRef != nil:
+		if reason := soundRefProblem(*opt.DiagramRef); reason != "" {
+			return "diagram_ref: " + reason
 		}
 	}
 	return ""
@@ -687,4 +740,41 @@ func (e Exercise) ForInstruments(instrumentIDs []string) (Exercise, error) {
 // of them, never a node for every instrument.
 func (e Exercise) Suits(nodeInstrumentIDs []string) bool {
 	return scopeSuits(e.InstrumentIDs, nodeInstrumentIDs)
+}
+
+// ExerciseSoundUse is one playback of a diagram that an exercise plays as
+// its sound: an audio_recognition stimulus or an audio_selection option.
+type ExerciseSoundUse struct {
+	ExerciseID string
+	Title      string
+	PlaybackID string
+}
+
+// SoundUses returns the playbacks of diagramID that e plays as its sound,
+// once per playback, in the order they appear.
+func (e Exercise) SoundUses(diagramID string) []ExerciseSoundUse {
+	var refs []*DiagramRef
+	switch e.ExerciseType {
+	case ExerciseTypeAudioRecognition:
+		refs = append(refs, e.DiagramRef)
+	case ExerciseTypeAudioSelection:
+		for _, opt := range e.Options {
+			refs = append(refs, opt.DiagramRef)
+		}
+	case ExerciseTypeTextResponse, ExerciseTypeImageRecognition, ExerciseTypeImageChoice:
+		// A diagram here is drawn, never played as the exercise's sound.
+	}
+	var uses []ExerciseSoundUse
+	seen := map[string]bool{}
+	for _, ref := range refs {
+		if ref == nil || ref.DiagramID != diagramID || ref.Playback == nil || ref.Playback.PlaybackID == nil {
+			continue
+		}
+		id := *ref.Playback.PlaybackID
+		if !seen[id] {
+			seen[id] = true
+			uses = append(uses, ExerciseSoundUse{ExerciseID: e.ID, Title: e.Title, PlaybackID: id})
+		}
+	}
+	return uses
 }

@@ -3893,22 +3893,33 @@ type CreateDiagramRequestLabelDisplay string
 // is rejected with the offending skill_ids or concept_ids identified —
 // the same rule content nodes and diagrams follow.
 type CreateExerciseRequest struct {
-	// AudioUrl The stimulus audio for this exercise. Required when exercise_type
-	// is audio_recognition; absent otherwise.
+	// AudioUrl The stimulus audio for this exercise, an uploaded clip. For
+	// exercise_type audio_recognition, required unless diagram_ref is
+	// given instead, and mutually exclusive with it; absent otherwise.
 	AudioUrl *string `json:"audio_url,omitempty"`
 
 	// ConceptIds The id(s) of the concept node(s) this exercise addresses.
 	// Must not be empty; each id must reference an existing concept-kind node.
 	ConceptIds []openapi_types.UUID `json:"concept_ids"`
 
-	// DiagramRef A single prebuilt diagram as this exercise's stimulus, replacing
-	// image_url. Only meaningful when exercise_type is
-	// image_recognition. Its correct_position_ids must be set (or the
-	// deprecated correct_intervals) — for a fretted diagram, every
-	// fretboard cell of its answer window becomes one of this
-	// exercise's options automatically (see Option.fret_cell);
-	// options must be omitted when this is given. Mutually exclusive with image_url and
-	// diagram_stack_ref.
+	// DiagramRef A single prebuilt diagram as this exercise's stimulus. Its
+	// meaning depends on exercise_type:
+	//
+	// - image_recognition: the stimulus board, replacing image_url.
+	//   Its correct_position_ids must be set (or the deprecated
+	//   correct_intervals) — for a fretted diagram, every fretboard
+	//   cell of its answer window becomes one of this exercise's
+	//   options automatically (see Option.fret_cell); options must be
+	//   omitted when this is given. Mutually exclusive with image_url
+	//   and diagram_stack_ref.
+	// - audio_recognition: the stimulus sound, replacing audio_url —
+	//   exactly one of the two is given. The diagram must have at least one
+	// playback; its playback must be set, name one of the diagram's
+	// playbacks by playback_id, and not loop. Students never see
+	// the diagram before answering; it is revealed afterwards.
+	//   Options are authored as usual.
+	//
+	// Absent for every other exercise_type.
 	DiagramRef *DiagramRef `json:"diagram_ref,omitempty"`
 
 	// DiagramStackRef Two or more composited prebuilt diagrams as this exercise's
@@ -3930,7 +3941,8 @@ type CreateExerciseRequest struct {
 	// options carry a region on image_url (or are derived from
 	// diagram_ref/diagram_stack_ref — see below); image_choice
 	// options each carry their own image_url or diagram_ref;
-	// audio_selection options each carry their own audio_url.
+	// audio_selection options each carry their own sound, an
+	// audio_url or a diagram_ref that plays.
 	ExerciseType CreateExerciseRequestExerciseType `json:"exercise_type"`
 
 	// ImageUrl The stimulus image for this exercise. For exercise_type
@@ -3994,7 +4006,8 @@ type CreateExerciseRequest struct {
 // options carry a region on image_url (or are derived from
 // diagram_ref/diagram_stack_ref — see below); image_choice
 // options each carry their own image_url or diagram_ref;
-// audio_selection options each carry their own audio_url.
+// audio_selection options each carry their own sound, an
+// audio_url or a diagram_ref that plays.
 type CreateExerciseRequestExerciseType string
 
 // CreateExpandedContentRequest Payload for attaching an expositive item to a content node. The
@@ -4690,7 +4703,10 @@ type DiagramRef struct {
 		// the id and plays the default playback instead; saving the
 		// usage again with the same id is still accepted, so an edit
 		// elsewhere in the usage (or in the document that embeds it)
-		// isn't blocked by the removal.
+		// isn't blocked by the removal. When the usage is an
+		// exercise's sound, playback_id is required and the playback
+		// can't be removed from the diagram while the exercise uses
+		// it.
 		PlaybackId *openapi_types.UUID `json:"playback_id,omitempty"`
 
 		// TempoBpm Overrides the chosen playback's tempo for this usage. Null
@@ -4808,7 +4824,9 @@ type EnrollInLearningPathRequest struct {
 // student's selected option ID(s) must match the option(s) marked
 // is_correct.
 type Exercise struct {
-	// AudioUrl The stimulus audio for this exercise, present when exercise_type is audio_recognition.
+	// AudioUrl The stimulus audio for this exercise, present when exercise_type
+	// is audio_recognition and its sound is an uploaded clip rather
+	// than a diagram_ref.
 	AudioUrl *string `json:"audio_url,omitempty"`
 
 	// ChallengeIds The challenges this exercise is currently linked to. May be
@@ -4833,9 +4851,11 @@ type Exercise struct {
 	// were recorded.
 	CreatedBy *UserRef `json:"created_by,omitempty"`
 
-	// DiagramRef The single prebuilt diagram used as this exercise's stimulus,
-	// present only when exercise_type is image_recognition and the
-	// exercise uses one diagram rather than a stack.
+	// DiagramRef The single prebuilt diagram used as this exercise's stimulus:
+	// the board of an image_recognition exercise that uses one diagram
+	// rather than a stack, or the sound of an audio_recognition
+	// exercise that plays a diagram instead of an uploaded clip.
+	// Absent otherwise.
 	DiagramRef *DiagramRef `json:"diagram_ref,omitempty"`
 
 	// DiagramStackRef The composited prebuilt diagrams used as this exercise's
@@ -5452,11 +5472,13 @@ type NoteValue struct {
 // options carry region, or are entirely server-derived (see
 // diagram_id/diagram_position_id) when the exercise uses diagram_ref/
 // diagram_stack_ref instead of image_url; image_choice options carry
-// image_url or diagram_ref; audio_selection options carry audio_url;
-// text_response/audio_recognition options carry label.
+// image_url or diagram_ref; audio_selection options carry a sound,
+// audio_url or diagram_ref, and optionally a label; text_response/
+// audio_recognition options carry label.
 type Option struct {
-	// AudioUrl The audio clip shown for this option. Required for
-	// audio_selection options; absent otherwise.
+	// AudioUrl The uploaded audio clip this option plays. For audio_selection
+	// options, required unless diagram_ref is given instead, and
+	// mutually exclusive with it; absent otherwise.
 	AudioUrl *string `json:"audio_url,omitempty"`
 
 	// DiagramId Which Diagram this option's clickable position came from.
@@ -5472,13 +5494,23 @@ type Option struct {
 	// absent on a cell no position of the diagram occupies.
 	DiagramPositionId *openapi_types.UUID `json:"diagram_position_id,omitempty"`
 
-	// DiagramRef A prebuilt diagram rendered as this option's own thumbnail,
-	// replacing image_url — e.g. "which of these four diagrams shows
-	// C major?" where each option is a different diagram. Only
-	// meaningful for image_choice options; correct_position_ids and
-	// correct_intervals are ignored here since correctness is this
-	// Option's own is_correct.
-	// Mutually exclusive with image_url.
+	// DiagramRef A prebuilt diagram as this option's own content. Correctness is
+	// always this Option's own is_correct, so correct_position_ids and
+	// correct_intervals are ignored here. Its meaning depends on the
+	// exercise_type:
+	//
+	// - image_choice: the option's thumbnail, replacing image_url —
+	//   e.g. "which of these four diagrams shows C major?" where each
+	//   option is a different diagram. Mutually exclusive with
+	//   image_url.
+	// - audio_selection: the option's sound, replacing audio_url —
+	//   exactly one of the two is given, and options of one exercise
+	//   may mix them. The diagram must have at least one
+	// playback; its playback must be set, name one of the diagram's
+	// playbacks by playback_id, and not loop. Students never see
+	// the diagram before answering; it is revealed afterwards.
+	//
+	// Absent for every other exercise_type.
 	DiagramRef *DiagramRef `json:"diagram_ref,omitempty"`
 
 	// FretCell The fretboard cell this option is, for an image_recognition
@@ -5512,7 +5544,10 @@ type Option struct {
 	IsCorrect bool `json:"is_correct"`
 
 	// Label The text shown for this option. Required for text_response and
-	// audio_recognition options; absent otherwise.
+	// audio_recognition options. Optional for audio_selection
+	// options: the name shown next to the sound, which students see
+	// before answering, so it should stay neutral (e.g. "Sound 1").
+	// Absent for the other types.
 	Label *string `json:"label,omitempty"`
 
 	// OptionId Stable identifier for this option.
@@ -7420,7 +7455,9 @@ type UpdateDiagramRequest struct {
 	// Playbacks The diagram's full list of playbacks, replacing the current one;
 	// an empty list removes every playback. A playback sent with the
 	// playback_id of an existing one keeps that id, so usages that
-	// chose it still find it. Omitted leaves the playbacks unchanged.
+	// chose it still find it. A playback that an exercise plays as its
+	// sound must stay in the list (see the 409 response). Omitted
+	// leaves the playbacks unchanged.
 	Playbacks *[]DiagramPlaybackInput `json:"playbacks,omitempty"`
 
 	// Positions The diagram's full position list, replacing the current set. A
@@ -7461,8 +7498,10 @@ type UpdateDiagramRequestLabelDisplay string
 // the update — the current ones when instrument_ids is omitted — so
 // changing only the instruments can be rejected too.
 type UpdateExerciseRequest struct {
-	// AudioUrl The stimulus audio for this exercise. Required when the
-	// exercise's exercise_type is audio_recognition; absent otherwise.
+	// AudioUrl The stimulus audio for this exercise, an uploaded clip,
+	// replacing the current value. For an audio_recognition exercise,
+	// mutually exclusive with diagram_ref: after the update the
+	// exercise has exactly one of the two. Absent otherwise.
 	AudioUrl *string `json:"audio_url,omitempty"`
 
 	// ConceptIds The id(s) of the concept node(s) this exercise addresses,
@@ -7470,10 +7509,13 @@ type UpdateExerciseRequest struct {
 	// reference an existing concept-kind node.
 	ConceptIds []openapi_types.UUID `json:"concept_ids"`
 
-	// DiagramRef A single prebuilt diagram as this exercise's stimulus, replacing
-	// image_url, replacing the current value. Only meaningful when the
-	// exercise's exercise_type is image_recognition. Mutually
-	// exclusive with image_url and diagram_stack_ref.
+	// DiagramRef A single prebuilt diagram as this exercise's stimulus,
+	// replacing the current value. For an image_recognition exercise
+	// it is the stimulus board, mutually exclusive with image_url and
+	// diagram_stack_ref. For an audio_recognition exercise it is the
+	// stimulus sound, mutually exclusive with audio_url, under the
+	// same rules as on creation. Absent for every other
+	// exercise_type.
 	DiagramRef *DiagramRef `json:"diagram_ref,omitempty"`
 
 	// DiagramStackRef Two or more composited prebuilt diagrams as this exercise's

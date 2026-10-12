@@ -185,8 +185,9 @@ func (s *ExerciseService) checkRemediationTargetsExist(ctx context.Context, targ
 	return nil
 }
 
-// resolveDiagramOptions builds an image_recognition exercise's options from
-// its diagram stimulus, replacing whatever options the caller supplied —
+// resolveDiagramOptions checks an audio_recognition exercise's diagram sound
+// against its diagram, and builds an image_recognition exercise's options
+// from its diagram stimulus, replacing whatever options the caller supplied —
 // the domain constructor/Update rejects a non-empty caller-supplied options
 // list alongside a diagram stimulus, so this only ever overwrites an empty
 // slice with the diagram-derived one. It also returns diagramRef as it is to
@@ -200,6 +201,14 @@ func (s *ExerciseService) checkRemediationTargetsExist(ctx context.Context, targ
 // answers name options by id. stored are the playbacks the exercise already
 // chose (nil on create).
 func (s *ExerciseService) resolveDiagramOptions(ctx context.Context, exerciseType domain.ExerciseType, diagramRef *domain.DiagramRef, diagramStackRef *domain.DiagramStackRef, options, previous []domain.Option, stored storedPlaybacks) ([]domain.Option, *domain.DiagramRef, error) {
+	if exerciseType == domain.ExerciseTypeAudioRecognition && diagramRef != nil {
+		// The diagram is the exercise's sound: it must exist and play the
+		// playback named. Options stay the author's.
+		if err := checkDiagramRefs(ctx, s.diagramRefRepos(), diagramRef, nil, stored); err != nil {
+			return nil, nil, err
+		}
+		return options, diagramRef, nil
+	}
 	if exerciseType != domain.ExerciseTypeImageRecognition || (diagramRef == nil && diagramStackRef == nil) {
 		return options, diagramRef, nil
 	}

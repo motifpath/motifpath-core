@@ -20,6 +20,7 @@ type diagramFixture struct {
 	users       *fakeUserRepository
 	references  *fakePracticeReferenceWriter
 	chords      *fakeChordCatalogRepository
+	exercises   *fakeExerciseRepository
 	svc         *application.DiagramService
 }
 
@@ -42,8 +43,9 @@ func newDiagramFixture() diagramFixture {
 	diagrams.knowledge = knowledge
 	references := newFakePracticeReferenceWriter()
 	chords := &fakeChordCatalogRepository{voicings: map[string]domain.ChordVoicing{}}
-	svc := application.NewDiagramService(diagrams, instruments, knowledge, newFakeLanguageRepository(), users, references, chords, idSequence(), func() time.Time { return fixedCreatedAt })
-	return diagramFixture{diagrams: diagrams, instruments: instruments, users: users, references: references, chords: chords, svc: svc}
+	exercises := newFakeExerciseRepository()
+	svc := application.NewDiagramService(diagrams, instruments, knowledge, newFakeLanguageRepository(), users, references, chords, exercises, idSequence(), func() time.Time { return fixedCreatedAt })
+	return diagramFixture{diagrams: diagrams, instruments: instruments, users: users, references: references, chords: chords, exercises: exercises, svc: svc}
 }
 
 // names names a diagram name in both offered languages, which every kind of

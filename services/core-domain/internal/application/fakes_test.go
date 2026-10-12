@@ -2213,3 +2213,13 @@ func (f *fakeSongChartRepository) GetRevision(_ context.Context, chartID string,
 	}
 	return domain.SongChartRevision{}, domain.ErrNotFound
 }
+
+func (f *fakeExerciseRepository) ListSoundUses(_ context.Context, diagramID string) ([]domain.ExerciseSoundUse, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var uses []domain.ExerciseSoundUse
+	for _, e := range f.byID {
+		uses = append(uses, e.SoundUses(diagramID)...)
+	}
+	return uses, nil
+}

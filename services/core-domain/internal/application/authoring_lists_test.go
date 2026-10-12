@@ -93,7 +93,7 @@ func TestAuthoringLists_SubtreeMatching(t *testing.T) {
 		f.diagrams.knowledge = pickingTree()
 		f.diagrams.put(domain.Diagram{ID: "c-triads", Kind: domain.DiagramKindBasic, Names: names("C triads"), Concepts: skills("triads")})
 		f.diagrams.put(domain.Diagram{ID: "scale", Kind: domain.DiagramKindBasic, Names: names("Scale"), Concepts: skills("concept-1")})
-		svc := application.NewDiagramService(f.diagrams, f.instruments, pickingTree(), newFakeLanguageRepository(), f.users, f.references, f.chords, idSequence(), func() time.Time { return fixedCreatedAt })
+		svc := application.NewDiagramService(f.diagrams, f.instruments, pickingTree(), newFakeLanguageRepository(), f.users, f.references, f.chords, newFakeExerciseRepository(), idSequence(), func() time.Time { return fixedCreatedAt })
 
 		got, err := svc.ListDiagrams(ctx, adminCaller(), domain.DiagramListFilter{ConceptIDs: []string{"chords"}}, page)
 
