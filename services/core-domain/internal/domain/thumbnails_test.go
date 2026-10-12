@@ -79,7 +79,7 @@ func TestNewMediaUploadRequest_Thumbnail(t *testing.T) {
 	exercise := "exercise-1"
 
 	t.Run("a thumbnail is an image with no exercise", func(t *testing.T) {
-		req, err := domain.NewMediaUploadRequest(domain.MediaUploadPurposeThumbnail, nil, domain.MediaContentTypeImage, "cover.png")
+		req, err := domain.NewMediaUploadRequest(domain.MediaUploadPurposeThumbnail, nil, domain.MediaContentTypeImage, "cover.png", nil)
 
 		require.NoError(t, err)
 		assert.Equal(t, domain.MediaUploadPurposeThumbnail, req.Purpose)
@@ -94,7 +94,7 @@ func TestNewMediaUploadRequest_Thumbnail(t *testing.T) {
 		"with an exercise": {exerciseID: &exercise, contentType: domain.MediaContentTypeImage, field: "exercise_id"},
 	} {
 		t.Run("rejected: a thumbnail "+name, func(t *testing.T) {
-			_, err := domain.NewMediaUploadRequest(domain.MediaUploadPurposeThumbnail, tc.exerciseID, tc.contentType, "cover.png")
+			_, err := domain.NewMediaUploadRequest(domain.MediaUploadPurposeThumbnail, tc.exerciseID, tc.contentType, "cover.png", nil)
 
 			var valErr *domain.ValidationError
 			require.ErrorAs(t, err, &valErr)

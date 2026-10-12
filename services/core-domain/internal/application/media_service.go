@@ -23,13 +23,14 @@ func NewMediaService(exercises ports.ExerciseRepository, storage ports.MediaStor
 
 // CreateUploadURL issues a presigned upload URL for the given purpose. Only
 // teachers and admins may request one. When purpose is exercise_asset, the
-// referenced exercise must exist.
-func (s *MediaService) CreateUploadURL(ctx context.Context, caller domain.User, purpose domain.MediaUploadPurpose, exerciseID *string, contentType domain.MediaContentType, fileName string) (domain.MediaUploadURL, error) {
+// referenced exercise must exist. A declared fileSize is required for video
+// and binds the issued URL to exactly that many bytes.
+func (s *MediaService) CreateUploadURL(ctx context.Context, caller domain.User, purpose domain.MediaUploadPurpose, exerciseID *string, contentType domain.MediaContentType, fileName string, fileSize *int64) (domain.MediaUploadURL, error) {
 	if !canManageContent(caller.Role) {
 		return domain.MediaUploadURL{}, domain.ErrForbidden
 	}
 
-	req, err := domain.NewMediaUploadRequest(purpose, exerciseID, contentType, fileName)
+	req, err := domain.NewMediaUploadRequest(purpose, exerciseID, contentType, fileName, fileSize)
 	if err != nil {
 		return domain.MediaUploadURL{}, err
 	}
@@ -40,12 +41,13 @@ func (s *MediaService) CreateUploadURL(ctx context.Context, caller domain.User, 
 		}
 	}
 
-	return s.storage.PresignUpload(ctx, s.objectKey(req), req.ContentType)
+	return s.storage.PresignUpload(ctx, s.objectKey(req), req.ContentType, req.FileSize)
 }
 
 // objectKey lays objects out as exercises/{exercise_id}/... for
 // exercise-specific uploads, thumbnails/... for course, path and content node
-// thumbnails, and library/... for the shared image-picker library. The stored
+// thumbnails, lessons/... for the videos lessons play, and library/... for the
+// shared image-picker library. The stored
 // key never reuses the caller's file name — only its extension — so two
 // uploads with the same original name never collide.
 func (s *MediaService) objectKey(req domain.MediaUploadRequest) string {
@@ -56,6 +58,8 @@ func (s *MediaService) objectKey(req domain.MediaUploadRequest) string {
 		return "exercises/" + *req.ExerciseID + "/" + id + ext
 	case domain.MediaUploadPurposeThumbnail:
 		return "thumbnails/" + id + ext
+	case domain.MediaUploadPurposeLessonVideo:
+		return "lessons/" + id + ext
 	case domain.MediaUploadPurposeLibraryAsset:
 	}
 	return "library/" + id + ext

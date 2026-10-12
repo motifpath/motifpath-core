@@ -16,7 +16,7 @@ func TestThumbnailUploads(t *testing.T) {
 	storage := newFakeMediaStorage()
 	svc := newMediaService(newFakeExerciseRepository(), storage)
 
-	_, err := svc.CreateUploadURL(context.Background(), teacherCaller(), domain.MediaUploadPurposeThumbnail, nil, domain.MediaContentTypeImage, "cover.png")
+	_, err := svc.CreateUploadURL(context.Background(), teacherCaller(), domain.MediaUploadPurposeThumbnail, nil, domain.MediaContentTypeImage, "cover.png", nil)
 
 	require.NoError(t, err)
 	assert.True(t, strings.HasPrefix(storage.lastKey, "thumbnails/"), "thumbnails are stored apart, got %q", storage.lastKey)

@@ -1536,10 +1536,14 @@ var errStoreUnreachable = errors.New("store unreachable")
 
 // fakeMediaStorage backs ports.MediaStorage. Presigning always succeeds —
 // the media-upload feature is about request validation and authorization,
-// not storage-provider failure modes.
-type fakeMediaStorage struct{}
+// not storage-provider failure modes. It remembers the size the last URL
+// was bound to.
+type fakeMediaStorage struct {
+	lastContentLength *int64
+}
 
-func (f *fakeMediaStorage) PresignUpload(_ context.Context, objectKey string, _ domain.MediaContentType) (domain.MediaUploadURL, error) {
+func (f *fakeMediaStorage) PresignUpload(_ context.Context, objectKey string, _ domain.MediaContentType, contentLength *int64) (domain.MediaUploadURL, error) {
+	f.lastContentLength = contentLength
 	return domain.MediaUploadURL{
 		UploadURL: "https://storage.example.com/" + objectKey + "?presigned=1",
 		ObjectURL: "https://cdn.example.com/" + objectKey,
