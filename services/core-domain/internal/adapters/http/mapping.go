@@ -819,6 +819,9 @@ func diagramListFilter(params generated.ListDiagramsParams) (domain.DiagramListF
 	if params.Language != nil {
 		filter.Language = *params.Language
 	}
+	if params.Playable != nil {
+		filter.Playable = *params.Playable
+	}
 	if params.Name != nil {
 		if *params.Name == "" {
 			return domain.DiagramListFilter{}, domain.NewValidationError("name", "must not be empty")

@@ -224,6 +224,8 @@ type CourseListFilter struct {
 // ignoring case and accents (see ContainsLoosely). RootNote, when set, keeps
 // diagrams recorded with exactly that root; one with none never matches.
 // CreatedBy narrows within VisibleTo, never widening what a caller sees.
+// Playable, when set, keeps only diagrams with at least one playback, the
+// ones a listening exercise can play as its sound.
 //
 // Locale does not filter: it is the caller's language, which orders the
 // results by the name that caller sees (see LocalizedText.Resolve).
@@ -238,6 +240,7 @@ type DiagramListFilter struct {
 	Language     string
 	Name         string
 	RootNote     string
+	Playable     bool
 	Locale       string
 	// Sort orders the results; the zero value orders by the name the
 	// caller reads.
@@ -279,6 +282,9 @@ func (f DiagramListFilter) matchesContent(d Diagram) bool {
 		return false
 	}
 	if f.RootNote != "" && (d.RootNote == nil || *d.RootNote != f.RootNote) {
+		return false
+	}
+	if f.Playable && len(d.Playbacks) == 0 {
 		return false
 	}
 	if f.Name != "" && !f.matchesName(d) {
