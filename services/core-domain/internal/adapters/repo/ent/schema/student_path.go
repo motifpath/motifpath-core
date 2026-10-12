@@ -53,35 +53,33 @@ func (StudentPath) Fields() []ent.Field {
 			Nillable().
 			Immutable(),
 
+		// Updating a course moves its active part's copy to the part's
+		// position in the newer version.
 		field.Int("course_checkpoint_position").
 			Optional().
-			Nillable().
-			Immutable(),
+			Nillable(),
 
 		// The template's presentation as it was when this copy was made, so
 		// a learner's card never depends on a template that may since have
 		// been edited or deleted. NULL when the template had none, or the
-		// copy predates these columns.
+		// copy predates these columns. Updating the copy to its template's
+		// latest content records them again.
 		field.String("summary_snapshot").
 			Optional().
-			Nillable().
-			Immutable(),
+			Nillable(),
 
 		field.Enum("level_snapshot").
 			Values("beginner", "early_intermediate", "intermediate", "advanced", "expert").
 			Optional().
-			Nillable().
-			Immutable(),
+			Nillable(),
 
 		field.String("thumbnail_url_snapshot").
 			Optional().
-			Nillable().
-			Immutable(),
+			Nillable(),
 
 		field.UUID("created_by_snapshot", uuid.UUID{}).
 			Optional().
-			Nillable().
-			Immutable(),
+			Nillable(),
 	}
 }
 

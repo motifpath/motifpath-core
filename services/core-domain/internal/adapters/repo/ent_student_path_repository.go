@@ -253,6 +253,79 @@ func (r *EntStudentPathRepository) Archive(ctx context.Context, id string, archi
 	return nil
 }
 
+func (r *EntStudentPathRepository) ReplaceContent(ctx context.Context, path domain.StudentPath) error {
+	id, err := uuid.Parse(path.ID)
+	if err != nil {
+		return domain.ErrNotFound
+	}
+
+	tx, err := r.client.Tx(ctx)
+	if err != nil {
+		return err
+	}
+
+	update, err := withReplacedPresentation(tx.StudentPath.Update().Where(studentpath.ID(id)), path)
+	if err != nil {
+		return rollback(tx, err)
+	}
+	n, err := update.Save(ctx)
+	if err != nil {
+		return rollback(tx, err)
+	}
+	if n == 0 {
+		return rollback(tx, domain.ErrNotFound)
+	}
+
+	if _, err := tx.StudentPathItem.Delete().Where(studentpathitem.StudentPathID(id)).Exec(ctx); err != nil {
+		return rollback(tx, err)
+	}
+	itemBuilders, err := studentPathItemBuilders(tx, id, path.Items)
+	if err != nil {
+		return rollback(tx, err)
+	}
+	if len(itemBuilders) > 0 {
+		if _, err := tx.StudentPathItem.CreateBulk(itemBuilders...).Save(ctx); err != nil {
+			return rollback(tx, err)
+		}
+	}
+
+	return tx.Commit()
+}
+
+// withReplacedPresentation sets the title, presentation snapshots and course
+// checkpoint position ReplaceContent overwrites, clearing each one path has
+// none of.
+func withReplacedPresentation(update *ent.StudentPathUpdate, path domain.StudentPath) (*ent.StudentPathUpdate, error) {
+	update = update.SetTitle(path.Title).
+		SetNillableSummarySnapshot(path.SummarySnapshot).
+		SetNillableThumbnailURLSnapshot(path.ThumbnailURLSnapshot).
+		SetNillableCourseCheckpointPosition(path.CourseCheckpointPosition)
+	if path.SummarySnapshot == nil {
+		update = update.ClearSummarySnapshot()
+	}
+	if path.ThumbnailURLSnapshot == nil {
+		update = update.ClearThumbnailURLSnapshot()
+	}
+	if path.CourseCheckpointPosition == nil {
+		update = update.ClearCourseCheckpointPosition()
+	}
+	if path.LevelSnapshot != nil {
+		update = update.SetLevelSnapshot(studentpath.LevelSnapshot(*path.LevelSnapshot))
+	} else {
+		update = update.ClearLevelSnapshot()
+	}
+	if path.CreatedBySnapshot != nil {
+		creator, err := uuid.Parse(*path.CreatedBySnapshot)
+		if err != nil {
+			return nil, err
+		}
+		update = update.SetCreatedBySnapshot(creator)
+	} else {
+		update = update.ClearCreatedBySnapshot()
+	}
+	return update, nil
+}
+
 func toDomainStudentPath(row *ent.StudentPath, itemRows []*ent.StudentPathItem) domain.StudentPath {
 	items := make([]domain.StudentPathItemRecord, len(itemRows))
 	for i, item := range itemRows {

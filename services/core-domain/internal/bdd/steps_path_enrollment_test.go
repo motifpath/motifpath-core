@@ -49,8 +49,12 @@ func registerPathEnrollmentSteps(sc *godog.ScenarioContext, w *world) {
 		if err != nil {
 			return err
 		}
-		if _, err := w.returnedCopy(); err != nil {
+		card, err := w.returnedCopy()
+		if err != nil {
 			return fmt.Errorf("setup: %w", err)
+		}
+		if _, held := w.standalonePathIDByKey[name+"|"+slug]; !held {
+			w.standalonePathIDByKey[name+"|"+slug] = card.StudentPathId.String()
 		}
 		return nil
 	})

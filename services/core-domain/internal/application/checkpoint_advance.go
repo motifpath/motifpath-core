@@ -59,7 +59,10 @@ func checkAndAdvanceCheckpoint(
 		return enrollment, false, false, nil
 	}
 
-	version, err := courseVersions.GetLatestByCourseID(ctx, enrollment.CourseID)
+	// The next checkpoint comes from the version the enrollment is pinned
+	// to: a newer published version reaches the learner only when they
+	// choose to update.
+	version, err := courseVersions.GetByCourseIDAndVersionNumber(ctx, enrollment.CourseID, enrollment.CourseVersionNumber)
 	if err != nil {
 		return domain.CourseEnrollment{}, false, false, err
 	}

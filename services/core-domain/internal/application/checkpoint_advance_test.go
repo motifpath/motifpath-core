@@ -140,6 +140,36 @@ func TestStudentPathService_ChecksCheckpointCompletionOnRead(t *testing.T) {
 		assert.Equal(t, domain.CourseEnrollmentStatusActive, enrollment.Status)
 	})
 
+	t.Run("advancing follows the enrollment's pinned version, even after a newer one is published", func(t *testing.T) {
+		f := newCheckpointAdvanceFixtures()
+		seedActiveCheckpoint1(f)
+		f.paths.put(singleItemTemplate("path-warm-up", "node-02"))
+		_ = f.courseVersions.Create(context.Background(), domain.CourseVersion{
+			ID: "version-course-1-v2", CourseID: "course-1", VersionNumber: 2,
+			TitleSnapshot: "Fingerstyle Journey",
+			Checkpoints: []domain.CourseVersionCheckpoint{
+				{Position: 1, LearningPathID: "path-1"},
+				{Position: 2, LearningPathID: "path-warm-up"},
+				{Position: 3, LearningPathID: "path-2"},
+			},
+			PublishedAt: fixedEnrolledAt, AvailableForNewEnrollments: true,
+		})
+		f.completion.set("student-1", "node-01", domain.CompletionStatusCompleted)
+
+		_, err := f.studentPathService().GetMyPath(context.Background(), studentCaller())
+		require.NoError(t, err)
+
+		enrollment, err := f.enrollments.GetByID(context.Background(), "enrollment-1")
+		require.NoError(t, err)
+		assert.Equal(t, 1, enrollment.CourseVersionNumber)
+		require.NotNil(t, enrollment.ActiveCheckpointStudentPathID)
+		next, err := f.studentPaths.GetByID(context.Background(), *enrollment.ActiveCheckpointStudentPathID)
+		require.NoError(t, err)
+		assert.Equal(t, "path-2", next.SourceTemplateID)
+		require.NotNil(t, next.CourseCheckpointPosition)
+		assert.Equal(t, 2, *next.CourseCheckpointPosition)
+	})
+
 	t.Run("an incomplete checkpoint leaves GetMyPath and the enrollment untouched", func(t *testing.T) {
 		f := newCheckpointAdvanceFixtures()
 		seedActiveCheckpoint1(f)

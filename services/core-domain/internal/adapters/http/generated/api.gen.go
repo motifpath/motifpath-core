@@ -3580,6 +3580,9 @@ type CourseEnrollment struct {
 	// appears only in responses the caller is already authorized to
 	// receive.
 	Student UserRef `json:"student"`
+
+	// UpdateAvailable True when this active enrollment can be updated to the course's latest published content: a newer published course version exists, or the active checkpoint's student path differs from its learning path's current lessons, title, summary, level or thumbnail. Always false for a completed or abandoned enrollment.
+	UpdateAvailable bool `json:"update_available"`
 }
 
 // CourseEnrollmentCourseLevel The course's level, as of the pinned version.
@@ -7136,7 +7139,8 @@ type StartingPointsList struct {
 // StudentPath A student's own copy of a learning path template's items. Created by
 // copying a LearningPath at assign time; independently editable
 // afterwards and never affected by later changes to the template it
-// was copied from.
+// was copied from, unless the student explicitly updates it to the
+// template's latest content.
 type StudentPath struct {
 	// ArchivedAt Timestamp at which this StudentPath was archived, hiding it from the student. Null means the path is active and visible.
 	ArchivedAt *time.Time `json:"archived_at,omitempty"`
@@ -7197,6 +7201,9 @@ type StudentPath struct {
 
 	// Title Title of the path, copied from the template at assign time and independently editable afterwards.
 	Title string `json:"title"`
+
+	// UpdateAvailable True when this standalone path can be updated to its template's latest published content: it is not archived, not finished, its template is still published, and the template's lessons (their order and section labels), title, summary, level or thumbnail differ from this copy. Always false for a path that belongs to a course enrollment; the enrollment is updated instead.
+	UpdateAvailable bool `json:"update_available"`
 }
 
 // StudentPathLevel The template's level when this path was copied. Absent when the template had none, or the path was copied before levels were recorded on copies.
@@ -8750,6 +8757,9 @@ type ServerInterface interface {
 	// AbandonCourseEnrollment Abandon a course enrollment
 	// (POST /students/me/course-enrollments/{course_enrollment_id}/abandon)
 	AbandonCourseEnrollment(w http.ResponseWriter, r *http.Request, courseEnrollmentId openapi_types.UUID)
+	// UpdateCourseEnrollmentToLatest Update a course enrollment to the course's latest published content
+	// (POST /students/me/course-enrollments/{course_enrollment_id}/update)
+	UpdateCourseEnrollmentToLatest(w http.ResponseWriter, r *http.Request, courseEnrollmentId openapi_types.UUID)
 	// SetCurrentPath Switch the authenticated student's current course or path
 	// (PUT /students/me/current-path)
 	SetCurrentPath(w http.ResponseWriter, r *http.Request)
@@ -8762,6 +8772,9 @@ type ServerInterface interface {
 	// ArchiveStandaloneStudentPath Archive a standalone student path
 	// (POST /students/me/paths/{student_path_id}/archive)
 	ArchiveStandaloneStudentPath(w http.ResponseWriter, r *http.Request, studentPathId openapi_types.UUID)
+	// UpdateStandalonePathToLatest Update a standalone student path to its template's latest content
+	// (POST /students/me/paths/{student_path_id}/update)
+	UpdateStandalonePathToLatest(w http.ResponseWriter, r *http.Request, studentPathId openapi_types.UUID)
 	// GetPracticeOverview Read the authenticated student's practice overview, across instruments
 	// (GET /students/me/practice-overview)
 	GetPracticeOverview(w http.ResponseWriter, r *http.Request, params GetPracticeOverviewParams)
@@ -9338,6 +9351,12 @@ func (_ Unimplemented) AbandonCourseEnrollment(w http.ResponseWriter, r *http.Re
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// UpdateCourseEnrollmentToLatest Update a course enrollment to the course's latest published content
+// (POST /students/me/course-enrollments/{course_enrollment_id}/update)
+func (_ Unimplemented) UpdateCourseEnrollmentToLatest(w http.ResponseWriter, r *http.Request, courseEnrollmentId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // SetCurrentPath Switch the authenticated student's current course or path
 // (PUT /students/me/current-path)
 func (_ Unimplemented) SetCurrentPath(w http.ResponseWriter, r *http.Request) {
@@ -9359,6 +9378,12 @@ func (_ Unimplemented) GetMyPath(w http.ResponseWriter, r *http.Request) {
 // ArchiveStandaloneStudentPath Archive a standalone student path
 // (POST /students/me/paths/{student_path_id}/archive)
 func (_ Unimplemented) ArchiveStandaloneStudentPath(w http.ResponseWriter, r *http.Request, studentPathId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UpdateStandalonePathToLatest Update a standalone student path to its template's latest content
+// (POST /students/me/paths/{student_path_id}/update)
+func (_ Unimplemented) UpdateStandalonePathToLatest(w http.ResponseWriter, r *http.Request, studentPathId openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -12724,6 +12749,32 @@ func (siw *ServerInterfaceWrapper) AbandonCourseEnrollment(w http.ResponseWriter
 	handler.ServeHTTP(w, r)
 }
 
+// UpdateCourseEnrollmentToLatest operation middleware
+func (siw *ServerInterfaceWrapper) UpdateCourseEnrollmentToLatest(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "course_enrollment_id" -------------
+	var courseEnrollmentId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "course_enrollment_id", chi.URLParam(r, "course_enrollment_id"), &courseEnrollmentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "course_enrollment_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateCourseEnrollmentToLatest(w, r, courseEnrollmentId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // SetCurrentPath operation middleware
 func (siw *ServerInterfaceWrapper) SetCurrentPath(w http.ResponseWriter, r *http.Request) {
 
@@ -12802,6 +12853,32 @@ func (siw *ServerInterfaceWrapper) ArchiveStandaloneStudentPath(w http.ResponseW
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ArchiveStandaloneStudentPath(w, r, studentPathId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateStandalonePathToLatest operation middleware
+func (siw *ServerInterfaceWrapper) UpdateStandalonePathToLatest(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "student_path_id" -------------
+	var studentPathId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "student_path_id", chi.URLParam(r, "student_path_id"), &studentPathId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "student_path_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateStandalonePathToLatest(w, r, studentPathId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -13410,7 +13487,13 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/students/me/course-enrollments/{course_enrollment_id}/abandon", wrapper.AbandonCourseEnrollment)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/students/me/course-enrollments/{course_enrollment_id}/update", wrapper.UpdateCourseEnrollmentToLatest)
+	})
+	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/students/me/paths/{student_path_id}/archive", wrapper.ArchiveStandaloneStudentPath)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/students/me/paths/{student_path_id}/update", wrapper.UpdateStandalonePathToLatest)
 	})
 	r.Group(func(r chi.Router) {
 		r.Put(options.BaseURL+"/students/me/current-path", wrapper.SetCurrentPath)
@@ -19395,6 +19478,70 @@ func (response AbandonCourseEnrollment409JSONResponse) VisitAbandonCourseEnrollm
 	return err
 }
 
+type UpdateCourseEnrollmentToLatestRequestObject struct {
+	CourseEnrollmentId openapi_types.UUID `json:"course_enrollment_id"`
+}
+
+type UpdateCourseEnrollmentToLatestResponseObject interface {
+	VisitUpdateCourseEnrollmentToLatestResponse(w http.ResponseWriter) error
+}
+
+type UpdateCourseEnrollmentToLatest200JSONResponse CourseEnrollment
+
+func (response UpdateCourseEnrollmentToLatest200JSONResponse) VisitUpdateCourseEnrollmentToLatestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateCourseEnrollmentToLatest400JSONResponse ValidationError
+
+func (response UpdateCourseEnrollmentToLatest400JSONResponse) VisitUpdateCourseEnrollmentToLatestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateCourseEnrollmentToLatest401JSONResponse UnauthorizedError
+
+func (response UpdateCourseEnrollmentToLatest401JSONResponse) VisitUpdateCourseEnrollmentToLatestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateCourseEnrollmentToLatest404JSONResponse NotFoundError
+
+func (response UpdateCourseEnrollmentToLatest404JSONResponse) VisitUpdateCourseEnrollmentToLatestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type SetCurrentPathRequestObject struct {
 	Body *SetCurrentPathJSONRequestBody
 }
@@ -19625,6 +19772,84 @@ func (response ArchiveStandaloneStudentPath404JSONResponse) VisitArchiveStandalo
 type ArchiveStandaloneStudentPath409JSONResponse ConflictError
 
 func (response ArchiveStandaloneStudentPath409JSONResponse) VisitArchiveStandaloneStudentPathResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateStandalonePathToLatestRequestObject struct {
+	StudentPathId openapi_types.UUID `json:"student_path_id"`
+}
+
+type UpdateStandalonePathToLatestResponseObject interface {
+	VisitUpdateStandalonePathToLatestResponse(w http.ResponseWriter) error
+}
+
+type UpdateStandalonePathToLatest200JSONResponse StudentPath
+
+func (response UpdateStandalonePathToLatest200JSONResponse) VisitUpdateStandalonePathToLatestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateStandalonePathToLatest400JSONResponse ValidationError
+
+func (response UpdateStandalonePathToLatest400JSONResponse) VisitUpdateStandalonePathToLatestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateStandalonePathToLatest401JSONResponse UnauthorizedError
+
+func (response UpdateStandalonePathToLatest401JSONResponse) VisitUpdateStandalonePathToLatestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateStandalonePathToLatest404JSONResponse NotFoundError
+
+func (response UpdateStandalonePathToLatest404JSONResponse) VisitUpdateStandalonePathToLatestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateStandalonePathToLatest409JSONResponse ConflictError
+
+func (response UpdateStandalonePathToLatest409JSONResponse) VisitUpdateStandalonePathToLatestResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -20532,6 +20757,9 @@ type StrictServerInterface interface {
 	// AbandonCourseEnrollment Abandon a course enrollment
 	// (POST /students/me/course-enrollments/{course_enrollment_id}/abandon)
 	AbandonCourseEnrollment(ctx context.Context, request AbandonCourseEnrollmentRequestObject) (AbandonCourseEnrollmentResponseObject, error)
+	// UpdateCourseEnrollmentToLatest Update a course enrollment to the course's latest published content
+	// (POST /students/me/course-enrollments/{course_enrollment_id}/update)
+	UpdateCourseEnrollmentToLatest(ctx context.Context, request UpdateCourseEnrollmentToLatestRequestObject) (UpdateCourseEnrollmentToLatestResponseObject, error)
 	// SetCurrentPath Switch the authenticated student's current course or path
 	// (PUT /students/me/current-path)
 	SetCurrentPath(ctx context.Context, request SetCurrentPathRequestObject) (SetCurrentPathResponseObject, error)
@@ -20544,6 +20772,9 @@ type StrictServerInterface interface {
 	// ArchiveStandaloneStudentPath Archive a standalone student path
 	// (POST /students/me/paths/{student_path_id}/archive)
 	ArchiveStandaloneStudentPath(ctx context.Context, request ArchiveStandaloneStudentPathRequestObject) (ArchiveStandaloneStudentPathResponseObject, error)
+	// UpdateStandalonePathToLatest Update a standalone student path to its template's latest content
+	// (POST /students/me/paths/{student_path_id}/update)
+	UpdateStandalonePathToLatest(ctx context.Context, request UpdateStandalonePathToLatestRequestObject) (UpdateStandalonePathToLatestResponseObject, error)
 	// GetPracticeOverview Read the authenticated student's practice overview, across instruments
 	// (GET /students/me/practice-overview)
 	GetPracticeOverview(ctx context.Context, request GetPracticeOverviewRequestObject) (GetPracticeOverviewResponseObject, error)
@@ -23123,6 +23354,32 @@ func (sh *strictHandler) AbandonCourseEnrollment(w http.ResponseWriter, r *http.
 	}
 }
 
+// UpdateCourseEnrollmentToLatest operation middleware
+func (sh *strictHandler) UpdateCourseEnrollmentToLatest(w http.ResponseWriter, r *http.Request, courseEnrollmentId openapi_types.UUID) {
+	var request UpdateCourseEnrollmentToLatestRequestObject
+
+	request.CourseEnrollmentId = courseEnrollmentId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateCourseEnrollmentToLatest(ctx, request.(UpdateCourseEnrollmentToLatestRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateCourseEnrollmentToLatest")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateCourseEnrollmentToLatestResponseObject); ok {
+		if err := validResponse.VisitUpdateCourseEnrollmentToLatestResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // SetCurrentPath operation middleware
 func (sh *strictHandler) SetCurrentPath(w http.ResponseWriter, r *http.Request) {
 	var request SetCurrentPathRequestObject
@@ -23223,6 +23480,32 @@ func (sh *strictHandler) ArchiveStandaloneStudentPath(w http.ResponseWriter, r *
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ArchiveStandaloneStudentPathResponseObject); ok {
 		if err := validResponse.VisitArchiveStandaloneStudentPathResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateStandalonePathToLatest operation middleware
+func (sh *strictHandler) UpdateStandalonePathToLatest(w http.ResponseWriter, r *http.Request, studentPathId openapi_types.UUID) {
+	var request UpdateStandalonePathToLatestRequestObject
+
+	request.StudentPathId = studentPathId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateStandalonePathToLatest(ctx, request.(UpdateStandalonePathToLatestRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateStandalonePathToLatest")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateStandalonePathToLatestResponseObject); ok {
+		if err := validResponse.VisitUpdateStandalonePathToLatestResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

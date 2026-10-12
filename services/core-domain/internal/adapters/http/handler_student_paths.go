@@ -50,9 +50,57 @@ func (h *Handler) studentPathCards(ctx context.Context, studentID string, paths 
 	if err != nil {
 		return nil, err
 	}
+	updateAvailable, err := h.studentPath.UpdateAvailable(ctx, studentID, paths)
+	if err != nil {
+		return nil, err
+	}
 	cards := make([]generated.StudentPath, len(paths))
 	for i, sp := range paths {
-		cards[i] = toStudentPath(sp, names, completed[sp.ID])
+		cards[i] = toStudentPath(sp, names, completed[sp.ID], updateAvailable[sp.ID])
 	}
 	return cards, nil
+}
+
+func (h *Handler) UpdateStandalonePathToLatest(ctx context.Context, request generated.UpdateStandalonePathToLatestRequestObject) (generated.UpdateStandalonePathToLatestResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.UpdateStandalonePathToLatest401JSONResponse(unauthorizedError()), nil
+	}
+
+	sp, err := h.studentPath.UpdateStandalonePathToLatest(ctx, caller, request.StudentPathId.String())
+	switch {
+	case errors.Is(err, domain.ErrNotFound):
+		return generated.UpdateStandalonePathToLatest404JSONResponse(notFoundError("no active standalone path with this id exists for the caller")), nil
+	case errors.Is(err, domain.ErrConflict):
+		return generated.UpdateStandalonePathToLatest409JSONResponse(conflictError("the path cannot be updated: every lesson is completed, or its learning path is no longer published")), nil
+	case err != nil:
+		return nil, err
+	}
+
+	cards, err := h.studentPathCards(ctx, caller.ID, sp)
+	if err != nil {
+		return nil, err
+	}
+	return generated.UpdateStandalonePathToLatest200JSONResponse(cards[0]), nil
+}
+
+func (h *Handler) UpdateCourseEnrollmentToLatest(ctx context.Context, request generated.UpdateCourseEnrollmentToLatestRequestObject) (generated.UpdateCourseEnrollmentToLatestResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.UpdateCourseEnrollmentToLatest401JSONResponse(unauthorizedError()), nil
+	}
+
+	enrollment, err := h.courseEnrollment.UpdateCourseEnrollmentToLatest(ctx, caller, request.CourseEnrollmentId.String())
+	if errors.Is(err, domain.ErrNotFound) {
+		return generated.UpdateCourseEnrollmentToLatest404JSONResponse(notFoundError("no active enrollment with this id exists for the caller")), nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	presentations, err := h.courseEnrollmentPresentations(ctx, []domain.CourseEnrollment{enrollment})
+	if err != nil {
+		return nil, err
+	}
+	return generated.UpdateCourseEnrollmentToLatest200JSONResponse(presentations[0]), nil
 }

@@ -551,8 +551,9 @@ func toLearningPaths(paths []domain.LearningPath, names userNames) []generated.L
 
 // toStudentPath renders sp with the presentation it recorded when copied,
 // its lesson count and completed, how many of those lessons its student
-// has completed.
-func toStudentPath(sp domain.StudentPath, names userNames, completed int) generated.StudentPath {
+// has completed, and whether it can be updated to its learning path's
+// latest content.
+func toStudentPath(sp domain.StudentPath, names userNames, completed int, updateAvailable bool) generated.StudentPath {
 	result := generated.StudentPath{
 		StudentPathId:            mustUUID(sp.ID),
 		Student:                  names.ref(sp.StudentID),
@@ -566,6 +567,7 @@ func toStudentPath(sp domain.StudentPath, names userNames, completed int) genera
 		ThumbnailUrl:             sp.ThumbnailURLSnapshot,
 		LessonCount:              len(sp.Items),
 		CompletedCount:           completed,
+		UpdateAvailable:          updateAvailable,
 	}
 	if sp.SourceCourseEnrollmentID != nil {
 		id := mustUUID(*sp.SourceCourseEnrollmentID)
@@ -624,7 +626,7 @@ func toStudentPathView(v application.StudentPathView) generated.StudentPathView 
 	return view
 }
 
-func toCourseEnrollment(e domain.CourseEnrollment, presentation application.CourseEnrollmentPresentation, names userNames) generated.CourseEnrollment {
+func toCourseEnrollment(e domain.CourseEnrollment, presentation application.CourseEnrollmentPresentation, names userNames, updateAvailable bool) generated.CourseEnrollment {
 	result := generated.CourseEnrollment{
 		CourseEnrollmentId:       mustUUID(e.ID),
 		Student:                  names.ref(e.StudentID),
@@ -639,6 +641,7 @@ func toCourseEnrollment(e domain.CourseEnrollment, presentation application.Cour
 		Status:                   generated.CourseEnrollmentStatus(e.Status),
 		ActiveCheckpointPosition: e.ActiveCheckpointPosition,
 		EnrolledAt:               e.EnrolledAt,
+		UpdateAvailable:          updateAvailable,
 	}
 	if e.ActiveCheckpointStudentPathID != nil {
 		id := mustUUID(*e.ActiveCheckpointStudentPathID)
@@ -647,10 +650,10 @@ func toCourseEnrollment(e domain.CourseEnrollment, presentation application.Cour
 	return result
 }
 
-func toCourseEnrollments(enrollments []domain.CourseEnrollment, presentations []application.CourseEnrollmentPresentation, names userNames) []generated.CourseEnrollment {
+func toCourseEnrollments(enrollments []domain.CourseEnrollment, presentations []application.CourseEnrollmentPresentation, names userNames, updateAvailable map[string]bool) []generated.CourseEnrollment {
 	result := make([]generated.CourseEnrollment, len(enrollments))
 	for i, e := range enrollments {
-		result[i] = toCourseEnrollment(e, presentations[i], names)
+		result[i] = toCourseEnrollment(e, presentations[i], names, updateAvailable[e.ID])
 	}
 	return result
 }

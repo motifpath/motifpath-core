@@ -28,6 +28,20 @@ func (_u *CourseEnrollmentUpdate) Where(ps ...predicate.CourseEnrollment) *Cours
 	return _u
 }
 
+// SetCourseTitle sets the "course_title" field.
+func (_u *CourseEnrollmentUpdate) SetCourseTitle(v string) *CourseEnrollmentUpdate {
+	_u.mutation.SetCourseTitle(v)
+	return _u
+}
+
+// SetNillableCourseTitle sets the "course_title" field if the given value is not nil.
+func (_u *CourseEnrollmentUpdate) SetNillableCourseTitle(v *string) *CourseEnrollmentUpdate {
+	if v != nil {
+		_u.SetCourseTitle(*v)
+	}
+	return _u
+}
+
 // SetCourseThumbnailURL sets the "course_thumbnail_url" field.
 func (_u *CourseEnrollmentUpdate) SetCourseThumbnailURL(v string) *CourseEnrollmentUpdate {
 	_u.mutation.SetCourseThumbnailURL(v)
@@ -45,6 +59,27 @@ func (_u *CourseEnrollmentUpdate) SetNillableCourseThumbnailURL(v *string) *Cour
 // ClearCourseThumbnailURL clears the value of the "course_thumbnail_url" field.
 func (_u *CourseEnrollmentUpdate) ClearCourseThumbnailURL() *CourseEnrollmentUpdate {
 	_u.mutation.ClearCourseThumbnailURL()
+	return _u
+}
+
+// SetCourseVersionNumber sets the "course_version_number" field.
+func (_u *CourseEnrollmentUpdate) SetCourseVersionNumber(v int) *CourseEnrollmentUpdate {
+	_u.mutation.ResetCourseVersionNumber()
+	_u.mutation.SetCourseVersionNumber(v)
+	return _u
+}
+
+// SetNillableCourseVersionNumber sets the "course_version_number" field if the given value is not nil.
+func (_u *CourseEnrollmentUpdate) SetNillableCourseVersionNumber(v *int) *CourseEnrollmentUpdate {
+	if v != nil {
+		_u.SetCourseVersionNumber(*v)
+	}
+	return _u
+}
+
+// AddCourseVersionNumber adds value to the "course_version_number" field.
+func (_u *CourseEnrollmentUpdate) AddCourseVersionNumber(v int) *CourseEnrollmentUpdate {
+	_u.mutation.AddCourseVersionNumber(v)
 	return _u
 }
 
@@ -163,11 +198,20 @@ func (_u *CourseEnrollmentUpdate) sqlSave(ctx context.Context) (_node int, err e
 			}
 		}
 	}
+	if value, ok := _u.mutation.CourseTitle(); ok {
+		_spec.SetField(courseenrollment.FieldCourseTitle, field.TypeString, value)
+	}
 	if value, ok := _u.mutation.CourseThumbnailURL(); ok {
 		_spec.SetField(courseenrollment.FieldCourseThumbnailURL, field.TypeString, value)
 	}
 	if _u.mutation.CourseThumbnailURLCleared() {
 		_spec.ClearField(courseenrollment.FieldCourseThumbnailURL, field.TypeString)
+	}
+	if value, ok := _u.mutation.CourseVersionNumber(); ok {
+		_spec.SetField(courseenrollment.FieldCourseVersionNumber, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedCourseVersionNumber(); ok {
+		_spec.AddField(courseenrollment.FieldCourseVersionNumber, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(courseenrollment.FieldStatus, field.TypeEnum, value)
@@ -207,6 +251,20 @@ type CourseEnrollmentUpdateOne struct {
 	mutation *CourseEnrollmentMutation
 }
 
+// SetCourseTitle sets the "course_title" field.
+func (_u *CourseEnrollmentUpdateOne) SetCourseTitle(v string) *CourseEnrollmentUpdateOne {
+	_u.mutation.SetCourseTitle(v)
+	return _u
+}
+
+// SetNillableCourseTitle sets the "course_title" field if the given value is not nil.
+func (_u *CourseEnrollmentUpdateOne) SetNillableCourseTitle(v *string) *CourseEnrollmentUpdateOne {
+	if v != nil {
+		_u.SetCourseTitle(*v)
+	}
+	return _u
+}
+
 // SetCourseThumbnailURL sets the "course_thumbnail_url" field.
 func (_u *CourseEnrollmentUpdateOne) SetCourseThumbnailURL(v string) *CourseEnrollmentUpdateOne {
 	_u.mutation.SetCourseThumbnailURL(v)
@@ -224,6 +282,27 @@ func (_u *CourseEnrollmentUpdateOne) SetNillableCourseThumbnailURL(v *string) *C
 // ClearCourseThumbnailURL clears the value of the "course_thumbnail_url" field.
 func (_u *CourseEnrollmentUpdateOne) ClearCourseThumbnailURL() *CourseEnrollmentUpdateOne {
 	_u.mutation.ClearCourseThumbnailURL()
+	return _u
+}
+
+// SetCourseVersionNumber sets the "course_version_number" field.
+func (_u *CourseEnrollmentUpdateOne) SetCourseVersionNumber(v int) *CourseEnrollmentUpdateOne {
+	_u.mutation.ResetCourseVersionNumber()
+	_u.mutation.SetCourseVersionNumber(v)
+	return _u
+}
+
+// SetNillableCourseVersionNumber sets the "course_version_number" field if the given value is not nil.
+func (_u *CourseEnrollmentUpdateOne) SetNillableCourseVersionNumber(v *int) *CourseEnrollmentUpdateOne {
+	if v != nil {
+		_u.SetCourseVersionNumber(*v)
+	}
+	return _u
+}
+
+// AddCourseVersionNumber adds value to the "course_version_number" field.
+func (_u *CourseEnrollmentUpdateOne) AddCourseVersionNumber(v int) *CourseEnrollmentUpdateOne {
+	_u.mutation.AddCourseVersionNumber(v)
 	return _u
 }
 
@@ -372,11 +451,20 @@ func (_u *CourseEnrollmentUpdateOne) sqlSave(ctx context.Context) (_node *Course
 			}
 		}
 	}
+	if value, ok := _u.mutation.CourseTitle(); ok {
+		_spec.SetField(courseenrollment.FieldCourseTitle, field.TypeString, value)
+	}
 	if value, ok := _u.mutation.CourseThumbnailURL(); ok {
 		_spec.SetField(courseenrollment.FieldCourseThumbnailURL, field.TypeString, value)
 	}
 	if _u.mutation.CourseThumbnailURLCleared() {
 		_spec.ClearField(courseenrollment.FieldCourseThumbnailURL, field.TypeString)
+	}
+	if value, ok := _u.mutation.CourseVersionNumber(); ok {
+		_spec.SetField(courseenrollment.FieldCourseVersionNumber, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedCourseVersionNumber(); ok {
+		_spec.AddField(courseenrollment.FieldCourseVersionNumber, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(courseenrollment.FieldStatus, field.TypeEnum, value)

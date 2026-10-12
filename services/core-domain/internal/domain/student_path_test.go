@@ -77,6 +77,119 @@ func TestNewStudentPathFromTemplate(t *testing.T) {
 	})
 }
 
+func TestStudentPath_DiffersFromTemplate(t *testing.T) {
+	assignedAt := time.Date(2026, 9, 22, 10, 0, 0, 0, time.UTC)
+	versions := map[string]string{"node-01": "v-01", "node-02": "v-02", "node-03": "v-03"}
+	other := "Something else"
+	level := domain.DifficultyLevelBeginner
+	otherLevel := domain.DifficultyLevelIntermediate
+
+	tests := []struct {
+		name   string
+		change func(*domain.LearningPath)
+		want   bool
+	}{
+		{"an unchanged template", func(*domain.LearningPath) {}, false},
+		{"a renamed template", func(p *domain.LearningPath) { p.Title = "Renamed" }, true},
+		{"a lesson added", func(p *domain.LearningPath) {
+			p.Items = append(p.Items, domain.LearningPathItem{Position: 3, ContentNodeID: "node-03"})
+		}, true},
+		{"a lesson removed", func(p *domain.LearningPath) { p.Items = p.Items[:1] }, true},
+		{"lessons reordered", func(p *domain.LearningPath) {
+			p.Items[0].ContentNodeID, p.Items[1].ContentNodeID = p.Items[1].ContentNodeID, p.Items[0].ContentNodeID
+		}, true},
+		{"a section label changed", func(p *domain.LearningPath) { p.Items[0].SectionLabel = &other }, true},
+		{"a section label removed", func(p *domain.LearningPath) { p.Items[0].SectionLabel = nil }, true},
+		{"a lesson's title changed (lessons are live, not copied)", func(p *domain.LearningPath) { p.Items[0].Title = "New title" }, false},
+		{"a summary added", func(p *domain.LearningPath) { p.Summary = &other }, true},
+		{"a level changed", func(p *domain.LearningPath) { p.Level = &otherLevel }, true},
+		{"a thumbnail added", func(p *domain.LearningPath) { p.ThumbnailURL = &other }, true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			template := twoItemTemplate()
+			template.Level = &level
+			sp, err := domain.NewStudentPathFromTemplate("sp-1", "student-1", template, "teacher-1", assignedAt, versions)
+			require.NoError(t, err)
+
+			changed := twoItemTemplate()
+			changed.Level = &level
+			tc.change(&changed)
+
+			assert.Equal(t, tc.want, sp.DiffersFromTemplate(changed))
+		})
+	}
+}
+
+func TestStudentPath_RefreshedFrom(t *testing.T) {
+	assignedAt := time.Date(2026, 9, 22, 10, 0, 0, 0, time.UTC)
+	archivedAt := assignedAt.Add(time.Hour)
+	enrollmentID := "enrollment-1"
+	position := 2
+	summary := "New summary"
+	thumbnail := "https://cdn.example/new.png"
+	level := domain.DifficultyLevelIntermediate
+
+	sp, err := domain.NewStudentPathFromTemplate("sp-1", "student-1", twoItemTemplate(), "teacher-9", assignedAt, map[string]string{"node-01": "v-01", "node-02": "v-02"})
+	require.NoError(t, err)
+	sp.ArchivedAt = &archivedAt
+	sp.SourceCourseEnrollmentID = &enrollmentID
+	sp.CourseCheckpointPosition = &position
+
+	latest := twoItemTemplate()
+	latest.Title = "Beginner Guitar, revised"
+	latest.Summary = &summary
+	latest.Level = &level
+	latest.ThumbnailURL = &thumbnail
+	latest.Items = []domain.LearningPathItem{
+		{Position: 1, ContentNodeID: "node-02"},
+		{Position: 2, ContentNodeID: "node-03"},
+	}
+
+	t.Run("takes the template's items, pinned to the given versions, and its presentation", func(t *testing.T) {
+		refreshed, err := sp.RefreshedFrom(latest, map[string]string{"node-02": "v-02b", "node-03": "v-03"})
+		require.NoError(t, err)
+
+		assert.Equal(t, "Beginner Guitar, revised", refreshed.Title)
+		assert.Equal(t, &summary, refreshed.SummarySnapshot)
+		assert.Equal(t, &level, refreshed.LevelSnapshot)
+		assert.Equal(t, &thumbnail, refreshed.ThumbnailURLSnapshot)
+		require.Len(t, refreshed.Items, 2)
+		assert.Equal(t, domain.StudentPathItemRecord{Position: 1, ContentNodeID: "node-02", ContentNodeVersionID: "v-02b"}, refreshed.Items[0])
+		assert.Equal(t, domain.StudentPathItemRecord{Position: 2, ContentNodeID: "node-03", ContentNodeVersionID: "v-03"}, refreshed.Items[1])
+		assert.False(t, refreshed.DiffersFromTemplate(latest))
+	})
+
+	t.Run("keeps who owns, assigned and archived the copy, and which course part it is", func(t *testing.T) {
+		refreshed, err := sp.RefreshedFrom(latest, map[string]string{"node-02": "v-02b", "node-03": "v-03"})
+		require.NoError(t, err)
+
+		assert.Equal(t, "sp-1", refreshed.ID)
+		assert.Equal(t, "student-1", refreshed.StudentID)
+		assert.Equal(t, "template-1", refreshed.SourceTemplateID)
+		assert.Equal(t, "teacher-9", refreshed.AssignedBy)
+		assert.Equal(t, assignedAt, refreshed.AssignedAt)
+		assert.Equal(t, &archivedAt, refreshed.ArchivedAt)
+		assert.Equal(t, &enrollmentID, refreshed.SourceCourseEnrollmentID)
+		assert.Equal(t, &position, refreshed.CourseCheckpointPosition)
+	})
+
+	t.Run("a content node with no resolved published version fails the refresh", func(t *testing.T) {
+		_, err := sp.RefreshedFrom(latest, map[string]string{"node-02": "v-02b"})
+
+		var valErr *domain.ValidationError
+		require.ErrorAs(t, err, &valErr)
+	})
+
+	t.Run("leaves the original copy untouched", func(t *testing.T) {
+		_, err := sp.RefreshedFrom(latest, map[string]string{"node-02": "v-02b", "node-03": "v-03"})
+		require.NoError(t, err)
+
+		assert.Equal(t, "Beginner Guitar", sp.Title)
+		assert.Equal(t, "node-01", sp.Items[0].ContentNodeID)
+	})
+}
+
 func twoNodeItems() []domain.LearningPathItem {
 	return []domain.LearningPathItem{
 		{Position: 1, ContentNodeID: "node-01", Title: "One", ContentType: domain.ContentTypeVideo},
