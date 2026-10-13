@@ -187,3 +187,57 @@ func TestAFretboardCellIsAskedTheWayItHasFewerRightAnswersNamingTheNoteOnATie(t 
 func TestAFretboardCellTakesAbout8Seconds(t *testing.T) {
 	assert.Equal(t, 8, domain.FretboardCellSeconds)
 }
+
+func TestAFretWindowAtTheNutHoldsTheOpenStringAndFrets1To5(t *testing.T) {
+	nut := domain.FretWindow{FromFret: 0}
+	for fret := 0; fret <= 5; fret++ {
+		assert.True(t, nut.Contains(fret), "fret %d", fret)
+	}
+	assert.False(t, nut.Contains(6))
+	assert.Equal(t, 5, nut.ToFret())
+}
+
+func TestAFretWindowAboveTheNutHoldsFiveFrets(t *testing.T) {
+	w := domain.FretWindow{FromFret: 3}
+
+	assert.False(t, w.Contains(2))
+	assert.True(t, w.Contains(3))
+	assert.True(t, w.Contains(7))
+	assert.False(t, w.Contains(8))
+	assert.Equal(t, 7, w.ToFret())
+}
+
+func TestTheFretWindowsRunFromTheNutTo7To11(t *testing.T) {
+	var froms []int
+	for _, w := range domain.FretWindows() {
+		froms = append(froms, w.FromFret)
+	}
+	assert.Equal(t, []int{0, 2, 3, 4, 5, 6, 7}, froms)
+}
+
+func TestADrillsFretWindowIsPickedByItsDueThenWeakThenNewCellsNearestTheNutOnATie(t *testing.T) {
+	tests := []struct {
+		name            string
+		due, weak, news []int
+		newTurn         bool
+		want            int
+	}{
+		{name: "nothing at all stays at the nut", want: 0},
+		{name: "only new cells start at the nut", news: []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}, want: 0},
+		{name: "the most due cells, nearest the nut on a tie", due: []int{7, 7, 8, 8, 9, 9, 1, 2}, want: 5},
+		{name: "with nothing due, the most weak cells", weak: []int{8, 9, 10, 8, 9}, want: 6},
+		{name: "due cells outweigh more weak cells elsewhere", due: []int{1}, weak: []int{9, 9, 9}, want: 0},
+		{name: "weak cells break a tie on due cells", due: []int{5}, weak: []int{8, 9}, want: 5},
+		{name: "new cells break a tie on due and weak cells", due: []int{6}, news: []int{9, 10}, want: 6},
+		{name: "a new-cell turn takes the most new cells", due: []int{0, 1, 2, 3, 4, 5}, news: []int{6, 7, 8, 9, 10, 11}, newTurn: true, want: 6},
+		{name: "a new-cell turn without new cells keeps the due cells", due: []int{1, 2, 3, 9}, newTurn: true, want: 0},
+		{name: "off a new-cell turn the due cells win again", due: []int{0, 1, 2, 3, 4, 5}, news: []int{6, 7, 8, 9, 10, 11}, want: 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := domain.PickFretWindow(tt.due, tt.weak, tt.news, tt.newTurn)
+
+			assert.Equal(t, domain.FretWindow{FromFret: tt.want}, got)
+		})
+	}
+}
