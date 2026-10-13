@@ -45,7 +45,7 @@ func TestClassificationSeederResolvesMapKeys(t *testing.T) {
 
 func TestSeededExercisesAreClassifiedByWhatTheyAsk(t *testing.T) {
 	got := map[string]exerciseClassification{}
-	for _, s := range exerciseTypeSpecs("https://example.test/image.png", "https://example.test/audio.mp3") {
+	for _, s := range exerciseTypeSpecs(testMedia) {
 		got[s.title] = s.classification
 	}
 	got[listeningTitle] = listeningClassification
@@ -54,10 +54,36 @@ func TestSeededExercisesAreClassifiedByWhatTheyAsk(t *testing.T) {
 		"Name the interval — text response":                     {skill: "hear-intervals", concept: "interval-names"},
 		"Identify the recorded interval":                        {skill: "hear-intervals", concept: "interval-names"},
 		"Tap the root note on the fretboard":                    {skill: "find-notes", concept: "root-note"},
-		"Pick the matching chord shape":                         {skill: "play-open-chords", concept: "open-chord-shapes"},
+		"Pick the C major chord shape":                          {skill: "play-open-chords", concept: "open-chord-shapes"},
 		"Pick the matching recorded lick":                       {skill: "hear-licks", concept: "lick"},
 		"Listen to the E major chord, then tap its major third": {skill: "hear-chord-quality", concept: "major-triads"},
 	}, got)
+}
+
+var testMedia = exerciseMedia{
+	imageURL: "https://example.test/image.png", audioURL: "https://example.test/audio.mp3",
+	cMajorVoicingID: "diagram-c", gMajorVoicingID: "diagram-g",
+}
+
+// An image choice between chord shapes offers the shapes themselves, drawn as
+// chord boxes from the catalog voicings — not a placeholder picture repeated.
+func TestChordShapeChoiceOffersTwoDifferentCatalogVoicings(t *testing.T) {
+	var choice *exerciseTypeSpec
+	for _, s := range exerciseTypeSpecs(testMedia) {
+		if s.exerciseType == domain.ExerciseTypeImageChoice {
+			choice = &s
+		}
+	}
+	require.NotNil(t, choice, "no image_choice exercise seeded")
+	assert.Equal(t, "Pick the C major chord shape", choice.title)
+
+	shown := map[string]bool{}
+	for _, o := range choice.options {
+		assert.Nil(t, o.ImageURL, "an option shows a picture instead of its chord box")
+		require.NotNil(t, o.DiagramRef)
+		shown[o.DiagramRef.DiagramID] = o.IsCorrect
+	}
+	assert.Equal(t, map[string]bool{"diagram-c": true, "diagram-g": false}, shown)
 }
 
 func TestAdminPathTeachesFindingNotesOnTheFretboard(t *testing.T) {
