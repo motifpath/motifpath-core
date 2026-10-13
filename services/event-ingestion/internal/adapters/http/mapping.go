@@ -1,6 +1,7 @@
 package http
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -26,6 +27,10 @@ func toDomainEvent(body *generated.TrackingEvent) (domain.TrackingEvent, error) 
 		return nil, fmt.Errorf("%w: event_type", domain.ErrMissingRequiredField)
 	}
 	eventType := domain.EventType(eventTypeStr)
+
+	if err := checkReviewMarkers(body); err != nil {
+		return nil, err
+	}
 
 	switch eventType {
 	case domain.EventTypeLessonStarted:
@@ -217,6 +222,7 @@ func toDomainContentContext(cc generated.ContentContext) (domain.ContentContext,
 	if cc.TeacherId != nil {
 		result.TeacherID = cc.TeacherId.String()
 	}
+	result.Review = cc.Review != nil && *cc.Review
 	return result, nil
 }
 
@@ -231,7 +237,50 @@ func toDomainTriggerContext(tc generated.TriggerContext) (domain.TriggerContext,
 	if tc.ChallengeId != nil {
 		result.ChallengeID = tc.ChallengeId.String()
 	}
+	result.Review = tc.Review != nil && *tc.Review
 	return result, nil
+}
+
+// reviewMarkers holds the review marker of either context exactly as sent,
+// so a value that is not true or false can be named in the rejection; the
+// generated decoder would otherwise fail on it without saying which field.
+type reviewMarkers struct {
+	ContentContext *struct {
+		Review json.RawMessage `json:"review"`
+	} `json:"content_context"`
+	TriggerContext *struct {
+		Review json.RawMessage `json:"review"`
+	} `json:"trigger_context"`
+}
+
+// checkReviewMarkers rejects a review marker on either context that is
+// present but neither true nor false.
+func checkReviewMarkers(body *generated.TrackingEvent) error {
+	raw, err := body.MarshalJSON()
+	if err != nil {
+		return fmt.Errorf("%w: request body", domain.ErrInvalidField)
+	}
+	var markers reviewMarkers
+	if err := json.Unmarshal(raw, &markers); err != nil {
+		// Not an object at all: the event-specific decoding reports it.
+		return nil
+	}
+	if markers.ContentContext != nil && !isBooleanOrAbsent(markers.ContentContext.Review) {
+		return fmt.Errorf("%w: content_context.review must be true or false", domain.ErrInvalidField)
+	}
+	if markers.TriggerContext != nil && !isBooleanOrAbsent(markers.TriggerContext.Review) {
+		return fmt.Errorf("%w: trigger_context.review must be true or false", domain.ErrInvalidField)
+	}
+	return nil
+}
+
+func isBooleanOrAbsent(raw json.RawMessage) bool {
+	switch string(raw) {
+	case "", "true", "false":
+		return true
+	default:
+		return false
+	}
 }
 
 func requireOutcome(outcome generated.ExerciseEndedEventOutcome) (domain.ExerciseOutcome, error) {

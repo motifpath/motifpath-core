@@ -87,12 +87,14 @@ type contentContextDoc struct {
 	ContentNodeID string `bson:"content_node_id"`
 	ContentType   string `bson:"content_type,omitempty"`
 	TeacherID     string `bson:"teacher_id,omitempty"`
+	Review        bool   `bson:"review,omitempty"`
 }
 
 type triggerContextDoc struct {
 	Source        string `bson:"source"`
 	ContentNodeID string `bson:"content_node_id,omitempty"`
 	ChallengeID   string `bson:"challenge_id,omitempty"`
+	Review        bool   `bson:"review,omitempty"`
 }
 
 func toDocument(event domain.TrackingEvent, receivedAt time.Time) eventDocument {
@@ -245,6 +247,7 @@ func fromContentContextDoc(d *contentContextDoc) domain.ContentContext {
 		ContentNodeID: d.ContentNodeID,
 		ContentType:   domain.ContentType(d.ContentType),
 		TeacherID:     d.TeacherID,
+		Review:        d.Review,
 	}
 }
 
@@ -256,6 +259,7 @@ func fromTriggerContextDoc(d *triggerContextDoc) domain.TriggerContext {
 		Source:        domain.TriggerSource(d.Source),
 		ContentNodeID: d.ContentNodeID,
 		ChallengeID:   d.ChallengeID,
+		Review:        d.Review,
 	}
 }
 
@@ -264,6 +268,7 @@ func toContentContextDoc(cc domain.ContentContext) *contentContextDoc {
 		ContentNodeID: cc.ContentNodeID,
 		ContentType:   string(cc.ContentType),
 		TeacherID:     cc.TeacherID,
+		Review:        cc.Review,
 	}
 }
 
@@ -272,6 +277,7 @@ func toTriggerContextDoc(tc domain.TriggerContext) *triggerContextDoc {
 		Source:        string(tc.Source),
 		ContentNodeID: tc.ContentNodeID,
 		ChallengeID:   tc.ChallengeID,
+		Review:        tc.Review,
 	}
 }
 

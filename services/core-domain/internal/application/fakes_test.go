@@ -1170,6 +1170,20 @@ func (f *fakeStudentPathRepository) ListStandaloneByStudentID(_ context.Context,
 	return result, nil
 }
 
+func (f *fakeStudentPathRepository) ListByCourseEnrollmentID(_ context.Context, courseEnrollmentID string) ([]domain.StudentPath, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := []domain.StudentPath{}
+	for _, path := range f.byID {
+		if path.SourceCourseEnrollmentID == nil || *path.SourceCourseEnrollmentID != courseEnrollmentID || path.ArchivedAt != nil {
+			continue
+		}
+		result = append(result, path)
+	}
+	sort.Slice(result, func(i, j int) bool { return *result[i].CourseCheckpointPosition < *result[j].CourseCheckpointPosition })
+	return result, nil
+}
+
 func (f *fakeStudentPathRepository) ReplaceContent(_ context.Context, path domain.StudentPath) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
