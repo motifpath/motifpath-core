@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"sort"
 	"time"
 
 	"github.com/motifpath/core-domain/internal/domain"
@@ -451,9 +452,10 @@ func (s *StudentPathService) GetMyStudentPath(ctx context.Context, caller domain
 }
 
 // ListMyCourseEnrollmentParts returns the StudentPath of every part caller
-// has reached in the given enrollment, whatever its status, in course order,
-// each with per-item progress state. Parts are the copies made from the
-// version the student enrolled in, never a newer one. Read-only, like
+// has reached in the given enrollment, whatever its status, each with
+// per-item progress state. Parts follow the course version the enrollment is
+// pinned to — the one enrolled in, or the one last updated to: its order and
+// positions, leaving out copies of parts it no longer has. Read-only, like
 // GetMyStudentPath. Another student's enrollment is reported as
 // domain.ErrNotFound.
 func (s *StudentPathService) ListMyCourseEnrollmentParts(ctx context.Context, caller domain.User, courseEnrollmentID string) ([]StudentPathView, error) {
@@ -465,20 +467,55 @@ func (s *StudentPathService) ListMyCourseEnrollmentParts(ctx context.Context, ca
 		return nil, domain.ErrNotFound
 	}
 
-	parts, err := s.studentPaths.ListByCourseEnrollmentID(ctx, enrollment.ID)
+	version, err := s.courseVersions.GetByCourseIDAndVersionNumber(ctx, enrollment.CourseID, enrollment.CourseVersionNumber)
+	if err != nil {
+		return nil, err
+	}
+	copies, err := s.studentPaths.ListByCourseEnrollmentID(ctx, enrollment.ID)
 	if err != nil {
 		return nil, err
 	}
 
+	parts := partsOfVersion(version, copies)
 	views := make([]StudentPathView, len(parts))
-	for i, sp := range parts {
-		view, err := s.composeView(ctx, caller, sp, sp.SourceCourseEnrollmentID, sp.CourseCheckpointPosition, false)
+	for i, part := range parts {
+		position := part.position
+		view, err := s.composeView(ctx, caller, part.copy, &enrollment.ID, &position, false)
 		if err != nil {
 			return nil, err
 		}
 		views[i] = view
 	}
 	return views, nil
+}
+
+// versionPart is a student's copy of one of a course version's checkpoints,
+// at that checkpoint's position.
+type versionPart struct {
+	copy     domain.StudentPath
+	position int
+}
+
+// partsOfVersion matches copies to version's checkpoints by learning path,
+// in checkpoint order. A checkpoint with no copy (not reached yet, or passed
+// over by an update) and a copy of a path the version no longer has are
+// both left out.
+func partsOfVersion(version domain.CourseVersion, copies []domain.StudentPath) []versionPart {
+	byPath := make(map[string]domain.StudentPath, len(copies))
+	for _, sp := range copies {
+		byPath[sp.SourceTemplateID] = sp
+	}
+
+	checkpoints := append([]domain.CourseVersionCheckpoint(nil), version.Checkpoints...)
+	sort.Slice(checkpoints, func(i, j int) bool { return checkpoints[i].Position < checkpoints[j].Position })
+
+	parts := make([]versionPart, 0, len(checkpoints))
+	for _, cp := range checkpoints {
+		if sp, ok := byPath[cp.LearningPathID]; ok {
+			parts = append(parts, versionPart{copy: sp, position: cp.Position})
+		}
+	}
+	return parts
 }
 
 // ArchiveStandaloneStudentPath archives the standalone StudentPath with the

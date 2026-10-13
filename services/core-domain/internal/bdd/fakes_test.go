@@ -1270,7 +1270,7 @@ func (f *fakeStudentPathRepo) ListByCourseEnrollmentID(_ context.Context, course
 	defer f.mu.Unlock()
 	result := []domain.StudentPath{}
 	for _, p := range f.byID {
-		if p.SourceCourseEnrollmentID != nil && *p.SourceCourseEnrollmentID == courseEnrollmentID {
+		if p.SourceCourseEnrollmentID != nil && *p.SourceCourseEnrollmentID == courseEnrollmentID && p.ArchivedAt == nil {
 			result = append(result, p)
 		}
 	}

@@ -219,8 +219,11 @@ func (r *EntStudentPathRepository) ListByCourseEnrollmentID(ctx context.Context,
 	}
 
 	return r.listWithItems(ctx, r.client.StudentPath.Query().
-		Where(studentpath.SourceCourseEnrollmentID(parsed)).
-		Order(studentpath.ByCourseCheckpointPosition()))
+		Where(
+			studentpath.SourceCourseEnrollmentID(parsed),
+			studentpath.ArchivedAtIsNil(),
+		).
+		Order(studentpath.ByCourseCheckpointPosition(), studentpath.ByID()))
 }
 
 // listWithItems runs query and attaches each resulting StudentPath's items

@@ -2,6 +2,7 @@ package application_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -46,6 +47,7 @@ func newReviewFixture(t *testing.T) reviewFixture {
 	}
 
 	finished, active, bobs := "enrollment-finished", "enrollment-active", "enrollment-bob"
+	updated, reordered := "enrollment-updated", "enrollment-reordered"
 	one, two := 1, 2
 	archivedAt := time.Date(2026, 9, 2, 0, 0, 0, 0, time.UTC)
 	studentPaths := newFakeStudentPathRepository()
@@ -59,22 +61,48 @@ func newReviewFixture(t *testing.T) reviewFixture {
 		{ID: "blues", StudentID: "alice", SourceTemplateID: "blues-path", Title: "Blues", Items: threeItems()},
 		{ID: "bob-part-1", StudentID: "bob", SourceTemplateID: "open-chords-path", Title: "Open chords", SourceCourseEnrollmentID: &bobs, CourseCheckpointPosition: &one, Items: threeItems()},
 		{ID: "bob-standalone", StudentID: "bob", SourceTemplateID: "open-chords-path", Title: "Open chords", Items: threeItems()},
+		// Updated from version 1 to version 2, which replaced strumming with
+		// fingerpicking: the strumming copy was archived and fingerpicking
+		// copied at the same position.
+		{ID: "updated-part-1", StudentID: "alice", SourceTemplateID: "open-chords-path", Title: "Open chords", SourceCourseEnrollmentID: &updated, CourseCheckpointPosition: &one, Items: threeItems()},
+		{ID: "updated-strumming", StudentID: "alice", SourceTemplateID: "strumming-path", Title: "Strumming", SourceCourseEnrollmentID: &updated, CourseCheckpointPosition: &two, ArchivedAt: &archivedAt, Items: threeItems()},
+		{ID: "updated-fingerpicking", StudentID: "alice", SourceTemplateID: "fingerpicking-path", Title: "Fingerpicking", SourceCourseEnrollmentID: &updated, CourseCheckpointPosition: &two, Items: threeItems()},
+		// Updated from version 1 to version 3, which put strumming first: the
+		// active strumming copy moved to position 1, the open chords copy kept it.
+		{ID: "reordered-open-chords", StudentID: "alice", SourceTemplateID: "open-chords-path", Title: "Open chords", SourceCourseEnrollmentID: &reordered, CourseCheckpointPosition: &one, Items: threeItems()},
+		{ID: "reordered-strumming", StudentID: "alice", SourceTemplateID: "strumming-path", Title: "Strumming", SourceCourseEnrollmentID: &reordered, CourseCheckpointPosition: &one, Items: threeItems()},
 	} {
 		require.NoError(t, studentPaths.Create(ctx, sp))
 	}
 
 	activePart := "active-part-1"
 	enrollments := newFakeCourseEnrollmentRepository()
-	enrollments.put(domain.CourseEnrollment{ID: finished, StudentID: "alice", Status: domain.CourseEnrollmentStatusCompleted})
-	enrollments.put(domain.CourseEnrollment{ID: active, StudentID: "alice", Status: domain.CourseEnrollmentStatusActive, ActiveCheckpointStudentPathID: &activePart, ActiveCheckpointPosition: &one})
-	enrollments.put(domain.CourseEnrollment{ID: bobs, StudentID: "bob", Status: domain.CourseEnrollmentStatusCompleted})
+	enrollments.put(domain.CourseEnrollment{ID: finished, StudentID: "alice", CourseID: "course-1", CourseVersionNumber: 1, Status: domain.CourseEnrollmentStatusCompleted})
+	enrollments.put(domain.CourseEnrollment{ID: active, StudentID: "alice", CourseID: "course-1", CourseVersionNumber: 1, Status: domain.CourseEnrollmentStatusActive, ActiveCheckpointStudentPathID: &activePart, ActiveCheckpointPosition: &one})
+	enrollments.put(domain.CourseEnrollment{ID: bobs, StudentID: "bob", CourseID: "course-1", CourseVersionNumber: 1, Status: domain.CourseEnrollmentStatusCompleted})
+	enrollments.put(domain.CourseEnrollment{ID: updated, StudentID: "alice", CourseID: "course-1", CourseVersionNumber: 2, Status: domain.CourseEnrollmentStatusCompleted})
+	enrollments.put(domain.CourseEnrollment{ID: reordered, StudentID: "alice", CourseID: "course-1", CourseVersionNumber: 3, Status: domain.CourseEnrollmentStatusCompleted})
+
+	courseVersions := newFakeCourseVersionRepository()
+	for number, paths := range map[int][]string{
+		1: {"open-chords-path", "strumming-path"},
+		2: {"open-chords-path", "fingerpicking-path"},
+		3: {"strumming-path", "open-chords-path"},
+	} {
+		checkpoints := make([]domain.CourseVersionCheckpoint, len(paths))
+		for i, path := range paths {
+			checkpoints[i] = domain.CourseVersionCheckpoint{Position: i + 1, LearningPathID: path}
+		}
+		require.NoError(t, courseVersions.Create(ctx, domain.CourseVersion{ID: fmt.Sprintf("course-1-v%d", number), CourseID: "course-1", VersionNumber: number, Checkpoints: checkpoints}))
+	}
 
 	blues := "blues"
 	state := newFakeStudentLearningStateRepository()
 	require.NoError(t, state.Upsert(ctx, domain.StudentLearningState{StudentID: "alice", CurrentStandalonePathID: &blues}))
 
-	svc := newStudentPathServiceWithContent(newFakeUserRepository(), newFakeLearningPathRepository(), studentPaths,
-		newFakeContentNodeVersionRepository(), state, nodes, newFakeExerciseRepository(), completion, enrollments)
+	svc := application.NewStudentPathService(newFakeUserRepository(), newFakeLearningPathRepository(), studentPaths,
+		newFakeContentNodeVersionRepository(), state, enrollments, courseVersions, nodes, newFakeExerciseRepository(), completion,
+		idSequence(), func() time.Time { return fixedAssignedAt })
 	return reviewFixture{svc: svc, state: state, enrollments: enrollments, studentPaths: studentPaths}
 }
 
@@ -149,6 +177,8 @@ func TestStudentPathService_ListMyCourseEnrollmentParts(t *testing.T) {
 	}{
 		{name: "a finished course lists every part in course order", enrollmentID: "enrollment-finished", wantPartIDs: []string{"finished-part-1", "finished-part-2"}},
 		{name: "an enrolment still in progress lists only the parts reached", enrollmentID: "enrollment-active", wantPartIDs: []string{"active-part-1"}},
+		{name: "after an update, only the parts of the version updated to are listed", enrollmentID: "enrollment-updated", wantPartIDs: []string{"updated-part-1", "updated-fingerpicking"}},
+		{name: "after an update that reorders the parts, they follow the new order", enrollmentID: "enrollment-reordered", wantPartIDs: []string{"reordered-strumming", "reordered-open-chords"}},
 		{name: "another student's enrolment is not found", enrollmentID: "enrollment-bob", wantErr: domain.ErrNotFound},
 		{name: "an unknown enrolment is not found", enrollmentID: "no-such-enrollment", wantErr: domain.ErrNotFound},
 	}

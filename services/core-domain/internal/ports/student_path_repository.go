@@ -35,9 +35,10 @@ type StudentPathRepository interface {
 	// empty slice if there are none.
 	ListStandaloneByStudentID(ctx context.Context, studentID string) ([]domain.StudentPath, error)
 
-	// ListByCourseEnrollmentID returns the StudentPath of every checkpoint
-	// copied so far for courseEnrollmentID, ordered by checkpoint position —
-	// or an empty slice if there are none.
+	// ListByCourseEnrollmentID returns every non-archived StudentPath copied
+	// for courseEnrollmentID, ordered by checkpoint position — or an empty
+	// slice if there are none. A copy archived when an update dropped its
+	// part is left out.
 	ListByCourseEnrollmentID(ctx context.Context, courseEnrollmentID string) ([]domain.StudentPath, error)
 
 	// ReplaceContent overwrites the title, presentation snapshots, course

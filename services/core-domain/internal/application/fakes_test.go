@@ -1175,7 +1175,7 @@ func (f *fakeStudentPathRepository) ListByCourseEnrollmentID(_ context.Context, 
 	defer f.mu.Unlock()
 	result := []domain.StudentPath{}
 	for _, path := range f.byID {
-		if path.SourceCourseEnrollmentID == nil || *path.SourceCourseEnrollmentID != courseEnrollmentID {
+		if path.SourceCourseEnrollmentID == nil || *path.SourceCourseEnrollmentID != courseEnrollmentID || path.ArchivedAt != nil {
 			continue
 		}
 		result = append(result, path)
