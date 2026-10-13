@@ -4,6 +4,7 @@ package bdd
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/cucumber/godog"
 
@@ -321,7 +322,9 @@ func (w *world) requestRefusedForbidden() error {
 
 func (w *world) requestRefusedNotFound() error {
 	switch w.lastResp.(type) {
-	case generated.GetContentNode404JSONResponse,
+	case generated.GetMyStudentPath404JSONResponse,
+		generated.ListMyCourseEnrollmentParts404JSONResponse,
+		generated.GetContentNode404JSONResponse,
 		generated.GetChord404JSONResponse,
 		generated.GetPracticeSummary404JSONResponse,
 		generated.GetFretboardMap404JSONResponse,
@@ -409,7 +412,9 @@ func (w *world) requestRefusedConflict() error {
 
 func (w *world) requestRefusedAuthError() error {
 	switch w.lastResp.(type) {
-	case generated.RegisterUser401JSONResponse,
+	case generated.GetMyStudentPath401JSONResponse,
+		generated.ListMyCourseEnrollmentParts401JSONResponse,
+		generated.RegisterUser401JSONResponse,
 		generated.SearchChords401JSONResponse,
 		generated.GetPublishedSongChart401JSONResponse,
 		generated.PublishLearningPath401JSONResponse,
@@ -487,6 +492,9 @@ func (w *world) requestRefusedAuthError() error {
 }
 
 func (w *world) requestRejectedInvalid() error {
+	if w.lastResp == nil && w.lastRouterStatus == http.StatusBadRequest {
+		return nil
+	}
 	_, err := w.validationErrors()
 	return err
 }

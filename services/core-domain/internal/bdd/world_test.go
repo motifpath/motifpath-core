@@ -245,6 +245,11 @@ type world struct {
 	// while "open-chords-path" is also assigned), unlike priorStudentPathID
 	// which only ever tracks the single most recent one.
 	standalonePathIDByKey map[string]string
+
+	// lastRouterStatus is the status of the last request sent through the
+	// generated router rather than straight to the handler — only for a
+	// request the handler's typed parameters cannot express.
+	lastRouterStatus int
 }
 
 func newWorld() *world {
