@@ -433,6 +433,54 @@ func (s *StudentPathService) ListMyStandalonePaths(ctx context.Context, caller d
 	return s.studentPaths.ListStandaloneByStudentID(ctx, caller.ID)
 }
 
+// GetMyStudentPath returns one StudentPath caller holds — standalone or a
+// course part, current or not, active, archived or finished — with per-item
+// progress state, so the lessons of a finished course or path can be
+// reviewed. Read-only: the current pointer and any enrollment stay as they
+// are, and CourseCompleted is always false. Another student's path is
+// reported as domain.ErrNotFound, so its existence is not revealed.
+func (s *StudentPathService) GetMyStudentPath(ctx context.Context, caller domain.User, studentPathID string) (StudentPathView, error) {
+	sp, err := s.studentPaths.GetByID(ctx, studentPathID)
+	if err != nil {
+		return StudentPathView{}, err
+	}
+	if sp.StudentID != caller.ID {
+		return StudentPathView{}, domain.ErrNotFound
+	}
+	return s.composeView(ctx, caller, sp, sp.SourceCourseEnrollmentID, sp.CourseCheckpointPosition, false)
+}
+
+// ListMyCourseEnrollmentParts returns the StudentPath of every part caller
+// has reached in the given enrollment, whatever its status, in course order,
+// each with per-item progress state. Parts are the copies made from the
+// version the student enrolled in, never a newer one. Read-only, like
+// GetMyStudentPath. Another student's enrollment is reported as
+// domain.ErrNotFound.
+func (s *StudentPathService) ListMyCourseEnrollmentParts(ctx context.Context, caller domain.User, courseEnrollmentID string) ([]StudentPathView, error) {
+	enrollment, err := s.enrollments.GetByID(ctx, courseEnrollmentID)
+	if err != nil {
+		return nil, err
+	}
+	if enrollment.StudentID != caller.ID {
+		return nil, domain.ErrNotFound
+	}
+
+	parts, err := s.studentPaths.ListByCourseEnrollmentID(ctx, enrollment.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	views := make([]StudentPathView, len(parts))
+	for i, sp := range parts {
+		view, err := s.composeView(ctx, caller, sp, sp.SourceCourseEnrollmentID, sp.CourseCheckpointPosition, false)
+		if err != nil {
+			return nil, err
+		}
+		views[i] = view
+	}
+	return views, nil
+}
+
 // ArchiveStandaloneStudentPath archives the standalone StudentPath with the
 // given id, owned by caller. Refused with domain.ErrNotFound if no such
 // non-archived, non-course StudentPath exists for caller. If it is caller's

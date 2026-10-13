@@ -86,4 +86,37 @@ func TestEntStudentPathRepository_StandaloneCopies(t *testing.T) {
 
 		require.NoError(t, repo.Create(ctx, copyFor(student, nil)))
 	})
+
+	t.Run("an enrollment's copies are listed in checkpoint order, with their items", func(t *testing.T) {
+		student, enrollmentID, otherEnrollmentID := uuid.NewString(), uuid.NewString(), uuid.NewString()
+		atPosition := func(enrollment string, position int) domain.StudentPath {
+			sp := copyFor(student, &enrollment)
+			sp.CourseCheckpointPosition = &position
+			return sp
+		}
+		second, first := atPosition(enrollmentID, 2), atPosition(enrollmentID, 1)
+		require.NoError(t, repo.Create(ctx, second))
+		require.NoError(t, repo.Create(ctx, first))
+		require.NoError(t, repo.Create(ctx, atPosition(otherEnrollmentID, 1)))
+		require.NoError(t, repo.Create(ctx, copyFor(student, nil)))
+
+		got, err := repo.ListByCourseEnrollmentID(ctx, enrollmentID)
+
+		require.NoError(t, err)
+		require.Len(t, got, 2)
+		assert.Equal(t, first.ID, got[0].ID)
+		assert.Equal(t, second.ID, got[1].ID)
+		require.Len(t, got[0].Items, 1)
+		assert.Equal(t, version.ID, got[0].Items[0].ContentNodeVersionID)
+	})
+
+	t.Run("an enrollment with no copies, or an id that is not a uuid, lists none", func(t *testing.T) {
+		for _, id := range []string{uuid.NewString(), "not-a-uuid"} {
+			got, err := repo.ListByCourseEnrollmentID(ctx, id)
+
+			require.NoError(t, err)
+			assert.NotNil(t, got)
+			assert.Empty(t, got)
+		}
+	})
 }

@@ -104,3 +104,41 @@ func (h *Handler) UpdateCourseEnrollmentToLatest(ctx context.Context, request ge
 	}
 	return generated.UpdateCourseEnrollmentToLatest200JSONResponse(presentations[0]), nil
 }
+
+func (h *Handler) GetMyStudentPath(ctx context.Context, request generated.GetMyStudentPathRequestObject) (generated.GetMyStudentPathResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.GetMyStudentPath401JSONResponse(unauthorizedError()), nil
+	}
+
+	view, err := h.studentPath.GetMyStudentPath(ctx, caller, request.StudentPathId.String())
+	if errors.Is(err, domain.ErrNotFound) {
+		return generated.GetMyStudentPath404JSONResponse(notFoundError("the caller holds no student path with this id")), nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return generated.GetMyStudentPath200JSONResponse(toStudentPathView(view)), nil
+}
+
+func (h *Handler) ListMyCourseEnrollmentParts(ctx context.Context, request generated.ListMyCourseEnrollmentPartsRequestObject) (generated.ListMyCourseEnrollmentPartsResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ListMyCourseEnrollmentParts401JSONResponse(unauthorizedError()), nil
+	}
+
+	views, err := h.studentPath.ListMyCourseEnrollmentParts(ctx, caller, request.CourseEnrollmentId.String())
+	if errors.Is(err, domain.ErrNotFound) {
+		return generated.ListMyCourseEnrollmentParts404JSONResponse(notFoundError("the caller has no course enrollment with this id")), nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	parts := make([]generated.StudentPathView, len(views))
+	for i, view := range views {
+		parts[i] = toStudentPathView(view)
+	}
+	return generated.ListMyCourseEnrollmentParts200JSONResponse(parts), nil
+}

@@ -212,6 +212,17 @@ func (r *EntStudentPathRepository) ListStandaloneByStudentID(ctx context.Context
 		Order(studentpath.ByAssignedAt(sql.OrderDesc()), studentpath.ByID()))
 }
 
+func (r *EntStudentPathRepository) ListByCourseEnrollmentID(ctx context.Context, courseEnrollmentID string) ([]domain.StudentPath, error) {
+	parsed, err := uuid.Parse(courseEnrollmentID)
+	if err != nil {
+		return []domain.StudentPath{}, nil
+	}
+
+	return r.listWithItems(ctx, r.client.StudentPath.Query().
+		Where(studentpath.SourceCourseEnrollmentID(parsed)).
+		Order(studentpath.ByCourseCheckpointPosition()))
+}
+
 // listWithItems runs query and attaches each resulting StudentPath's items
 // in position order.
 func (r *EntStudentPathRepository) listWithItems(ctx context.Context, query *ent.StudentPathQuery) ([]domain.StudentPath, error) {
