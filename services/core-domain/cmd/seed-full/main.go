@@ -276,7 +276,7 @@ func seedAll(ctx context.Context, svc services, deps seedDeps, res resources, ad
 	}
 	log.Printf("seeded %d content nodes (video + article) across every difficulty level", len(nodes))
 
-	videoIntermediateChallenge, err := seedExercisesAllTypes(ctx, teacher, svc.challenge, svc.exercise, classifier, nodes)
+	videoIntermediateChallenge, err := seedExercisesAllTypes(ctx, teacher, svc.challenge, svc.exercise, svc.chords, svc.diagram, classifier, nodes)
 	if err != nil {
 		return fmt.Errorf("seed exercises: %w", err)
 	}
@@ -610,10 +610,11 @@ func templateCurator(admin, synthAdmin domain.User) domain.User {
 
 // seedExercisesAllTypes creates one exercise of every domain.ExerciseType,
 // each carrying the option shape that type requires (region for
-// image_recognition, per-option image/audio for image_choice/
-// audio_selection, a text label otherwise), and links each into a shared
-// practice challenge on the video-intermediate node.
-func seedExercisesAllTypes(ctx context.Context, teacher domain.User, challengeSvc *application.ChallengeService, exerciseSvc *application.ExerciseService, classifier *classificationSeeder, nodes map[string]domain.ContentNode) (domain.Challenge, error) {
+// image_recognition, a catalog chord voicing per option for image_choice,
+// a clip per option for audio_selection, a text label otherwise), and links
+// each into a shared practice challenge on the video-intermediate node.
+func seedExercisesAllTypes(ctx context.Context, teacher domain.User, challengeSvc *application.ChallengeService, exerciseSvc *application.ExerciseService,
+	chords *application.ChordCatalogService, diagramSvc *application.DiagramService, classifier *classificationSeeder, nodes map[string]domain.ContentNode) (domain.Challenge, error) {
 	// subject_skill_id must be one of the parent content node's own linked
 	// skills — video-intermediate was seeded with "phrase-call-response" in
 	// seedContentNodes, so the challenge's subject reuses that same id
@@ -627,9 +628,21 @@ func seedExercisesAllTypes(ctx context.Context, teacher domain.User, challengeSv
 		return domain.Challenge{}, fmt.Errorf("create shared practice challenge: %w", err)
 	}
 
+	cMajor, err := catalogChord(ctx, teacher, chords, diagramSvc, "C")
+	if err != nil {
+		return domain.Challenge{}, err
+	}
+	gMajor, err := catalogChord(ctx, teacher, chords, diagramSvc, "G")
+	if err != nil {
+		return domain.Challenge{}, err
+	}
 	// Real, publicly reachable sample media — see seedContentNodes' video URL
 	// comment above for why cdn.motifpath.io can't be used here.
-	for _, s := range exerciseTypeSpecs("https://placehold.co/640x360/png?text=Fretboard", "https://samplelib.com/lib/preview/mp3/sample-3s.mp3") {
+	media := exerciseMedia{
+		imageURL: "https://placehold.co/640x360/png?text=Fretboard", audioURL: "https://samplelib.com/lib/preview/mp3/sample-3s.mp3",
+		cMajorVoicingID: cMajor.ID, gMajorVoicingID: gMajor.ID,
+	}
+	for _, s := range exerciseTypeSpecs(media) {
 		skillID, conceptID, err := classifier.ids(ctx, s.classification)
 		if err != nil {
 			return domain.Challenge{}, err
@@ -662,9 +675,17 @@ type exerciseTypeSpec struct {
 	classification exerciseClassification
 }
 
+// exerciseMedia is what exerciseTypeSpecs' exercises show: a picture, a
+// clip, and the diagrams of two catalog chord voicings, each drawn as a chord box.
+type exerciseMedia struct {
+	imageURL, audioURL               string
+	cMajorVoicingID, gMajorVoicingID string
+}
+
 // exerciseTypeSpecs is one exercise of every exercise_type, each classified
 // under what it actually asks — not the challenge's subject.
-func exerciseTypeSpecs(imageURL, audioURL string) []exerciseTypeSpec {
+func exerciseTypeSpecs(media exerciseMedia) []exerciseTypeSpec {
+	imageURL, audioURL := media.imageURL, media.audioURL
 	label := func(s string) *string { return &s }
 	intervals := exerciseClassification{skill: "hear-intervals", concept: "interval-names"}
 	return []exerciseTypeSpec{
@@ -696,11 +717,11 @@ func exerciseTypeSpecs(imageURL, audioURL string) []exerciseTypeSpec {
 			},
 		},
 		{
-			title: "Pick the matching chord shape", exerciseType: domain.ExerciseTypeImageChoice,
+			title: "Pick the C major chord shape", exerciseType: domain.ExerciseTypeImageChoice,
 			classification: exerciseClassification{skill: "play-open-chords", concept: "open-chord-shapes"},
 			options: []domain.Option{
-				{ID: uuid.NewString(), IsCorrect: true, ImageURL: &imageURL},
-				{ID: uuid.NewString(), IsCorrect: false, ImageURL: &imageURL},
+				{ID: uuid.NewString(), IsCorrect: true, DiagramRef: intervalsRef(media.cMajorVoicingID)},
+				{ID: uuid.NewString(), IsCorrect: false, DiagramRef: intervalsRef(media.gMajorVoicingID)},
 			},
 		},
 		{
