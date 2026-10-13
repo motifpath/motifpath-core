@@ -57,6 +57,10 @@ type ContentContext struct {
 	ContentNodeID string
 	ContentType   ContentType
 	TeacherID     string
+	// Review is true when the student opened the node from a course or path
+	// they had already finished. It marks access after completion for
+	// analytics only and never changes how the event affects progress.
+	Review bool
 }
 
 // TriggerSource describes what initiated an exercise attempt.
@@ -75,6 +79,9 @@ type TriggerContext struct {
 	Source        TriggerSource
 	ContentNodeID string
 	ChallengeID   string
+	// Review is true when the exercise was started from a course or path the
+	// student had already finished. Analytics only, like ContentContext.Review.
+	Review bool
 }
 
 // ExerciseOutcome describes how an exercise attempt concluded.

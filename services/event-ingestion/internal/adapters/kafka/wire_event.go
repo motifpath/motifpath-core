@@ -85,12 +85,14 @@ type contentContextWire struct {
 	ContentNodeID string `json:"content_node_id"`
 	ContentType   string `json:"content_type,omitempty"`
 	TeacherID     string `json:"teacher_id,omitempty"`
+	Review        bool   `json:"review,omitempty"`
 }
 
 type triggerContextWire struct {
 	Source        string `json:"source"`
 	ContentNodeID string `json:"content_node_id,omitempty"`
 	ChallengeID   string `json:"challenge_id,omitempty"`
+	Review        bool   `json:"review,omitempty"`
 }
 
 func toWireEvent(event domain.TrackingEvent) wireEvent {
@@ -180,6 +182,7 @@ func toContentContextWire(cc domain.ContentContext) *contentContextWire {
 		ContentNodeID: cc.ContentNodeID,
 		ContentType:   string(cc.ContentType),
 		TeacherID:     cc.TeacherID,
+		Review:        cc.Review,
 	}
 }
 
@@ -188,6 +191,7 @@ func toTriggerContextWire(tc domain.TriggerContext) *triggerContextWire {
 		Source:        string(tc.Source),
 		ContentNodeID: tc.ContentNodeID,
 		ChallengeID:   tc.ChallengeID,
+		Review:        tc.Review,
 	}
 }
 
