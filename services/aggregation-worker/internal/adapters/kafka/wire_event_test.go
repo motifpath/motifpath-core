@@ -249,3 +249,35 @@ func TestToDomainEvent_SongChartEventsWithoutACompletionCarryNone(t *testing.T) 
 		})
 	}
 }
+
+// A review-marked event is for analytics only: the worker must decode it
+// exactly as the same event without the marker.
+func TestToDomainEvent_AReviewMarkerChangesNothing(t *testing.T) {
+	cases := []struct {
+		name     string
+		marked   string
+		unmarked string
+	}{
+		{
+			name:     "lesson.started",
+			marked:   `{"event_type":"lesson.started","student_id":"s","occurred_at":"2026-10-13T10:00:00Z","content_context":{"content_node_id":"n","review":true}}`,
+			unmarked: `{"event_type":"lesson.started","student_id":"s","occurred_at":"2026-10-13T10:00:00Z","content_context":{"content_node_id":"n"}}`,
+		},
+		{
+			name:     "an answer outside a session",
+			marked:   `{"event_type":"practice.item_answered","student_id":"s","trigger_context":{"source":"challenge_sequence","challenge_id":"c","review":true},"item_key":"exercise:e","response":{"response_type":"option_choice","option_ids":["a"]}}`,
+			unmarked: `{"event_type":"practice.item_answered","student_id":"s","trigger_context":{"source":"challenge_sequence","challenge_id":"c"},"item_key":"exercise:e","response":{"response_type":"option_choice","option_ids":["a"]}}`,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			marked, err := decodeWireEvent([]byte(tc.marked))
+			require.NoError(t, err)
+			unmarked, err := decodeWireEvent([]byte(tc.unmarked))
+			require.NoError(t, err)
+
+			assert.Equal(t, toDomainEvent(unmarked), toDomainEvent(marked))
+		})
+	}
+}

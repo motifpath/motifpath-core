@@ -61,4 +61,5 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	registerShapeSteps(sc, w)
 	registerFeltSteps(sc, w)
 	registerActivitySteps(sc, w)
+	registerReviewSteps(sc, w)
 }

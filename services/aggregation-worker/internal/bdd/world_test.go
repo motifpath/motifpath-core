@@ -262,6 +262,10 @@ type world struct {
 	// challenges holds the challenge a student is taking: their answers go to it
 	// instead of a practice session.
 	challenges map[string]*domain.TriggerContext
+
+	// completions is each student's completion status per content node, as
+	// lesson events leave it.
+	completions *fakeCompletion
 	// tapMs is each student's tap time, stamped on their timed answers the way
 	// ingestion stamps it.
 	tapMs map[string]int
@@ -307,11 +311,12 @@ func newWorld() *world {
 		students:       map[string]string{},
 		sessions:       map[string]string{},
 		challenges:     map[string]*domain.TriggerContext{},
+		completions:    &fakeCompletion{statuses: map[string]domain.CompletionStatus{}},
 		tapMs:          map[string]int{},
 		clock:          time.Date(2026, 10, 5, 9, 0, 0, 0, time.UTC),
 	}
 	w.service = application.NewPracticeEvidenceService(w.reference, w.evidence, w.states, w.history, slog.New(w.logs))
-	w.events = application.NewProcessEventService(&fakeCompletion{statuses: map[string]domain.CompletionStatus{}}, w.service,
+	w.events = application.NewProcessEventService(w.completions, w.service,
 		application.NewActivityService(w.sessionRecords, w.learning, w.tapChecks, &fakeSongChartCompletions{}))
 	return w
 }
