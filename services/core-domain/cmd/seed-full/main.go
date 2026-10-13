@@ -995,7 +995,9 @@ func seedAdminZeroUser(ctx context.Context, svc services, deps seedDeps, admin d
 // text_response exercises — mirroring the richer challenge
 // seedExercisesAllTypes already gives video-intermediate, so either video on
 // the admin's path has exercises to practise, not just a video. The
-// challenge's subject is the skill video-beginner was seeded with.
+// challenge's subjects are the skill and concept video-beginner was seeded
+// with; video-intermediate's challenge keeps a skill-only subject, so both
+// shapes are seeded.
 func seedVideoBeginnerChallenge(ctx context.Context, teacher domain.User, challengeSvc *application.ChallengeService, exerciseSvc *application.ExerciseService, classifier *classificationSeeder, node domain.ContentNode) error {
 	return seedTextChallenge(ctx, teacher, challengeSvc, exerciseSvc, classifier, node,
 		exerciseClassification{skill: "play-major-scale-open", concept: "major-scale"},
