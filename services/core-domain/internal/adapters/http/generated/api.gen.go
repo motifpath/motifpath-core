@@ -7269,9 +7269,11 @@ type StudentPathItemLockReason string
 // locked — not available yet; lock_reason says why.
 type StudentPathItemStatus string
 
-// StudentPathView The student's current learning path with per-item progress state.
-// Returned by GET /students/me/path and used by the SPA to render
-// the main learning screen.
+// StudentPathView A student's learning path with per-item progress state. Returned
+// for the current path by GET /students/me/path, which the SPA uses
+// to render the main learning screen, and for any path the student
+// holds by GET /students/me/student-paths/{student_path_id} and
+// GET /students/me/course-enrollments/{course_enrollment_id}/parts.
 type StudentPathView struct {
 	// CourseCheckpointPosition 1-based position of this checkpoint within its course, or null for a standalone path. Set together with course_enrollment_id.
 	CourseCheckpointPosition *int `json:"course_checkpoint_position,omitempty"`
@@ -7279,7 +7281,7 @@ type StudentPathView struct {
 	// CourseCompleted True when this response reflects the checkpoint that just completed the student's course — every item shown here is complete, the request that returned this view was the one that discovered it, and the student's current course/path pointer has already been cleared as a result. Always false for a standalone path, and false on every subsequent read (the pointer is null afterward, so there is nothing left to return this flag on). The client should treat true as a one-time signal to show course completion, not a recheckable status field.
 	CourseCompleted bool `json:"course_completed"`
 
-	// CourseEnrollmentId The CourseEnrollment this is a checkpoint of, or null when the caller's current path is a standalone path. Set together with course_checkpoint_position.
+	// CourseEnrollmentId The CourseEnrollment this is a checkpoint of, or null when the path is a standalone path. Set together with course_checkpoint_position.
 	CourseEnrollmentId *openapi_types.UUID `json:"course_enrollment_id,omitempty"`
 
 	// CurrentPosition The position of the item the student should work on next. Points to
@@ -7292,10 +7294,10 @@ type StudentPathView struct {
 	// SourceTemplateId The learning path this StudentPath was copied from.
 	SourceTemplateId openapi_types.UUID `json:"source_template_id"`
 
-	// StudentPathId The current StudentPath's ID.
+	// StudentPathId The StudentPath's ID.
 	StudentPathId openapi_types.UUID `json:"student_path_id"`
 
-	// Title Title of the current StudentPath.
+	// Title Title of the StudentPath.
 	Title string `json:"title"`
 }
 
@@ -8757,6 +8759,9 @@ type ServerInterface interface {
 	// AbandonCourseEnrollment Abandon a course enrollment
 	// (POST /students/me/course-enrollments/{course_enrollment_id}/abandon)
 	AbandonCourseEnrollment(w http.ResponseWriter, r *http.Request, courseEnrollmentId openapi_types.UUID)
+	// ListMyCourseEnrollmentParts List the parts of one of the authenticated student's course enrollments
+	// (GET /students/me/course-enrollments/{course_enrollment_id}/parts)
+	ListMyCourseEnrollmentParts(w http.ResponseWriter, r *http.Request, courseEnrollmentId openapi_types.UUID)
 	// UpdateCourseEnrollmentToLatest Update a course enrollment to the course's latest published content
 	// (POST /students/me/course-enrollments/{course_enrollment_id}/update)
 	UpdateCourseEnrollmentToLatest(w http.ResponseWriter, r *http.Request, courseEnrollmentId openapi_types.UUID)
@@ -8790,6 +8795,9 @@ type ServerInterface interface {
 	// EnrollInLearningPath Self-enroll the authenticated user in a published path
 	// (POST /students/me/student-paths)
 	EnrollInLearningPath(w http.ResponseWriter, r *http.Request)
+	// GetMyStudentPath Get one of the authenticated student's paths with progress
+	// (GET /students/me/student-paths/{student_path_id})
+	GetMyStudentPath(w http.ResponseWriter, r *http.Request, studentPathId openapi_types.UUID)
 	// AssignLearningPath Assign a learning path to a student
 	// (POST /students/{student_id}/student-paths)
 	AssignLearningPath(w http.ResponseWriter, r *http.Request, studentId openapi_types.UUID)
@@ -9351,6 +9359,12 @@ func (_ Unimplemented) AbandonCourseEnrollment(w http.ResponseWriter, r *http.Re
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// ListMyCourseEnrollmentParts List the parts of one of the authenticated student's course enrollments
+// (GET /students/me/course-enrollments/{course_enrollment_id}/parts)
+func (_ Unimplemented) ListMyCourseEnrollmentParts(w http.ResponseWriter, r *http.Request, courseEnrollmentId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // UpdateCourseEnrollmentToLatest Update a course enrollment to the course's latest published content
 // (POST /students/me/course-enrollments/{course_enrollment_id}/update)
 func (_ Unimplemented) UpdateCourseEnrollmentToLatest(w http.ResponseWriter, r *http.Request, courseEnrollmentId openapi_types.UUID) {
@@ -9414,6 +9428,12 @@ func (_ Unimplemented) ListMyStandalonePaths(w http.ResponseWriter, r *http.Requ
 // EnrollInLearningPath Self-enroll the authenticated user in a published path
 // (POST /students/me/student-paths)
 func (_ Unimplemented) EnrollInLearningPath(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetMyStudentPath Get one of the authenticated student's paths with progress
+// (GET /students/me/student-paths/{student_path_id})
+func (_ Unimplemented) GetMyStudentPath(w http.ResponseWriter, r *http.Request, studentPathId openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -12749,6 +12769,32 @@ func (siw *ServerInterfaceWrapper) AbandonCourseEnrollment(w http.ResponseWriter
 	handler.ServeHTTP(w, r)
 }
 
+// ListMyCourseEnrollmentParts operation middleware
+func (siw *ServerInterfaceWrapper) ListMyCourseEnrollmentParts(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "course_enrollment_id" -------------
+	var courseEnrollmentId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "course_enrollment_id", chi.URLParam(r, "course_enrollment_id"), &courseEnrollmentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "course_enrollment_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListMyCourseEnrollmentParts(w, r, courseEnrollmentId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // UpdateCourseEnrollmentToLatest operation middleware
 func (siw *ServerInterfaceWrapper) UpdateCourseEnrollmentToLatest(w http.ResponseWriter, r *http.Request) {
 
@@ -13000,6 +13046,32 @@ func (siw *ServerInterfaceWrapper) EnrollInLearningPath(w http.ResponseWriter, r
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.EnrollInLearningPath(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetMyStudentPath operation middleware
+func (siw *ServerInterfaceWrapper) GetMyStudentPath(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "student_path_id" -------------
+	var studentPathId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "student_path_id", chi.URLParam(r, "student_path_id"), &studentPathId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "student_path_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetMyStudentPath(w, r, studentPathId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -13478,6 +13550,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/students/me/student-paths", wrapper.EnrollInLearningPath)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/students/me/student-paths/{student_path_id}", wrapper.GetMyStudentPath)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/students/me/course-enrollments", wrapper.ListMyCourseEnrollments)
 	})
 	r.Group(func(r chi.Router) {
@@ -13485,6 +13560,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/students/me/course-enrollments/{course_enrollment_id}/abandon", wrapper.AbandonCourseEnrollment)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/students/me/course-enrollments/{course_enrollment_id}/parts", wrapper.ListMyCourseEnrollmentParts)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/students/me/course-enrollments/{course_enrollment_id}/update", wrapper.UpdateCourseEnrollmentToLatest)
@@ -19478,6 +19556,70 @@ func (response AbandonCourseEnrollment409JSONResponse) VisitAbandonCourseEnrollm
 	return err
 }
 
+type ListMyCourseEnrollmentPartsRequestObject struct {
+	CourseEnrollmentId openapi_types.UUID `json:"course_enrollment_id"`
+}
+
+type ListMyCourseEnrollmentPartsResponseObject interface {
+	VisitListMyCourseEnrollmentPartsResponse(w http.ResponseWriter) error
+}
+
+type ListMyCourseEnrollmentParts200JSONResponse []StudentPathView
+
+func (response ListMyCourseEnrollmentParts200JSONResponse) VisitListMyCourseEnrollmentPartsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyCourseEnrollmentParts400JSONResponse ValidationError
+
+func (response ListMyCourseEnrollmentParts400JSONResponse) VisitListMyCourseEnrollmentPartsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyCourseEnrollmentParts401JSONResponse UnauthorizedError
+
+func (response ListMyCourseEnrollmentParts401JSONResponse) VisitListMyCourseEnrollmentPartsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyCourseEnrollmentParts404JSONResponse NotFoundError
+
+func (response ListMyCourseEnrollmentParts404JSONResponse) VisitListMyCourseEnrollmentPartsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type UpdateCourseEnrollmentToLatestRequestObject struct {
 	CourseEnrollmentId openapi_types.UUID `json:"course_enrollment_id"`
 }
@@ -20152,6 +20294,70 @@ func (response EnrollInLearningPath404JSONResponse) VisitEnrollInLearningPathRes
 	return err
 }
 
+type GetMyStudentPathRequestObject struct {
+	StudentPathId openapi_types.UUID `json:"student_path_id"`
+}
+
+type GetMyStudentPathResponseObject interface {
+	VisitGetMyStudentPathResponse(w http.ResponseWriter) error
+}
+
+type GetMyStudentPath200JSONResponse StudentPathView
+
+func (response GetMyStudentPath200JSONResponse) VisitGetMyStudentPathResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMyStudentPath400JSONResponse ValidationError
+
+func (response GetMyStudentPath400JSONResponse) VisitGetMyStudentPathResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMyStudentPath401JSONResponse UnauthorizedError
+
+func (response GetMyStudentPath401JSONResponse) VisitGetMyStudentPathResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMyStudentPath404JSONResponse NotFoundError
+
+func (response GetMyStudentPath404JSONResponse) VisitGetMyStudentPathResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type AssignLearningPathRequestObject struct {
 	StudentId openapi_types.UUID `json:"student_id"`
 	Body      *AssignLearningPathJSONRequestBody
@@ -20757,6 +20963,9 @@ type StrictServerInterface interface {
 	// AbandonCourseEnrollment Abandon a course enrollment
 	// (POST /students/me/course-enrollments/{course_enrollment_id}/abandon)
 	AbandonCourseEnrollment(ctx context.Context, request AbandonCourseEnrollmentRequestObject) (AbandonCourseEnrollmentResponseObject, error)
+	// ListMyCourseEnrollmentParts List the parts of one of the authenticated student's course enrollments
+	// (GET /students/me/course-enrollments/{course_enrollment_id}/parts)
+	ListMyCourseEnrollmentParts(ctx context.Context, request ListMyCourseEnrollmentPartsRequestObject) (ListMyCourseEnrollmentPartsResponseObject, error)
 	// UpdateCourseEnrollmentToLatest Update a course enrollment to the course's latest published content
 	// (POST /students/me/course-enrollments/{course_enrollment_id}/update)
 	UpdateCourseEnrollmentToLatest(ctx context.Context, request UpdateCourseEnrollmentToLatestRequestObject) (UpdateCourseEnrollmentToLatestResponseObject, error)
@@ -20790,6 +20999,9 @@ type StrictServerInterface interface {
 	// EnrollInLearningPath Self-enroll the authenticated user in a published path
 	// (POST /students/me/student-paths)
 	EnrollInLearningPath(ctx context.Context, request EnrollInLearningPathRequestObject) (EnrollInLearningPathResponseObject, error)
+	// GetMyStudentPath Get one of the authenticated student's paths with progress
+	// (GET /students/me/student-paths/{student_path_id})
+	GetMyStudentPath(ctx context.Context, request GetMyStudentPathRequestObject) (GetMyStudentPathResponseObject, error)
 	// AssignLearningPath Assign a learning path to a student
 	// (POST /students/{student_id}/student-paths)
 	AssignLearningPath(ctx context.Context, request AssignLearningPathRequestObject) (AssignLearningPathResponseObject, error)
@@ -23354,6 +23566,32 @@ func (sh *strictHandler) AbandonCourseEnrollment(w http.ResponseWriter, r *http.
 	}
 }
 
+// ListMyCourseEnrollmentParts operation middleware
+func (sh *strictHandler) ListMyCourseEnrollmentParts(w http.ResponseWriter, r *http.Request, courseEnrollmentId openapi_types.UUID) {
+	var request ListMyCourseEnrollmentPartsRequestObject
+
+	request.CourseEnrollmentId = courseEnrollmentId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListMyCourseEnrollmentParts(ctx, request.(ListMyCourseEnrollmentPartsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListMyCourseEnrollmentParts")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListMyCourseEnrollmentPartsResponseObject); ok {
+		if err := validResponse.VisitListMyCourseEnrollmentPartsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // UpdateCourseEnrollmentToLatest operation middleware
 func (sh *strictHandler) UpdateCourseEnrollmentToLatest(w http.ResponseWriter, r *http.Request, courseEnrollmentId openapi_types.UUID) {
 	var request UpdateCourseEnrollmentToLatestRequestObject
@@ -23644,6 +23882,32 @@ func (sh *strictHandler) EnrollInLearningPath(w http.ResponseWriter, r *http.Req
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(EnrollInLearningPathResponseObject); ok {
 		if err := validResponse.VisitEnrollInLearningPathResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetMyStudentPath operation middleware
+func (sh *strictHandler) GetMyStudentPath(w http.ResponseWriter, r *http.Request, studentPathId openapi_types.UUID) {
+	var request GetMyStudentPathRequestObject
+
+	request.StudentPathId = studentPathId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetMyStudentPath(ctx, request.(GetMyStudentPathRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetMyStudentPath")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetMyStudentPathResponseObject); ok {
+		if err := validResponse.VisitGetMyStudentPathResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

@@ -696,6 +696,13 @@ type ContentContext struct {
 	// the event payload to avoid a lookup at aggregation time.
 	ContentType *ContentContextContentType `json:"content_type,omitempty"`
 
+	// Review True when the student opened this content node from a course or standalone path
+	// they had already finished, to review it. Absent or false otherwise, including when
+	// a completed step is reopened from the student's current path. Marks access after
+	// completion for analytics only; it never changes how the event affects the
+	// student's progress, which a completed node keeps in any case.
+	Review *bool `json:"review,omitempty"`
+
 	// TeacherId ID of the teacher who published this content node. Enables teacher-scoped
 	// engagement analytics without a join at query time.
 	TeacherId            *openapi_types.UUID    `json:"teacher_id,omitempty"`
@@ -1647,6 +1654,12 @@ type TriggerContext struct {
 	// free_practice, which is not tied to a single node.
 	ContentNodeId *openapi_types.UUID `json:"content_node_id,omitempty"`
 
+	// Review True when the exercise was started from a content node of a course or standalone
+	// path the student had already finished, to review it. Absent or false otherwise.
+	// Marks access after completion for analytics only; the attempt counts as practice
+	// evidence like any other, and the student's progress is unchanged.
+	Review *bool `json:"review,omitempty"`
+
 	// Source What triggered this exercise session. challenge_sequence = part of a
 	// node's challenge; path_exercise = one of a node's static,
 	// teacher-curated introductory exercises; free_practice = student
@@ -1730,6 +1743,14 @@ func (a *ContentContext) UnmarshalJSON(b []byte) error {
 		delete(object, "content_type")
 	}
 
+	if raw, found := object["review"]; found {
+		err = json.Unmarshal(raw, &a.Review)
+		if err != nil {
+			return fmt.Errorf("error reading 'review': %w", err)
+		}
+		delete(object, "review")
+	}
+
 	if raw, found := object["teacher_id"]; found {
 		err = json.Unmarshal(raw, &a.TeacherId)
 		if err != nil {
@@ -1766,6 +1787,13 @@ func (a ContentContext) MarshalJSON() ([]byte, error) {
 		object["content_type"], err = json.Marshal(a.ContentType)
 		if err != nil {
 			return nil, fmt.Errorf("error marshaling 'content_type': %w", err)
+		}
+	}
+
+	if a.Review != nil {
+		object["review"], err = json.Marshal(a.Review)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'review': %w", err)
 		}
 	}
 
