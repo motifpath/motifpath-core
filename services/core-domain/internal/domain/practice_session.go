@@ -231,11 +231,13 @@ func FeltQuestions(items []PracticeSessionItem, feltRatedSessions map[string]int
 	return templates
 }
 
-// PlannedFretboardCell is a fretboard cell picked for a session and the way
-// it is asked.
+// PlannedFretboardCell is a fretboard cell picked for a session, the way it
+// is asked and the window of frets its drill is asked within, which holds
+// the cell's fret.
 type PlannedFretboardCell struct {
 	FretboardCell
-	Drill FretboardDrill
+	Drill  FretboardDrill
+	Window FretWindow
 }
 
 // PracticeSessionPlan is a composed session. It is never stored: the client

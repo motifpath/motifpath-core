@@ -109,6 +109,43 @@ func TestMongoPracticeActivityReader_ReadsAggregationWorkerShape(t *testing.T) {
 		}, got)
 	})
 
+	t.Run("sessions started in the head are those with a start and no instrument", func(t *testing.T) {
+		session := func(id string, instrumentID *string, started *time.Time) bson.D {
+			doc := bson.D{
+				{Key: "student_id", Value: "erin"},
+				{Key: "practice_session_id", Value: id},
+				{Key: "started_at", Value: started},
+				{Key: "minutes", Value: 10},
+				{Key: "planned_items", Value: bson.A{}},
+				{Key: "last_event_at", Value: at(4, 9)},
+				{Key: "end", Value: nil},
+				{Key: "updated_at", Value: at(4, 9)},
+			}
+			if instrumentID != nil {
+				doc = append(doc, bson.E{Key: "instrument_id", Value: *instrumentID})
+			}
+			return doc
+		}
+		started := at(4, 9)
+		guitar := "guitar"
+		_, err := db.Collection("practice_sessions").InsertMany(ctx, []any{
+			session("head-1", nil, &started),
+			session("head-2", nil, &started),
+			session("head-3", nil, &started),
+			session("in-hand", &guitar, &started),
+			session("start-not-arrived", nil, nil),
+		})
+		require.NoError(t, err)
+
+		got, err := reader.HeadSessionsStarted(ctx, "erin")
+		require.NoError(t, err)
+		assert.Equal(t, 3, got)
+
+		none, err := reader.HeadSessionsStarted(ctx, "nobody")
+		require.NoError(t, err)
+		assert.Zero(t, none)
+	})
+
 	t.Run("completion times are each completion since", func(t *testing.T) {
 		completion := func(eventID, studentID string, completedAt time.Time) bson.D {
 			return bson.D{{Key: "event_id", Value: eventID}, {Key: "student_id", Value: studentID}, {Key: "content_node_id", Value: "node-1"}, {Key: "completed_at", Value: completedAt}}

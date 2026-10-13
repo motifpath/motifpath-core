@@ -183,6 +183,17 @@ func (r *MongoPracticeActivityReader) FinishedSessions(ctx context.Context, stud
 	return sessions, cursor.Err()
 }
 
+func (r *MongoPracticeActivityReader) HeadSessionsStarted(ctx context.Context, studentID string) (int, error) {
+	// The worker leaves instrument_id out of a session in the head, and
+	// started_at null until its start arrives.
+	n, err := r.sessions.CountDocuments(ctx, bson.D{
+		{Key: "student_id", Value: studentID},
+		{Key: "started_at", Value: bson.D{{Key: "$ne", Value: nil}}},
+		{Key: "instrument_id", Value: bson.D{{Key: "$in", Value: bson.A{nil, ""}}}},
+	})
+	return int(n), err
+}
+
 func (r *MongoPracticeActivityReader) SessionSpans(ctx context.Context, studentID string, since time.Time) ([]domain.PracticeSessionSpan, error) {
 	// A session whose start hasn't arrived has a null started_at, which
 	// $gte never matches.

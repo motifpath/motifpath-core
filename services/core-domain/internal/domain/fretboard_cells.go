@@ -63,6 +63,80 @@ func NextFretboardDrill(state *PracticeItemState) FretboardDrill {
 	return FretboardDrillNameTheNote
 }
 
+// FretWindow is the frets a fretboard drill is asked within, so its board
+// is drawn at full tap size without scrolling sideways: five frets, plus the
+// open string when it starts at the nut. FromFret 0 holds the open string and
+// frets 1 to 5; any other FromFret holds it and the next four frets.
+type FretWindow struct {
+	FromFret int
+}
+
+// fretWindowWidth is how many frets a window holds past the open string;
+// lastCellFret is the highest fret a cell is on.
+const (
+	fretWindowWidth = 5
+	lastCellFret    = 11
+)
+
+// ToFret is the window's highest fret.
+func (w FretWindow) ToFret() int {
+	if w.FromFret == 0 {
+		return fretWindowWidth
+	}
+	return w.FromFret + fretWindowWidth - 1
+}
+
+// Contains reports whether fret is inside the window.
+func (w FretWindow) Contains(fret int) bool {
+	return fret >= w.FromFret && fret <= w.ToFret()
+}
+
+// FretWindows lists every window a cell can be asked in, nearest the nut
+// first: the nut's, then each five frets up to 7–11. None starts at fret 1,
+// since a window at the nut always holds the open string.
+func FretWindows() []FretWindow {
+	windows := []FretWindow{{FromFret: 0}}
+	for from := 2; from+fretWindowWidth-1 <= lastCellFret; from++ {
+		windows = append(windows, FretWindow{FromFret: from})
+	}
+	return windows
+}
+
+// PickFretWindow picks a drill's window from the frets of its due, weak and
+// new cells: the one holding the most due cells, then the most weak, then
+// the most new, the one nearest the nut on a tie. On a new-cell turn, when
+// the drill has new cells, it is the one holding the most new cells, nearest
+// the nut on a tie, so a student isn't kept on the frets they already review.
+func PickFretWindow(due, weak, fresh []int, newTurn bool) FretWindow {
+	tallies := [][]int{due, weak, fresh}
+	if newTurn && len(fresh) > 0 {
+		tallies = [][]int{fresh}
+	}
+	windows := FretWindows()
+	best := windows[0]
+	for _, w := range windows[1:] {
+		for _, frets := range tallies {
+			if c := cmp.Compare(countInside(w, frets), countInside(best, frets)); c != 0 {
+				if c > 0 {
+					best = w
+				}
+				break
+			}
+		}
+	}
+	return best
+}
+
+func countInside(w FretWindow, frets []int) int {
+	n := 0
+	for _, fret := range frets {
+		if w.Contains(fret) {
+			n++
+		}
+	}
+	return n
+}
+
 // ParseFretboardCellItemKey reads the cell a fretboard cell item key names.
 // It reports false for any other item key, or one with no layout, a string
 // below 1 or a negative fret.

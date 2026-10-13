@@ -2,6 +2,7 @@ package application_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"sync"
@@ -90,6 +91,22 @@ func (f *fakeFeltRatingReader) FeltRatedSessions(_ context.Context, templateKeys
 	return counts, nil
 }
 
+// fakeHeadSessionCounter is an in-memory ports.HeadSessionCounter holding
+// how many sessions in the head each student has started.
+type fakeHeadSessionCounter struct {
+	started map[string]int
+	err     error
+	reads   int
+}
+
+func (f *fakeHeadSessionCounter) HeadSessionsStarted(_ context.Context, studentID string) (int, error) {
+	f.reads++
+	if f.err != nil {
+		return 0, f.err
+	}
+	return f.started[studentID], nil
+}
+
 const (
 	practiceGuitar = "guitar"
 	practiceBass   = "electric-bass"
@@ -110,6 +127,7 @@ type practiceFixture struct {
 	courseVersions *fakeCourseVersionRepository
 	tapChecks      *fakeTapCheckReader
 	feltRatings    *fakeFeltRatingReader
+	headSessions   *fakeHeadSessionCounter
 	// cells holds the fretboard cells that suit each instrument.
 	cells     map[string][]domain.ClassifiedItem
 	now       time.Time
@@ -161,6 +179,7 @@ func newPracticeFixture(t *testing.T) *practiceFixture {
 		courseVersions: newFakeCourseVersionRepository(),
 		tapChecks:      &fakeTapCheckReader{last: map[string]time.Time{}},
 		feltRatings:    &fakeFeltRatingReader{sessions: map[string]int{}},
+		headSessions:   &fakeHeadSessionCounter{started: map[string]int{}},
 		cells:          map[string][]domain.ClassifiedItem{},
 		now:            time.Date(2026, 10, 4, 12, 0, 0, 0, time.UTC),
 		t:              t,
@@ -170,7 +189,7 @@ func newPracticeFixture(t *testing.T) *practiceFixture {
 	now := func() time.Time { return f.now }
 	rollup := application.NewKnowledgeRollupService(f.knowledgeNodes, f.edges, practiceItemSource{f: f}, f.states, now)
 	f.svc = application.NewPracticeSessionService(
-		f.instruments, f.studentPaths, f.enrollments, f.learningPaths, f.courseVersions, f.contentNodes, f.diagrams, f.exercises, rollup, f.tapChecks, f.feltRatings,
+		f.instruments, f.studentPaths, f.enrollments, f.learningPaths, f.courseVersions, f.contentNodes, f.diagrams, f.exercises, rollup, f.tapChecks, f.feltRatings, f.headSessions,
 		func() string { return "session-1" },
 		now,
 	).WithShuffle(keepOrder)
@@ -1565,7 +1584,8 @@ func TestPracticeSessionService_ComposePlanShortAndShuffled(t *testing.T) {
 		f := newPracticeFixture(t)
 		f.svc.WithShuffle(reverseOrder)
 		f.onPathFor([]string{practiceGuitar}, "root-strings")
-		keys := f.cellsOn(practiceGuitar, "root-strings", 10, 6, 5)
+		// Frets 0 to 5 only, so every cell is inside the window at the nut.
+		keys := f.cellsOn(practiceGuitar, "root-strings", 6, 6, 5)
 
 		plan := f.composeInTheHead(t, 5)
 
@@ -1584,7 +1604,8 @@ func TestPracticeSessionService_ComposePlanShortAndShuffled(t *testing.T) {
 		f := newPracticeFixture(t)
 		f.svc.WithShuffle(reverseOrder)
 		f.onPathFor([]string{practiceGuitar}, "root-strings")
-		keys := f.cellsOn(practiceGuitar, "root-strings", 12, 6, 5, 4)
+		// Frets 0 to 5 only, so every cell is inside the window at the nut.
+		keys := f.cellsOn(practiceGuitar, "root-strings", 6, 6, 5, 4, 3, 2, 1)
 		oldest, yesterday := keys[:4], keys[4:34]
 		for _, k := range oldest {
 			f.stateOf(k, domain.PracticeItemState{Level: domain.KnowledgeLevelLearning, Counted: 2, Box: 1, DueAt: f.daysAgo(3)})
@@ -1635,5 +1656,234 @@ func TestPracticeSessionService_ComposePlanShortAndShuffled(t *testing.T) {
 
 		cell := func(str, fret int) string { return domain.FretboardCellItemKey(practiceGuitar, str, fret) }
 		assert.Equal(t, []string{cell(6, 0), cell(5, 0), cell(6, 1), cell(5, 1), cell(6, 2), cell(5, 2)}, planKeys(plan)[:6])
+	})
+}
+
+// cellKeys lists the item keys of the cells of instrumentID's layout on str
+// at frets from to to.
+func cellKeys(instrumentID string, str, from, to int) []string {
+	var keys []string
+	for fret := from; fret <= to; fret++ {
+		keys = append(keys, domain.FretboardCellItemKey(instrumentID, str, fret))
+	}
+	return keys
+}
+
+// askedAs gives each of keys state s, with right answers that ask it as
+// drill next.
+func (f *practiceFixture) askedAs(drill domain.FretboardDrill, s domain.PracticeItemState, keys ...string) {
+	if drill == domain.FretboardDrillFindTheNote {
+		s.RightByResponse = map[string]int{string(domain.FretboardDrillNameTheNote): 1}
+	}
+	for _, k := range keys {
+		f.stateOf(k, s)
+	}
+}
+
+func (f *practiceFixture) dueAs(drill domain.FretboardDrill, keys ...string) {
+	f.askedAs(drill, domain.PracticeItemState{Level: domain.KnowledgeLevelLearning, Counted: 2, Box: 1, DueAt: f.daysAgo(0)}, keys...)
+}
+
+func (f *practiceFixture) weakAs(drill domain.FretboardDrill, keys ...string) {
+	f.askedAs(drill, domain.PracticeItemState{Level: domain.KnowledgeLevelAccurate, Counted: 3, Box: 2, DueAt: f.inDays(2)}, keys...)
+}
+
+// windowsOf lists the fret windows the plan's cells of layout asked as drill
+// carry, each once, failing if a cell's fret is outside its window.
+func windowsOf(t *testing.T, plan domain.PracticeSessionPlan, layout string, drill domain.FretboardDrill) []int {
+	t.Helper()
+	var froms []int
+	for _, item := range itemsOfKind(plan, domain.PracticeItemKindFretboardCell) {
+		cell := item.FretboardCell
+		assert.True(t, cell.Window.Contains(cell.Fret), "%s outside window from %d", item.ItemKey, cell.Window.FromFret)
+		if cell.LayoutInstrumentID == layout && cell.Drill == drill && !slices.Contains(froms, cell.Window.FromFret) {
+			froms = append(froms, cell.Window.FromFret)
+		}
+	}
+	return froms
+}
+
+func TestPracticeSessionService_ComposePlanFretWindows(t *testing.T) {
+	name, find := domain.FretboardDrillNameTheNote, domain.FretboardDrillFindTheNote
+
+	t.Run("every cell of a drill comes from one window", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPathFor([]string{practiceGuitar}, "root-strings")
+		f.cellsOn(practiceGuitar, "root-strings", 12, 6, 5, 4)
+		f.weakAs(find, append(cellKeys(practiceGuitar, 6, 0, 11), cellKeys(practiceGuitar, 5, 4, 11)...)...)
+
+		plan := f.composeInTheHead(t, 10)
+
+		assert.Len(t, windowsOf(t, plan, practiceGuitar, find), 1)
+		assert.Len(t, windowsOf(t, plan, practiceGuitar, name), 1)
+	})
+
+	t.Run("stretch cells come from their drill's window too", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPathFor([]string{practiceGuitar}, "root-strings")
+		f.cellsOn(practiceGuitar, "root-strings", 12, 6, 5, 4, 3)
+
+		// Short enough that the new share leaves some of the cells' cap to stretch.
+		plan := f.composeInTheHead(t, 5)
+
+		require.Contains(t, planReasons(plan), domain.PracticePickStretch)
+		assert.Equal(t, []int{0}, windowsOf(t, plan, practiceGuitar, name))
+	})
+
+	t.Run("a window at the nut holds the open string", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPathFor([]string{practiceGuitar}, "root-strings")
+		f.cellsOn(practiceGuitar, "root-strings", 12, 6, 5, 4, 3)
+
+		plan := f.composeInTheHead(t, 10)
+
+		assert.Equal(t, []int{0}, windowsOf(t, plan, practiceGuitar, name))
+		assert.Contains(t, planKeys(plan), domain.FretboardCellItemKey(practiceGuitar, 6, 0))
+	})
+
+	t.Run("the window holds the most due cells, and a due cell outside it waits", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.headSessions.started[studentCaller().ID] = 4
+		f.onPathFor([]string{practiceGuitar}, "root-strings")
+		f.cellsOn(practiceGuitar, "root-strings", 12, 6, 5)
+		f.dueAs(name, append(cellKeys(practiceGuitar, 6, 7, 9), cellKeys(practiceGuitar, 5, 7, 9)...)...)
+		f.dueAs(name, domain.FretboardCellItemKey(practiceGuitar, 6, 0), domain.FretboardCellItemKey(practiceGuitar, 6, 1))
+
+		plan := f.composeInTheHead(t, 10)
+
+		assert.Equal(t, []int{5}, windowsOf(t, plan, practiceGuitar, name))
+		assert.NotContains(t, planKeys(plan), domain.FretboardCellItemKey(practiceGuitar, 6, 0))
+	})
+
+	t.Run("with nothing due, the window holds the most weak cells", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPathFor([]string{practiceGuitar}, "root-strings")
+		f.cellsOn(practiceGuitar, "root-strings", 12, 6, 5)
+		f.weakAs(find, append(cellKeys(practiceGuitar, 6, 8, 10), cellKeys(practiceGuitar, 5, 8, 9)...)...)
+
+		plan := f.composeInTheHead(t, 10)
+
+		assert.Equal(t, []int{6}, windowsOf(t, plan, practiceGuitar, find))
+	})
+
+	t.Run("new cells stay balanced across the student's instruments once the window leaves some out", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.svc.WithShuffle(reverseOrder)
+		f.onPathFor([]string{practiceGuitar, practiceBass}, "root-strings")
+		f.cellsOn(practiceGuitar, "root-strings", 6, 6)
+		// Reversed, the bass cells past the window come first.
+		f.cellsOn(practiceBass, "root-strings", 12, 4)
+
+		plan := f.composeInTheHead(t, 5)
+
+		count := map[string]int{}
+		for _, item := range plan.Items {
+			if item.Reason == domain.PracticePickNew {
+				count[item.FretboardCell.LayoutInstrumentID]++
+			}
+		}
+		require.NotZero(t, count[practiceGuitar])
+		assert.InDelta(t, count[practiceGuitar], count[practiceBass], 1, "%v", count)
+	})
+
+	t.Run("a drill first met in stretch takes the window with the most of its cells", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPathFor([]string{practiceGuitar}, "skill-1")
+		f.exercise("name-the-root", "skill-1", 30, practiceGuitar)
+		f.applies("skill-1", "fretboard-notes")
+		f.cellsOn(practiceGuitar, "fretboard-notes", 12, 6, 5)
+
+		plan := f.composeInTheHead(t, 5)
+
+		require.Contains(t, planReasons(plan), domain.PracticePickStretch)
+		assert.Equal(t, []int{0}, windowsOf(t, plan, practiceGuitar, name))
+	})
+
+	t.Run("cells reviewed ahead come from their drill's window too", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.headSessions.started[studentCaller().ID] = 4
+		f.onPathFor([]string{practiceGuitar}, "root-strings")
+		f.cellsOn(practiceGuitar, "root-strings", 12, 6)
+		f.dueAs(find, cellKeys(practiceGuitar, 6, 8, 10)...)
+		f.askedAs(find, domain.PracticeItemState{Level: domain.KnowledgeLevelFluent, Counted: 6, Box: 4, DueAt: f.inDays(3)},
+			append(cellKeys(practiceGuitar, 6, 0, 2), cellKeys(practiceGuitar, 6, 6, 7)...)...)
+
+		plan := f.composeInTheHead(t, 5)
+
+		require.Contains(t, planReasons(plan), domain.PracticePickReviewAhead)
+		assert.Equal(t, []int{6}, windowsOf(t, plan, practiceGuitar, find))
+		assert.NotContains(t, planKeys(plan), domain.FretboardCellItemKey(practiceGuitar, 6, 0))
+	})
+
+	for _, tt := range []struct {
+		name    string
+		started int
+		want    int
+	}{
+		{name: "on a new-cell turn, name the note moves to the window with the most new cells", started: 5, want: 6},
+		{name: "on the next session, name the note goes back to the due cells", started: 6, want: 0},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			f := newPracticeFixture(t)
+			f.headSessions.started[studentCaller().ID] = tt.started
+			f.onPathFor([]string{practiceGuitar}, "root-strings")
+			f.cellsOn(practiceGuitar, "root-strings", 12, 6, 5)
+			f.known(5, append(cellKeys(practiceGuitar, 6, 0, 5), cellKeys(practiceGuitar, 5, 0, 5)...)...)
+			f.dueAs(name, cellKeys(practiceGuitar, 6, 0, 5)...)
+
+			plan := f.composeInTheHead(t, 10)
+
+			assert.Equal(t, []int{tt.want}, windowsOf(t, plan, practiceGuitar, name))
+		})
+	}
+
+	t.Run("on a new-cell turn, a drill with no new cells keeps its due cells", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.headSessions.started[studentCaller().ID] = 5
+		f.onPathFor([]string{practiceGuitar}, "root-strings")
+		f.cellsOn(practiceGuitar, "root-strings", 12, 6, 5)
+		f.dueAs(find, append(cellKeys(practiceGuitar, 6, 1, 3), cellKeys(practiceGuitar, 5, 1, 3)...)...)
+
+		plan := f.composeInTheHead(t, 10)
+
+		assert.Equal(t, []int{0}, windowsOf(t, plan, practiceGuitar, find))
+	})
+
+	t.Run("each drill and each layout has its own window", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.headSessions.started[studentCaller().ID] = 4
+		f.onPathFor([]string{practiceGuitar, practiceBass}, "root-strings")
+		f.cellsOn(practiceGuitar, "root-strings", 12, 6, 5)
+		f.cellsOn(practiceBass, "root-strings", 12, 4, 3)
+		f.dueAs(name, append(cellKeys(practiceGuitar, 6, 8, 10), cellKeys(practiceGuitar, 5, 8, 10)...)...)
+		f.dueAs(find, append(cellKeys(practiceGuitar, 6, 1, 3), cellKeys(practiceGuitar, 5, 1, 3)...)...)
+		f.dueAs(name, append(cellKeys(practiceBass, 4, 1, 3), cellKeys(practiceBass, 3, 1, 3)...)...)
+
+		plan := f.composeInTheHead(t, 10)
+
+		assert.Equal(t, []int{6}, windowsOf(t, plan, practiceGuitar, name))
+		assert.Equal(t, []int{0}, windowsOf(t, plan, practiceGuitar, find))
+		assert.Equal(t, []int{0}, windowsOf(t, plan, practiceBass, name))
+	})
+
+	t.Run("the sessions started in the head are read only for a session in the head", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPathFor([]string{practiceGuitar}, "root-strings")
+		f.exercise("name-the-root", "root-strings", 30, practiceGuitar)
+
+		f.compose(t, practiceGuitar, 10)
+
+		assert.Zero(t, f.headSessions.reads)
+	})
+
+	t.Run("a failure to count the sessions started in the head fails the plan", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.headSessions.err = errors.New("mongo down")
+		f.onPathFor([]string{practiceGuitar}, "root-strings")
+		f.cellsOn(practiceGuitar, "root-strings", 12, 6)
+
+		_, err := f.svc.ComposePlan(context.Background(), studentCaller(), nil, 10)
+
+		assert.ErrorContains(t, err, "mongo down")
 	})
 }

@@ -52,6 +52,7 @@ type PracticeSessionService struct {
 	rollup      *KnowledgeRollupService
 	tapChecks   ports.TapCheckReader
 	feltRatings ports.FeltRatingReader
+	headCount   ports.HeadSessionCounter
 	newID       func() string
 	now         func() time.Time
 	// shuffle puts equally urgent candidates in random order.
@@ -70,6 +71,7 @@ func NewPracticeSessionService(
 	rollup *KnowledgeRollupService,
 	tapChecks ports.TapCheckReader,
 	feltRatings ports.FeltRatingReader,
+	headCount ports.HeadSessionCounter,
 	newID func() string,
 	now func() time.Time,
 ) *PracticeSessionService {
@@ -84,6 +86,7 @@ func NewPracticeSessionService(
 		rollup:      rollup,
 		tapChecks:   tapChecks,
 		feltRatings: feltRatings,
+		headCount:   headCount,
 		newID:       newID,
 		now:         now,
 		shuffle:     rand.Shuffle,
@@ -183,7 +186,10 @@ func knowledgeNodeIDs(nodes []domain.KnowledgeNode) []string {
 //     unseen items of nodes the student is ready to start and that connect
 //     to what they are learning, their paths' skills first and taken in
 //     turn from each instrument, each taking over the other's half when it
-//     runs out.
+//     runs out;
+//   - each fretboard drill of each layout is asked within one window of
+//     frets, and only its cells inside that window are picked: see
+//     fretWindows.
 //
 // Each pick is fitted to the minutes by its estimated time; a session too
 // short for any of them still offers the first. A session with nothing to
@@ -207,10 +213,13 @@ func (s *PracticeSessionService) ComposePlan(ctx context.Context, caller domain.
 	}
 
 	c := newComposer(s.now(), minutes, s.shuffle)
+	if c.newTurn, err = s.newCellTurn(ctx, caller.ID, inHand); err != nil {
+		return domain.PracticeSessionPlan{}, err
+	}
 	if inHand && minutes >= warmUpMinMinutes {
 		c.warmUp(onPath)
 	}
-	p := c.split(onPath)
+	p := c.fretWindows(c.split(onPath))
 	if inHand && minutes >= applicationMinMinutes {
 		c.application(onPath, p)
 	}
@@ -218,16 +227,31 @@ func (s *PracticeSessionService) ComposePlan(ctx context.Context, caller domain.
 	if c.remaining() > 0 {
 		var stretch []practiceCandidate
 		for i, id := range instrumentIDs {
-			found, err := s.stretchCandidates(ctx, maps[i], id, inHand, skillIDs, onPath, c.picked, c.remaining(), s.shuffle)
+			found, err := s.stretchCandidates(ctx, maps[i], id, inHand, skillIDs, onPath, c.picked, c.inWindow, c.remaining(), s.shuffle)
 			if err != nil {
 				return domain.PracticeSessionPlan{}, err
 			}
 			stretch = append(stretch, found...)
 		}
-		c.catchUp(p.known, takeInTurn(stretch))
+		c.catchUp(p.known, c.stretchWindows(stretch))
 	}
 	c.neverEmpty()
 	return s.newPlan(ctx, caller.ID, instrumentID, minutes, c.plan())
+}
+
+// newCellTurn reports whether a session in the head is a new-cell turn: the
+// student has started an odd number of them so far, so every other session
+// moves a drill with new cells to where they are. A session with the
+// instrument in hand asks no fretboard cell, so it never is one.
+func (s *PracticeSessionService) newCellTurn(ctx context.Context, studentID string, inHand bool) (bool, error) {
+	if inHand {
+		return false, nil
+	}
+	started, err := s.headCount.HeadSessionsStarted(ctx, studentID)
+	if err != nil {
+		return false, err
+	}
+	return started%2 == 1, nil
 }
 
 // newPlan is the plan of the composed items, with its felt questions and
@@ -423,12 +447,13 @@ func skillCells(knowledge KnowledgeMap, skillID string) []practiceCandidate {
 	return cells
 }
 
-// stretchCandidates lists unseen items for instrumentID not yet picked,
-// about seconds of them, from the nodes the student is ready to start in
-// the order to start them, the skills of their paths, pathSkillIDs, first.
+// stretchCandidates lists unseen items for instrumentID not yet picked and
+// that fit, about seconds of them, from the nodes the student is ready to
+// start in the order to start them, the skills of their paths,
+// pathSkillIDs, first.
 // Each is offered for the node it starts, if it suits the session: see
 // suitsSession.
-func (s *PracticeSessionService) stretchCandidates(ctx context.Context, knowledge KnowledgeMap, instrumentID string, inHand bool, pathSkillIDs []string, onPath []practiceCandidate, picked map[string]bool, seconds int, shuffle func(n int, swap func(i, j int))) ([]practiceCandidate, error) {
+func (s *PracticeSessionService) stretchCandidates(ctx context.Context, knowledge KnowledgeMap, instrumentID string, inHand bool, pathSkillIDs []string, onPath []practiceCandidate, picked map[string]bool, fits func(practiceCandidate) bool, seconds int, shuffle func(n int, swap func(i, j int))) ([]practiceCandidate, error) {
 	loaded := make(map[string]practiceCandidate, len(onPath))
 	for _, c := range onPath {
 		loaded[c.key()] = c
@@ -443,7 +468,7 @@ func (s *PracticeSessionService) stretchCandidates(ctx context.Context, knowledg
 		if err != nil {
 			return nil, err
 		}
-		if ok && c.suitsSession(inHand) {
+		if ok && c.suitsSession(inHand) && fits(c) {
 			c.nodeID = &pick.nodeID
 			c.instrumentID = instrumentID
 			stretch = append(stretch, c)
@@ -621,10 +646,32 @@ type composer struct {
 	// first is the first pick refused for lack of time, offered anyway when
 	// nothing else fits.
 	first *domain.PracticeSessionItem
+	// windows holds the fret window of each fretboard drill of each layout,
+	// and newTurn whether this session is a new-cell turn.
+	windows map[drillWindowKey]domain.FretWindow
+	newTurn bool
+}
+
+// drillWindowKey is a fretboard drill of a layout, which takes one window.
+type drillWindowKey struct {
+	layoutInstrumentID string
+	drill              domain.FretboardDrill
+}
+
+// windowKey is the drill and layout cand is asked in; false when it is no
+// fretboard cell.
+func windowKey(cand practiceCandidate) (drillWindowKey, bool) {
+	if cand.cell == nil {
+		return drillWindowKey{}, false
+	}
+	return drillWindowKey{layoutInstrumentID: cand.cell.LayoutInstrumentID, drill: domain.NextFretboardDrill(cand.state)}, true
 }
 
 func newComposer(now time.Time, minutes int, shuffle func(n int, swap func(i, j int))) *composer {
-	return &composer{now: now, budget: minutes * 60, shuffle: shuffle, picked: map[string]bool{}, drills: map[string]int{}}
+	return &composer{
+		now: now, budget: minutes * 60, shuffle: shuffle, picked: map[string]bool{}, drills: map[string]int{},
+		windows: map[drillWindowKey]domain.FretWindow{},
+	}
 }
 
 func (c *composer) remaining() int { return c.budget - c.used }
@@ -664,6 +711,79 @@ func (c *composer) split(candidates []practiceCandidate) pools {
 	p.weak = c.shuffleWithinNodes(p.weak)
 	p.fresh = takeInTurn(c.shuffleWithinNodes(p.fresh))
 	return p
+}
+
+// fretWindows picks the window of every fretboard drill of every layout in
+// p, each cell's drill being the way it is asked next, and keeps only the
+// cells inside their drill's window: see domain.PickFretWindow, fed with
+// the frets of the drill's due, weak and new cells. A drill with only cells
+// to review ahead takes the window at the nut.
+func (c *composer) fretWindows(p pools) pools {
+	type tally struct{ due, weak, fresh []int }
+	tallies := map[drillWindowKey]*tally{}
+	for _, pool := range [][]practiceCandidate{p.due, p.weak, p.fresh, p.known} {
+		for _, cand := range pool {
+			if k, ok := windowKey(cand); ok && tallies[k] == nil {
+				tallies[k] = &tally{}
+			}
+		}
+	}
+	add := func(pool []practiceCandidate, frets func(*tally) *[]int) {
+		for _, cand := range pool {
+			if k, ok := windowKey(cand); ok {
+				f := frets(tallies[k])
+				*f = append(*f, cand.cell.Fret)
+			}
+		}
+	}
+	add(p.due, func(t *tally) *[]int { return &t.due })
+	add(p.weak, func(t *tally) *[]int { return &t.weak })
+	add(p.fresh, func(t *tally) *[]int { return &t.fresh })
+	for k, t := range tallies {
+		c.windows[k] = domain.PickFretWindow(t.due, t.weak, t.fresh, c.newTurn)
+	}
+	// The new cells are taken in turn from each instrument again: those
+	// left out would otherwise leave one instrument's turns to the other.
+	return pools{due: c.inWindows(p.due), weak: c.inWindows(p.weak), fresh: takeInTurn(c.inWindows(p.fresh)), known: c.inWindows(p.known)}
+}
+
+// stretchWindows picks the window of each fretboard drill first met in
+// stretch, from its cells, all new, and keeps only the stretch cells inside
+// their drill's window, taken in turn from each instrument again.
+func (c *composer) stretchWindows(stretch []practiceCandidate) []practiceCandidate {
+	fresh := map[drillWindowKey][]int{}
+	for _, cand := range stretch {
+		if k, ok := windowKey(cand); ok {
+			if _, picked := c.windows[k]; !picked {
+				fresh[k] = append(fresh[k], cand.cell.Fret)
+			}
+		}
+	}
+	for k, frets := range fresh {
+		c.windows[k] = domain.PickFretWindow(nil, nil, frets, c.newTurn)
+	}
+	return takeInTurn(c.inWindows(stretch))
+}
+
+// inWindow reports whether cand is no fretboard cell, a cell of a drill with
+// no window yet, or a cell inside its drill's window.
+func (c *composer) inWindow(cand practiceCandidate) bool {
+	k, ok := windowKey(cand)
+	if !ok {
+		return true
+	}
+	w, picked := c.windows[k]
+	return !picked || w.Contains(cand.cell.Fret)
+}
+
+func (c *composer) inWindows(candidates []practiceCandidate) []practiceCandidate {
+	var kept []practiceCandidate
+	for _, cand := range candidates {
+		if c.inWindow(cand) {
+			kept = append(kept, cand)
+		}
+	}
+	return kept
 }
 
 func (c *composer) shuffleCandidates(candidates []practiceCandidate) {
@@ -947,7 +1067,8 @@ func (c *composer) item(cand practiceCandidate, reason domain.PracticePickReason
 	}
 	if cand.cell != nil {
 		item.Kind = domain.PracticeItemKindFretboardCell
-		item.FretboardCell = &domain.PlannedFretboardCell{FretboardCell: *cand.cell, Drill: domain.NextFretboardDrill(cand.state)}
+		k, _ := windowKey(cand)
+		item.FretboardCell = &domain.PlannedFretboardCell{FretboardCell: *cand.cell, Drill: k.drill, Window: c.windows[k]}
 	}
 	if cand.shape != nil {
 		item.Kind = domain.PracticeItemKindDiagramShape

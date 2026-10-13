@@ -31,6 +31,8 @@ func registerHeadSessionSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^every fretboard cell in the session is estimated at (\d+) seconds$`, w.everyCellEstimatedAt)
 	sc.Step(`^the new items in the session are split evenly between guitar and electric bass$`, w.newItemsSplitEvenly)
 	sc.Step(`^the session has at least one fretboard cell with the reason (\w+)$`, w.sessionHasCellWithReason)
+
+	registerFretWindowSteps(sc, w)
 }
 
 // putCells declares the fretboard cells of strs at frets 0 to frets-1 on
