@@ -277,11 +277,13 @@ func toGeneratedPracticeSessionItem(item domain.PracticeSessionItem, names userN
 		out.FretboardCell = &struct {
 			Drill              generated.FretboardDrill `json:"drill"`
 			Fret               int                      `json:"fret"`
+			FretWindow         generated.FretWindow     `json:"fret_window"`
 			LayoutInstrumentId openapi_types.UUID       `json:"layout_instrument_id"`
 			String             int                      `json:"string"`
 		}{
 			Drill:              generated.FretboardDrill(c.Drill),
 			Fret:               c.Fret,
+			FretWindow:         generated.FretWindow{FromFret: generated.FretWindowFromFret(c.Window.FromFret)},
 			LayoutInstrumentId: mustUUID(c.LayoutInstrumentID),
 			String:             c.String,
 		}

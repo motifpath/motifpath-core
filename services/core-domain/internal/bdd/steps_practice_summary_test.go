@@ -62,6 +62,18 @@ func (f *fakePracticeActivity) FinishedSessions(_ context.Context, studentID str
 	return out, nil
 }
 
+func (f *fakePracticeActivity) HeadSessionsStarted(_ context.Context, studentID string) (int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	n := 0
+	for _, s := range f.sessions[studentID] {
+		if s.startedAt != nil && s.instrumentID == nil {
+			n++
+		}
+	}
+	return n, nil
+}
+
 func (f *fakePracticeActivity) SessionSpans(_ context.Context, studentID string, since time.Time) ([]domain.PracticeSessionSpan, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

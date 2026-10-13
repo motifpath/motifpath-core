@@ -1237,6 +1237,39 @@ func (e ExpandedContentContentType) Valid() bool {
 	}
 }
 
+// Defines values for FretWindowFromFret.
+const (
+	FretWindowFromFretN0 FretWindowFromFret = 0
+	FretWindowFromFretN2 FretWindowFromFret = 2
+	FretWindowFromFretN3 FretWindowFromFret = 3
+	FretWindowFromFretN4 FretWindowFromFret = 4
+	FretWindowFromFretN5 FretWindowFromFret = 5
+	FretWindowFromFretN6 FretWindowFromFret = 6
+	FretWindowFromFretN7 FretWindowFromFret = 7
+)
+
+// Valid indicates whether the value is a known member of the FretWindowFromFret enum.
+func (e FretWindowFromFret) Valid() bool {
+	switch e {
+	case FretWindowFromFretN0:
+		return true
+	case FretWindowFromFretN2:
+		return true
+	case FretWindowFromFretN3:
+		return true
+	case FretWindowFromFretN4:
+		return true
+	case FretWindowFromFretN5:
+		return true
+	case FretWindowFromFretN6:
+		return true
+	case FretWindowFromFretN7:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for FretboardDrill.
 const (
 	FindTheNote FretboardDrill = "find_the_note"
@@ -5006,6 +5039,24 @@ type ForbiddenError struct {
 	Message string `json:"message"`
 }
 
+// FretWindow The frets a fretboard drill is asked within, so its board is drawn at full tap size without
+// scrolling sideways. Five frets, plus the open string when the window starts at the nut: a
+// from_fret of 0 covers the open string and frets 1 to 5; any other from_fret covers it and the
+// next four frets, such as 3 to 7. Only the window's places can be tapped, and the question
+// names it. Every cell of the same drill and layout in a plan carries the same window, and the
+// cell's fret is always inside it.
+type FretWindow struct {
+	// FromFret The window's lowest fret; 0 means it starts at the open string and ends at fret 5.
+	// Otherwise it ends at from_fret + 4, at most fret 11. Never 1, since a window at the nut
+	// always includes the open string.
+	FromFret FretWindowFromFret `json:"from_fret"`
+}
+
+// FretWindowFromFret The window's lowest fret; 0 means it starts at the open string and ends at fret 5.
+// Otherwise it ends at from_fret + 4, at most fret 11. Never 1, since a window at the nut
+// always includes the open string.
+type FretWindowFromFret int
+
 // FretboardDrill How a fretboard cell is asked. name_the_note = the cell is shown and the student names
 // its note; find_the_note = the note and string are named and the student taps the cell.
 type FretboardDrill string
@@ -6093,7 +6144,11 @@ type PracticeSessionItem struct {
 	Exercise *Exercise `json:"exercise,omitempty"`
 
 	// FretboardCell Present when kind is fretboard_cell. The drill is the way of asking the cell has
-	// the fewer right answers so far, name_the_note on a tie.
+	// the fewer right answers so far, name_the_note on a tie. The fret window is the one
+	// the composer picked for this drill and layout: the one holding the most of the
+	// drill's due cells, then weak, then new, the one nearest the nut on a tie. When the
+	// student has started an odd number of sessions in the head so far and the drill has
+	// new cells, it is instead the one holding the most new cells.
 	FretboardCell *struct {
 		// Drill How a fretboard cell is asked. name_the_note = the cell is shown and the student names
 		// its note; find_the_note = the note and string are named and the student taps the cell.
@@ -6101,6 +6156,14 @@ type PracticeSessionItem struct {
 
 		// Fret The cell's fret; 0 is the open string.
 		Fret int `json:"fret"`
+
+		// FretWindow The frets a fretboard drill is asked within, so its board is drawn at full tap size without
+		// scrolling sideways. Five frets, plus the open string when the window starts at the nut: a
+		// from_fret of 0 covers the open string and frets 1 to 5; any other from_fret covers it and the
+		// next four frets, such as 3 to 7. Only the window's places can be tapped, and the question
+		// names it. Every cell of the same drill and layout in a plan carries the same window, and the
+		// cell's fret is always inside it.
+		FretWindow FretWindow `json:"fret_window"`
 
 		// LayoutInstrumentId The instrument whose fretboard layout and tuning the cell belongs to.
 		LayoutInstrumentId openapi_types.UUID `json:"layout_instrument_id"`

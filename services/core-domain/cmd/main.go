@@ -312,7 +312,7 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 	diagramService := application.NewDiagramService(diagramRepo, instrumentRepo, knowledgeNodeRepo, languageRepo, userRepo, practiceReferences, chordCatalogRepo, exerciseRepo, newID, now)
 	rollupService := application.NewKnowledgeRollupService(knowledgeNodeRepo, knowledgeEdgeRepo, repo.NewEntNodeItemSource(entClient), repo.NewMongoPracticeItemStateReader(mongoClient.Database(cfg.mongoDatabase)), now)
 	practiceActivity := repo.NewMongoPracticeActivityReader(mongoClient.Database(cfg.mongoDatabase))
-	practiceSessionService := application.NewPracticeSessionService(instrumentRepo, studentPathRepo, courseEnrollmentRepo, pathRepo, courseVersionRepo, nodeRepo, diagramRepo, exerciseRepo, rollupService, practiceActivity, practiceActivity, newID, now)
+	practiceSessionService := application.NewPracticeSessionService(instrumentRepo, studentPathRepo, courseEnrollmentRepo, pathRepo, courseVersionRepo, nodeRepo, diagramRepo, exerciseRepo, rollupService, practiceActivity, practiceActivity, practiceActivity, newID, now)
 	practiceSummaryService := application.NewPracticeSummaryService(instrumentRepo, studentPathRepo, courseEnrollmentRepo, pathRepo, courseVersionRepo, nodeRepo, rollupService, practiceActivity, songChartRepo, now)
 	chordCatalogService := application.NewChordCatalogService(chordCatalogRepo)
 	songChartService := application.NewSongChartService(songChartRepo, chordCatalogRepo, diagramRepo, languageRepo, newID, now)
