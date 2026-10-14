@@ -421,3 +421,23 @@ func TestDailySnapshots_NoEvidenceNoSnapshots(t *testing.T) {
 func TestSnapshotDay_IsTheUTCMidnightOfTheDay(t *testing.T) {
 	assert.Equal(t, time.Date(2026, 10, 5, 0, 0, 0, 0, time.UTC), SnapshotDay(onDay(0)))
 }
+
+func TestWayAsked(t *testing.T) {
+	cases := []struct {
+		name string
+		kind PracticeItemKind
+		r    PracticeResponse
+		want string
+	}{
+		{"a generated question, by its way", PracticeItemKindDiatonicChord, PracticeResponse{Type: PracticeResponseGeneratedChoice, Way: "chord_to_numeral"}, "chord_to_numeral"},
+		{"a note found everywhere, by its kind's one template", PracticeItemKindFretboardNote, PracticeResponse{Type: PracticeResponseMultiTap}, "find_every_instance"},
+		{"a guide-tone take, by its kind's one template", PracticeItemKindGuideTone, PracticeResponse{Type: PracticeResponseTimedTaps}, "tap_the_third"},
+		{"a fretboard cell, by its response type", PracticeItemKindFretboardCell, PracticeResponse{Type: PracticeResponseNameTheNote}, "name_the_note"},
+		{"another kind answering with multi_tap never borrows a template", PracticeItemKindDiagramShape, PracticeResponse{Type: PracticeResponseMultiTap}, "multi_tap"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			assert.Equal(t, c.want, WayAsked(c.kind, c.r))
+		})
+	}
+}

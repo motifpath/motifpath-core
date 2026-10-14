@@ -1,5 +1,7 @@
 package domain
 
+import "strings"
+
 // GradeRejection is why a grader refused a response. A rejection stores no evidence.
 type GradeRejection string
 
@@ -151,22 +153,32 @@ func (e ExerciseReference) DrillTemplateKey() string {
 	return string(PracticeItemKindExercise) + ":" + e.ExerciseType
 }
 
-// WayAsked is the way an answer's question was asked, the second half of its drill
-// template's key: a generated question's way, find_every_instance for a note found
-// everywhere, tap_the_third for a guide-tone take, and the response type for every
-// other answer (name_the_note, find_the_degree…).
-func WayAsked(r PracticeResponse) string {
-	switch r.Type {
-	case PracticeResponseGeneratedChoice:
+// singleTemplate is the one drill template of a kind asked only one way, named
+// after the drill rather than its response: two kinds may answer with the same
+// response shape and still be different drills.
+var singleTemplate = map[PracticeItemKind]string{
+	PracticeItemKindFretboardNote: "find_every_instance",
+	PracticeItemKindGuideTone:     "tap_the_third",
+}
+
+// WayAsked is the way an answer to an item of kind was asked, the second half of
+// its drill template's key: a generated question's way, the kind's one template
+// when it has only one, and the response type for every other answer
+// (name_the_note, find_the_degree…).
+func WayAsked(kind PracticeItemKind, r PracticeResponse) string {
+	if r.Type == PracticeResponseGeneratedChoice {
 		return r.Way
-	case PracticeResponseMultiTap:
-		return "find_every_instance"
-	case PracticeResponseTimedTaps:
-		return "tap_the_third"
-	case PracticeResponseNameTheNote, PracticeResponseFindTheNote, PracticeResponseOptionChoice, PracticeResponseSelfRating,
-		PracticeResponseNameTheShape, PracticeResponseFindTheDegree, PracticeResponseNotAnswered:
+	}
+	if template, ok := singleTemplate[kind]; ok {
+		return template
 	}
 	return string(r.Type)
+}
+
+// kindOf is the kind an item key names, its prefix.
+func kindOf(itemKey string) PracticeItemKind {
+	kind, _, _ := strings.Cut(itemKey, ":")
+	return PracticeItemKind(kind)
 }
 
 // TimedDrillTemplate is the timed drill template an answer to key practises:
@@ -178,7 +190,7 @@ func TimedDrillTemplate(key PracticeItemKey, response PracticeResponse, ref Prac
 	case PracticeItemKindFretboardCell, PracticeItemKindDiagramShape, PracticeItemKindDiatonicChord,
 		PracticeItemKindChordFunction, PracticeItemKindChartProgression, PracticeItemKindHeardChord,
 		PracticeItemKindHeardProgression, PracticeItemKindGuideTone, PracticeItemKindFretboardNote:
-		return string(key.Kind) + ":" + WayAsked(response)
+		return string(key.Kind) + ":" + WayAsked(key.Kind, response)
 	case PracticeItemKindExercise:
 		if e, ok := ref.Exercises[key.ExerciseID()]; ok {
 			return e.DrillTemplateKey()

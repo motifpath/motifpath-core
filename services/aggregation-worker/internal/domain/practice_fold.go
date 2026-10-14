@@ -75,7 +75,7 @@ func (g ItemGoal) FluentTimeAt(t time.Time) (FluentTime, bool) {
 // fluent time of the way e was asked when the item is asked more than one way.
 func (g ItemGoal) fluentTimeAt(e PracticeEvidence) (FluentTime, bool) {
 	if g.FluentTimesByWay != nil {
-		return versionAt(g.FluentTimesByWay[WayAsked(e.Response)], e.OccurredAt)
+		return versionAt(g.FluentTimesByWay[WayAsked(kindOf(e.ItemKey), e.Response)], e.OccurredAt)
 	}
 	return versionAt(g.FluentTimes, e.OccurredAt)
 }
@@ -238,7 +238,7 @@ func foldAnswer(f ItemFold, e PracticeEvidence, goal ItemGoal) (ItemFold, error)
 		if f.RightByResponse == nil {
 			f.RightByResponse = map[string]int{}
 		}
-		f.RightByResponse[WayAsked(e.Response)]++
+		f.RightByResponse[WayAsked(kindOf(e.ItemKey), e.Response)]++
 		r.outcome, r.accuracy, r.fluency = outcomeHit, 1, 1
 		if timed && judged.NetMs > 0 {
 			r.fluency = math.Min(1, float64(judged.FluentTime.FluentNetMs)/float64(judged.NetMs))

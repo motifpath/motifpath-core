@@ -212,9 +212,9 @@ func (s *PracticeEvidenceService) goalOf(ctx context.Context, key domain.Practic
 		domain.PracticeItemKindHeardChord, domain.PracticeItemKindHeardProgression:
 		return s.goalByWayAsked(ctx, key.Kind, domain.WaysOf(key.Kind)...)
 	case domain.PracticeItemKindGuideTone:
-		return s.goalByWayAsked(ctx, key.Kind, domain.WayAsked(domain.PracticeResponse{Type: domain.PracticeResponseTimedTaps}))
+		return s.goalByWayAsked(ctx, key.Kind, domain.WayAsked(key.Kind, domain.PracticeResponse{Type: domain.PracticeResponseTimedTaps}))
 	case domain.PracticeItemKindFretboardNote:
-		return s.goalByWayAsked(ctx, key.Kind, domain.WayAsked(domain.PracticeResponse{Type: domain.PracticeResponseMultiTap}))
+		return s.goalByWayAsked(ctx, key.Kind, domain.WayAsked(key.Kind, domain.PracticeResponse{Type: domain.PracticeResponseMultiTap}))
 	case domain.PracticeItemKindChordChange, domain.PracticeItemKindRootChange, domain.PracticeItemKindChordVoicing,
 		domain.PracticeItemKindRootFifth:
 	}
