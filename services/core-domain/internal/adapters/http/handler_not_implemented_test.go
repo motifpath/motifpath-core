@@ -25,16 +25,6 @@ func TestOperationsNotImplementedYet(t *testing.T) {
 			assert.Nil(t, resp)
 			return err
 		}},
-		{"getAlphaObservation", func() error {
-			resp, err := h.GetAlphaObservation(ctx, generated.GetAlphaObservationRequestObject{})
-			assert.Nil(t, resp)
-			return err
-		}},
-		{"getAlphaStudentObservation", func() error {
-			resp, err := h.GetAlphaStudentObservation(ctx, generated.GetAlphaStudentObservationRequestObject{})
-			assert.Nil(t, resp)
-			return err
-		}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
