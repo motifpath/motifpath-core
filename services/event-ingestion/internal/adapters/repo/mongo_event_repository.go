@@ -40,6 +40,13 @@ func (r *MongoEventRepository) EnsureIndexes(ctx context.Context) error {
 		{
 			Keys: bson.D{{Key: "student_id", Value: 1}, {Key: "event_type", Value: 1}, {Key: "occurred_at", Value: -1}},
 		},
+		// List: the event log in received order, everyone's or one student's.
+		{
+			Keys: bson.D{{Key: "received_at", Value: -1}, {Key: "event_id", Value: -1}},
+		},
+		{
+			Keys: bson.D{{Key: "student_id", Value: 1}, {Key: "received_at", Value: -1}, {Key: "event_id", Value: -1}},
+		},
 	})
 	return err
 }
@@ -78,6 +85,52 @@ func (r *MongoEventRepository) FindByEventID(ctx context.Context, eventID string
 		return nil, err
 	}
 	return fromDocument(doc)
+}
+
+// List reads one page of the event log, newest received first. event_id
+// breaks a tie in received_at, so the order holds across pages.
+func (r *MongoEventRepository) List(ctx context.Context, q domain.EventLogQuery) ([]domain.LoggedEvent, int, error) {
+	filter := bson.D{}
+	if q.StudentID != "" {
+		filter = append(filter, bson.E{Key: "student_id", Value: q.StudentID})
+	}
+	// Events of a retired type stay in the log but can't be read back, so
+	// they are left out of the page and of the total alike.
+	eventTypes := q.EventTypes
+	if len(eventTypes) == 0 {
+		eventTypes = domain.ReadableEventTypes()
+	}
+	types := make([]string, len(eventTypes))
+	for i, t := range eventTypes {
+		types[i] = string(t)
+	}
+	filter = append(filter, bson.E{Key: "event_type", Value: bson.D{{Key: "$in", Value: types}}})
+
+	total, err := r.collection.CountDocuments(ctx, filter)
+	if err != nil {
+		return nil, 0, err
+	}
+	opts := options.Find().
+		SetSort(bson.D{{Key: "received_at", Value: -1}, {Key: "event_id", Value: -1}}).
+		SetSkip(int64(q.Offset)).
+		SetLimit(int64(q.Limit))
+	cursor, err := r.collection.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, 0, err
+	}
+	var docs []eventDocument
+	if err := cursor.All(ctx, &docs); err != nil {
+		return nil, 0, err
+	}
+	logged := make([]domain.LoggedEvent, len(docs))
+	for i, doc := range docs {
+		event, err := fromDocument(doc)
+		if err != nil {
+			return nil, 0, err
+		}
+		logged[i] = domain.LoggedEvent{ReceivedAt: doc.ReceivedAt.UTC(), Event: event}
+	}
+	return logged, int(total), nil
 }
 
 // LatestTap returns the median tap of the student's newest practice.tap_check_completed

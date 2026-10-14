@@ -29,6 +29,12 @@ var activityDay = time.Date(2026, 10, 5, 0, 0, 0, 0, time.UTC)
 func registerActivitySteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^student "([^"]*)" is authenticated with a valid session$`, w.studentIsAuthenticated)
 
+	// ── Last activity ──────────────────────────────────────────────────────────
+	sc.Step(`^"([^"]*)"'s last activity was an? ([a-z_]+\.[a-z_]+) at (\d\d:\d\d)$`, w.anEventArrives)
+	sc.Step(`^"([^"]*)"'s ([a-z_]+\.[a-z_]+), occurred at (\d\d:\d\d), arrives$`, w.anEventArrives)
+	sc.Step(`^"([^"]*)"'s ([a-z_]+\.[a-z_]+), occurred at (\d\d:\d\d), arrives at \d\d:\d\d$`, w.anEventArrives)
+	sc.Step(`^"([^"]*)"'s last activity is (?:still )?(\d\d:\d\d)$`, w.lastActivityIs)
+
 	// ── Practice sessions ──────────────────────────────────────────────────────
 	sc.Step(`^"([^"]*)" started a (\d+)-minute practice session at (\d\d:\d\d)$`, w.startedASession)
 	sc.Step(`^"([^"]*)"'s (\d+)-minute session started at (\d\d:\d\d) was abandoned after its last answer at (\d\d:\d\d)$`, w.sessionWasAbandoned)
@@ -76,6 +82,37 @@ func (w *world) handle(e domain.TrackingEvent) error {
 
 func (w *world) studentIsAuthenticated(student string) error {
 	w.studentID(student)
+	return nil
+}
+
+// ── Last activity ────────────────────────────────────────────────────────────
+
+// anEventArrives sends an event of eventType that occurred at hhmm. Last
+// activity reads only who and when, so the event carries nothing else; when
+// it arrives doesn't matter to the worker.
+func (w *world) anEventArrives(student, eventType, hhmm string) error {
+	at, err := clockAt(hhmm)
+	if err != nil {
+		return err
+	}
+	return w.handle(domain.TrackingEvent{
+		EventType: domain.EventType(eventType), EventID: w.nextEventID(),
+		StudentID: w.studentID(student), OccurredAt: at,
+	})
+}
+
+func (w *world) lastActivityIs(student, hhmm string) error {
+	want, err := clockAt(hhmm)
+	if err != nil {
+		return err
+	}
+	got, ok := w.lastActivity.at[w.studentID(student)]
+	if !ok {
+		return fmt.Errorf("%s has no last activity", student)
+	}
+	if !got.Equal(want) {
+		return fmt.Errorf("%s's last activity is %s, want %s", student, got.Format("15:04"), hhmm)
+	}
 	return nil
 }
 

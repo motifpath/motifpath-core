@@ -133,4 +133,5 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	registerFretboardMapSteps(sc, w)
 	registerTapCheckSteps(sc, w)
 	registerFeltQuestionSteps(sc, w)
+	registerAlphaObservationSteps(sc, w)
 }

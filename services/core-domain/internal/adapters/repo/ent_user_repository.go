@@ -112,6 +112,19 @@ func (r *EntUserRepository) UpdateDisplayName(ctx context.Context, id, displayNa
 	return nil
 }
 
+// ListByRole returns every user with role.
+func (r *EntUserRepository) ListByRole(ctx context.Context, role domain.Role) ([]domain.User, error) {
+	rows, err := r.client.User.Query().Where(user.RoleEQ(user.Role(role))).WithLocale().All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	users := make([]domain.User, len(rows))
+	for i, row := range rows {
+		users[i] = toDomainUser(row)
+	}
+	return users, nil
+}
+
 // GetDisplayNames reads only the id and display_name columns of the
 // requested users in one query. An id that isn't a valid UUID can't name a
 // user, so it is skipped the same way as a valid id with no row.

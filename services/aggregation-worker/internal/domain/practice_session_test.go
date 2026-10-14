@@ -49,21 +49,21 @@ func TestPracticeSession_StatusAt(t *testing.T) {
 		},
 		{
 			name:        "silent for its planned minutes plus 15 is abandoned at its last event",
-			session:     tenMinuteSessionAt(at(18, 0)).Answered(at(18, 3), ""),
+			session:     tenMinuteSessionAt(at(18, 0)).Answered("answer-1", at(18, 3), ""),
 			readAt:      at(18, 29),
 			wantStatus:  PracticeSessionAbandoned,
 			wantEndedAt: ptr(at(18, 3)),
 		},
 		{
 			name:        "silent for exactly its planned minutes plus 15 is abandoned",
-			session:     tenMinuteSessionAt(at(18, 0)).Answered(at(18, 3), ""),
+			session:     tenMinuteSessionAt(at(18, 0)).Answered("answer-1", at(18, 3), ""),
 			readAt:      at(18, 28),
 			wantStatus:  PracticeSessionAbandoned,
 			wantEndedAt: ptr(at(18, 3)),
 		},
 		{
 			name:       "within its planned minutes plus 15 is in progress",
-			session:    tenMinuteSessionAt(at(18, 0)).Answered(at(18, 3), ""),
+			session:    tenMinuteSessionAt(at(18, 0)).Answered("answer-1", at(18, 3), ""),
 			readAt:     at(18, 27),
 			wantStatus: PracticeSessionInProgress,
 		},
@@ -76,22 +76,22 @@ func TestPracticeSession_StatusAt(t *testing.T) {
 		},
 		{
 			name: "a late event reopens an abandoned session",
-			session: tenMinuteSessionAt(at(18, 0)).Answered(at(18, 3), "").
-				Answered(at(18, 30), "").Ended(end("e-end", at(18, 35), false, 4)),
+			session: tenMinuteSessionAt(at(18, 0)).Answered("answer-1", at(18, 3), "").
+				Answered("answer-2", at(18, 30), "").Ended(end("e-end", at(18, 35), false, 4)),
 			readAt:      at(23, 0),
 			wantStatus:  PracticeSessionFinished,
 			wantEndedAt: ptr(at(18, 35)),
 		},
 		{
 			name: "an answer delivered out of order doesn't move the last event back",
-			session: tenMinuteSessionAt(at(18, 0)).Answered(at(18, 20), "").
-				Answered(at(18, 3), ""),
+			session: tenMinuteSessionAt(at(18, 0)).Answered("answer-1", at(18, 20), "").
+				Answered("answer-2", at(18, 3), ""),
 			readAt:     at(18, 40),
 			wantStatus: PracticeSessionInProgress,
 		},
 		{
 			name:       "answers seen before the start stay in progress until the start arrives",
-			session:    PracticeSession{}.Answered(at(18, 3), ""),
+			session:    PracticeSession{}.Answered("answer-1", at(18, 3), ""),
 			readAt:     at(23, 0),
 			wantStatus: PracticeSessionInProgress,
 		},
@@ -160,30 +160,30 @@ func TestPracticeSession_FeltRatedTemplates(t *testing.T) {
 	}{
 		{
 			name: "a rating for a drill the session practised counts",
-			session: tenMinuteSessionAt(at(18, 0)).Answered(at(18, 3), "fretboard_cell:name_the_note").
+			session: tenMinuteSessionAt(at(18, 0)).Answered("answer-1", at(18, 3), "fretboard_cell:name_the_note").
 				Ended(rated(nameHard)),
 			want: []string{"fretboard_cell:name_the_note"},
 		},
 		{
 			name: "a rating for a drill the session didn't practise is ignored",
-			session: tenMinuteSessionAt(at(18, 0)).Answered(at(18, 3), "fretboard_cell:name_the_note").
+			session: tenMinuteSessionAt(at(18, 0)).Answered("answer-1", at(18, 3), "fretboard_cell:name_the_note").
 				Ended(rated(nameHard, imageEasy)),
 			want: []string{"fretboard_cell:name_the_note"},
 		},
 		{
 			name: "an answer arriving after the end still makes its drill's rating count",
 			session: tenMinuteSessionAt(at(18, 0)).Ended(rated(imageEasy)).
-				Answered(at(18, 9), "exercise:image_choice"),
+				Answered("answer-2", at(18, 9), "exercise:image_choice"),
 			want: []string{"exercise:image_choice"},
 		},
 		{
 			name:    "an answer with no timed drill practises none",
-			session: tenMinuteSessionAt(at(18, 0)).Answered(at(18, 3), "").Ended(rated(nameHard)),
+			session: tenMinuteSessionAt(at(18, 0)).Answered("answer-1", at(18, 3), "").Ended(rated(nameHard)),
 			want:    nil,
 		},
 		{
 			name:    "a session not ended yet has no ratings",
-			session: tenMinuteSessionAt(at(18, 0)).Answered(at(18, 3), "fretboard_cell:name_the_note"),
+			session: tenMinuteSessionAt(at(18, 0)).Answered("answer-1", at(18, 3), "fretboard_cell:name_the_note"),
 			want:    nil,
 		},
 	}
@@ -196,10 +196,10 @@ func TestPracticeSession_FeltRatedTemplates(t *testing.T) {
 
 func TestPracticeSession_AnsweredKeepsEachPractisedTemplateOnce(t *testing.T) {
 	s := tenMinuteSessionAt(at(18, 0)).
-		Answered(at(18, 3), "fretboard_cell:name_the_note").
-		Answered(at(18, 4), "exercise:text_response").
-		Answered(at(18, 5), "fretboard_cell:name_the_note").
-		Answered(at(18, 6), "")
+		Answered("answer-1", at(18, 3), "fretboard_cell:name_the_note").
+		Answered("answer-2", at(18, 4), "exercise:text_response").
+		Answered("answer-3", at(18, 5), "fretboard_cell:name_the_note").
+		Answered("answer-4", at(18, 6), "")
 
 	assert.Equal(t, []string{"exercise:text_response", "fretboard_cell:name_the_note"}, s.PractisedTemplates)
 }

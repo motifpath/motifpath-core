@@ -153,6 +153,7 @@ func (f *fakeSongChartCompletions) Insert(_ context.Context, c domain.SongChartC
 
 type fakeCompletion struct {
 	statuses map[string]domain.CompletionStatus
+	started  map[string]time.Time
 }
 
 func (f *fakeCompletion) GetStatus(_ context.Context, studentID, contentNodeID string) (domain.CompletionStatus, bool, error) {
@@ -162,6 +163,28 @@ func (f *fakeCompletion) GetStatus(_ context.Context, studentID, contentNodeID s
 
 func (f *fakeCompletion) Upsert(_ context.Context, studentID, contentNodeID string, status domain.CompletionStatus) error {
 	f.statuses[studentID+"|"+contentNodeID] = status
+	return nil
+}
+
+// MarkStarted keeps the repository's contract: the earliest start is kept.
+func (f *fakeCompletion) MarkStarted(_ context.Context, studentID, contentNodeID string, at time.Time) error {
+	key := studentID + "|" + contentNodeID
+	if current, ok := f.started[key]; !ok || at.Before(current) {
+		f.started[key] = at
+	}
+	return nil
+}
+
+// fakeLastActivity keeps the repository's contract: last activity never moves
+// back.
+type fakeLastActivity struct {
+	at map[string]time.Time
+}
+
+func (f *fakeLastActivity) Touch(_ context.Context, studentID string, at time.Time) error {
+	if at.After(f.at[studentID]) {
+		f.at[studentID] = at
+	}
 	return nil
 }
 
@@ -266,6 +289,7 @@ type world struct {
 	// completions is each student's completion status per content node, as
 	// lesson events leave it.
 	completions *fakeCompletion
+	lastActivity *fakeLastActivity
 	// tapMs is each student's tap time, stamped on their timed answers the way
 	// ingestion stamps it.
 	tapMs map[string]int
@@ -311,13 +335,14 @@ func newWorld() *world {
 		students:       map[string]string{},
 		sessions:       map[string]string{},
 		challenges:     map[string]*domain.TriggerContext{},
-		completions:    &fakeCompletion{statuses: map[string]domain.CompletionStatus{}},
+		completions:    &fakeCompletion{statuses: map[string]domain.CompletionStatus{}, started: map[string]time.Time{}},
+		lastActivity:   &fakeLastActivity{at: map[string]time.Time{}},
 		tapMs:          map[string]int{},
 		clock:          time.Date(2026, 10, 5, 9, 0, 0, 0, time.UTC),
 	}
 	w.service = application.NewPracticeEvidenceService(w.reference, w.evidence, w.states, w.history, slog.New(w.logs))
 	w.events = application.NewProcessEventService(w.completions, w.service,
-		application.NewActivityService(w.sessionRecords, w.learning, w.tapChecks, &fakeSongChartCompletions{}))
+		application.NewActivityService(w.sessionRecords, w.learning, w.tapChecks, &fakeSongChartCompletions{}, w.lastActivity, time.Now))
 	return w
 }
 

@@ -2,6 +2,7 @@ package ports
 
 import (
 	"context"
+	"time"
 
 	"github.com/motifpath/aggregation-worker/internal/domain"
 )
@@ -40,4 +41,12 @@ type SongChartCompletionRepository interface {
 	// Insert stores c and reports false, without error, when a completion with
 	// its event id is already stored.
 	Insert(ctx context.Context, c domain.SongChartCompletion) (inserted bool, err error)
+}
+
+// LastActivityRepository keeps when each student's latest event of any type
+// occurred. Events arrive in any order, so it only ever moves forward.
+type LastActivityRepository interface {
+	// Touch makes at the student's last activity unless a later one is
+	// already kept.
+	Touch(ctx context.Context, studentID string, at time.Time) error
 }

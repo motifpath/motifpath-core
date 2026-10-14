@@ -131,7 +131,8 @@ func run(logger *slog.Logger) error {
 
 	service := application.NewIngestEventService(eventRepo, outboxRepo, publisher, eventRepo, logger)
 	adminOutbox := application.NewAdminOutboxService(outboxRepo, eventRepo, publisher, adminAuthorizer)
-	handler := appHTTP.NewHandler(service, adminOutbox, identityResolver, eventRepo, publisher)
+	eventLog := application.NewEventLogService(eventRepo, adminAuthorizer)
+	handler := appHTTP.NewHandler(service, adminOutbox, eventLog, identityResolver, eventRepo, publisher)
 	strictHandler := generated.NewStrictHandler(handler, nil)
 
 	router := generated.HandlerWithOptions(strictHandler, generated.ChiServerOptions{

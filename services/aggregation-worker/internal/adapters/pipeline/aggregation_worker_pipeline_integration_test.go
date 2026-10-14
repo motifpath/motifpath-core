@@ -87,9 +87,11 @@ func startWorker(t *testing.T, broker string, db *mongo.Database) *repo.MongoCom
 	require.NoError(t, tapChecks.EnsureIndexes(ctx))
 	songCharts := repo.NewMongoSongChartCompletionRepository(db)
 	require.NoError(t, songCharts.EnsureIndexes(ctx))
+	lastActivity := repo.NewMongoLastActivityRepository(db)
+	require.NoError(t, lastActivity.EnsureIndexes(ctx))
 
 	consumer := kafka.NewKafkaEventConsumer([]string{broker},
-		application.NewProcessEventService(completion, practice, application.NewActivityService(sessions, learning, tapChecks, songCharts)), logger)
+		application.NewProcessEventService(completion, practice, application.NewActivityService(sessions, learning, tapChecks, songCharts, lastActivity, time.Now)), logger)
 	t.Cleanup(func() { assert.NoError(t, consumer.Close()) })
 
 	runCtx, cancel := context.WithTimeout(context.Background(), 40*time.Second)

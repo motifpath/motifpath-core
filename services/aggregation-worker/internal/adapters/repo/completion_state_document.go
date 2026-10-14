@@ -9,4 +9,7 @@ type completionStateDocument struct {
 	ContentNodeID string    `bson:"content_node_id"`
 	Status        string    `bson:"status"`
 	UpdatedAt     time.Time `bson:"updated_at"`
+	// StartedAt is when the student first started the node; absent until a
+	// lesson event for it has arrived.
+	StartedAt *time.Time `bson:"started_at,omitempty"`
 }

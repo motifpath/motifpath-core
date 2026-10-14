@@ -122,6 +122,18 @@ func (f *fakeUserRepository) GetDisplayNames(_ context.Context, ids []string) (m
 	return names, nil
 }
 
+func (f *fakeUserRepository) ListByRole(_ context.Context, role domain.Role) ([]domain.User, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var users []domain.User
+	for _, user := range f.byID {
+		if user.Role == role {
+			users = append(users, user)
+		}
+	}
+	return users, nil
+}
+
 // fakeLanguageRepository is a minimal in-memory ports.LanguageRepository,
 // pre-seeded with the system rows the Atlas migration seeds in production:
 // en, pt_BR, any.
@@ -1182,6 +1194,22 @@ func (f *fakeStudentPathRepository) ListByCourseEnrollmentID(_ context.Context, 
 	}
 	sort.Slice(result, func(i, j int) bool { return *result[i].CourseCheckpointPosition < *result[j].CourseCheckpointPosition })
 	return result, nil
+}
+
+func (f *fakeStudentPathRepository) FirstGivenByStudentIDs(_ context.Context, studentIDs []string) (map[string]domain.StudentPath, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	first := map[string]domain.StudentPath{}
+	for _, path := range f.byID {
+		if !slices.Contains(studentIDs, path.StudentID) {
+			continue
+		}
+		current, ok := first[path.StudentID]
+		if !ok || path.AssignedAt.Before(current.AssignedAt) || (path.AssignedAt.Equal(current.AssignedAt) && path.ID < current.ID) {
+			first[path.StudentID] = path
+		}
+	}
+	return first, nil
 }
 
 func (f *fakeStudentPathRepository) ReplaceContent(_ context.Context, path domain.StudentPath) error {

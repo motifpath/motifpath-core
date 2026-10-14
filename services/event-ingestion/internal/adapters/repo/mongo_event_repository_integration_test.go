@@ -107,6 +107,8 @@ func TestMongoEventRepository_EnsureIndexes_CreatesExpectedIndexes(t *testing.T)
 	assert.Contains(t, names, "event_id_1")
 	assert.Contains(t, names, "student_id_1_occurred_at_-1")
 	assert.Contains(t, names, "event_type_1_occurred_at_-1")
+	assert.Contains(t, names, "received_at_-1_event_id_-1")
+	assert.Contains(t, names, "student_id_1_received_at_-1_event_id_-1")
 }
 
 func TestMongoEventRepository_Ping(t *testing.T) {

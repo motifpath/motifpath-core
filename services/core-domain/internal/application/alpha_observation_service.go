@@ -1,0 +1,386 @@
+package application
+
+import (
+	"cmp"
+	"context"
+	"slices"
+	"time"
+
+	"github.com/motifpath/core-domain/internal/domain"
+	"github.com/motifpath/core-domain/internal/ports"
+)
+
+// AlphaObservationService measures the alpha — every student given at
+// least one path — a week at a time and one student at a time. Reading it
+// changes nothing, and only admins may read it.
+type AlphaObservationService struct {
+	users        ports.UserRepository
+	studentPaths ports.StudentPathRepository
+	contentNodes ports.ContentNodeRepository
+	completion   ports.CompletionStateReader
+	activity     ports.AlphaActivityReader
+	now          func() time.Time
+}
+
+func NewAlphaObservationService(
+	users ports.UserRepository,
+	studentPaths ports.StudentPathRepository,
+	contentNodes ports.ContentNodeRepository,
+	completion ports.CompletionStateReader,
+	activity ports.AlphaActivityReader,
+	now func() time.Time,
+) *AlphaObservationService {
+	return &AlphaObservationService{
+		users: users, studentPaths: studentPaths, contentNodes: contentNodes,
+		completion: completion, activity: activity, now: now,
+	}
+}
+
+// AlphaObservation is the alpha measured for one week.
+type AlphaObservation struct {
+	Week    domain.AlphaWeek
+	Running bool
+	Summary domain.AlphaCohortSummary
+	// Students are in domain.NewAlphaStudentOrder's order.
+	Students []AlphaStudentView
+}
+
+// AlphaStudentView is one student of the alpha with what their measures
+// were taken from.
+type AlphaStudentView struct {
+	Student      domain.AlphaStudent
+	RegisteredAt time.Time
+	// LastActiveAt is nil when the student has no activity at all.
+	LastActiveAt     *time.Time
+	FirstPathID      string
+	FirstPathTitle   string
+	FirstPathGivenAt time.Time
+}
+
+// AlphaStudentObservation is one student measured for one week, with the
+// sessions and first-path nodes behind the measures.
+type AlphaStudentObservation struct {
+	Week    domain.AlphaWeek
+	Running bool
+	Student AlphaStudentView
+	// SessionWeeks are the measured week, then the week before it.
+	SessionWeeks []AlphaSessionWeek
+	// Nodes are the first path's nodes in path order.
+	Nodes []AlphaPathNode
+}
+
+// AlphaSessionWeek is one week of a student's sessions, newest first.
+type AlphaSessionWeek struct {
+	Week     domain.AlphaWeek
+	Running  bool
+	Finished int
+	Sessions []AlphaSession
+}
+
+// AlphaSession is one practice session as it stands now.
+type AlphaSession struct {
+	Record domain.PracticeSessionRecord
+	State  domain.PracticeSessionState
+	// EndedAt is nil while the session is in progress.
+	EndedAt *time.Time
+}
+
+// AlphaNodeStatus is where a student is with one node of their first path.
+type AlphaNodeStatus string
+
+const (
+	AlphaNodeCompleted  AlphaNodeStatus = "completed"
+	AlphaNodeInProgress AlphaNodeStatus = "in_progress"
+	AlphaNodeNotStarted AlphaNodeStatus = "not_started"
+)
+
+// AlphaPathNode is one node of a student's first path.
+type AlphaPathNode struct {
+	Position      int
+	ContentNodeID string
+	Title         string
+	Status        AlphaNodeStatus
+	// CompletedAt is set only when completed; StartedAt when started.
+	CompletedAt *time.Time
+	StartedAt   *time.Time
+}
+
+// alphaMember is a student of the alpha with their first path.
+type alphaMember struct {
+	user      domain.User
+	firstPath domain.StudentPath
+}
+
+// Observe measures the alpha for week, the Monday it starts on (nil: the
+// running week).
+func (s *AlphaObservationService) Observe(ctx context.Context, caller domain.User, week *time.Time) (AlphaObservation, error) {
+	if caller.Role != domain.RoleAdmin {
+		return AlphaObservation{}, domain.ErrForbidden
+	}
+	now := s.now()
+	measured, err := domain.ParseAlphaWeek(week, now)
+	if err != nil {
+		return AlphaObservation{}, err
+	}
+	members, err := s.alphaMembers(ctx)
+	if err != nil {
+		return AlphaObservation{}, err
+	}
+	views, err := s.measure(ctx, members, measured, now)
+	if err != nil {
+		return AlphaObservation{}, err
+	}
+
+	students := make([]domain.AlphaStudent, len(views))
+	for i, v := range views {
+		students[i] = v.Student
+	}
+	order := domain.NewAlphaStudentOrder()
+	slices.SortFunc(views, func(a, b AlphaStudentView) int { return order(a.Student, b.Student) })
+	return AlphaObservation{
+		Week:     measured,
+		Running:  measured.IsRunning(now),
+		Summary:  domain.SummarizeAlpha(students),
+		Students: views,
+	}, nil
+}
+
+// ObserveStudent measures studentID for week, as Observe does, with their
+// sessions of the week and the week before and their first path node by
+// node. A user who isn't in the alpha is not found.
+func (s *AlphaObservationService) ObserveStudent(ctx context.Context, caller domain.User, studentID string, week *time.Time) (AlphaStudentObservation, error) {
+	if caller.Role != domain.RoleAdmin {
+		return AlphaStudentObservation{}, domain.ErrForbidden
+	}
+	now := s.now()
+	measured, err := domain.ParseAlphaWeek(week, now)
+	if err != nil {
+		return AlphaStudentObservation{}, err
+	}
+	member, err := s.alphaMember(ctx, studentID)
+	if err != nil {
+		return AlphaStudentObservation{}, err
+	}
+	views, err := s.measure(ctx, []alphaMember{member}, measured, now)
+	if err != nil {
+		return AlphaStudentObservation{}, err
+	}
+	sessions, err := s.activity.SessionsStartedBetween(ctx, []string{studentID}, measured.Previous().Start(), measured.End())
+	if err != nil {
+		return AlphaStudentObservation{}, err
+	}
+	nodes, err := s.pathNodes(ctx, member)
+	if err != nil {
+		return AlphaStudentObservation{}, err
+	}
+	return AlphaStudentObservation{
+		Week:    measured,
+		Running: measured.IsRunning(now),
+		Student: views[0],
+		SessionWeeks: []AlphaSessionWeek{
+			sessionWeek(sessions, measured, now),
+			sessionWeek(sessions, measured.Previous(), now),
+		},
+		Nodes: nodes,
+	}, nil
+}
+
+// alphaMembers is every student holding a path, with their first one.
+func (s *AlphaObservationService) alphaMembers(ctx context.Context) ([]alphaMember, error) {
+	students, err := s.users.ListByRole(ctx, domain.RoleStudent)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, len(students))
+	for i, u := range students {
+		ids[i] = u.ID
+	}
+	firstPaths, err := s.studentPaths.FirstGivenByStudentIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	var members []alphaMember
+	for _, u := range students {
+		if path, ok := firstPaths[u.ID]; ok {
+			members = append(members, alphaMember{user: u, firstPath: path})
+		}
+	}
+	return members, nil
+}
+
+// alphaMember is studentID with their first path, or not found when they
+// aren't a student holding a path.
+func (s *AlphaObservationService) alphaMember(ctx context.Context, studentID string) (alphaMember, error) {
+	user, err := s.users.GetByID(ctx, studentID)
+	if err != nil {
+		return alphaMember{}, err
+	}
+	if user.Role != domain.RoleStudent {
+		return alphaMember{}, domain.ErrNotFound
+	}
+	firstPaths, err := s.studentPaths.FirstGivenByStudentIDs(ctx, []string{studentID})
+	if err != nil {
+		return alphaMember{}, err
+	}
+	path, ok := firstPaths[studentID]
+	if !ok {
+		return alphaMember{}, domain.ErrNotFound
+	}
+	return alphaMember{user: user, firstPath: path}, nil
+}
+
+// measure measures each member for week. Sessions are read once for all of
+// them, from the earliest week any of their measures looks at.
+func (s *AlphaObservationService) measure(ctx context.Context, members []alphaMember, week domain.AlphaWeek, now time.Time) ([]AlphaStudentView, error) {
+	if len(members) == 0 {
+		return []AlphaStudentView{}, nil
+	}
+	ids := make([]string, len(members))
+	from := week.Previous().Start()
+	for i, m := range members {
+		ids[i] = m.user.ID
+		if first := domain.AlphaWeekOf(m.firstPath.AssignedAt).Start(); first.Before(from) {
+			from = first
+		}
+	}
+	sessions, err := s.activity.SessionsStartedBetween(ctx, ids, from, domain.AlphaWeekOf(now).End())
+	if err != nil {
+		return nil, err
+	}
+	lastActive, err := s.activity.LastActive(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	views := make([]AlphaStudentView, len(members))
+	for i, m := range members {
+		progress, err := s.firstPathProgress(ctx, m)
+		if err != nil {
+			return nil, err
+		}
+		activity := domain.AlphaStudentActivity{
+			FirstPathGivenAt: m.firstPath.AssignedAt,
+			Sessions:         sessionsOf(sessions, m.user.ID),
+		}
+		if at, ok := lastActive[m.user.ID]; ok {
+			activity.LastActiveAt = &at
+		}
+		views[i] = AlphaStudentView{
+			Student: domain.AlphaStudent{
+				StudentID: m.user.ID, DisplayName: m.user.DisplayName, FirstPath: progress,
+				Measure: domain.MeasureAlphaStudent(activity, week, now),
+			},
+			RegisteredAt:     m.user.RegisteredAt,
+			LastActiveAt:     activity.LastActiveAt,
+			FirstPathID:      m.firstPath.ID,
+			FirstPathTitle:   m.firstPath.Title,
+			FirstPathGivenAt: m.firstPath.AssignedAt,
+		}
+	}
+	return views, nil
+}
+
+// firstPathProgress counts the first path's completed nodes; a node
+// completed in any path counts.
+func (s *AlphaObservationService) firstPathProgress(ctx context.Context, m alphaMember) (domain.FirstPathProgress, error) {
+	statuses, err := s.completion.GetStatuses(ctx, m.user.ID, pathNodeIDs(m.firstPath))
+	if err != nil {
+		return domain.FirstPathProgress{}, err
+	}
+	progress := domain.FirstPathProgress{Total: len(m.firstPath.Items)}
+	for _, item := range m.firstPath.Items {
+		if statuses[item.ContentNodeID] == domain.CompletionStatusCompleted {
+			progress.Completed++
+		}
+	}
+	return progress, nil
+}
+
+// pathNodes lists the first path's nodes in path order with where the
+// student is with each. A node the student can't open yet has no status of
+// its own, so it is not started.
+func (s *AlphaObservationService) pathNodes(ctx context.Context, m alphaMember) ([]AlphaPathNode, error) {
+	ids := pathNodeIDs(m.firstPath)
+	nodes, err := s.contentNodes.GetByIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	statuses, err := s.completion.GetStatuses(ctx, m.user.ID, ids)
+	if err != nil {
+		return nil, err
+	}
+	completions, err := s.activity.FirstCompletions(ctx, m.user.ID, ids)
+	if err != nil {
+		return nil, err
+	}
+	starts, err := s.activity.FirstStarts(ctx, m.user.ID, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	items := slices.Clone(m.firstPath.Items)
+	slices.SortFunc(items, func(a, b domain.StudentPathItemRecord) int { return cmp.Compare(a.Position, b.Position) })
+	out := make([]AlphaPathNode, len(items))
+	for i, item := range items {
+		node := AlphaPathNode{
+			Position: item.Position, ContentNodeID: item.ContentNodeID,
+			Title: nodes[item.ContentNodeID].Title, Status: AlphaNodeNotStarted,
+		}
+		switch statuses[item.ContentNodeID] {
+		case domain.CompletionStatusCompleted:
+			node.Status = AlphaNodeCompleted
+			node.CompletedAt = timeIn(completions, item.ContentNodeID)
+			node.StartedAt = timeIn(starts, item.ContentNodeID)
+		case domain.CompletionStatusInProgress:
+			node.Status = AlphaNodeInProgress
+			node.StartedAt = timeIn(starts, item.ContentNodeID)
+		case domain.CompletionStatusNotStarted, domain.CompletionStatusLocked:
+		}
+		out[i] = node
+	}
+	return out, nil
+}
+
+// sessionWeek is week's sessions of any state, newest first, read at now.
+func sessionWeek(sessions []domain.PracticeSessionRecord, week domain.AlphaWeek, now time.Time) AlphaSessionWeek {
+	out := AlphaSessionWeek{Week: week, Running: week.IsRunning(now), Sessions: []AlphaSession{}}
+	for _, r := range sessions {
+		if !week.Contains(r.StartedAt) {
+			continue
+		}
+		state, endedAt := r.StateAt(now)
+		out.Sessions = append(out.Sessions, AlphaSession{Record: r, State: state, EndedAt: endedAt})
+		if r.Finished() {
+			out.Finished++
+		}
+	}
+	slices.SortFunc(out.Sessions, func(a, b AlphaSession) int {
+		return cmp.Or(b.Record.StartedAt.Compare(a.Record.StartedAt), cmp.Compare(a.Record.ID, b.Record.ID))
+	})
+	return out
+}
+
+func sessionsOf(sessions []domain.PracticeSessionRecord, studentID string) []domain.PracticeSessionRecord {
+	var out []domain.PracticeSessionRecord
+	for _, r := range sessions {
+		if r.StudentID == studentID {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+func pathNodeIDs(path domain.StudentPath) []string {
+	ids := make([]string, len(path.Items))
+	for i, item := range path.Items {
+		ids[i] = item.ContentNodeID
+	}
+	return ids
+}
+
+func timeIn(times map[string]time.Time, key string) *time.Time {
+	if t, ok := times[key]; ok {
+		return &t
+	}
+	return nil
+}
