@@ -305,3 +305,18 @@ func TestSortAlphaStudents(t *testing.T) {
 	}
 	assert.Equal(t, []string{"4", "1", "2", "3"}, order)
 }
+
+func TestSortAlphaStudents_NamesSortAlphabeticallyWhateverTheirAccentsOrCase(t *testing.T) {
+	student := func(name string) domain.AlphaStudent {
+		return domain.AlphaStudent{StudentID: name, DisplayName: name}
+	}
+	students := []domain.AlphaStudent{student("Zoe"), student("Érica"), student("bruno"), student("Álvaro"), student("Ana")}
+
+	domain.SortAlphaStudents(students)
+
+	var order []string
+	for _, s := range students {
+		order = append(order, s.DisplayName)
+	}
+	assert.Equal(t, []string{"Álvaro", "Ana", "bruno", "Érica", "Zoe"}, order)
+}

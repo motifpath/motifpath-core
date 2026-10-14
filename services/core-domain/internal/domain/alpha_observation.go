@@ -4,6 +4,10 @@ import (
 	"cmp"
 	"slices"
 	"time"
+
+	"golang.org/x/text/collate"
+	"golang.org/x/text/language"
+
 	// The alpha's weeks are in São Paulo time wherever the service runs,
 	// including images without the system's zone database.
 	_ "time/tzdata"
@@ -332,17 +336,23 @@ func medianPercent(paths []FirstPathProgress) *int {
 	return &percent
 }
 
-// SortAlphaStudents orders students as CompareAlphaStudents does.
+// SortAlphaStudents orders students as NewAlphaStudentOrder does.
 func SortAlphaStudents(students []AlphaStudent) {
-	slices.SortFunc(students, CompareAlphaStudents)
+	slices.SortFunc(students, NewAlphaStudentOrder())
 }
 
-// CompareAlphaStudents orders by fewest counted sessions in the week, then
-// by display name, then by student id.
-func CompareAlphaStudents(a, b AlphaStudent) int {
-	return cmp.Or(
-		cmp.Compare(a.Measure.FinishedInWeek, b.Measure.FinishedInWeek),
-		cmp.Compare(a.DisplayName, b.DisplayName),
-		cmp.Compare(a.StudentID, b.StudentID),
-	)
+// NewAlphaStudentOrder compares students by fewest counted sessions in the
+// week, then by display name as a Brazilian Portuguese reader alphabetizes
+// it, so accents and case don't move a name out of place, then by student
+// id. Each order holds its own collator, which can't be shared between
+// goroutines.
+func NewAlphaStudentOrder() func(a, b AlphaStudent) int {
+	names := collate.New(language.BrazilianPortuguese)
+	return func(a, b AlphaStudent) int {
+		return cmp.Or(
+			cmp.Compare(a.Measure.FinishedInWeek, b.Measure.FinishedInWeek),
+			names.CompareString(a.DisplayName, b.DisplayName),
+			cmp.Compare(a.StudentID, b.StudentID),
+		)
+	}
 }

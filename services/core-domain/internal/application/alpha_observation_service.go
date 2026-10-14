@@ -41,7 +41,7 @@ type AlphaObservation struct {
 	Week    domain.AlphaWeek
 	Running bool
 	Summary domain.AlphaCohortSummary
-	// Students are in domain.CompareAlphaStudents order.
+	// Students are in domain.NewAlphaStudentOrder's order.
 	Students []AlphaStudentView
 }
 
@@ -135,7 +135,8 @@ func (s *AlphaObservationService) Observe(ctx context.Context, caller domain.Use
 	for i, v := range views {
 		students[i] = v.Student
 	}
-	slices.SortFunc(views, func(a, b AlphaStudentView) int { return domain.CompareAlphaStudents(a.Student, b.Student) })
+	order := domain.NewAlphaStudentOrder()
+	slices.SortFunc(views, func(a, b AlphaStudentView) int { return order(a.Student, b.Student) })
 	return AlphaObservation{
 		Week:     measured,
 		Running:  measured.IsRunning(now),

@@ -91,7 +91,7 @@ func newAlphaWorld() *alphaWorld {
 }
 
 func registerAlphaObservationSteps(sc *godog.ScenarioContext, w *world) {
-	day := `(\w+ \d+ \w+)`        // Monday 12 Oct
+	day := `(\w+ \d+ \w+)`         // Monday 12 Oct
 	dated := `(\w+ \d+ \w+ \d{4})` // Monday 12 Oct 2026
 	clock := `(\d\d:\d\d)`
 
