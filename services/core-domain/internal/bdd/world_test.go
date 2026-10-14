@@ -50,6 +50,7 @@ type world struct {
 	practiceStates    *fakePracticeItemStateReader
 	practiceItems     *fakeNodeItemSource
 	fretboardCells    *fretboardCellWorld
+	drillChallenges   *drillChallengeWorld
 	shapeWorld        *diagramShapeWorld
 	songCharts        *songChartWorld
 	// dueDays holds the cells a scenario made due on two days.
