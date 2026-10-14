@@ -27,7 +27,7 @@ func TestEntDrillThresholdRepository_List(t *testing.T) {
 	})
 
 	text := client.DrillTemplate.Create().SetID(uuid.New()).SetKey("exercise:text_response").SetItemKind("exercise").
-		SetResponseType("option_choice").SetTimed(true).SetNames(map[string]string{"en": "Text"}).SaveX(ctx)
+		SetResponseType("option_choice").SetRung("know").SetTimed(true).SetNames(map[string]string{"en": "Text"}).SaveX(ctx)
 	v1, v2 := uuid.New(), uuid.New()
 	october := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
 	november := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)

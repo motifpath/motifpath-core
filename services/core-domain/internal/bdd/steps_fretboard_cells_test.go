@@ -22,8 +22,11 @@ import (
 // ranges and its shape families.
 type drillCatalogFile struct {
 	Templates []struct {
-		Key      string `yaml:"key"`
-		ItemKind string `yaml:"item_kind"`
+		Key          string  `yaml:"key"`
+		ItemKind     string  `yaml:"item_kind"`
+		ResponseType string  `yaml:"response_type"`
+		Rung         string  `yaml:"rung"`
+		SecondWay    *string `yaml:"second_way"`
 	} `yaml:"templates"`
 	FretboardCells []struct {
 		Skill   string `yaml:"skill"`
@@ -46,7 +49,10 @@ type fretboardCellWorld struct {
 	// pending is a catalog entry a scenario declares, checked on install.
 	pending     *domain.FretboardCellRange
 	pendingNode domain.KnowledgeNode
-	installErr  error
+	// pendingTemplate is a drill template a scenario adds to the catalog,
+	// checked with the others on install.
+	pendingTemplate *domain.DrillTemplate
+	installErr      error
 }
 
 // catalogTunings are the catalog instruments' strings, lowest first, so a
@@ -73,6 +79,8 @@ func registerFretboardCellSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^the drill catalog is installed$`, w.drillCatalogIsInstalled)
 	sc.Step(`^the installation fails, naming the "([^"]+)" layout and string (\d+)$`, w.installationFailsNamingString)
 	sc.Step(`^the installation fails, naming the skill and the "([^"]+)" layout$`, w.installationFailsNamingSkill)
+	sc.Step(`^a drill template "([^"]+)" whose second way is "([^"]+)"$`, w.drillTemplateWithSecondWay)
+	sc.Step(`^the installation aborts, naming "([^"]+)"$`, w.installationAbortsNaming)
 }
 
 func (w *world) fretboard() *fretboardCellWorld {
@@ -106,13 +114,25 @@ func (w *world) practiceDrillCatalogIsInstalled() error {
 	if err := readDrillCatalog(&file); err != nil {
 		return err
 	}
-	w.installShapeFamilies(file)
 	f := w.fretboard()
+	templates := make([]domain.DrillTemplate, 0, len(file.Templates)+1)
 	for _, t := range file.Templates {
 		if t.ItemKind == string(domain.PracticeItemKindFretboardCell) {
 			f.templates = append(f.templates, t.Key)
 		}
+		templates = append(templates, domain.DrillTemplate{
+			Key: t.Key, ItemKind: domain.PracticeItemKind(t.ItemKind), ResponseType: t.ResponseType,
+			Rung: domain.PracticeRung(t.Rung), SecondWay: t.SecondWay,
+		})
 	}
+	if f.pendingTemplate != nil {
+		f.installErr = domain.CheckDrillTemplates(append(templates, *f.pendingTemplate))
+		return nil
+	}
+	if err := domain.CheckDrillTemplates(templates); err != nil {
+		return err
+	}
+	w.installShapeFamilies(file)
 	for _, entry := range file.FretboardCells {
 		for layoutName, spec := range entry.Layouts {
 			layout, err := w.seedCatalogInstrument(layoutName)
@@ -372,6 +392,30 @@ func (w *world) installationFailsNamingSkill(layout string) error {
 	}
 	if !strings.Contains(err.Error(), f.pending.SkillID) || !strings.Contains(err.Error(), instrumentID(layout).String()) {
 		return fmt.Errorf("installation error %q doesn't name the skill and the %q layout", err, layout)
+	}
+	return nil
+}
+
+// drillTemplateWithSecondWay adds a know template keyed key, asking the item
+// kind its key names, whose second way is secondWay.
+func (w *world) drillTemplateWithSecondWay(key, secondWay string) error {
+	kind, _, ok := strings.Cut(key, ":")
+	if !ok {
+		return fmt.Errorf("template key %q names no item kind", key)
+	}
+	w.fretboard().pendingTemplate = &domain.DrillTemplate{
+		Key: key, ItemKind: domain.PracticeItemKind(kind), Rung: domain.PracticeRungKnow, SecondWay: &secondWay,
+	}
+	return nil
+}
+
+func (w *world) installationAbortsNaming(key string) error {
+	err := w.fretboard().installErr
+	if !errors.Is(err, domain.ErrInvalidDrillCatalog) {
+		return fmt.Errorf("installation error = %v, want an invalid drill catalog", err)
+	}
+	if !strings.Contains(err.Error(), key) {
+		return fmt.Errorf("installation error %q doesn't name %q", err, key)
 	}
 	return nil
 }

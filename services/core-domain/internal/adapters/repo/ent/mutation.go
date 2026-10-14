@@ -20413,6 +20413,8 @@ type DrillTemplateMutation struct {
 	key               *string
 	item_kind         *string
 	response_type     *string
+	rung              *string
+	second_way        *string
 	timed             *bool
 	names             *map[string]string
 	clearedFields     map[string]struct{}
@@ -20636,6 +20638,91 @@ func (m *DrillTemplateMutation) ResetResponseType() {
 	m.response_type = nil
 }
 
+// SetRung sets the "rung" field.
+func (m *DrillTemplateMutation) SetRung(s string) {
+	m.rung = &s
+}
+
+// Rung returns the value of the "rung" field in the mutation.
+func (m *DrillTemplateMutation) Rung() (r string, exists bool) {
+	v := m.rung
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRung returns the old "rung" field's value of the DrillTemplate entity.
+// If the DrillTemplate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DrillTemplateMutation) OldRung(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRung is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRung requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRung: %w", err)
+	}
+	return oldValue.Rung, nil
+}
+
+// ResetRung resets all changes to the "rung" field.
+func (m *DrillTemplateMutation) ResetRung() {
+	m.rung = nil
+}
+
+// SetSecondWay sets the "second_way" field.
+func (m *DrillTemplateMutation) SetSecondWay(s string) {
+	m.second_way = &s
+}
+
+// SecondWay returns the value of the "second_way" field in the mutation.
+func (m *DrillTemplateMutation) SecondWay() (r string, exists bool) {
+	v := m.second_way
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSecondWay returns the old "second_way" field's value of the DrillTemplate entity.
+// If the DrillTemplate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DrillTemplateMutation) OldSecondWay(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSecondWay is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSecondWay requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSecondWay: %w", err)
+	}
+	return oldValue.SecondWay, nil
+}
+
+// ClearSecondWay clears the value of the "second_way" field.
+func (m *DrillTemplateMutation) ClearSecondWay() {
+	m.second_way = nil
+	m.clearedFields[drilltemplate.FieldSecondWay] = struct{}{}
+}
+
+// SecondWayCleared returns if the "second_way" field was cleared in this mutation.
+func (m *DrillTemplateMutation) SecondWayCleared() bool {
+	_, ok := m.clearedFields[drilltemplate.FieldSecondWay]
+	return ok
+}
+
+// ResetSecondWay resets all changes to the "second_way" field.
+func (m *DrillTemplateMutation) ResetSecondWay() {
+	m.second_way = nil
+	delete(m.clearedFields, drilltemplate.FieldSecondWay)
+}
+
 // SetTimed sets the "timed" field.
 func (m *DrillTemplateMutation) SetTimed(b bool) {
 	m.timed = &b
@@ -20796,7 +20883,7 @@ func (m *DrillTemplateMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *DrillTemplateMutation) Fields() []string {
-	fields := make([]string, 0, 5)
+	fields := make([]string, 0, 7)
 	if m.key != nil {
 		fields = append(fields, drilltemplate.FieldKey)
 	}
@@ -20805,6 +20892,12 @@ func (m *DrillTemplateMutation) Fields() []string {
 	}
 	if m.response_type != nil {
 		fields = append(fields, drilltemplate.FieldResponseType)
+	}
+	if m.rung != nil {
+		fields = append(fields, drilltemplate.FieldRung)
+	}
+	if m.second_way != nil {
+		fields = append(fields, drilltemplate.FieldSecondWay)
 	}
 	if m.timed != nil {
 		fields = append(fields, drilltemplate.FieldTimed)
@@ -20826,6 +20919,10 @@ func (m *DrillTemplateMutation) Field(name string) (ent.Value, bool) {
 		return m.ItemKind()
 	case drilltemplate.FieldResponseType:
 		return m.ResponseType()
+	case drilltemplate.FieldRung:
+		return m.Rung()
+	case drilltemplate.FieldSecondWay:
+		return m.SecondWay()
 	case drilltemplate.FieldTimed:
 		return m.Timed()
 	case drilltemplate.FieldNames:
@@ -20845,6 +20942,10 @@ func (m *DrillTemplateMutation) OldField(ctx context.Context, name string) (ent.
 		return m.OldItemKind(ctx)
 	case drilltemplate.FieldResponseType:
 		return m.OldResponseType(ctx)
+	case drilltemplate.FieldRung:
+		return m.OldRung(ctx)
+	case drilltemplate.FieldSecondWay:
+		return m.OldSecondWay(ctx)
 	case drilltemplate.FieldTimed:
 		return m.OldTimed(ctx)
 	case drilltemplate.FieldNames:
@@ -20878,6 +20979,20 @@ func (m *DrillTemplateMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetResponseType(v)
+		return nil
+	case drilltemplate.FieldRung:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRung(v)
+		return nil
+	case drilltemplate.FieldSecondWay:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSecondWay(v)
 		return nil
 	case drilltemplate.FieldTimed:
 		v, ok := value.(bool)
@@ -20922,7 +21037,11 @@ func (m *DrillTemplateMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *DrillTemplateMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(drilltemplate.FieldSecondWay) {
+		fields = append(fields, drilltemplate.FieldSecondWay)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -20935,6 +21054,11 @@ func (m *DrillTemplateMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *DrillTemplateMutation) ClearField(name string) error {
+	switch name {
+	case drilltemplate.FieldSecondWay:
+		m.ClearSecondWay()
+		return nil
+	}
 	return fmt.Errorf("unknown DrillTemplate nullable field %s", name)
 }
 
@@ -20950,6 +21074,12 @@ func (m *DrillTemplateMutation) ResetField(name string) error {
 		return nil
 	case drilltemplate.FieldResponseType:
 		m.ResetResponseType()
+		return nil
+	case drilltemplate.FieldRung:
+		m.ResetRung()
+		return nil
+	case drilltemplate.FieldSecondWay:
+		m.ResetSecondWay()
 		return nil
 	case drilltemplate.FieldTimed:
 		m.ResetTimed()

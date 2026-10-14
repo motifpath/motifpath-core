@@ -24,6 +24,10 @@ type DrillTemplate struct {
 	ItemKind string `json:"item_kind,omitempty"`
 	// ResponseType holds the value of the "response_type" field.
 	ResponseType string `json:"response_type,omitempty"`
+	// Rung holds the value of the "rung" field.
+	Rung string `json:"rung,omitempty"`
+	// SecondWay holds the value of the "second_way" field.
+	SecondWay *string `json:"second_way,omitempty"`
 	// Timed holds the value of the "timed" field.
 	Timed bool `json:"timed,omitempty"`
 	// Names holds the value of the "names" field.
@@ -61,7 +65,7 @@ func (*DrillTemplate) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case drilltemplate.FieldTimed:
 			values[i] = new(sql.NullBool)
-		case drilltemplate.FieldKey, drilltemplate.FieldItemKind, drilltemplate.FieldResponseType:
+		case drilltemplate.FieldKey, drilltemplate.FieldItemKind, drilltemplate.FieldResponseType, drilltemplate.FieldRung, drilltemplate.FieldSecondWay:
 			values[i] = new(sql.NullString)
 		case drilltemplate.FieldID:
 			values[i] = new(uuid.UUID)
@@ -103,6 +107,19 @@ func (_m *DrillTemplate) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field response_type", values[i])
 			} else if value.Valid {
 				_m.ResponseType = value.String
+			}
+		case drilltemplate.FieldRung:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field rung", values[i])
+			} else if value.Valid {
+				_m.Rung = value.String
+			}
+		case drilltemplate.FieldSecondWay:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field second_way", values[i])
+			} else if value.Valid {
+				_m.SecondWay = new(string)
+				*_m.SecondWay = value.String
 			}
 		case drilltemplate.FieldTimed:
 			if value, ok := values[i].(*sql.NullBool); !ok {
@@ -167,6 +184,14 @@ func (_m *DrillTemplate) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("response_type=")
 	builder.WriteString(_m.ResponseType)
+	builder.WriteString(", ")
+	builder.WriteString("rung=")
+	builder.WriteString(_m.Rung)
+	builder.WriteString(", ")
+	if v := _m.SecondWay; v != nil {
+		builder.WriteString("second_way=")
+		builder.WriteString(*v)
+	}
 	builder.WriteString(", ")
 	builder.WriteString("timed=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Timed))

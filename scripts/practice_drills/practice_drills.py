@@ -32,6 +32,7 @@ NAMESPACE = uuid.UUID('4ac75155-7804-5527-a6ba-01b73c0e3e1a')
 LANGUAGES = ('en', 'pt_BR')
 TEMPLATE_KEY = re.compile(r'^[a-z][a-z_]*:[a-z][a-z_]*$')
 SOURCES = ('default', 'benchmark', 'calibrated')
+RUNGS = ('know', 'hear', 'play_clean', 'play_in_time', 'move', 'target', 'use')
 
 
 
@@ -54,6 +55,8 @@ class Template:
     response_type: str
     timed: bool
     names: dict
+    rung: str = 'know'
+    second_way: str = None
 
     @property
     def id(self):
@@ -102,12 +105,25 @@ def build(raw, installed=frozenset(), today=None):
         if not isinstance(entry.get('timed'), bool):
             raise ValueError(f'template {key!r} needs timed: true or false')
         t = Template(key, entry.get('item_kind', ''), entry.get('response_type', ''), entry['timed'],
-                     {lang: names[lang] for lang in LANGUAGES})
+                     {lang: names[lang] for lang in LANGUAGES}, entry.get('rung'), entry.get('second_way'))
+        if t.rung not in RUNGS:
+            raise ValueError(f'template {key!r} has rung {t.rung!r}, not one of {RUNGS}')
         if not t.item_kind or not key.startswith(t.item_kind + ':') or not t.response_type:
             raise ValueError(f'template {key!r} needs an item_kind its key starts with, and a response_type')
         if entry.get('id') != t.id:
             raise ValueError(f'template {key!r} has id {entry.get("id")!r}, not {t.id!r}')
         templates[key] = t
+    for t in templates.values():
+        if t.second_way is None:
+            continue
+        other = templates.get(t.second_way)
+        if t.second_way == t.key:
+            raise ValueError(f'template {t.key!r} is its own second way')
+        if other is None:
+            raise ValueError(f'template {t.key!r} names a second way no template has, {t.second_way!r}')
+        if other.item_kind != t.item_kind:
+            raise ValueError(f'template {t.key!r} asks {t.item_kind} items, but its second way '
+                             f'{other.key!r} asks {other.item_kind} items')
 
     by_template = {}
     for entry in raw.get('thresholds') or []:
@@ -339,9 +355,10 @@ def render_sql(drills):
     out = ['-- Frozen practice drill catalog, compiled from motifpath-specs catalogs/practice-drills.yaml by',
            '-- scripts/practice_drills. Each id is the UUID v5 of drill-template/<key> or',
            '-- drill-threshold/<template key>/v<version>. A row already holding one of these ids stops the migration.',
-           'INSERT INTO "drill_templates" ("id", "key", "item_kind", "response_type", "timed", "names") VALUES']
+           'INSERT INTO "drill_templates" ("id", "key", "item_kind", "response_type", "rung", "second_way", "timed", "names") VALUES']
     out.append(',\n'.join(
         f"  ({sql_text(t.id)}, {sql_text(t.key)}, {sql_text(t.item_kind)}, {sql_text(t.response_type)}, "
+        f"{sql_text(t.rung)}, {sql_text(t.second_way) if t.second_way else 'NULL'}, "
         f"{'true' if t.timed else 'false'}, {sql_text(compact(t.names))})"
         for t in drills.templates) + ';')
     if drills.thresholds:

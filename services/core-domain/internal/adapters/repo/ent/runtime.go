@@ -429,6 +429,28 @@ func init() {
 			return nil
 		}
 	}()
+	// drilltemplateDescRung is the schema descriptor for rung field.
+	drilltemplateDescRung := drilltemplateFields[4].Descriptor()
+	// drilltemplate.RungValidator is a validator for the "rung" field. It is called by the builders before save.
+	drilltemplate.RungValidator = func() func(string) error {
+		validators := drilltemplateDescRung.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(rung string) error {
+			for _, fn := range fns {
+				if err := fn(rung); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// drilltemplateDescSecondWay is the schema descriptor for second_way field.
+	drilltemplateDescSecondWay := drilltemplateFields[5].Descriptor()
+	// drilltemplate.SecondWayValidator is a validator for the "second_way" field. It is called by the builders before save.
+	drilltemplate.SecondWayValidator = drilltemplateDescSecondWay.Validators[0].(func(string) error)
 	drillthresholdFields := schema.DrillThreshold{}.Fields()
 	_ = drillthresholdFields
 	// drillthresholdDescVersion is the schema descriptor for version field.

@@ -112,6 +112,9 @@ func (_u *DrillTemplateUpdate) sqlSave(ctx context.Context) (_node int, err erro
 			}
 		}
 	}
+	if _u.mutation.SecondWayCleared() {
+		_spec.ClearField(drilltemplate.FieldSecondWay, field.TypeString)
+	}
 	if value, ok := _u.mutation.Names(); ok {
 		_spec.SetField(drilltemplate.FieldNames, field.TypeJSON, value)
 	}
@@ -292,6 +295,9 @@ func (_u *DrillTemplateUpdateOne) sqlSave(ctx context.Context) (_node *DrillTemp
 				ps[i](selector)
 			}
 		}
+	}
+	if _u.mutation.SecondWayCleared() {
+		_spec.ClearField(drilltemplate.FieldSecondWay, field.TypeString)
 	}
 	if value, ok := _u.mutation.Names(); ok {
 		_spec.SetField(drilltemplate.FieldNames, field.TypeJSON, value)

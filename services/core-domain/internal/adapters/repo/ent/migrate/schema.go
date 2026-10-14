@@ -736,6 +736,8 @@ var (
 		{Name: "key", Type: field.TypeString, Unique: true, Size: 100},
 		{Name: "item_kind", Type: field.TypeString, Size: 50},
 		{Name: "response_type", Type: field.TypeString, Size: 50},
+		{Name: "rung", Type: field.TypeString, Size: 20},
+		{Name: "second_way", Type: field.TypeString, Nullable: true, Size: 100},
 		{Name: "timed", Type: field.TypeBool},
 		{Name: "names", Type: field.TypeJSON},
 	}

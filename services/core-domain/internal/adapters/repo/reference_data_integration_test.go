@@ -125,6 +125,8 @@ func TestFreshInstall(t *testing.T) {
 	t.Run("the drill catalog has its templates and every exercise family's default fluent time, with fixed ids", func(t *testing.T) {
 		assert.Equal(t, 9, count(t, "SELECT count(*) FROM drill_templates"))
 		assert.Equal(t, 1, count(t, "SELECT count(*) FROM drill_templates WHERE key = 'fretboard_cell:name_the_note' AND id = '"+catalogID("drill-template/fretboard_cell:name_the_note")+"'"))
+		assert.Equal(t, 1, count(t, "SELECT count(*) FROM drill_templates WHERE key = 'fretboard_cell:name_the_note' AND rung = 'know' AND second_way = 'fretboard_cell:find_the_note'"))
+		assert.Equal(t, 2, count(t, "SELECT count(*) FROM drill_templates WHERE rung = 'hear' AND second_way IS NULL"))
 		assert.Equal(t, map[string]string{
 			catalogID("drill-threshold/exercise:text_response/v1"):        "exercise:text_response|1|2026-10-01|6000|default",
 			catalogID("drill-threshold/exercise:audio_recognition/v1"):    "exercise:audio_recognition|1|2026-10-01|4000|default",
