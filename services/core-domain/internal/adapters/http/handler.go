@@ -67,6 +67,7 @@ type Handler struct {
 	songChart        *application.SongChartService
 	appConfig        *application.AppConfigService
 	startingPoints   *application.StartingPointsService
+	alphaObservation *application.AlphaObservationService
 
 	// pingers back the readiness probe only; the health probes never touch
 	// the application services above.
@@ -98,6 +99,7 @@ func NewHandler(
 	songChart *application.SongChartService,
 	appConfig *application.AppConfigService,
 	startingPoints *application.StartingPointsService,
+	alphaObservation *application.AlphaObservationService,
 	learningGraphPinger ports.Pinger,
 	completionStatePinger ports.Pinger,
 ) *Handler {
@@ -123,6 +125,7 @@ func NewHandler(
 		songChart:             songChart,
 		appConfig:             appConfig,
 		startingPoints:        startingPoints,
+		alphaObservation:      alphaObservation,
 		learningGraphPinger:   learningGraphPinger,
 		completionStatePinger: completionStatePinger,
 	}

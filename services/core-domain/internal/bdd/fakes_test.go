@@ -90,6 +90,18 @@ func (f *fakeUserRepo) GetByID(_ context.Context, id string) (domain.User, error
 	return u, nil
 }
 
+func (f *fakeUserRepo) ListByRole(_ context.Context, role domain.Role) ([]domain.User, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var users []domain.User
+	for _, u := range f.byID {
+		if u.Role == role {
+			users = append(users, u)
+		}
+	}
+	return users, nil
+}
+
 func (f *fakeUserRepo) put(u domain.User) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -1206,6 +1218,22 @@ func (f *fakeStudentPathRepo) Create(_ context.Context, p domain.StudentPath) er
 
 // put overwrites an existing copy in place, the way an edit to a student's
 // own copy would.
+func (f *fakeStudentPathRepo) FirstGivenByStudentIDs(_ context.Context, studentIDs []string) (map[string]domain.StudentPath, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	first := map[string]domain.StudentPath{}
+	for _, p := range f.byID {
+		if !slices.Contains(studentIDs, p.StudentID) {
+			continue
+		}
+		current, ok := first[p.StudentID]
+		if !ok || p.AssignedAt.Before(current.AssignedAt) || (p.AssignedAt.Equal(current.AssignedAt) && p.ID < current.ID) {
+			first[p.StudentID] = p
+		}
+	}
+	return first, nil
+}
+
 func (f *fakeStudentPathRepo) put(p domain.StudentPath) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

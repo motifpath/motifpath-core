@@ -531,6 +531,10 @@ func (w *world) validationErrors() ([]struct {
 		return resp.Errors, nil
 	case generated.GetPracticeSummary400JSONResponse:
 		return resp.Errors, nil
+	case generated.GetAlphaObservation400JSONResponse:
+		return resp.Errors, nil
+	case generated.GetAlphaStudentObservation400JSONResponse:
+		return resp.Errors, nil
 	case generated.GetPracticeOverview400JSONResponse:
 		return resp.Errors, nil
 	case generated.CreatePracticeSessionPlan400JSONResponse:

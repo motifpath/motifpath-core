@@ -41,6 +41,11 @@ type StudentPathRepository interface {
 	// part is left out.
 	ListByCourseEnrollmentID(ctx context.Context, courseEnrollmentID string) ([]domain.StudentPath, error)
 
+	// FirstGivenByStudentIDs returns, for each of studentIDs who holds any
+	// StudentPath, the earliest assigned one with its items — standalone or
+	// course part, active or archived; ties go to the lowest id. A student
+	// with none is absent.
+	FirstGivenByStudentIDs(ctx context.Context, studentIDs []string) (map[string]domain.StudentPath, error)
 	// ReplaceContent overwrites the title, presentation snapshots, course
 	// checkpoint position and items of the StudentPath with path.ID, in one
 	// step, when the copy is updated to its template's latest content. Its

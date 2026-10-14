@@ -226,6 +226,34 @@ func (r *EntStudentPathRepository) ListByCourseEnrollmentID(ctx context.Context,
 		Order(studentpath.ByCourseCheckpointPosition(), studentpath.ByID()))
 }
 
+// FirstGivenByStudentIDs reads every path of studentIDs, oldest assigned
+// first, and keeps each student's first. The alpha holds a few paths per
+// student, so reading them all is simpler than a per-student window query.
+func (r *EntStudentPathRepository) FirstGivenByStudentIDs(ctx context.Context, studentIDs []string) (map[string]domain.StudentPath, error) {
+	parsed := make([]uuid.UUID, 0, len(studentIDs))
+	for _, id := range studentIDs {
+		if u, err := uuid.Parse(id); err == nil {
+			parsed = append(parsed, u)
+		}
+	}
+	first := map[string]domain.StudentPath{}
+	if len(parsed) == 0 {
+		return first, nil
+	}
+	paths, err := r.listWithItems(ctx, r.client.StudentPath.Query().
+		Where(studentpath.StudentIDIn(parsed...)).
+		Order(studentpath.ByAssignedAt(), studentpath.ByID()))
+	if err != nil {
+		return nil, err
+	}
+	for _, path := range paths {
+		if _, ok := first[path.StudentID]; !ok {
+			first[path.StudentID] = path
+		}
+	}
+	return first, nil
+}
+
 // listWithItems runs query and attaches each resulting StudentPath's items
 // in position order.
 func (r *EntStudentPathRepository) listWithItems(ctx context.Context, query *ent.StudentPathQuery) ([]domain.StudentPath, error) {

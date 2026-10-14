@@ -33,4 +33,7 @@ type UserRepository interface {
 	// exists, keyed by user_id, in a single query. Ids with no user are
 	// simply absent from the result.
 	GetDisplayNames(ctx context.Context, ids []string) (map[string]string, error)
+
+	// ListByRole returns every user with role, in no particular order.
+	ListByRole(ctx context.Context, role domain.Role) ([]domain.User, error)
 }

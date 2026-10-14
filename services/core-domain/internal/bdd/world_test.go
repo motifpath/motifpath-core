@@ -59,6 +59,7 @@ type world struct {
 	// lastShapeKey is the diagram shape a step set up, for a following step.
 	lastShapeKey     string
 	practiceActivity *fakePracticeActivity
+	alpha            *alphaWorld
 	tapChecks        *fakeTapChecks
 	feltRatings      *fakeFeltRatings
 	// tapCheckSkill is the skill of the tap-check scenarios' path.
@@ -330,10 +331,14 @@ func newWorld() *world {
 	summaryRollup := application.NewKnowledgeRollupService(w.knowledge, w.knowledgeEdges, w.practiceItems, w.practiceStates, summaryNow)
 	practiceSummary := application.NewPracticeSummaryService(w.instruments, w.studentPaths, w.courseEnrollments, w.paths, w.courseVersions, w.nodes, summaryRollup, w.practiceActivity, w.songChartRepo, summaryNow)
 
+	w.alpha = newAlphaWorld()
+	alphaObservation := application.NewAlphaObservationService(w.users, w.studentPaths, w.nodes, w.completion, w.alpha.activity, func() time.Time { return w.alpha.now })
+
 	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, knowledgeNode, knowledgeEdge, media, path, application.NewPathCatalogService(w.paths, w.users, w.knowledge), studentPath, course, courseEnrollment, instrument, voice, diagram, practiceSession, practiceSummary, application.NewChordCatalogService(w.chords),
 		application.NewSongChartService(w.songChartRepo, w.chords, w.diagrams, newFakeLanguageRepo(), newID, now),
 		application.NewAppConfigService(w.appConfig, now, application.NewStartingPointsKey(w.instruments, newFakeLanguageRepo(), w.paths, w.courses)),
 		application.NewStartingPointsService(w.appConfig, newFakeLanguageRepo(), w.paths, w.courses),
+		alphaObservation,
 		w.pgPinger, w.mongoPinger)
 	return w
 }
