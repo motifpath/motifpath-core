@@ -42,6 +42,9 @@ type goldenCaseFile struct {
 		Instruments map[string]struct {
 			Tuning []string `json:"tuning"`
 		} `json:"instruments"`
+		Progressions map[string]struct {
+			Bars []string `json:"bars"`
+		} `json:"progressions"`
 	} `json:"reference"`
 	Cases []struct {
 		Name     string          `json:"name"`
@@ -73,6 +76,20 @@ type goldenCaseFile struct {
 						String int `json:"string"`
 						Fret   int `json:"fret"`
 					} `json:"cells"`
+					Choices    []string `json:"choices"`
+					FretWindow *struct {
+						FromFret int `json:"from_fret"`
+					} `json:"fret_window"`
+					Way      string   `json:"way"`
+					MusicKey string   `json:"music_key"`
+					Answer   string   `json:"answer"`
+					Offered  []string `json:"offered"`
+					Tone     string   `json:"tone"`
+					Bars     []struct {
+						Chord    string `json:"chord"`
+						NoteName string `json:"note_name"`
+						Hit      bool   `json:"hit"`
+					} `json:"bars"`
 				} `json:"answer_key"`
 			} `json:"evidence"`
 		} `json:"expected"`
@@ -92,7 +109,8 @@ func TestGraderGoldenCases(t *testing.T) {
 			require.NoError(t, json.Unmarshal(raw, &file))
 			require.Equal(t, grader.ID(), file.Grader)
 
-			ref := domain.PracticeReference{Diagrams: map[string]domain.DiagramReference{}, Exercises: map[string]domain.ExerciseReference{}, Instruments: map[string]domain.InstrumentReference{}}
+			ref := domain.PracticeReference{Diagrams: map[string]domain.DiagramReference{}, Exercises: map[string]domain.ExerciseReference{},
+				Instruments: map[string]domain.InstrumentReference{}, Progressions: map[string]domain.ProgressionReference{}}
 			for id, d := range file.Reference.Diagrams {
 				diagram := domain.DiagramReference{ID: id, LayoutInstrumentID: d.LayoutInstrumentID, ShapeFamily: d.ShapeFamily, Shape: d.Shape}
 				if d.ShapeFamily != "" {
@@ -112,6 +130,9 @@ func TestGraderGoldenCases(t *testing.T) {
 			}
 			for id, i := range file.Reference.Instruments {
 				ref.Instruments[id] = domain.InstrumentReference{ID: id, Tuning: i.Tuning}
+			}
+			for key, p := range file.Reference.Progressions {
+				ref.Progressions[key] = domain.ProgressionReference{Key: key, Bars: p.Bars}
 			}
 
 			for _, c := range file.Cases {
@@ -156,6 +177,21 @@ func TestGraderGoldenCases(t *testing.T) {
 					for i, c := range want.AnswerKey.Cells {
 						assert.Equal(t, domain.AnswerCell{String: c.String, Fret: c.Fret}, got.Evidence.AnswerKey.Cells[i])
 					}
+					assert.Equal(t, want.AnswerKey.Choices, got.Evidence.AnswerKey.Choices)
+					if want.AnswerKey.FretWindow == nil {
+						assert.Nil(t, got.Evidence.AnswerKey.FretWindowFrom)
+					} else {
+						assert.Equal(t, &want.AnswerKey.FretWindow.FromFret, got.Evidence.AnswerKey.FretWindowFrom)
+					}
+					assert.Equal(t, want.AnswerKey.Way, got.Evidence.AnswerKey.Way)
+					assert.Equal(t, want.AnswerKey.MusicKey, got.Evidence.AnswerKey.MusicKey)
+					assert.Equal(t, want.AnswerKey.Answer, got.Evidence.AnswerKey.Answer)
+					assert.Equal(t, want.AnswerKey.Offered, got.Evidence.AnswerKey.Offered)
+					assert.Equal(t, want.AnswerKey.Tone, got.Evidence.AnswerKey.Tone)
+					require.Len(t, got.Evidence.AnswerKey.Bars, len(want.AnswerKey.Bars))
+					for i, b := range want.AnswerKey.Bars {
+						assert.Equal(t, domain.AnswerBar{Chord: b.Chord, NoteName: b.NoteName, Hit: b.Hit}, got.Evidence.AnswerKey.Bars[i])
+					}
 				})
 			}
 		})
@@ -178,11 +214,30 @@ func decodeGoldenResponse(raw json.RawMessage) (domain.PracticeResponse, error) 
 		Rating           string   `json:"rating"`
 		TempoBPM         *int     `json:"tempo_bpm"`
 		ChangesPerMinute *int     `json:"changes_per_minute"`
+		Choices          []string `json:"choices"`
+		Reason           string   `json:"reason"`
+		Way              string   `json:"way"`
+		MusicKey         string   `json:"music_key"`
+		Options          []string `json:"options"`
+		Choice           string   `json:"choice"`
+		Tone             string   `json:"tone"`
+		Taps             []struct {
+			AtMs   int `json:"at_ms"`
+			String int `json:"string"`
+			Fret   int `json:"fret"`
+		} `json:"taps"`
+		FretWindow *struct {
+			FromFret int `json:"from_fret"`
+		} `json:"fret_window"`
+		Cells []struct {
+			String int `json:"string"`
+			Fret   int `json:"fret"`
+		} `json:"cells"`
 	}
 	if err := json.Unmarshal(raw, &w); err != nil {
 		return domain.PracticeResponse{}, err
 	}
-	return domain.PracticeResponse{
+	r := domain.PracticeResponse{
 		Type:             domain.PracticeResponseType(w.ResponseType),
 		NoteName:         w.NoteName,
 		Shape:            w.Shape,
@@ -195,5 +250,22 @@ func decodeGoldenResponse(raw json.RawMessage) (domain.PracticeResponse, error) 
 		Rating:           domain.SelfRating(w.Rating),
 		TempoBPM:         w.TempoBPM,
 		ChangesPerMinute: w.ChangesPerMinute,
-	}, nil
+		Choices:          w.Choices,
+		Reason:           domain.NotAnsweredReason(w.Reason),
+		Way:              w.Way,
+		MusicKey:         w.MusicKey,
+		Options:          w.Options,
+		Choice:           w.Choice,
+		Tone:             w.Tone,
+	}
+	for _, t := range w.Taps {
+		r.Taps = append(r.Taps, domain.TimedTap{AtMs: t.AtMs, String: t.String, Fret: t.Fret})
+	}
+	if w.FretWindow != nil {
+		r.FretWindowFrom = &w.FretWindow.FromFret
+	}
+	for _, c := range w.Cells {
+		r.Cells = append(r.Cells, domain.AnswerCell{String: c.String, Fret: c.Fret})
+	}
+	return r, nil
 }

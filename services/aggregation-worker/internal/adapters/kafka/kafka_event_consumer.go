@@ -205,6 +205,37 @@ func toPracticeAnswer(w wireEvent) *domain.PracticeAnswer {
 	if tc := w.TriggerContext; tc != nil {
 		trigger = &domain.TriggerContext{Source: tc.Source, ContentNodeID: tc.ContentNodeID, ChallengeID: tc.ChallengeID}
 	}
+	response := domain.PracticeResponse{
+		Type:             domain.PracticeResponseType(r.ResponseType),
+		NoteName:         r.NoteName,
+		Shape:            r.Shape,
+		Interval:         r.Interval,
+		String:           r.String,
+		Fret:             r.Fret,
+		OptionIDs:        r.OptionIDs,
+		LatencyMs:        r.LatencyMs,
+		AudioMs:          r.AudioMs,
+		Rating:           domain.SelfRating(r.Rating),
+		TempoBPM:         r.TempoBPM,
+		ChangesPerMinute: r.ChangesPerMinute,
+		Choices:          r.Choices,
+		Reason:           domain.NotAnsweredReason(r.Reason),
+		Way:              r.Way,
+		MusicKey:         r.MusicKey,
+		Options:          r.Options,
+		Choice:           r.Choice,
+		Tone:             r.Tone,
+	}
+	for _, t := range r.Taps {
+		response.Taps = append(response.Taps, domain.TimedTap{AtMs: t.AtMs, String: t.String, Fret: t.Fret})
+	}
+	if r.FretWindow != nil {
+		from := r.FretWindow.FromFret
+		response.FretWindowFrom = &from
+	}
+	for _, c := range r.Cells {
+		response.Cells = append(response.Cells, domain.AnswerCell{String: c.String, Fret: c.Fret})
+	}
 	return &domain.PracticeAnswer{
 		EventID:           w.EventID,
 		StudentID:         w.StudentID,
@@ -212,21 +243,8 @@ func toPracticeAnswer(w wireEvent) *domain.PracticeAnswer {
 		PracticeSessionID: w.PracticeSessionID,
 		TriggerContext:    trigger,
 		ItemKey:           w.ItemKey,
-		Response: domain.PracticeResponse{
-			Type:             domain.PracticeResponseType(r.ResponseType),
-			NoteName:         r.NoteName,
-			Shape:            r.Shape,
-			Interval:         r.Interval,
-			String:           r.String,
-			Fret:             r.Fret,
-			OptionIDs:        r.OptionIDs,
-			LatencyMs:        r.LatencyMs,
-			AudioMs:          r.AudioMs,
-			Rating:           domain.SelfRating(r.Rating),
-			TempoBPM:         r.TempoBPM,
-			ChangesPerMinute: r.ChangesPerMinute,
-		},
-		TapMs: w.TapMs,
+		Response:          response,
+		TapMs:             w.TapMs,
 	}
 }
 

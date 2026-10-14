@@ -34,6 +34,11 @@ func (f *fakeReference) Instruments(_ context.Context, ids []string) (map[string
 	return found, nil
 }
 
+// Progressions finds none: no scenario practises a progression yet.
+func (f *fakeReference) Progressions(_ context.Context) (map[string]domain.ProgressionReference, error) {
+	return map[string]domain.ProgressionReference{}, nil
+}
+
 func (f *fakeReference) Exercises(_ context.Context, ids []string) (map[string]domain.ExerciseReference, error) {
 	found := map[string]domain.ExerciseReference{}
 	for _, id := range ids {

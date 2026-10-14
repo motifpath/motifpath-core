@@ -11,17 +11,28 @@ import (
 // cover what the golden files can't: the registry, and a rating outside the enum.
 
 func TestGraderFor(t *testing.T) {
-	for _, kind := range []PracticeItemKind{PracticeItemKindPlayAlong, PracticeItemKindChordChange} {
+	want := map[PracticeItemKind]string{
+		PracticeItemKindPlayAlong:        "self_rating.v1",
+		PracticeItemKindChordChange:      "self_rating.v1",
+		PracticeItemKindChordVoicing:     "self_rating.v1",
+		PracticeItemKindRootFifth:        "self_rating.v1",
+		PracticeItemKindRootChange:       "self_rating.v1",
+		PracticeItemKindExercise:         "exercise_option.v1",
+		PracticeItemKindFretboardCell:    "fretboard_cell.v2",
+		PracticeItemKindDiagramShape:     "diagram_shape.v1",
+		PracticeItemKindDiatonicChord:    "generated_choice.v1",
+		PracticeItemKindChordFunction:    "generated_choice.v1",
+		PracticeItemKindChartProgression: "generated_choice.v1",
+		PracticeItemKindHeardChord:       "generated_choice.v1",
+		PracticeItemKindHeardProgression: "generated_choice.v1",
+		PracticeItemKindGuideTone:        "timed_taps.v1",
+		PracticeItemKindFretboardNote:    "multi_tap.v1",
+	}
+	for kind, id := range want {
 		g, ok := GraderFor(kind)
 		require.True(t, ok, kind)
-		assert.Equal(t, "self_rating.v1", g.ID())
+		assert.Equal(t, id, g.ID(), kind)
 	}
-	g, ok := GraderFor(PracticeItemKindExercise)
-	require.True(t, ok)
-	assert.Equal(t, "exercise_option.v1", g.ID())
-	g, ok = GraderFor(PracticeItemKindFretboardCell)
-	require.True(t, ok)
-	assert.Equal(t, "fretboard_cell.v1", g.ID())
 }
 
 func TestSelfRatingGrader_RejectsAnUnknownRating(t *testing.T) {

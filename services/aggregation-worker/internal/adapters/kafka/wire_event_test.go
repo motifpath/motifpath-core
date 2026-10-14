@@ -63,6 +63,49 @@ func TestToDomainEvent_PracticeItemAnswered(t *testing.T) {
 				Response: domain.PracticeResponse{Type: domain.PracticeResponseOptionChoice, OptionIDs: []string{"a", "b"}, LatencyMs: intPtr(900), String: intPtr(6), Fret: intPtr(0)},
 			},
 		},
+		{
+			name:    "note named among choices",
+			payload: `{` + base + `,"item_key":"fretboard_cell:6ea2d087-ab9c-59dc-9657-8546025414d2:5:3","response":{"response_type":"name_the_note","note_name":"C","choices":["B","C","C#","F"],"latency_ms":1800}}`,
+			want: domain.PracticeAnswer{
+				ItemKey:  "fretboard_cell:6ea2d087-ab9c-59dc-9657-8546025414d2:5:3",
+				Response: domain.PracticeResponse{Type: domain.PracticeResponseNameTheNote, NoteName: "C", Choices: []string{"B", "C", "C#", "F"}, LatencyMs: intPtr(1800)},
+			},
+		},
+		{
+			name:    "not answered",
+			payload: `{` + base + `,"item_key":"exercise:55555555-5555-4555-8555-555555555555","response":{"response_type":"not_answered","reason":"failed_to_load"}}`,
+			want: domain.PracticeAnswer{
+				ItemKey:  "exercise:55555555-5555-4555-8555-555555555555",
+				Response: domain.PracticeResponse{Type: domain.PracticeResponseNotAnswered, Reason: "failed_to_load"},
+			},
+		},
+		{
+			name:    "generated choice heard in a key",
+			payload: `{` + base + `,"item_key":"heard_chord:vi","response":{"response_type":"generated_choice","way":"cadence_then_chord","music_key":"C","options":["vi","IV"],"choice":"vi","latency_ms":3200,"audio_ms":2500}}`,
+			want: domain.PracticeAnswer{
+				ItemKey: "heard_chord:vi",
+				Response: domain.PracticeResponse{Type: domain.PracticeResponseGeneratedChoice, Way: "cadence_then_chord", MusicKey: "C",
+					Options: []string{"vi", "IV"}, Choice: "vi", LatencyMs: intPtr(3200), AudioMs: intPtr(2500)},
+			},
+		},
+		{
+			name:    "timed taps",
+			payload: `{` + base + `,"item_key":"guide_tone:6ea2d087-ab9c-59dc-9657-8546025414d2:ii-V-I","response":{"response_type":"timed_taps","music_key":"C","tone":"3","tempo_bpm":120,"taps":[{"at_ms":0,"string":1,"fret":1}]}}`,
+			want: domain.PracticeAnswer{
+				ItemKey: "guide_tone:6ea2d087-ab9c-59dc-9657-8546025414d2:ii-V-I",
+				Response: domain.PracticeResponse{Type: domain.PracticeResponseTimedTaps, MusicKey: "C", Tone: "3", TempoBPM: intPtr(120),
+					Taps: []domain.TimedTap{{AtMs: 0, String: 1, Fret: 1}}},
+			},
+		},
+		{
+			name:    "multi tap at the nut",
+			payload: `{` + base + `,"item_key":"fretboard_note:6ea2d087-ab9c-59dc-9657-8546025414d2:E","response":{"response_type":"multi_tap","fret_window":{"from_fret":0},"cells":[{"string":1,"fret":0}],"latency_ms":4000}}`,
+			want: domain.PracticeAnswer{
+				ItemKey: "fretboard_note:6ea2d087-ab9c-59dc-9657-8546025414d2:E",
+				Response: domain.PracticeResponse{Type: domain.PracticeResponseMultiTap, FretWindowFrom: intPtr(0),
+					Cells: []domain.AnswerCell{{String: 1, Fret: 0}}, LatencyMs: intPtr(4000)},
+			},
+		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

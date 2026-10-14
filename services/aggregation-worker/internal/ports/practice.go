@@ -19,6 +19,10 @@ type PracticeReferenceReader interface {
 	// Instruments returns the instruments among ids that exist, by id.
 	Instruments(ctx context.Context, ids []string) (map[string]domain.InstrumentReference, error)
 
+	// Progressions returns every progression of the progression catalog, by key: a
+	// progression question's options are checked against all of them.
+	Progressions(ctx context.Context) (map[string]domain.ProgressionReference, error)
+
 	// FluentTimes returns every version of a drill template's fluent time, none
 	// when the template has none yet.
 	FluentTimes(ctx context.Context, templateKey string) ([]domain.FluentTime, error)

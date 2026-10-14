@@ -53,6 +53,13 @@ type instrumentReferenceDocument struct {
 	Tuning []string `bson:"tuning"`
 }
 
+// progressionReferenceDocument is a `practice_reference` document of kind
+// "progression": a progression of the progression catalog, by its key.
+type progressionReferenceDocument struct {
+	Key  string   `bson:"key"`
+	Bars []string `bson:"bars"`
+}
+
 // drillThresholdDocument is a `practice_reference` document of kind
 // "drill_threshold": one version of a drill template's fluent time.
 type drillThresholdDocument struct {
@@ -167,6 +174,22 @@ func (r *MongoPracticeReferenceReader) Instruments(ctx context.Context, ids []st
 	}
 	for _, d := range docs {
 		found[d.ID] = domain.InstrumentReference{ID: d.ID, Tuning: d.Tuning}
+	}
+	return found, nil
+}
+
+func (r *MongoPracticeReferenceReader) Progressions(ctx context.Context) (map[string]domain.ProgressionReference, error) {
+	found := map[string]domain.ProgressionReference{}
+	cursor, err := r.collection.Find(ctx, bson.D{{Key: "kind", Value: "progression"}})
+	if err != nil {
+		return nil, err
+	}
+	var docs []progressionReferenceDocument
+	if err := cursor.All(ctx, &docs); err != nil {
+		return nil, err
+	}
+	for _, d := range docs {
+		found[d.Key] = domain.ProgressionReference{Key: d.Key, Bars: d.Bars}
 	}
 	return found, nil
 }
