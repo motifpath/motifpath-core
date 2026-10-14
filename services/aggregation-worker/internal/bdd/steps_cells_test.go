@@ -64,6 +64,12 @@ func registerCellSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^the evidence's answer key shows the options ((?:"[^"]*"(?:, | and )?)+), with ((?:"[^"]*"(?:, | and )?)+) correct$`, w.answerKeyShowsTheOptions)
 	sc.Step(`^the answer is rejected because the response does not fit the item$`, w.answerRejectedBecause(domain.GradeRejectionResponseDoesNotFitItem))
 	sc.Step(`^the answer is rejected because the cell is not on the instrument$`, w.answerRejectedBecause(domain.GradeRejectionInvalidCell))
+	sc.Step(`^"([^"]*)" answers the guitar cell on string (\d+) at fret (\d+) by naming the note "([^"]*)" among "([^"]*)", "([^"]*)", "([^"]*)" and "([^"]*)" after (\d+) milliseconds$`, w.answersTheCellByNamingAmong)
+	sc.Step(`^the evidence's answer key is string (\d+), fret (\d+), note "([^"]*)", with the choices "([^"]*)", "([^"]*)", "([^"]*)" and "([^"]*)"$`, w.answerKeyIsTheCellWithChoices)
+	sc.Step(`^the answer is rejected because the choices are invalid$`, w.answerRejectedBecause(domain.GradeRejectionInvalidChoices))
+	sc.Step(`^"([^"]*)" is accurate on the guitar cell on string (\d+) at fret (\d+), in box (\d+) and due today$`, w.isAccurateOnTheCellInBoxDueToday)
+	sc.Step(`^"([^"]*)" sends that cell as not answered because it is unavailable$`, w.sendsThatCellAsNotAnswered)
+	sc.Step(`^the cell stays in box (\d+) and due today$`, w.theCellStaysInBoxAndDueToday)
 
 	// ── Knowledge of a cell ────────────────────────────────────────────────────
 	sc.Step(`^"([^"]*)" answers the cell correctly$`, w.answersTheCell(true))
@@ -79,7 +85,7 @@ func registerCellSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^the cell moves to box (\d+)$`, w.theCellMovesToBox)
 	sc.Step(`^the cell moves to box (\d+) and is next due in (\d+) days?$`, w.theCellMovesToBoxDueIn)
 	sc.Step(`^the cell stays in box (\d+)$`, w.theCellStaysInBox)
-	sc.Step(`^"([^"]*)"'s level for the cell is (?:still )?"([^"]*)"$`, w.levelForTheCellIs)
+	sc.Step(`^"([^"]*)"'s level for (?:the|that) cell is (?:still )?"([^"]*)"$`, w.levelForTheCellIs)
 	sc.Step(`^the same practice\.item_answered event for the cell arrives twice$`, w.theSameCellAnswerArrivesTwice)
 	sc.Step(`^"([^"]*)" has one piece of evidence for the cell$`, w.hasOnePieceOfEvidenceForTheCell)
 	sc.Step(`^"([^"]*)" answered the cell correctly on Monday and Wednesday$`, w.answeredOnMondayAndWednesday)
@@ -190,9 +196,9 @@ func (w *world) onlyCellEvidence(student string) (domain.PracticeEvidence, error
 // cellGoal is what a cell's fluency is measured against, as the evidence
 // processor builds it.
 func (w *world) cellGoal() domain.ItemGoal {
-	return domain.ItemGoal{FluentTimesByResponse: map[domain.PracticeResponseType][]domain.FluentTime{
-		domain.PracticeResponseNameTheNote: w.reference.fluentTimes["fretboard_cell:name_the_note"],
-		domain.PracticeResponseFindTheNote: w.reference.fluentTimes["fretboard_cell:find_the_note"],
+	return domain.ItemGoal{FluentTimesByWay: map[string][]domain.FluentTime{
+		"name_the_note": w.reference.fluentTimes["fretboard_cell:name_the_note"],
+		"find_the_note": w.reference.fluentTimes["fretboard_cell:find_the_note"],
 	}}
 }
 
@@ -206,6 +212,12 @@ func (w *world) redeliver() error {
 
 func (w *world) answersTheCellByNaming(student string, str, fret int, note string, latency int) error {
 	return w.sendCell(student, w.guitarCell(str, fret), domain.PracticeResponse{Type: domain.PracticeResponseNameTheNote, NoteName: note, LatencyMs: &latency})
+}
+
+func (w *world) answersTheCellByNamingAmong(student string, str, fret int, note, c1, c2, c3, c4 string, latency int) error {
+	return w.sendCell(student, w.guitarCell(str, fret), domain.PracticeResponse{
+		Type: domain.PracticeResponseNameTheNote, NoteName: note, Choices: []string{c1, c2, c3, c4}, LatencyMs: &latency,
+	})
 }
 
 func (w *world) isAskedForTheCellAndTaps(student string, str, fret, tappedString, tappedFret int) error {
@@ -305,6 +317,20 @@ func (w *world) answerKeyIsTheCell(str, fret int, note string) error {
 	k := e.AnswerKey
 	if k == nil || k.String == nil || k.Fret == nil || *k.String != str || *k.Fret != fret || k.NoteName != note {
 		return fmt.Errorf("answer key is %+v, want string %d, fret %d, note %s", k, str, fret, note)
+	}
+	return nil
+}
+
+func (w *world) answerKeyIsTheCellWithChoices(str, fret int, note, c1, c2, c3, c4 string) error {
+	if err := w.answerKeyIsTheCell(str, fret, note); err != nil {
+		return err
+	}
+	e, err := w.onlyCellEvidence(w.lastStudent)
+	if err != nil {
+		return err
+	}
+	if want := []string{c1, c2, c3, c4}; !slices.Equal(e.AnswerKey.Choices, want) {
+		return fmt.Errorf("answer key choices are %v, want %v", e.AnswerKey.Choices, want)
 	}
 	return nil
 }
@@ -487,6 +513,50 @@ func (w *world) theCellIsInBoxDueIn(daysBefore int) func(int) error {
 		w.clock = fold.DueAt.AddDate(0, 0, -daysBefore)
 		return nil
 	}
+}
+
+// isAccurateOnTheCellInBoxDueToday makes the cell accurate with three right
+// answers on one day, which leave it in box 1, then answers it on the days it
+// falls due until it reaches box, and makes today the day it is next due.
+func (w *world) isAccurateOnTheCellInBoxDueToday(student string, str, fret, box int) error {
+	cell := w.guitarCell(str, fret)
+	for range 3 {
+		if err := w.nameTheCell(student, cell, true, cellLatency); err != nil {
+			return err
+		}
+	}
+	if err := w.reachBox(student, box); err != nil {
+		return err
+	}
+	fold, err := w.cellFold(student)
+	if err != nil {
+		return err
+	}
+	w.clock = *fold.DueAt
+	return w.levelForTheCellIs(student, string(domain.KnowledgeLevelAccurate))
+}
+
+func (w *world) sendsThatCellAsNotAnswered(student string) error {
+	return w.sendCell(student, w.currentCell(), domain.PracticeResponse{Type: domain.PracticeResponseNotAnswered, Reason: "unavailable"})
+}
+
+// theCellStaysInBoxAndDueToday checks the cell's review is where it was before
+// the latest answer: the same box, due the same day.
+func (w *world) theCellStaysInBoxAndDueToday(box int) error {
+	if err := w.theCellStaysInBox(box); err != nil {
+		return err
+	}
+	fold, err := w.cellFold(w.lastStudent)
+	if err != nil {
+		return err
+	}
+	if fold.DueAt == nil || w.before.DueAt == nil || !fold.DueAt.Equal(*w.before.DueAt) {
+		return fmt.Errorf("the cell is due %v, want it still due %v", fold.DueAt, w.before.DueAt)
+	}
+	if y, m, d := fold.DueAt.Date(); !(time.Date(y, m, d, 0, 0, 0, 0, time.UTC).Before(w.clock) || fold.DueAt.Equal(w.clock)) {
+		return fmt.Errorf("the cell is due %v, after today (%v)", fold.DueAt, w.clock)
+	}
+	return nil
 }
 
 func (w *world) theCellMovesToBox(box int) error {
