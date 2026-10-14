@@ -138,6 +138,9 @@ type LearningPathItem func(*sql.Selector)
 // Position is the predicate function for position builders.
 type Position func(*sql.Selector)
 
+// Progression is the predicate function for progression builders.
+type Progression func(*sql.Selector)
+
 // SongChart is the predicate function for songchart builders.
 type SongChart func(*sql.Selector)
 

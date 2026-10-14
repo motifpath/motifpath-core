@@ -2148,6 +2148,10 @@ func (discardPracticeReferences) PutInstruments(context.Context, []domain.Instru
 	return nil
 }
 
+func (discardPracticeReferences) PutProgressions(context.Context, []domain.Progression) error {
+	return nil
+}
+
 // sortListed orders items the way the repositories order a list: by sort's
 // key — title or most recent change first — then by id.
 func sortListed[T any](items []T, order domain.ListSort, key func(T) (title string, updatedAt time.Time, id string)) {

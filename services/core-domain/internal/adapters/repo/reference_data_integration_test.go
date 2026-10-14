@@ -6,6 +6,7 @@ import (
 	"context"
 	"database/sql"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 
@@ -163,6 +164,21 @@ func TestFreshInstall(t *testing.T) {
 			FROM diagram_shape_families f LEFT JOIN diagram_shapes s ON s.family_id = f.id GROUP BY f.id, f.key`))
 		cAGrip := catalogID("caged/C/A/3")
 		assert.Equal(t, 1, count(t, "SELECT count(*) FROM diagram_shapes WHERE id = '"+catalogID("diagram-shape/"+cAGrip)+"' AND diagram_id = '"+cAGrip+"' AND shape = 'A'"))
+	})
+
+	t.Run("the progressions are installed by number, with fixed ids and their nodes' ids", func(t *testing.T) {
+		assert.Equal(t, 10, count(t, "SELECT count(*) FROM progressions WHERE mode = 'major'"))
+		assert.Equal(t, 1, count(t, "SELECT count(*) FROM progressions WHERE key = 'ii-V-I' AND id = '"+catalogID("progression/ii-V-I")+
+			"' AND bars = '[\"ii\",\"V\",\"I\",\"I\"]' AND confusable = '[\"IV-V-I\"]'"+
+			" AND node_ids = '[\""+catalogID("knowledge-node/common-progressions")+"\",\""+catalogID("knowledge-node/cadences")+"\"]'"))
+	})
+
+	t.Run("installing a progression whose fixed id is already taken stops the migration", func(t *testing.T) {
+		files := migrationFiles(t)
+		_, err := execMigrationFile(ctx, db, files[slices.IndexFunc(files, func(f string) bool {
+			return strings.HasSuffix(f, "_progressions_reference_data.up.sql")
+		})])
+		require.Error(t, err)
 	})
 }
 

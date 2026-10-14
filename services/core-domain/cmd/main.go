@@ -200,15 +200,15 @@ func syncPracticeReference(ctx context.Context, logger *slog.Logger, entClient *
 		logger.Error("ensure the practice reference indexes", "error", err)
 		return
 	}
-	sync := application.NewPracticeReferenceService(repo.NewEntDiagramRepository(entClient), repo.NewEntExerciseRepository(entClient), repo.NewEntInstrumentRepository(entClient), repo.NewEntDrillThresholdRepository(entClient), writer)
+	sync := application.NewPracticeReferenceService(repo.NewEntDiagramRepository(entClient), repo.NewEntExerciseRepository(entClient), repo.NewEntInstrumentRepository(entClient), repo.NewEntDrillThresholdRepository(entClient), repo.NewEntProgressionRepository(entClient), writer)
 	synced, err := sync.Sync(ctx)
 	if err != nil {
 		logger.Error("sync the practice reference snapshot", "diagrams", synced.Diagrams, "exercises", synced.Exercises,
-			"instruments", synced.Instruments, "drill_thresholds", synced.DrillThresholds, "error", err)
+			"instruments", synced.Instruments, "drill_thresholds", synced.DrillThresholds, "progressions", synced.Progressions, "error", err)
 		return
 	}
 	logger.Info("practice reference snapshot synced", "diagrams", synced.Diagrams, "exercises", synced.Exercises,
-		"instruments", synced.Instruments, "drill_thresholds", synced.DrillThresholds)
+		"instruments", synced.Instruments, "drill_thresholds", synced.DrillThresholds, "progressions", synced.Progressions)
 }
 
 // applyMigrations shells out to the Atlas CLI (bundled into the service

@@ -16,8 +16,9 @@ import (
 // practiceReferenceSnapshotVersion is the shape of the documents this
 // writer stores. Bump it when a document's fields change, so a reader can
 // tell the shapes apart. Version 2 added the exercise options and the
-// instrument documents; version 3 the drill shape fields of a diagram.
-const practiceReferenceSnapshotVersion = 3
+// instrument documents; version 3 the drill shape fields of a diagram;
+// version 4 the progression documents.
+const practiceReferenceSnapshotVersion = 4
 
 // diagramReferenceDocument is a `practice_reference` document of kind
 // "diagram", in the shape ADR-047 fixes for the Aggregation Worker's
@@ -193,6 +194,39 @@ func optionDocuments(options []domain.Option) ([]optionDocument, error) {
 }
 
 // PutInstruments upserts every reference in one unordered bulk write.
+// progressionReferenceDocument is a `practice_reference` document of kind
+// "progression": one progression of the progression catalog, by number.
+// Confusable is empty, never null, for a progression confused with none.
+type progressionReferenceDocument struct {
+	Kind            string    `bson:"kind"`
+	ID              string    `bson:"id"`
+	Key             string    `bson:"key"`
+	Mode            string    `bson:"mode"`
+	Bars            []string  `bson:"bars"`
+	Confusable      []string  `bson:"confusable"`
+	UpdatedAt       time.Time `bson:"updated_at"`
+	SnapshotVersion int       `bson:"snapshot_version"`
+}
+
+// PutProgressions upserts every progression in one unordered bulk write.
+func (w *MongoPracticeReferenceWriter) PutProgressions(ctx context.Context, progressions []domain.Progression) error {
+	at := w.now()
+	docs := make([]progressionReferenceDocument, len(progressions))
+	for i, p := range progressions {
+		docs[i] = progressionReferenceDocument{
+			Kind:            "progression",
+			ID:              p.ID,
+			Key:             p.Key,
+			Mode:            p.Mode,
+			Bars:            nonNil(p.Bars),
+			Confusable:      nonNil(p.Confusable),
+			UpdatedAt:       at,
+			SnapshotVersion: practiceReferenceSnapshotVersion,
+		}
+	}
+	return upsert(ctx, w.collection, docs, func(d progressionReferenceDocument) (string, string) { return d.Kind, d.ID })
+}
+
 func (w *MongoPracticeReferenceWriter) PutInstruments(ctx context.Context, refs []domain.InstrumentReference) error {
 	at := w.now()
 	docs := make([]instrumentReferenceDocument, len(refs))

@@ -58,6 +58,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathitem"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/position"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/progression"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/schema"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/songchart"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/songchartrevision"
@@ -121,6 +122,7 @@ const (
 	TypeLearningPathInstrument  = "LearningPathInstrument"
 	TypeLearningPathItem        = "LearningPathItem"
 	TypePosition                = "Position"
+	TypeProgression             = "Progression"
 	TypeSongChart               = "SongChart"
 	TypeSongChartRevision       = "SongChartRevision"
 	TypeStudentLearningState    = "StudentLearningState"
@@ -39077,6 +39079,656 @@ func (m *PositionMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown Position edge %s", name)
+}
+
+// ProgressionMutation represents an operation that mutates the Progression nodes in the graph.
+type ProgressionMutation struct {
+	config
+	op               Op
+	typ              string
+	id               *uuid.UUID
+	key              *string
+	mode             *string
+	bars             *[]string
+	appendbars       []string
+	node_ids         *[]string
+	appendnode_ids   []string
+	confusable       *[]string
+	appendconfusable []string
+	names            *map[string]string
+	clearedFields    map[string]struct{}
+	done             bool
+	oldValue         func(context.Context) (*Progression, error)
+	predicates       []predicate.Progression
+}
+
+var _ ent.Mutation = (*ProgressionMutation)(nil)
+
+// progressionOption allows management of the mutation configuration using functional options.
+type progressionOption func(*ProgressionMutation)
+
+// newProgressionMutation creates new mutation for the Progression entity.
+func newProgressionMutation(c config, op Op, opts ...progressionOption) *ProgressionMutation {
+	m := &ProgressionMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeProgression,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withProgressionID sets the ID field of the mutation.
+func withProgressionID(id uuid.UUID) progressionOption {
+	return func(m *ProgressionMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *Progression
+		)
+		m.oldValue = func(ctx context.Context) (*Progression, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().Progression.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withProgression sets the old Progression of the mutation.
+func withProgression(node *Progression) progressionOption {
+	return func(m *ProgressionMutation) {
+		m.oldValue = func(context.Context) (*Progression, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m ProgressionMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m ProgressionMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of Progression entities.
+func (m *ProgressionMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *ProgressionMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *ProgressionMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().Progression.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetKey sets the "key" field.
+func (m *ProgressionMutation) SetKey(s string) {
+	m.key = &s
+}
+
+// Key returns the value of the "key" field in the mutation.
+func (m *ProgressionMutation) Key() (r string, exists bool) {
+	v := m.key
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldKey returns the old "key" field's value of the Progression entity.
+// If the Progression object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProgressionMutation) OldKey(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldKey is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldKey requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldKey: %w", err)
+	}
+	return oldValue.Key, nil
+}
+
+// ResetKey resets all changes to the "key" field.
+func (m *ProgressionMutation) ResetKey() {
+	m.key = nil
+}
+
+// SetMode sets the "mode" field.
+func (m *ProgressionMutation) SetMode(s string) {
+	m.mode = &s
+}
+
+// Mode returns the value of the "mode" field in the mutation.
+func (m *ProgressionMutation) Mode() (r string, exists bool) {
+	v := m.mode
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMode returns the old "mode" field's value of the Progression entity.
+// If the Progression object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProgressionMutation) OldMode(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMode is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMode requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMode: %w", err)
+	}
+	return oldValue.Mode, nil
+}
+
+// ResetMode resets all changes to the "mode" field.
+func (m *ProgressionMutation) ResetMode() {
+	m.mode = nil
+}
+
+// SetBars sets the "bars" field.
+func (m *ProgressionMutation) SetBars(s []string) {
+	m.bars = &s
+	m.appendbars = nil
+}
+
+// Bars returns the value of the "bars" field in the mutation.
+func (m *ProgressionMutation) Bars() (r []string, exists bool) {
+	v := m.bars
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldBars returns the old "bars" field's value of the Progression entity.
+// If the Progression object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProgressionMutation) OldBars(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldBars is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldBars requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldBars: %w", err)
+	}
+	return oldValue.Bars, nil
+}
+
+// AppendBars adds s to the "bars" field.
+func (m *ProgressionMutation) AppendBars(s []string) {
+	m.appendbars = append(m.appendbars, s...)
+}
+
+// AppendedBars returns the list of values that were appended to the "bars" field in this mutation.
+func (m *ProgressionMutation) AppendedBars() ([]string, bool) {
+	if len(m.appendbars) == 0 {
+		return nil, false
+	}
+	return m.appendbars, true
+}
+
+// ResetBars resets all changes to the "bars" field.
+func (m *ProgressionMutation) ResetBars() {
+	m.bars = nil
+	m.appendbars = nil
+}
+
+// SetNodeIds sets the "node_ids" field.
+func (m *ProgressionMutation) SetNodeIds(s []string) {
+	m.node_ids = &s
+	m.appendnode_ids = nil
+}
+
+// NodeIds returns the value of the "node_ids" field in the mutation.
+func (m *ProgressionMutation) NodeIds() (r []string, exists bool) {
+	v := m.node_ids
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldNodeIds returns the old "node_ids" field's value of the Progression entity.
+// If the Progression object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProgressionMutation) OldNodeIds(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldNodeIds is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldNodeIds requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldNodeIds: %w", err)
+	}
+	return oldValue.NodeIds, nil
+}
+
+// AppendNodeIds adds s to the "node_ids" field.
+func (m *ProgressionMutation) AppendNodeIds(s []string) {
+	m.appendnode_ids = append(m.appendnode_ids, s...)
+}
+
+// AppendedNodeIds returns the list of values that were appended to the "node_ids" field in this mutation.
+func (m *ProgressionMutation) AppendedNodeIds() ([]string, bool) {
+	if len(m.appendnode_ids) == 0 {
+		return nil, false
+	}
+	return m.appendnode_ids, true
+}
+
+// ResetNodeIds resets all changes to the "node_ids" field.
+func (m *ProgressionMutation) ResetNodeIds() {
+	m.node_ids = nil
+	m.appendnode_ids = nil
+}
+
+// SetConfusable sets the "confusable" field.
+func (m *ProgressionMutation) SetConfusable(s []string) {
+	m.confusable = &s
+	m.appendconfusable = nil
+}
+
+// Confusable returns the value of the "confusable" field in the mutation.
+func (m *ProgressionMutation) Confusable() (r []string, exists bool) {
+	v := m.confusable
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldConfusable returns the old "confusable" field's value of the Progression entity.
+// If the Progression object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProgressionMutation) OldConfusable(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldConfusable is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldConfusable requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldConfusable: %w", err)
+	}
+	return oldValue.Confusable, nil
+}
+
+// AppendConfusable adds s to the "confusable" field.
+func (m *ProgressionMutation) AppendConfusable(s []string) {
+	m.appendconfusable = append(m.appendconfusable, s...)
+}
+
+// AppendedConfusable returns the list of values that were appended to the "confusable" field in this mutation.
+func (m *ProgressionMutation) AppendedConfusable() ([]string, bool) {
+	if len(m.appendconfusable) == 0 {
+		return nil, false
+	}
+	return m.appendconfusable, true
+}
+
+// ResetConfusable resets all changes to the "confusable" field.
+func (m *ProgressionMutation) ResetConfusable() {
+	m.confusable = nil
+	m.appendconfusable = nil
+}
+
+// SetNames sets the "names" field.
+func (m *ProgressionMutation) SetNames(value map[string]string) {
+	m.names = &value
+}
+
+// Names returns the value of the "names" field in the mutation.
+func (m *ProgressionMutation) Names() (r map[string]string, exists bool) {
+	v := m.names
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldNames returns the old "names" field's value of the Progression entity.
+// If the Progression object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProgressionMutation) OldNames(ctx context.Context) (v map[string]string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldNames is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldNames requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldNames: %w", err)
+	}
+	return oldValue.Names, nil
+}
+
+// ResetNames resets all changes to the "names" field.
+func (m *ProgressionMutation) ResetNames() {
+	m.names = nil
+}
+
+// Where appends a list predicates to the ProgressionMutation builder.
+func (m *ProgressionMutation) Where(ps ...predicate.Progression) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the ProgressionMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *ProgressionMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Progression, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *ProgressionMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *ProgressionMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (Progression).
+func (m *ProgressionMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *ProgressionMutation) Fields() []string {
+	fields := make([]string, 0, 6)
+	if m.key != nil {
+		fields = append(fields, progression.FieldKey)
+	}
+	if m.mode != nil {
+		fields = append(fields, progression.FieldMode)
+	}
+	if m.bars != nil {
+		fields = append(fields, progression.FieldBars)
+	}
+	if m.node_ids != nil {
+		fields = append(fields, progression.FieldNodeIds)
+	}
+	if m.confusable != nil {
+		fields = append(fields, progression.FieldConfusable)
+	}
+	if m.names != nil {
+		fields = append(fields, progression.FieldNames)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *ProgressionMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case progression.FieldKey:
+		return m.Key()
+	case progression.FieldMode:
+		return m.Mode()
+	case progression.FieldBars:
+		return m.Bars()
+	case progression.FieldNodeIds:
+		return m.NodeIds()
+	case progression.FieldConfusable:
+		return m.Confusable()
+	case progression.FieldNames:
+		return m.Names()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *ProgressionMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case progression.FieldKey:
+		return m.OldKey(ctx)
+	case progression.FieldMode:
+		return m.OldMode(ctx)
+	case progression.FieldBars:
+		return m.OldBars(ctx)
+	case progression.FieldNodeIds:
+		return m.OldNodeIds(ctx)
+	case progression.FieldConfusable:
+		return m.OldConfusable(ctx)
+	case progression.FieldNames:
+		return m.OldNames(ctx)
+	}
+	return nil, fmt.Errorf("unknown Progression field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ProgressionMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case progression.FieldKey:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetKey(v)
+		return nil
+	case progression.FieldMode:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMode(v)
+		return nil
+	case progression.FieldBars:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetBars(v)
+		return nil
+	case progression.FieldNodeIds:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetNodeIds(v)
+		return nil
+	case progression.FieldConfusable:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetConfusable(v)
+		return nil
+	case progression.FieldNames:
+		v, ok := value.(map[string]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetNames(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Progression field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *ProgressionMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *ProgressionMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ProgressionMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown Progression numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *ProgressionMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *ProgressionMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *ProgressionMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown Progression nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *ProgressionMutation) ResetField(name string) error {
+	switch name {
+	case progression.FieldKey:
+		m.ResetKey()
+		return nil
+	case progression.FieldMode:
+		m.ResetMode()
+		return nil
+	case progression.FieldBars:
+		m.ResetBars()
+		return nil
+	case progression.FieldNodeIds:
+		m.ResetNodeIds()
+		return nil
+	case progression.FieldConfusable:
+		m.ResetConfusable()
+		return nil
+	case progression.FieldNames:
+		m.ResetNames()
+		return nil
+	}
+	return fmt.Errorf("unknown Progression field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *ProgressionMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *ProgressionMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *ProgressionMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *ProgressionMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *ProgressionMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *ProgressionMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *ProgressionMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown Progression unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *ProgressionMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown Progression edge %s", name)
 }
 
 // SongChartMutation represents an operation that mutates the SongChart nodes in the graph.

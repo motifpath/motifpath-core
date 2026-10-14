@@ -1,4 +1,4 @@
-h1:IESULdsghOUBwF+/DPxMt/aUD61FNHT5ZMSyVRPL3v8=
+h1:QdUQfAips/HhV3SQmW7iX5ngd1osvR6ifbwwIPUT4IY=
 20261006144122_baseline_schema.up.sql h1:nUaQZHQ25mFssy7l5w35jrL/SkMtzC6vR6shoL++Twg=
 20261006144123_baseline_reference_data.up.sql h1:T5e0XITnkle4quXu1rQ4y8Hz+t0tsMxsReSVNtQxT7s=
 20261006223929_diagram_purpose.up.sql h1:dVzzGIw8Wv+Fmsr2AAecj8mBtGGYnc9PsZhNCwphc14=
@@ -10,3 +10,5 @@ h1:IESULdsghOUBwF+/DPxMt/aUD61FNHT5ZMSyVRPL3v8=
 20261008104300_song_chart_published_artist.up.sql h1:DUfZHqg8RO9GLLVTQ+WU8Hbr7aXh0fvUeulpt8Q3SXs=
 20261011095752_app_config.up.sql h1:xEuFPbUfnoClcfRt4SiNC8x2r6qv+iVS78eBr7qQ95U=
 20261011195320_authoring_list_updated_at.up.sql h1:FvSRooANKc28uUEb/c312/xij5TNTQkrn0t6gmY033o=
+20261014180802_progressions.up.sql h1:ZnFn2hiPc8nU+9nTAJXUqaeUhK0N+MbgWwfrA1E5ZzE=
+20261014180803_progressions_reference_data.up.sql h1:5rYuEpPVN1u87tRAKvOhE0ZQ4Evh4m0G2EY13ZuBR0I=

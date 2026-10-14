@@ -26,4 +26,8 @@ type PracticeReferenceWriter interface {
 	// PutInstruments creates or replaces each instrument's reference, in one
 	// round trip to the store.
 	PutInstruments(ctx context.Context, refs []domain.InstrumentReference) error
+
+	// PutProgressions creates or replaces each progression's reference, in
+	// one round trip to the store.
+	PutProgressions(ctx context.Context, progressions []domain.Progression) error
 }

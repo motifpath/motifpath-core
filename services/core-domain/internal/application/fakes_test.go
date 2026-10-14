@@ -1962,6 +1962,7 @@ type fakePracticeReferenceWriter struct {
 	exercises map[string]domain.ExerciseReference
 	instrs    map[string]domain.InstrumentReference
 	threshold []domain.DrillThreshold
+	progs     []domain.Progression
 	writes    int
 	err       error
 }
@@ -2004,6 +2005,34 @@ func (f *fakePracticeReferenceWriter) drillThresholds() []domain.DrillThreshold 
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.threshold
+}
+
+func (f *fakePracticeReferenceWriter) PutProgressions(ctx context.Context, progressions []domain.Progression) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if f.err != nil {
+		return f.err
+	}
+	f.writes++
+	f.progs = append(f.progs, progressions...)
+	return nil
+}
+
+func (f *fakePracticeReferenceWriter) progressions() []domain.Progression {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.progs
+}
+
+// fakeProgressions is a ports.ProgressionRepository holding the given
+// installed progressions.
+type fakeProgressions []domain.Progression
+
+func (f fakeProgressions) List(context.Context) ([]domain.Progression, error) {
+	return f, nil
 }
 
 // fakeDrillThresholds is a ports.DrillThresholdRepository holding the given
