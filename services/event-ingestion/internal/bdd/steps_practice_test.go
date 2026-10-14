@@ -15,6 +15,7 @@ import (
 )
 
 func registerPracticeSteps(sc *godog.ScenarioContext, w *world) {
+	registerDrillAnswerSteps(sc, w)
 	sc.Step(`^"([^"]+)" has (?:later )?submitted a practice\.tap_check_completed event with a median tap of (\d+) milliseconds$`, w.hasSubmittedTapCheck)
 	sc.Step(`^"([^"]+)" has never submitted a practice\.tap_check_completed event$`, func(string) error { return nil })
 
@@ -79,6 +80,17 @@ type practiceResponse struct {
 	Rating       string   `json:"rating,omitempty"`
 	TempoBPM     int      `json:"tempo_bpm,omitempty"`
 	OptionIDs    []string `json:"option_ids,omitempty"`
+	Choices      []string `json:"choices,omitempty"`
+	Reason       string   `json:"reason,omitempty"`
+	Way          string   `json:"way,omitempty"`
+	MusicKey     string   `json:"music_key,omitempty"`
+	Options      []string `json:"options,omitempty"`
+	Choice       string   `json:"choice,omitempty"`
+	Tone         string   `json:"tone,omitempty"`
+	// Taps and Cells are pointers so a scenario can send an empty list.
+	Taps       *[]timedTap   `json:"taps,omitempty"`
+	FretWindow *fretWindow   `json:"fret_window,omitempty"`
+	Cells      *[]tappedCell `json:"cells,omitempty"`
 
 	// Correct is not part of any response shape: a client claiming a verdict.
 	Correct *bool `json:"correct,omitempty"`
