@@ -328,6 +328,9 @@ func (w *world) submissionRefusedTemporarilyUnavailable() error {
 }
 
 func (w *world) rejectionIdentifiesField(field string) error {
+	if w.eventLog.resp != nil {
+		return w.eventLogRejectionIdentifies(field)
+	}
 	resp, ok := w.ingestResp.(generated.IngestTrackingEvent400JSONResponse)
 	if !ok {
 		return fmt.Errorf("expected a 400 response, got %#v", w.ingestResp)

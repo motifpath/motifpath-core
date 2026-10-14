@@ -3,12 +3,14 @@
 package bdd
 
 import (
+	"cmp"
 	"context"
 	"crypto/sha1" //nolint:gosec // used only for deterministic test UUIDs, not security
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
+	"slices"
 	"sync"
 	"time"
 
@@ -30,12 +32,45 @@ func discardLogger() *slog.Logger {
 // testcontainers integration tests; here we only need Save to succeed, matching
 // EventRepository's documented idempotency contract.
 type fakeRepository struct {
-	mu    sync.Mutex
-	saved map[string]domain.TrackingEvent
+	mu       sync.Mutex
+	saved    map[string]domain.TrackingEvent
+	received map[string]time.Time
 }
 
 func newFakeRepository() *fakeRepository {
-	return &fakeRepository{saved: make(map[string]domain.TrackingEvent)}
+	return &fakeRepository{saved: make(map[string]domain.TrackingEvent), received: make(map[string]time.Time)}
+}
+
+// store keeps event as received at receivedAt, as Save would have.
+func (f *fakeRepository) store(event domain.TrackingEvent, receivedAt time.Time) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.saved[event.Base().EventID] = event
+	f.received[event.Base().EventID] = receivedAt
+}
+
+// List reads the saved events in MongoEventRepository's order: received_at,
+// then event_id, both descending.
+func (f *fakeRepository) List(_ context.Context, q domain.EventLogQuery) ([]domain.LoggedEvent, int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var matching []domain.LoggedEvent
+	for id, event := range f.saved {
+		base := event.Base()
+		if q.StudentID != "" && base.StudentID != q.StudentID {
+			continue
+		}
+		if len(q.EventTypes) > 0 && !slices.Contains(q.EventTypes, base.EventType) {
+			continue
+		}
+		matching = append(matching, domain.LoggedEvent{ReceivedAt: f.received[id], Event: event})
+	}
+	slices.SortFunc(matching, func(a, b domain.LoggedEvent) int {
+		return cmp.Or(b.ReceivedAt.Compare(a.ReceivedAt), cmp.Compare(b.Event.Base().EventID, a.Event.Base().EventID))
+	})
+	from := min(q.Offset, len(matching))
+	to := min(from+q.Limit, len(matching))
+	return slices.Clone(matching[from:to]), len(matching), nil
 }
 
 var fixedReceivedAt = time.Date(2026, 8, 25, 12, 0, 0, 0, time.UTC)
@@ -45,6 +80,7 @@ func (f *fakeRepository) Save(_ context.Context, event domain.TrackingEvent) (ti
 	defer f.mu.Unlock()
 	_, alreadyExisted := f.saved[event.Base().EventID]
 	f.saved[event.Base().EventID] = event
+	f.received[event.Base().EventID] = fixedReceivedAt
 	return fixedReceivedAt, alreadyExisted, nil
 }
 
@@ -273,6 +309,8 @@ type world struct {
 	// identical payload rather than reconstructing an approximation of it.
 	lastSubmittedBody *generated.TrackingEvent
 
+	eventLog eventLogWorld
+
 	ingestResp generated.IngestTrackingEventResponseObject
 	ingestErr  error
 
@@ -295,7 +333,8 @@ func newWorld() *world {
 	service := application.NewIngestEventService(w.repo, w.outbox, w.publisher, w.repo, discardLogger())
 	authorizer := application.NewAdminAuthorizer(w.profileResolver)
 	adminOutbox := application.NewAdminOutboxService(w.outbox, w.repo, w.publisher, authorizer)
-	w.handler = appHTTP.NewHandler(service, adminOutbox, w.identityResolver, w.mongoPinger, w.kafkaPinger)
+	eventLog := application.NewEventLogService(w.repo, authorizer)
+	w.handler = appHTTP.NewHandler(service, adminOutbox, eventLog, w.identityResolver, w.mongoPinger, w.kafkaPinger)
 	return w
 }
 
