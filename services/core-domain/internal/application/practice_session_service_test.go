@@ -130,6 +130,8 @@ type practiceFixture struct {
 	headSessions   *fakeHeadSessionCounter
 	// cells holds the fretboard cells that suit each instrument.
 	cells     map[string][]domain.ClassifiedItem
+	// templates are the installed drill templates.
+	templates catalogDrillTemplates
 	now       time.Time
 	pathCount int
 	t         *testing.T
@@ -181,6 +183,7 @@ func newPracticeFixture(t *testing.T) *practiceFixture {
 		feltRatings:    &fakeFeltRatingReader{sessions: map[string]int{}},
 		headSessions:   &fakeHeadSessionCounter{started: map[string]int{}},
 		cells:          map[string][]domain.ClassifiedItem{},
+		templates:      catalogDrillTemplates{},
 		now:            time.Date(2026, 10, 4, 12, 0, 0, 0, time.UTC),
 		t:              t,
 	}
@@ -189,7 +192,7 @@ func newPracticeFixture(t *testing.T) *practiceFixture {
 	now := func() time.Time { return f.now }
 	rollup := application.NewKnowledgeRollupService(f.knowledgeNodes, f.edges, practiceItemSource{f: f}, f.states, now)
 	f.svc = application.NewPracticeSessionService(
-		f.instruments, f.studentPaths, f.enrollments, f.learningPaths, f.courseVersions, f.contentNodes, f.diagrams, f.exercises, rollup, catalogDrillTemplates{}, f.tapChecks, f.feltRatings, f.headSessions,
+		f.instruments, f.studentPaths, f.enrollments, f.learningPaths, f.courseVersions, f.contentNodes, f.diagrams, f.exercises, rollup, &f.templates, f.tapChecks, f.feltRatings, f.headSessions,
 		func() string { return "session-1" },
 		now,
 	).WithShuffle(keepOrder)

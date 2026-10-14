@@ -3,6 +3,7 @@ package application_test
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
@@ -57,31 +58,65 @@ func (s fakeDrillSource) Item(_ context.Context, itemKey string) (domain.DrillIt
 }
 
 func TestPracticeSessionService_ANewDrillFamilyNeedsNoComposerChange(t *testing.T) {
-	f := newPracticeFixture(t)
-	f.skill("skill-fake")
-	f.onPathFor([]string{practiceGuitar}, "skill-fake")
-	f.svc.WithDrillSources(fakeDrillSource{skillID: "skill-fake", count: 4})
-	// The knowledge map classifies the family's items, as it does cells and
-	// shapes, so the student's states on them are read.
-	for i := range 4 {
-		key := fakeDrillItem{id: fmt.Sprintf("%02d", i)}.ItemKey()
-		f.cells[practiceGuitar] = append(f.cells[practiceGuitar], domain.ClassifiedItem{ItemKey: key, NodeIDs: []string{"skill-fake"}})
+	// newFamily installs the fake family's two templates, hear and play
+	// clean, and count of its items under skill-fake, classified by the
+	// knowledge map as cells and shapes are, so the student's states on them
+	// are read.
+	newFamily := func(t *testing.T, count int) *practiceFixture {
+		f := newPracticeFixture(t)
+		f.skill("skill-fake")
+		f.onPathFor([]string{practiceGuitar}, "skill-fake")
+		f.svc.WithDrillSources(fakeDrillSource{skillID: "skill-fake", count: count})
+		f.templates.extra = []domain.DrillTemplate{
+			{Key: "fake_drill:first", ItemKind: fakeDrillKind, Rung: domain.PracticeRungHear, Timed: true},
+			{Key: "fake_drill:second", ItemKind: fakeDrillKind, Rung: domain.PracticeRungPlayClean, Timed: true},
+		}
+		for i := range count {
+			key := fakeDrillItem{id: fmt.Sprintf("%02d", i)}.ItemKey()
+			f.cells[practiceGuitar] = append(f.cells[practiceGuitar], domain.ClassifiedItem{ItemKey: key, NodeIDs: []string{"skill-fake"}})
+		}
+		return f
 	}
-	answeredFirst := fakeDrillItem{id: "00"}.ItemKey()
-	f.stateOf(answeredFirst, domain.PracticeItemState{
-		Level: domain.KnowledgeLevelLearning, Counted: 2, Box: 1, DueAt: f.daysAgo(1),
-		RightByResponse: map[string]int{"first": 2},
+
+	t.Run("its items are offered like any other, a due one asked its next way", func(t *testing.T) {
+		f := newFamily(t, 4)
+		answeredFirst := fakeDrillItem{id: "00"}.ItemKey()
+		f.stateOf(answeredFirst, domain.PracticeItemState{
+			Level: domain.KnowledgeLevelLearning, Counted: 2, Box: 1, DueAt: f.daysAgo(1),
+			RightByResponse: map[string]int{"first": 2},
+		})
+
+		plan := f.composeInTheHead(t, 5)
+
+		items := itemsOfKind(plan, fakeDrillKind)
+		require.NotEmpty(t, items, "the composer offers the new family's items")
+		i := slices.IndexFunc(items, func(item domain.PracticeSessionItem) bool { return item.ItemKey == answeredFirst })
+		require.GreaterOrEqual(t, i, 0, "the due item is offered")
+		assert.Equal(t, domain.PracticePickDue, items[i].Reason)
+		assert.Equal(t, "fake_drill:second", items[i].DrillTemplateKey(), "answered right the first way, it is asked the second way")
+		assert.Equal(t, domain.PracticeRungPlayClean, items[i].Rung)
+		for _, item := range items {
+			assert.Equal(t, 12, item.EstimatedSeconds)
+			require.NotNil(t, item.NodeID)
+			assert.Equal(t, "skill-fake", *item.NodeID)
+		}
 	})
 
-	plan := f.composeInTheHead(t, 5)
+	t.Run("each of its ways is a drill of its own: capped, rated and felt", func(t *testing.T) {
+		f := newFamily(t, 30)
+		for i := range 30 {
+			f.due(fakeDrillItem{id: fmt.Sprintf("%02d", i)}.ItemKey())
+		}
 
-	items := itemsOfKind(plan, fakeDrillKind)
-	require.NotEmpty(t, items, "the composer offers the new family's items")
-	assert.Equal(t, answeredFirst, items[0].ItemKey, "a due item comes first")
-	assert.Equal(t, domain.PracticePickDue, items[0].Reason)
-	for _, item := range items {
-		assert.Equal(t, 12, item.EstimatedSeconds)
-		require.NotNil(t, item.NodeID)
-		assert.Equal(t, "skill-fake", *item.NodeID)
-	}
+		plan := f.composeInTheHead(t, 15)
+
+		items := itemsOfKind(plan, fakeDrillKind)
+		require.NotEmpty(t, items)
+		assert.LessOrEqual(t, len(items), domain.MaxGeneratedDrillItems)
+		for _, item := range items {
+			assert.Equal(t, "fake_drill:first", item.DrillTemplateKey())
+			assert.Equal(t, domain.PracticeRungHear, item.Rung)
+		}
+		assert.Contains(t, plan.FeltQuestions, "fake_drill:first")
+	})
 }

@@ -199,6 +199,9 @@ type PracticeSessionItem struct {
 	Reason  PracticePickReason
 	// Rung is the rung of the practice ladder the pick trains: see ItemRung.
 	Rung PracticeRung
+	// Way is the response type a generated drill item is asked through,
+	// which with Kind names its drill template; empty for any other pick.
+	Way string
 	// NodeID is the knowledge node the pick serves; nil when none applies.
 	NodeID           *string
 	Level            KnowledgeLevel
@@ -212,11 +215,13 @@ type PracticeSessionItem struct {
 }
 
 // DrillTemplateKey is the timed drill template answering the item
-// practises: a fretboard cell's or a diagram shape's way of being asked, or
-// an exercise's type.
+// practises: a generated drill item's kind and the way it is asked, or an
+// exercise's type.
 // A play-along is rated, not timed, so it practises none ("").
 func (i PracticeSessionItem) DrillTemplateKey() string {
 	switch {
+	case i.Way != "":
+		return string(i.Kind) + ":" + i.Way
 	case i.FretboardCell != nil:
 		return string(PracticeItemKindFretboardCell) + ":" + string(i.FretboardCell.Drill)
 	case i.DiagramShape != nil:
@@ -246,10 +251,17 @@ func PlanDrillTemplates(items []PracticeSessionItem) []string {
 // is different content.
 const MaxGeneratedDrillItems = 10
 
-// IsGeneratedDrill reports whether the item is asked by a generated drill:
-// a fretboard cell or a diagram shape.
+// IsGeneratedDrill reports whether the item is asked by a generated drill,
+// such as a fretboard cell or a diagram shape.
 func (i PracticeSessionItem) IsGeneratedDrill() bool {
-	return i.FretboardCell != nil || i.DiagramShape != nil
+	return i.Way != "" || i.FretboardCell != nil || i.DiagramShape != nil
+}
+
+// Ask makes the item ask p: p's planned question on it, and the way it is
+// asked, which names its drill.
+func (i *PracticeSessionItem) Ask(p PlannedDrill) {
+	p.AttachTo(i)
+	i.Way = p.Way()
 }
 
 // MaxFeltQuestions is the most "How did it feel?" questions a session asks,

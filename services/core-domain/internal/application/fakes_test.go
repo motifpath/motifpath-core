@@ -2300,12 +2300,15 @@ func (f *fakeExerciseRepository) ListSoundUses(_ context.Context, diagramID stri
 }
 
 // catalogDrillTemplates lists the drill templates the practice drill catalog
-// installs, with their rungs and second ways.
-type catalogDrillTemplates struct{}
+// installs, with their rungs and second ways, then the extra templates a
+// test installs.
+type catalogDrillTemplates struct {
+	extra []domain.DrillTemplate
+}
 
-func (catalogDrillTemplates) List(context.Context) ([]domain.DrillTemplate, error) {
+func (c *catalogDrillTemplates) List(context.Context) ([]domain.DrillTemplate, error) {
 	way := func(key string) *string { return &key }
-	return []domain.DrillTemplate{
+	return append([]domain.DrillTemplate{
 		{Key: "diagram_shape:find_the_degree", ItemKind: domain.PracticeItemKindDiagramShape, Rung: domain.PracticeRungKnow, SecondWay: way("diagram_shape:name_the_shape"), Timed: true},
 		{Key: "diagram_shape:name_the_shape", ItemKind: domain.PracticeItemKindDiagramShape, Rung: domain.PracticeRungKnow, SecondWay: way("diagram_shape:find_the_degree"), Timed: true},
 		{Key: "exercise:audio_recognition", ItemKind: domain.PracticeItemKindExercise, Rung: domain.PracticeRungHear, Timed: true},
@@ -2315,5 +2318,5 @@ func (catalogDrillTemplates) List(context.Context) ([]domain.DrillTemplate, erro
 		{Key: "exercise:text_response", ItemKind: domain.PracticeItemKindExercise, Rung: domain.PracticeRungKnow, Timed: true},
 		{Key: "fretboard_cell:find_the_note", ItemKind: domain.PracticeItemKindFretboardCell, Rung: domain.PracticeRungKnow, SecondWay: way("fretboard_cell:name_the_note"), Timed: true},
 		{Key: "fretboard_cell:name_the_note", ItemKind: domain.PracticeItemKindFretboardCell, Rung: domain.PracticeRungKnow, SecondWay: way("fretboard_cell:find_the_note"), Timed: true},
-	}, nil
+	}, c.extra...), nil
 }

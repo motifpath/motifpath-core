@@ -1131,7 +1131,7 @@ func (c *composer) item(cand practiceCandidate, reason domain.PracticePickReason
 			window := c.windows[k]
 			planning.Window = &window
 		}
-		cand.drill.Plan(domain.NextDrillWay(cand.drill, cand.state), planning).AttachTo(&item)
+		item.Ask(cand.drill.Plan(domain.NextDrillWay(cand.drill, cand.state), planning))
 	}
 	if cand.diagram != nil {
 		item.Kind = domain.PracticeItemKindPlayAlong
