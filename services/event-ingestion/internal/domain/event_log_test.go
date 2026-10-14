@@ -55,3 +55,13 @@ func TestNewEventLogQuery(t *testing.T) {
 		})
 	}
 }
+
+func TestReadableEventTypes_AreEveryTypeTheServiceAccepts(t *testing.T) {
+	assert.ElementsMatch(t, []domain.EventType{
+		domain.EventTypeLessonStarted, domain.EventTypeLessonResumed, domain.EventTypeLessonCompleted,
+		domain.EventTypeExerciseStarted, domain.EventTypeExerciseProgress, domain.EventTypeExerciseEnded,
+		domain.EventTypePracticeSessionStarted, domain.EventTypePracticeItemAnswered, domain.EventTypePracticeSessionEnded,
+		domain.EventTypePracticeTapCheckCompleted,
+		domain.EventTypeSongChartOpened, domain.EventTypeSongChartChordViewed, domain.EventTypeSongChartCompleted,
+	}, domain.ReadableEventTypes())
+}

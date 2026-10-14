@@ -20,6 +20,17 @@ var eventTypeGroups = map[string][]EventType{
 	"song_charts":       {EventTypeSongChartOpened, EventTypeSongChartChordViewed, EventTypeSongChartCompleted},
 }
 
+// ReadableEventTypes are the event types the log can return: every type the
+// service accepts today. A retired type's events stay in the append-only log
+// but can no longer be read back as an event.
+func ReadableEventTypes() []EventType {
+	var types []EventType
+	for _, group := range []string{"practice_sessions", "answers", "lessons", "exercises", "song_charts"} {
+		types = append(types, eventTypeGroups[group]...)
+	}
+	return types
+}
+
 // LoggedEvent is a tracking event as it was received, with when it was.
 type LoggedEvent struct {
 	ReceivedAt time.Time
@@ -31,7 +42,7 @@ type LoggedEvent struct {
 type EventLogQuery struct {
 	// StudentID is empty for every student's events.
 	StudentID string
-	// EventTypes is empty for events of every type.
+	// EventTypes is empty for events of every readable type.
 	EventTypes []EventType
 	Limit      int
 	Offset     int

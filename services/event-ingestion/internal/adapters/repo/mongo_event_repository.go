@@ -94,13 +94,17 @@ func (r *MongoEventRepository) List(ctx context.Context, q domain.EventLogQuery)
 	if q.StudentID != "" {
 		filter = append(filter, bson.E{Key: "student_id", Value: q.StudentID})
 	}
-	if len(q.EventTypes) > 0 {
-		types := make([]string, len(q.EventTypes))
-		for i, t := range q.EventTypes {
-			types[i] = string(t)
-		}
-		filter = append(filter, bson.E{Key: "event_type", Value: bson.D{{Key: "$in", Value: types}}})
+	// Events of a retired type stay in the log but can't be read back, so
+	// they are left out of the page and of the total alike.
+	eventTypes := q.EventTypes
+	if len(eventTypes) == 0 {
+		eventTypes = domain.ReadableEventTypes()
 	}
+	types := make([]string, len(eventTypes))
+	for i, t := range eventTypes {
+		types[i] = string(t)
+	}
+	filter = append(filter, bson.E{Key: "event_type", Value: bson.D{{Key: "$in", Value: types}}})
 
 	total, err := r.collection.CountDocuments(ctx, filter)
 	if err != nil {
