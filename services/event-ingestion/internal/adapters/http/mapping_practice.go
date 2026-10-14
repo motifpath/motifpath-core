@@ -29,6 +29,12 @@ const (
 	maxFeltRatings     = 2
 	maxTempoBPM        = 400
 	maxChangesPerMin   = 600
+	noteChoices        = 4
+	minOptions         = 2
+	maxOptions         = 8
+	maxOptionLength    = 120
+	maxTaps            = 400
+	maxTappedCells     = 72
 )
 
 var (
@@ -37,6 +43,22 @@ var (
 	// shapeKeyPattern is a shape family member's key, such as A, 2 or minor.
 	shapeKeyPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9-]*$`)
 )
+
+// generatedChoiceWays are the ways a generated question can be asked.
+var generatedChoiceWays = map[string]bool{
+	"numeral_to_chord": true, "chord_to_numeral": true, "chord_to_function": true, "function_to_chord": true,
+	"chart_to_numbers": true, "numbers_to_chart": true, "cadence_then_chord": true, "progression_by_number": true,
+}
+
+// musicKeys are the major keys, spelled as the chord catalog spells roots.
+var musicKeys = map[string]bool{
+	"C": true, "Db": true, "D": true, "Eb": true, "E": true, "F": true,
+	"F#": true, "G": true, "Ab": true, "A": true, "Bb": true, "B": true,
+}
+
+// fretWindowStarts are the lowest frets a fret window can start at; never 1, since
+// a window at the nut takes the open string too.
+var fretWindowStarts = map[int]bool{0: true, 2: true, 3: true, 4: true, 5: true, 6: true, 7: true}
 
 // shapeIntervals are the interval codes a diagram position can have.
 var shapeIntervals = map[string]bool{
@@ -265,6 +287,30 @@ type rawPracticeResponse struct {
 	Rating           *string  `json:"rating"`
 	TempoBPM         *int     `json:"tempo_bpm"`
 	ChangesPerMinute *int     `json:"changes_per_minute"`
+	Choices          []string `json:"choices"`
+	Reason           *string  `json:"reason"`
+	Way              *string  `json:"way"`
+	MusicKey         *string  `json:"music_key"`
+	Options          []string `json:"options"`
+	Choice           *string  `json:"choice"`
+	Tone             *string  `json:"tone"`
+	Taps             []rawTap `json:"taps"`
+	FretWindow       *struct {
+		FromFret *int `json:"from_fret"`
+	} `json:"fret_window"`
+	Cells []rawCell `json:"cells"`
+}
+
+// rawTap and rawCell hold a tap's properties as pointers, so a missing one is refused.
+type rawTap struct {
+	AtMs   *int `json:"at_ms"`
+	String *int `json:"string"`
+	Fret   *int `json:"fret"`
+}
+
+type rawCell struct {
+	String *int `json:"string"`
+	Fret   *int `json:"fret"`
 }
 
 // strayProperty is the first property r carries that isn't one of shape's
@@ -278,6 +324,10 @@ func (r rawPracticeResponse) strayProperty(shape ...string) string {
 		{"string", r.String != nil}, {"fret", r.Fret != nil}, {"option_ids", r.OptionIDs != nil},
 		{"latency_ms", r.LatencyMs != nil}, {"audio_ms", r.AudioMs != nil}, {"rating", r.Rating != nil},
 		{"tempo_bpm", r.TempoBPM != nil}, {"changes_per_minute", r.ChangesPerMinute != nil},
+		{"choices", r.Choices != nil}, {"reason", r.Reason != nil}, {"way", r.Way != nil},
+		{"music_key", r.MusicKey != nil}, {"options", r.Options != nil}, {"choice", r.Choice != nil},
+		{"tone", r.Tone != nil}, {"taps", r.Taps != nil}, {"fret_window", r.FretWindow != nil},
+		{"cells", r.Cells != nil},
 	}
 	for _, p := range carried {
 		if p.present && !slices.Contains(shape, p.name) {
@@ -304,8 +354,9 @@ func toDomainPracticeResponse(raw []byte) (domain.PracticeResponse, error) {
 	if r.AudioMs != nil && *r.AudioMs < 0 {
 		return invalidResponse("audio_ms must not be negative")
 	}
-	if r.AudioMs != nil && domain.PracticeResponseType(r.ResponseType) != domain.PracticeResponseOptionChoice {
-		return invalidResponse("audio_ms belongs to option_choice only")
+	if t := domain.PracticeResponseType(r.ResponseType); r.AudioMs != nil &&
+		t != domain.PracticeResponseOptionChoice && t != domain.PracticeResponseGeneratedChoice {
+		return invalidResponse("audio_ms belongs to option_choice and generated_choice only")
 	}
 
 	toShape, ok := responseShapes[domain.PracticeResponseType(r.ResponseType)]
@@ -317,12 +368,16 @@ func toDomainPracticeResponse(raw []byte) (domain.PracticeResponse, error) {
 
 // responseShapes reads each response shape, by its response_type.
 var responseShapes = map[domain.PracticeResponseType]func(rawPracticeResponse) (domain.PracticeResponse, error){
-	domain.PracticeResponseNameTheNote:   toNameTheNoteResponse,
-	domain.PracticeResponseFindTheNote:   toFindTheNoteResponse,
-	domain.PracticeResponseOptionChoice:  toOptionChoiceResponse,
-	domain.PracticeResponseSelfRating:    toSelfRatingResponse,
-	domain.PracticeResponseNameTheShape:  toNameTheShapeResponse,
-	domain.PracticeResponseFindTheDegree: toFindTheDegreeResponse,
+	domain.PracticeResponseNameTheNote:     toNameTheNoteResponse,
+	domain.PracticeResponseFindTheNote:     toFindTheNoteResponse,
+	domain.PracticeResponseOptionChoice:    toOptionChoiceResponse,
+	domain.PracticeResponseSelfRating:      toSelfRatingResponse,
+	domain.PracticeResponseNameTheShape:    toNameTheShapeResponse,
+	domain.PracticeResponseFindTheDegree:   toFindTheDegreeResponse,
+	domain.PracticeResponseGeneratedChoice: toGeneratedChoiceResponse,
+	domain.PracticeResponseTimedTaps:       toTimedTapsResponse,
+	domain.PracticeResponseMultiTap:        toMultiTapResponse,
+	domain.PracticeResponseNotAnswered:     toNotAnsweredResponse,
 }
 
 func invalidResponse(why string) (domain.PracticeResponse, error) {
@@ -330,16 +385,160 @@ func invalidResponse(why string) (domain.PracticeResponse, error) {
 }
 
 func toNameTheNoteResponse(r rawPracticeResponse) (domain.PracticeResponse, error) {
-	if property := r.strayProperty("note_name", "latency_ms"); property != "" {
+	if property := r.strayProperty("note_name", "choices", "latency_ms"); property != "" {
 		return invalidResponse(property + " is not a property of name_the_note")
 	}
 	if r.NoteName == nil || !noteNamePattern.MatchString(*r.NoteName) {
 		return invalidResponse("note_name must be a note letter with an optional # or b")
 	}
+	if r.Choices != nil {
+		if len(r.Choices) != noteChoices || !distinct(r.Choices) {
+			return invalidResponse(fmt.Sprintf("choices must be %d different notes", noteChoices))
+		}
+		for _, c := range r.Choices {
+			if !noteNamePattern.MatchString(c) {
+				return invalidResponse("choices must be note letters with an optional # or b")
+			}
+		}
+	}
 	if r.LatencyMs == nil {
 		return invalidResponse("latency_ms is required")
 	}
-	return domain.PracticeResponse{Type: domain.PracticeResponseNameTheNote, NoteName: *r.NoteName, LatencyMs: r.LatencyMs}, nil
+	return domain.PracticeResponse{Type: domain.PracticeResponseNameTheNote, NoteName: *r.NoteName, Choices: r.Choices, LatencyMs: r.LatencyMs}, nil
+}
+
+func toNotAnsweredResponse(r rawPracticeResponse) (domain.PracticeResponse, error) {
+	if property := r.strayProperty("reason"); property != "" {
+		return invalidResponse(property + " is not a property of not_answered")
+	}
+	if r.Reason == nil {
+		return invalidResponse("reason is required")
+	}
+	reason := domain.NotAnsweredReason(*r.Reason)
+	switch reason {
+	case domain.NotAnsweredFailedToLoad, domain.NotAnsweredUnavailable:
+	default:
+		return invalidResponse("reason must be failed_to_load or unavailable")
+	}
+	return domain.PracticeResponse{Type: domain.PracticeResponseNotAnswered, Reason: reason}, nil
+}
+
+func toGeneratedChoiceResponse(r rawPracticeResponse) (domain.PracticeResponse, error) {
+	if property := r.strayProperty("way", "music_key", "options", "choice", "latency_ms", "audio_ms"); property != "" {
+		return invalidResponse(property + " is not a property of generated_choice")
+	}
+	if r.Way == nil || !generatedChoiceWays[*r.Way] {
+		return invalidResponse("way must be a way a generated question is asked")
+	}
+	if r.MusicKey != nil && !musicKeys[*r.MusicKey] {
+		return invalidResponse("music_key must be a major key spelled as C, Db, D, Eb, E, F, F#, G, Ab, A, Bb or B")
+	}
+	if why := checkOptions(r.Options); why != "" {
+		return invalidResponse(why)
+	}
+	if r.Choice == nil || *r.Choice == "" || len(*r.Choice) > maxOptionLength {
+		return invalidResponse(fmt.Sprintf("choice must be 1 to %d characters long", maxOptionLength))
+	}
+	if r.LatencyMs == nil {
+		return invalidResponse("latency_ms is required")
+	}
+	resp := domain.PracticeResponse{Type: domain.PracticeResponseGeneratedChoice, Way: *r.Way, Options: r.Options,
+		Choice: *r.Choice, LatencyMs: r.LatencyMs, AudioMs: r.AudioMs}
+	if r.MusicKey != nil {
+		resp.MusicKey = *r.MusicKey
+	}
+	return resp, nil
+}
+
+// checkOptions is why a generated question's options are refused, or "".
+func checkOptions(options []string) string {
+	if len(options) < minOptions || len(options) > maxOptions || !distinct(options) {
+		return fmt.Sprintf("options must be %d to %d different options", minOptions, maxOptions)
+	}
+	for _, o := range options {
+		if o == "" || len(o) > maxOptionLength {
+			return fmt.Sprintf("options must be 1 to %d characters long", maxOptionLength)
+		}
+	}
+	return ""
+}
+
+func toTimedTapsResponse(r rawPracticeResponse) (domain.PracticeResponse, error) {
+	if property := r.strayProperty("music_key", "tone", "tempo_bpm", "taps"); property != "" {
+		return invalidResponse(property + " is not a property of timed_taps")
+	}
+	if r.MusicKey == nil || !musicKeys[*r.MusicKey] {
+		return invalidResponse("music_key must be a major key spelled as C, Db, D, Eb, E, F, F#, G, Ab, A, Bb or B")
+	}
+	if r.Tone == nil || (*r.Tone != "3" && *r.Tone != "7") {
+		return invalidResponse("tone must be 3 or 7")
+	}
+	if r.TempoBPM == nil || *r.TempoBPM < 1 || *r.TempoBPM > maxTempoBPM {
+		return invalidResponse(fmt.Sprintf("tempo_bpm must be between 1 and %d", maxTempoBPM))
+	}
+	taps, why := toTimedTaps(r.Taps)
+	if why != "" {
+		return invalidResponse(why)
+	}
+	return domain.PracticeResponse{Type: domain.PracticeResponseTimedTaps, MusicKey: *r.MusicKey, Tone: *r.Tone,
+		TempoBPM: r.TempoBPM, Taps: taps}, nil
+}
+
+// toTimedTaps reads a take's taps, or says why they are refused.
+func toTimedTaps(raw []rawTap) ([]domain.TimedTap, string) {
+	if raw == nil || len(raw) > maxTaps {
+		return nil, fmt.Sprintf("taps must list at most %d taps", maxTaps)
+	}
+	taps := make([]domain.TimedTap, 0, len(raw))
+	for _, t := range raw {
+		if t.AtMs == nil || *t.AtMs < 0 || t.String == nil || *t.String < 1 || t.Fret == nil || *t.Fret < 0 {
+			return nil, "each tap needs at_ms of 0 or more, string of 1 or more and fret of 0 or more"
+		}
+		taps = append(taps, domain.TimedTap{AtMs: *t.AtMs, String: *t.String, Fret: *t.Fret})
+	}
+	return taps, ""
+}
+
+func toMultiTapResponse(r rawPracticeResponse) (domain.PracticeResponse, error) {
+	if property := r.strayProperty("fret_window", "cells", "latency_ms"); property != "" {
+		return invalidResponse(property + " is not a property of multi_tap")
+	}
+	if r.FretWindow == nil || r.FretWindow.FromFret == nil || !fretWindowStarts[*r.FretWindow.FromFret] {
+		return invalidResponse("fret_window.from_fret must be 0 or 2 to 7")
+	}
+	if r.Cells == nil || len(r.Cells) > maxTappedCells {
+		return invalidResponse(fmt.Sprintf("cells must list at most %d places", maxTappedCells))
+	}
+	cells := make([]domain.TappedCell, 0, len(r.Cells))
+	seen := make(map[domain.TappedCell]bool, len(r.Cells))
+	for _, c := range r.Cells {
+		if c.String == nil || *c.String < 1 || c.Fret == nil || *c.Fret < 0 {
+			return invalidResponse("each cell needs string of 1 or more and fret of 0 or more")
+		}
+		cell := domain.TappedCell{String: *c.String, Fret: *c.Fret}
+		if seen[cell] {
+			return invalidResponse("cells must not repeat a place")
+		}
+		seen[cell] = true
+		cells = append(cells, cell)
+	}
+	if r.LatencyMs == nil {
+		return invalidResponse("latency_ms is required")
+	}
+	from := *r.FretWindow.FromFret
+	return domain.PracticeResponse{Type: domain.PracticeResponseMultiTap, FretWindowFrom: &from, Cells: cells, LatencyMs: r.LatencyMs}, nil
+}
+
+// distinct reports whether no value repeats.
+func distinct(values []string) bool {
+	seen := make(map[string]bool, len(values))
+	for _, v := range values {
+		if seen[v] {
+			return false
+		}
+		seen[v] = true
+	}
+	return true
 }
 
 func toFindTheNoteResponse(r rawPracticeResponse) (domain.PracticeResponse, error) {

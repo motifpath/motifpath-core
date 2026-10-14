@@ -1653,25 +1653,55 @@ func (e PracticeFocusSource) Valid() bool {
 
 // Defines values for PracticeItemKind.
 const (
-	PracticeItemKindChordChange   PracticeItemKind = "chord_change"
-	PracticeItemKindDiagramShape  PracticeItemKind = "diagram_shape"
-	PracticeItemKindExercise      PracticeItemKind = "exercise"
-	PracticeItemKindFretboardCell PracticeItemKind = "fretboard_cell"
-	PracticeItemKindPlayAlong     PracticeItemKind = "play_along"
+	PracticeItemKindChartProgression PracticeItemKind = "chart_progression"
+	PracticeItemKindChordChange      PracticeItemKind = "chord_change"
+	PracticeItemKindChordFunction    PracticeItemKind = "chord_function"
+	PracticeItemKindChordVoicing     PracticeItemKind = "chord_voicing"
+	PracticeItemKindDiagramShape     PracticeItemKind = "diagram_shape"
+	PracticeItemKindDiatonicChord    PracticeItemKind = "diatonic_chord"
+	PracticeItemKindExercise         PracticeItemKind = "exercise"
+	PracticeItemKindFretboardCell    PracticeItemKind = "fretboard_cell"
+	PracticeItemKindFretboardNote    PracticeItemKind = "fretboard_note"
+	PracticeItemKindGuideTone        PracticeItemKind = "guide_tone"
+	PracticeItemKindHeardChord       PracticeItemKind = "heard_chord"
+	PracticeItemKindHeardProgression PracticeItemKind = "heard_progression"
+	PracticeItemKindPlayAlong        PracticeItemKind = "play_along"
+	PracticeItemKindRootChange       PracticeItemKind = "root_change"
+	PracticeItemKindRootFifth        PracticeItemKind = "root_fifth"
 )
 
 // Valid indicates whether the value is a known member of the PracticeItemKind enum.
 func (e PracticeItemKind) Valid() bool {
 	switch e {
+	case PracticeItemKindChartProgression:
+		return true
 	case PracticeItemKindChordChange:
 		return true
+	case PracticeItemKindChordFunction:
+		return true
+	case PracticeItemKindChordVoicing:
+		return true
 	case PracticeItemKindDiagramShape:
+		return true
+	case PracticeItemKindDiatonicChord:
 		return true
 	case PracticeItemKindExercise:
 		return true
 	case PracticeItemKindFretboardCell:
 		return true
+	case PracticeItemKindFretboardNote:
+		return true
+	case PracticeItemKindGuideTone:
+		return true
+	case PracticeItemKindHeardChord:
+		return true
+	case PracticeItemKindHeardProgression:
+		return true
 	case PracticeItemKindPlayAlong:
+		return true
+	case PracticeItemKindRootChange:
+		return true
+	case PracticeItemKindRootFifth:
 		return true
 	default:
 		return false
@@ -5406,6 +5436,34 @@ type FretboardMapCell struct {
 	//   family, or finding one of its degrees. One diagram is one item: the same shape in
 	//   another key has other positions, so it is another item.
 	//
+	// - diatonic_chord:<key>:<numeral> — a numeral's chord in a major key, recalled in the
+	//   head: picking the chord for the numeral, or the numeral for the chord.
+	// - chord_function:<key>:<numeral> — a numeral's harmonic function in a major key: picking
+	//   the function of its chord, or its chord for the function.
+	// - chart_progression:<progression key> — a progression of the progression catalog read
+	//   as a chart: picking the progression for four chords, or its chart for the progression.
+	//   The key is picked each time it is asked, so one item covers every key.
+	// - heard_chord:<numeral> — a numeral recognised by ear in a key a cadence sets. The key is
+	//   picked each time.
+	// - heard_progression:<progression key> — a progression recognised by ear. The key is
+	//   picked each time.
+	// - chord_voicing:<diagram id> — playing one chord voicing cleanly, untimed.
+	// - root_fifth:<layout instrument id>:<chord> — playing a chord's root and fifth on a bass
+	//   layout, cleanly, untimed.
+	// - root_change:<layout instrument id>:<from chord>:<to chord> — changing between two
+	//   chords' roots on a bass layout.
+	// - guide_tone:<layout instrument id>:<progression key> — tapping a chord tone of each chord
+	//   of a progression in time with its playback. The key, the tone and the tempo are picked
+	//   each time.
+	// - fretboard_note:<layout instrument id>:<note> — finding every place of a note within a
+	//   fret window. The window is picked each time.
+	//
+	// In these keys, <key> is a major key spelled as one of C Db D Eb E F F# G Ab A Bb B;
+	// <numeral> is one of I ii iii IV V vi viio (viio is vii°); <chord> is a root spelled the
+	// same way, followed by m (minor), dim (diminished), 7 (dominant seventh) or nothing
+	// (major); <note> is spelled with sharps; <progression key> is a key of the progression
+	// catalog.
+	//
 	// Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
 	// grader, and its golden cases.
 	ItemKey PracticeItemKey `json:"item_key"`
@@ -6229,12 +6287,53 @@ type PracticeInstrumentCard struct {
 //     The instrument is the one whose fretboard layout the cell belongs to, so instruments
 //     that share a layout share the cell. Strings are numbered from 1, the highest-pitched;
 //     fret 0 is the open string.
+//
 //   - exercise:<exercise id> — an authored exercise.
+//
 //   - play_along:<diagram id> — playing a diagram along with its playback, at a tempo.
+//
 //   - chord_change:<from diagram id>:<to diagram id> — changing between two chord diagrams.
+//
 //   - diagram_shape:<diagram id> — a catalog shape recalled in the head: naming it among its
 //     family, or finding one of its degrees. One diagram is one item: the same shape in
 //     another key has other positions, so it is another item.
+//
+//   - diatonic_chord:<key>:<numeral> — a numeral's chord in a major key, recalled in the
+//     head: picking the chord for the numeral, or the numeral for the chord.
+//
+//   - chord_function:<key>:<numeral> — a numeral's harmonic function in a major key: picking
+//     the function of its chord, or its chord for the function.
+//
+//   - chart_progression:<progression key> — a progression of the progression catalog read
+//     as a chart: picking the progression for four chords, or its chart for the progression.
+//     The key is picked each time it is asked, so one item covers every key.
+//
+//   - heard_chord:<numeral> — a numeral recognised by ear in a key a cadence sets. The key is
+//     picked each time.
+//
+//   - heard_progression:<progression key> — a progression recognised by ear. The key is
+//     picked each time.
+//
+//   - chord_voicing:<diagram id> — playing one chord voicing cleanly, untimed.
+//
+//   - root_fifth:<layout instrument id>:<chord> — playing a chord's root and fifth on a bass
+//     layout, cleanly, untimed.
+//
+//   - root_change:<layout instrument id>:<from chord>:<to chord> — changing between two
+//     chords' roots on a bass layout.
+//
+//   - guide_tone:<layout instrument id>:<progression key> — tapping a chord tone of each chord
+//     of a progression in time with its playback. The key, the tone and the tempo are picked
+//     each time.
+//
+//   - fretboard_note:<layout instrument id>:<note> — finding every place of a note within a
+//     fret window. The window is picked each time.
+//
+// In these keys, <key> is a major key spelled as one of C Db D Eb E F F# G Ab A Bb B;
+// <numeral> is one of I ii iii IV V vi viio (viio is vii°); <chord> is a root spelled the
+// same way, followed by m (minor), dim (diminished), 7 (dominant seventh) or nothing
+// (major); <note> is spelled with sharps; <progression key> is a key of the progression
+// catalog.
 //
 // Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
 // grader, and its golden cases.
@@ -6518,6 +6617,34 @@ type PracticeSessionItem struct {
 	// - diagram_shape:<diagram id> — a catalog shape recalled in the head: naming it among its
 	//   family, or finding one of its degrees. One diagram is one item: the same shape in
 	//   another key has other positions, so it is another item.
+	//
+	// - diatonic_chord:<key>:<numeral> — a numeral's chord in a major key, recalled in the
+	//   head: picking the chord for the numeral, or the numeral for the chord.
+	// - chord_function:<key>:<numeral> — a numeral's harmonic function in a major key: picking
+	//   the function of its chord, or its chord for the function.
+	// - chart_progression:<progression key> — a progression of the progression catalog read
+	//   as a chart: picking the progression for four chords, or its chart for the progression.
+	//   The key is picked each time it is asked, so one item covers every key.
+	// - heard_chord:<numeral> — a numeral recognised by ear in a key a cadence sets. The key is
+	//   picked each time.
+	// - heard_progression:<progression key> — a progression recognised by ear. The key is
+	//   picked each time.
+	// - chord_voicing:<diagram id> — playing one chord voicing cleanly, untimed.
+	// - root_fifth:<layout instrument id>:<chord> — playing a chord's root and fifth on a bass
+	//   layout, cleanly, untimed.
+	// - root_change:<layout instrument id>:<from chord>:<to chord> — changing between two
+	//   chords' roots on a bass layout.
+	// - guide_tone:<layout instrument id>:<progression key> — tapping a chord tone of each chord
+	//   of a progression in time with its playback. The key, the tone and the tempo are picked
+	//   each time.
+	// - fretboard_note:<layout instrument id>:<note> — finding every place of a note within a
+	//   fret window. The window is picked each time.
+	//
+	// In these keys, <key> is a major key spelled as one of C Db D Eb E F F# G Ab A Bb B;
+	// <numeral> is one of I ii iii IV V vi viio (viio is vii°); <chord> is a root spelled the
+	// same way, followed by m (minor), dim (diminished), 7 (dominant seventh) or nothing
+	// (major); <note> is spelled with sharps; <progression key> is a key of the progression
+	// catalog.
 	//
 	// Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
 	// grader, and its golden cases.

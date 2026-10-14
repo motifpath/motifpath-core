@@ -55,6 +55,12 @@ func (s *PracticeEvidenceService) process(ctx context.Context, answer domain.Pra
 		log.WarnContext(ctx, "practice answer has an invalid item key, dropping")
 		return "", nil
 	}
+	if answer.Response.Type == domain.PracticeResponseNotAnswered {
+		// A skipped item is never graded: the events collection keeps it, and its
+		// level and review stay as they were.
+		log.InfoContext(ctx, "practice item not answered, no evidence", "not_answered_reason", answer.Response.Reason)
+		return "", nil
+	}
 	grader, ok := domain.GraderFor(key.Kind)
 	if !ok {
 		log.InfoContext(ctx, "no grader for this item kind yet, dropping", "kind", key.Kind)
@@ -95,6 +101,11 @@ func (s *PracticeEvidenceService) referenceFor(ctx context.Context, key domain.P
 	ref := domain.PracticeReference{Diagrams: diagrams}
 	if id := key.ExerciseID(); id != "" {
 		if ref.Exercises, err = s.reference.Exercises(ctx, []string{id}); err != nil {
+			return domain.PracticeReference{}, err
+		}
+	}
+	if key.ProgressionKey() != "" {
+		if ref.Progressions, err = s.reference.Progressions(ctx); err != nil {
 			return domain.PracticeReference{}, err
 		}
 	}
@@ -146,15 +157,15 @@ func (s *PracticeEvidenceService) foldInto(ctx context.Context, evidence domain.
 }
 
 // goalByWayAsked is a goal with the fluent times of each way an item of kind is
-// asked, its drill templates being <kind>:<response type>.
-func (s *PracticeEvidenceService) goalByWayAsked(ctx context.Context, kind domain.PracticeItemKind, ways ...domain.PracticeResponseType) (domain.ItemGoal, error) {
-	goal := domain.ItemGoal{FluentTimesByResponse: map[domain.PracticeResponseType][]domain.FluentTime{}}
+// asked, its drill templates being <kind>:<way>.
+func (s *PracticeEvidenceService) goalByWayAsked(ctx context.Context, kind domain.PracticeItemKind, ways ...string) (domain.ItemGoal, error) {
+	goal := domain.ItemGoal{FluentTimesByWay: map[string][]domain.FluentTime{}}
 	for _, asked := range ways {
-		fluentTimes, err := s.reference.FluentTimes(ctx, string(kind)+":"+string(asked))
+		fluentTimes, err := s.reference.FluentTimes(ctx, string(kind)+":"+asked)
 		if err != nil {
 			return domain.ItemGoal{}, err
 		}
-		goal.FluentTimesByResponse[asked] = fluentTimes
+		goal.FluentTimesByWay[asked] = fluentTimes
 	}
 	return goal, nil
 }
@@ -183,8 +194,9 @@ func toEvidence(answer domain.PracticeAnswer, graderID string, graded domain.Gra
 
 // goalOf is what the item's fluency is measured against. A play-along is measured
 // against its diagram's tempo, an exercise against its type's fluent times, and a
-// fretboard cell or a diagram shape against the fluent times of each way it is asked. Chord changes
-// have no source for a target rate yet, so any clean minute counts as fully fluent.
+// generated drill against the fluent times of each way it is asked. Chord and root
+// changes have no source for a target rate yet, so any clean minute counts as fully
+// fluent, and a chord played clean has no measure at all.
 func (s *PracticeEvidenceService) goalOf(ctx context.Context, key domain.PracticeItemKey, ref domain.PracticeReference) (domain.ItemGoal, error) {
 	switch key.Kind {
 	case domain.PracticeItemKindPlayAlong:
@@ -193,10 +205,18 @@ func (s *PracticeEvidenceService) goalOf(ctx context.Context, key domain.Practic
 		fluentTimes, err := s.reference.FluentTimes(ctx, ref.Exercises[key.ExerciseID()].DrillTemplateKey())
 		return domain.ItemGoal{FluentTimes: fluentTimes}, err
 	case domain.PracticeItemKindFretboardCell:
-		return s.goalByWayAsked(ctx, key.Kind, domain.PracticeResponseNameTheNote, domain.PracticeResponseFindTheNote)
+		return s.goalByWayAsked(ctx, key.Kind, string(domain.PracticeResponseNameTheNote), string(domain.PracticeResponseFindTheNote))
 	case domain.PracticeItemKindDiagramShape:
-		return s.goalByWayAsked(ctx, key.Kind, domain.PracticeResponseNameTheShape, domain.PracticeResponseFindTheDegree)
-	case domain.PracticeItemKindChordChange:
+		return s.goalByWayAsked(ctx, key.Kind, string(domain.PracticeResponseNameTheShape), string(domain.PracticeResponseFindTheDegree))
+	case domain.PracticeItemKindDiatonicChord, domain.PracticeItemKindChordFunction, domain.PracticeItemKindChartProgression,
+		domain.PracticeItemKindHeardChord, domain.PracticeItemKindHeardProgression:
+		return s.goalByWayAsked(ctx, key.Kind, domain.WaysOf(key.Kind)...)
+	case domain.PracticeItemKindGuideTone:
+		return s.goalByWayAsked(ctx, key.Kind, domain.WayAsked(key.Kind, domain.PracticeResponse{Type: domain.PracticeResponseTimedTaps}))
+	case domain.PracticeItemKindFretboardNote:
+		return s.goalByWayAsked(ctx, key.Kind, domain.WayAsked(key.Kind, domain.PracticeResponse{Type: domain.PracticeResponseMultiTap}))
+	case domain.PracticeItemKindChordChange, domain.PracticeItemKindRootChange, domain.PracticeItemKindChordVoicing,
+		domain.PracticeItemKindRootFifth:
 	}
 	return domain.ItemGoal{}, nil
 }

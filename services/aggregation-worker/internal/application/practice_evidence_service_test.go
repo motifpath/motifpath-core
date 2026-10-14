@@ -29,11 +29,19 @@ const (
 var playAlongKey = "play_along:" + pentatonic
 
 type fakeReference struct {
-	diagrams    map[string]domain.DiagramReference
-	exercises   map[string]domain.ExerciseReference
-	instruments map[string]domain.InstrumentReference
-	fluentTimes map[string][]domain.FluentTime
-	err         error
+	diagrams     map[string]domain.DiagramReference
+	exercises    map[string]domain.ExerciseReference
+	instruments  map[string]domain.InstrumentReference
+	progressions map[string]domain.ProgressionReference
+	fluentTimes  map[string][]domain.FluentTime
+	err          error
+}
+
+func (f *fakeReference) Progressions(_ context.Context) (map[string]domain.ProgressionReference, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	return f.progressions, nil
 }
 
 func (f *fakeReference) Instruments(_ context.Context, ids []string) (map[string]domain.InstrumentReference, error) {
@@ -180,11 +188,16 @@ func newPracticeFixture() *practiceFixture {
 				guitarLayout: {ID: guitarLayout, Tuning: []string{"E2", "A2", "D3", "G3", "B3", "E4"}},
 			},
 			fluentTimes: map[string][]domain.FluentTime{
-				"exercise:text_response":        {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 6000}},
-				"fretboard_cell:name_the_note":  {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 3000}},
-				"fretboard_cell:find_the_note":  {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 4000}},
-				"diagram_shape:name_the_shape":  {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 4000}},
-				"diagram_shape:find_the_degree": {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 2000}},
+				"exercise:text_response":                  {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 6000}},
+				"fretboard_cell:name_the_note":            {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 3000}},
+				"fretboard_cell:find_the_note":            {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 4000}},
+				"diagram_shape:name_the_shape":            {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 4000}},
+				"diagram_shape:find_the_degree":           {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 2000}},
+				"heard_progression:progression_by_number": {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 4000}},
+			},
+			progressions: map[string]domain.ProgressionReference{
+				"I-V-vi-IV": {Key: "I-V-vi-IV", Bars: []string{"I", "V", "vi", "IV"}},
+				"I-vi-IV-V": {Key: "I-vi-IV-V", Bars: []string{"I", "vi", "IV", "V"}},
 			},
 		},
 		evidence: &fakeEvidence{},
@@ -316,7 +329,7 @@ func TestPracticeEvidenceService_GradesAndFoldsAFretboardCellAnswer(t *testing.T
 
 		require.Len(t, f.evidence.stored, 1)
 		e := f.evidence.stored[0]
-		assert.Equal(t, "fretboard_cell.v1", e.GraderID)
+		assert.Equal(t, "fretboard_cell.v2", e.GraderID)
 		require.NotNil(t, e.Correct)
 		assert.True(t, *e.Correct)
 		require.NotNil(t, e.AnswerKey)
@@ -325,7 +338,7 @@ func TestPracticeEvidenceService_GradesAndFoldsAFretboardCellAnswer(t *testing.T
 		require.True(t, ok)
 		// 3500 ms less the 300 ms tap is 3200 ms against naming's 3000 ms.
 		assert.InDelta(t, 3000.0/3200, fold.Fluency, 1e-9)
-		assert.Equal(t, 1, fold.RightByResponse[domain.PracticeResponseNameTheNote])
+		assert.Equal(t, 1, fold.RightByResponse[string(domain.PracticeResponseNameTheNote)])
 	})
 
 	t.Run("a found note is judged by finding's fluent time", func(t *testing.T) {
@@ -382,7 +395,7 @@ func TestPracticeEvidenceService_GradesAndFoldsADiagramShapeAnswer(t *testing.T)
 		fold, ok := f.fold(t, answer.ItemKey)
 		require.True(t, ok)
 		assert.InDelta(t, 1, fold.Fluency, 1e-9, "3200 ms is within naming's 4000 ms")
-		assert.Equal(t, 1, fold.RightByResponse[domain.PracticeResponseNameTheShape])
+		assert.Equal(t, 1, fold.RightByResponse[string(domain.PracticeResponseNameTheShape)])
 	})
 
 	t.Run("a found degree is graded on the shape's layout and judged by finding's fluent time", func(t *testing.T) {
@@ -410,6 +423,31 @@ func TestPracticeEvidenceService_GradesAndFoldsADiagramShapeAnswer(t *testing.T)
 
 		assert.Empty(t, f.evidence.stored)
 	})
+}
+
+func TestPracticeEvidenceService_GradesAndFoldsAGeneratedQuestion(t *testing.T) {
+	f := newPracticeFixture()
+	latency, audio := 9000, 5000
+	answer := domain.PracticeAnswer{
+		EventID: "e0000000-0000-4000-8000-0000000000e1", StudentID: alice, OccurredAt: monday,
+		PracticeSessionID: "5e551000-0000-4000-8000-000000000001",
+		ItemKey:           "heard_progression:I-vi-IV-V",
+		Response: domain.PracticeResponse{Type: domain.PracticeResponseGeneratedChoice, Way: "progression_by_number", MusicKey: "G",
+			Options: []string{"I-V-vi-IV", "I-vi-IV-V"}, Choice: "I-vi-IV-V", LatencyMs: &latency, AudioMs: &audio},
+	}
+
+	require.NoError(t, f.service.Process(context.Background(), answer))
+
+	require.Len(t, f.evidence.stored, 1)
+	e := f.evidence.stored[0]
+	assert.Equal(t, "generated_choice.v1", e.GraderID)
+	require.NotNil(t, e.Correct)
+	assert.True(t, *e.Correct)
+	assert.Equal(t, &domain.AnswerKey{Way: "progression_by_number", MusicKey: "G", Answer: "I-vi-IV-V", Offered: []string{"I-V-vi-IV", "I-vi-IV-V"}}, e.AnswerKey)
+	fold, ok := f.fold(t, answer.ItemKey)
+	require.True(t, ok)
+	assert.InDelta(t, 1, fold.Fluency, 1e-9, "9000 ms less 5000 ms of sound is within the way's 4000 ms")
+	assert.Equal(t, map[string]int{"progression_by_number": 1}, fold.RightByResponse)
 }
 
 func TestPracticeEvidenceService_AWrongExerciseAnswerIsAMiss(t *testing.T) {
@@ -449,6 +487,19 @@ func TestPracticeEvidenceService_StoresNothingWhenItCannotGrade(t *testing.T) {
 		{"a fretboard cell's response doesn't fit its item", func() domain.PracticeAnswer {
 			a := ratedTake("e0000000-0000-4000-8000-000000000001", monday, domain.SelfRatingClean, 90)
 			a.ItemKey = "fretboard_cell:6ea2d087-ab9c-59dc-9657-8546025414d2:5:3"
+			return a
+		}},
+		{"the item wasn't answered", func() domain.PracticeAnswer {
+			a := ratedTake("e0000000-0000-4000-8000-000000000001", monday, domain.SelfRatingClean, 90)
+			a.Response = domain.PracticeResponse{Type: domain.PracticeResponseNotAnswered, Reason: "failed_to_load"}
+			return a
+		}},
+		{"the progression isn't in the reference", func() domain.PracticeAnswer {
+			latency := 3000
+			a := ratedTake("e0000000-0000-4000-8000-000000000001", monday, domain.SelfRatingClean, 90)
+			a.ItemKey = "heard_progression:ii-V-I"
+			a.Response = domain.PracticeResponse{Type: domain.PracticeResponseGeneratedChoice, Way: "progression_by_number", MusicKey: "C",
+				Options: []string{"ii-V-I", "IV-V-I"}, Choice: "ii-V-I", LatencyMs: &latency}
 			return a
 		}},
 		{"the item key is malformed", func() domain.PracticeAnswer {

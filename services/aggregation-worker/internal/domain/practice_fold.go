@@ -51,10 +51,10 @@ type ItemGoal struct {
 	TargetChangesPerMinute *int
 	// FluentTimes are every version of the item's drill template fluent time.
 	FluentTimes []FluentTime
-	// FluentTimesByResponse, when set, holds the fluent times of an item asked more
-	// than one way (a fretboard cell named or found), by the way it was asked; an
-	// answer is judged by its own.
-	FluentTimesByResponse map[PracticeResponseType][]FluentTime
+	// FluentTimesByWay, when set, holds the fluent times of an item asked more than
+	// one way (a fretboard cell named or found, a numeral's chord or a chord's
+	// numeral), by the way it was asked (WayAsked); an answer is judged by its own.
+	FluentTimesByWay map[string][]FluentTime
 }
 
 // FluentTime is one version of a drill template's fluent time: the time a fluent
@@ -74,8 +74,8 @@ func (g ItemGoal) FluentTimeAt(t time.Time) (FluentTime, bool) {
 // fluentTimeAt is the version of e's fluent time in force when e was given: the
 // fluent time of the way e was asked when the item is asked more than one way.
 func (g ItemGoal) fluentTimeAt(e PracticeEvidence) (FluentTime, bool) {
-	if g.FluentTimesByResponse != nil {
-		return versionAt(g.FluentTimesByResponse[e.Response.Type], e.OccurredAt)
+	if g.FluentTimesByWay != nil {
+		return versionAt(g.FluentTimesByWay[WayAsked(kindOf(e.ItemKey), e.Response)], e.OccurredAt)
 	}
 	return versionAt(g.FluentTimes, e.OccurredAt)
 }
@@ -167,9 +167,11 @@ type ItemFold struct {
 	// last teacher review: the edge above which a take that isn't clean explores.
 	BestCleanBPM         *int
 	BestChangesPerMinute *int
-	// RightByResponse counts the right answers by the way the item was asked, so
-	// an item asked more than one way can next be asked the way it knows least.
-	RightByResponse map[PracticeResponseType]int
+	// RightByResponse counts the right answers by the way the item was asked
+	// (WayAsked), so an item asked more than one way can next be asked the way it
+	// knows least. Both ways of a generated question share one response type, so
+	// the response type alone can't tell them apart.
+	RightByResponse map[string]int
 }
 
 // Level is the level the evidence has earned, before any lapse is applied.
@@ -234,9 +236,9 @@ func foldAnswer(f ItemFold, e PracticeEvidence, goal ItemGoal) (ItemFold, error)
 	r := reading{outcome: outcomeMiss, judgesFluency: timed}
 	if *e.Correct {
 		if f.RightByResponse == nil {
-			f.RightByResponse = map[PracticeResponseType]int{}
+			f.RightByResponse = map[string]int{}
 		}
-		f.RightByResponse[e.Response.Type]++
+		f.RightByResponse[WayAsked(kindOf(e.ItemKey), e.Response)]++
 		r.outcome, r.accuracy, r.fluency = outcomeHit, 1, 1
 		if timed && judged.NetMs > 0 {
 			r.fluency = math.Min(1, float64(judged.FluentTime.FluentNetMs)/float64(judged.NetMs))

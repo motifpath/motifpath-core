@@ -150,6 +150,90 @@ func (e FindTheNoteResponseResponseType) Valid() bool {
 	}
 }
 
+// Defines values for FretWindowFromFret.
+const (
+	FretWindowFromFretN0 FretWindowFromFret = 0
+	FretWindowFromFretN2 FretWindowFromFret = 2
+	FretWindowFromFretN3 FretWindowFromFret = 3
+	FretWindowFromFretN4 FretWindowFromFret = 4
+	FretWindowFromFretN5 FretWindowFromFret = 5
+	FretWindowFromFretN6 FretWindowFromFret = 6
+	FretWindowFromFretN7 FretWindowFromFret = 7
+)
+
+// Valid indicates whether the value is a known member of the FretWindowFromFret enum.
+func (e FretWindowFromFret) Valid() bool {
+	switch e {
+	case FretWindowFromFretN0:
+		return true
+	case FretWindowFromFretN2:
+		return true
+	case FretWindowFromFretN3:
+		return true
+	case FretWindowFromFretN4:
+		return true
+	case FretWindowFromFretN5:
+		return true
+	case FretWindowFromFretN6:
+		return true
+	case FretWindowFromFretN7:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GeneratedChoiceResponseResponseType.
+const (
+	GeneratedChoice GeneratedChoiceResponseResponseType = "generated_choice"
+)
+
+// Valid indicates whether the value is a known member of the GeneratedChoiceResponseResponseType enum.
+func (e GeneratedChoiceResponseResponseType) Valid() bool {
+	switch e {
+	case GeneratedChoice:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GeneratedChoiceWay.
+const (
+	CadenceThenChord    GeneratedChoiceWay = "cadence_then_chord"
+	ChartToNumbers      GeneratedChoiceWay = "chart_to_numbers"
+	ChordToFunction     GeneratedChoiceWay = "chord_to_function"
+	ChordToNumeral      GeneratedChoiceWay = "chord_to_numeral"
+	FunctionToChord     GeneratedChoiceWay = "function_to_chord"
+	NumbersToChart      GeneratedChoiceWay = "numbers_to_chart"
+	NumeralToChord      GeneratedChoiceWay = "numeral_to_chord"
+	ProgressionByNumber GeneratedChoiceWay = "progression_by_number"
+)
+
+// Valid indicates whether the value is a known member of the GeneratedChoiceWay enum.
+func (e GeneratedChoiceWay) Valid() bool {
+	switch e {
+	case CadenceThenChord:
+		return true
+	case ChartToNumbers:
+		return true
+	case ChordToFunction:
+		return true
+	case ChordToNumeral:
+		return true
+	case FunctionToChord:
+		return true
+	case NumbersToChart:
+		return true
+	case NumeralToChord:
+		return true
+	case ProgressionByNumber:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for HealthStatusChecks.
 const (
 	HealthStatusChecksFail HealthStatusChecks = "fail"
@@ -225,6 +309,69 @@ const (
 func (e LessonStartedEventEventType) Valid() bool {
 	switch e {
 	case LessonStartedEventEventTypeLessonStarted:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for MultiTapResponseResponseType.
+const (
+	MultiTap MultiTapResponseResponseType = "multi_tap"
+)
+
+// Valid indicates whether the value is a known member of the MultiTapResponseResponseType enum.
+func (e MultiTapResponseResponseType) Valid() bool {
+	switch e {
+	case MultiTap:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for MusicKey.
+const (
+	A  MusicKey = "A"
+	Ab MusicKey = "Ab"
+	B  MusicKey = "B"
+	Bb MusicKey = "Bb"
+	C  MusicKey = "C"
+	D  MusicKey = "D"
+	Db MusicKey = "Db"
+	E  MusicKey = "E"
+	Eb MusicKey = "Eb"
+	F  MusicKey = "F"
+	F1 MusicKey = "F#"
+	G  MusicKey = "G"
+)
+
+// Valid indicates whether the value is a known member of the MusicKey enum.
+func (e MusicKey) Valid() bool {
+	switch e {
+	case A:
+		return true
+	case Ab:
+		return true
+	case B:
+		return true
+	case Bb:
+		return true
+	case C:
+		return true
+	case D:
+		return true
+	case Db:
+		return true
+	case E:
+		return true
+	case Eb:
+		return true
+	case F:
+		return true
+	case F1:
+		return true
+	case G:
 		return true
 	default:
 		return false
@@ -467,79 +614,79 @@ func (e SelfRatingResponseResponseType) Valid() bool {
 
 // Defines values for ShapeInterval.
 const (
-	B13    ShapeInterval = "b13"
-	B2     ShapeInterval = "b2"
-	B3     ShapeInterval = "b3"
-	B5     ShapeInterval = "b5"
-	B6     ShapeInterval = "b6"
-	B7     ShapeInterval = "b7"
-	B9     ShapeInterval = "b9"
-	Bb7    ShapeInterval = "bb7"
-	Hash11 ShapeInterval = "#11"
-	Hash2  ShapeInterval = "#2"
-	Hash4  ShapeInterval = "#4"
-	Hash5  ShapeInterval = "#5"
-	Hash9  ShapeInterval = "#9"
-	N11    ShapeInterval = "11"
-	N13    ShapeInterval = "13"
-	N2     ShapeInterval = "2"
-	N3     ShapeInterval = "3"
-	N4     ShapeInterval = "4"
-	N5     ShapeInterval = "5"
-	N6     ShapeInterval = "6"
-	N7     ShapeInterval = "7"
-	N9     ShapeInterval = "9"
-	R      ShapeInterval = "R"
+	ShapeIntervalB13    ShapeInterval = "b13"
+	ShapeIntervalB2     ShapeInterval = "b2"
+	ShapeIntervalB3     ShapeInterval = "b3"
+	ShapeIntervalB5     ShapeInterval = "b5"
+	ShapeIntervalB6     ShapeInterval = "b6"
+	ShapeIntervalB7     ShapeInterval = "b7"
+	ShapeIntervalB9     ShapeInterval = "b9"
+	ShapeIntervalBb7    ShapeInterval = "bb7"
+	ShapeIntervalHash11 ShapeInterval = "#11"
+	ShapeIntervalHash2  ShapeInterval = "#2"
+	ShapeIntervalHash4  ShapeInterval = "#4"
+	ShapeIntervalHash5  ShapeInterval = "#5"
+	ShapeIntervalHash9  ShapeInterval = "#9"
+	ShapeIntervalN11    ShapeInterval = "11"
+	ShapeIntervalN13    ShapeInterval = "13"
+	ShapeIntervalN2     ShapeInterval = "2"
+	ShapeIntervalN3     ShapeInterval = "3"
+	ShapeIntervalN4     ShapeInterval = "4"
+	ShapeIntervalN5     ShapeInterval = "5"
+	ShapeIntervalN6     ShapeInterval = "6"
+	ShapeIntervalN7     ShapeInterval = "7"
+	ShapeIntervalN9     ShapeInterval = "9"
+	ShapeIntervalR      ShapeInterval = "R"
 )
 
 // Valid indicates whether the value is a known member of the ShapeInterval enum.
 func (e ShapeInterval) Valid() bool {
 	switch e {
-	case B13:
+	case ShapeIntervalB13:
 		return true
-	case B2:
+	case ShapeIntervalB2:
 		return true
-	case B3:
+	case ShapeIntervalB3:
 		return true
-	case B5:
+	case ShapeIntervalB5:
 		return true
-	case B6:
+	case ShapeIntervalB6:
 		return true
-	case B7:
+	case ShapeIntervalB7:
 		return true
-	case B9:
+	case ShapeIntervalB9:
 		return true
-	case Bb7:
+	case ShapeIntervalBb7:
 		return true
-	case Hash11:
+	case ShapeIntervalHash11:
 		return true
-	case Hash2:
+	case ShapeIntervalHash2:
 		return true
-	case Hash4:
+	case ShapeIntervalHash4:
 		return true
-	case Hash5:
+	case ShapeIntervalHash5:
 		return true
-	case Hash9:
+	case ShapeIntervalHash9:
 		return true
-	case N11:
+	case ShapeIntervalN11:
 		return true
-	case N13:
+	case ShapeIntervalN13:
 		return true
-	case N2:
+	case ShapeIntervalN2:
 		return true
-	case N3:
+	case ShapeIntervalN3:
 		return true
-	case N4:
+	case ShapeIntervalN4:
 		return true
-	case N5:
+	case ShapeIntervalN5:
 		return true
-	case N6:
+	case ShapeIntervalN6:
 		return true
-	case N7:
+	case ShapeIntervalN7:
 		return true
-	case N9:
+	case ShapeIntervalN9:
 		return true
-	case R:
+	case ShapeIntervalR:
 		return true
 	default:
 		return false
@@ -603,6 +750,39 @@ const (
 func (e SongChartOpenedEventEventType) Valid() bool {
 	switch e {
 	case SongChartOpenedEventEventTypeSongChartOpened:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for TimedTapsResponseResponseType.
+const (
+	TimedTaps TimedTapsResponseResponseType = "timed_taps"
+)
+
+// Valid indicates whether the value is a known member of the TimedTapsResponseResponseType enum.
+func (e TimedTapsResponseResponseType) Valid() bool {
+	switch e {
+	case TimedTaps:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for TimedTapsResponseTone.
+const (
+	TimedTapsResponseToneN3 TimedTapsResponseTone = "3"
+	TimedTapsResponseToneN7 TimedTapsResponseTone = "7"
+)
+
+// Valid indicates whether the value is a known member of the TimedTapsResponseTone enum.
+func (e TimedTapsResponseTone) Valid() bool {
+	switch e {
+	case TimedTapsResponseToneN3:
+		return true
+	case TimedTapsResponseToneN7:
 		return true
 	default:
 		return false
@@ -931,6 +1111,92 @@ type ForbiddenError struct {
 	Message string `json:"message"`
 }
 
+// FretWindow The frets a fretboard drill is asked within, so its board is drawn at full tap size without
+// scrolling sideways. Five frets, plus the open string when the window starts at the nut: a
+// from_fret of 0 covers the open string and frets 1 to 5; any other from_fret covers it and the
+// next four frets, such as 3 to 7. Only the window's places can be tapped, and the question
+// names it. Every cell of the same drill and layout in a plan carries the same window, and the
+// cell's fret is always inside it.
+type FretWindow struct {
+	// FromFret The window's lowest fret; 0 means it starts at the open string and ends at fret 5.
+	// Otherwise it ends at from_fret + 4, at most fret 11. Never 1, since a window at the nut
+	// always includes the open string.
+	FromFret FretWindowFromFret `json:"from_fret"`
+}
+
+// FretWindowFromFret The window's lowest fret; 0 means it starts at the open string and ends at fret 5.
+// Otherwise it ends at from_fret + 4, at most fret 11. Never 1, since a window at the nut
+// always includes the open string.
+type FretWindowFromFret int
+
+// GeneratedChoiceResponse Answer to a generated question asked among options the server planned: a numeral, a
+// chord, a function or a progression, recognised in the head or by ear. The response sends
+// back the way it was asked, the key it was asked in when the item doesn't fix one, and the
+// options exactly as shown, so the grade can be checked from the evidence alone. The options
+// must be different, include the right answer and the one picked, and each be a possible
+// answer to the question (for a numeral question, only chords of the asked key); otherwise
+// the answer is rejected.
+type GeneratedChoiceResponse struct {
+	// AudioMs Milliseconds of sound the question plays once before it can be answered (the cadence
+	// and the chord, or the progression), at the tempo it was played. It is taken off the
+	// latency before the answer is judged against the drill's fluent time. Present for
+	// questions asked by ear only.
+	AudioMs *int `json:"audio_ms,omitempty"`
+
+	// Choice The option the student picked, spelled as shown.
+	Choice string `json:"choice"`
+
+	// LatencyMs Milliseconds from the moment the question was shown to the answer; for a question
+	// asked by ear, from the moment its sound started.
+	LatencyMs int `json:"latency_ms"`
+
+	// MusicKey The major key a question was asked in, when its item doesn't fix one: a chart
+	// progression, a heard chord, a heard progression or a guide tone. Absent for every other
+	// item.
+	MusicKey *MusicKey `json:"music_key,omitempty"`
+
+	// Options The options as shown, in the order shown. What an option is depends on the way: a
+	// chord symbol (a root, then m, dim or nothing: G, Em, F#dim) for numeral_to_chord and
+	// function_to_chord; a numeral (I ii iii IV V vi viio) for chord_to_numeral and
+	// cadence_then_chord; tonic, subdominant or dominant for chord_to_function; a progression
+	// key for chart_to_numbers and progression_by_number; a chart, the progression's chord
+	// symbols one per bar separated by single spaces (G D Em C), for numbers_to_chart. A
+	// chord's root may be spelled either way (F# or Gb).
+	Options []string `json:"options"`
+
+	// ResponseType Discriminator. The student picked one of the options a generated question offered.
+	ResponseType GeneratedChoiceResponseResponseType `json:"response_type"`
+
+	// Way How a generated question was asked, which fixes what its options are and which one is
+	// right. numeral_to_chord = a key and a numeral are named, pick its chord; chord_to_numeral
+	// = a key and a chord are named, pick its numeral; chord_to_function = a key and a chord
+	// are named, pick its function; function_to_chord = a key and a function are named, pick the
+	// one chord with it; chart_to_numbers = a chart is shown, pick its progression;
+	// numbers_to_chart = a progression and a key are named, pick its chart; cadence_then_chord =
+	// a cadence sets the key and a chord plays, pick its numeral; progression_by_number = a
+	// progression plays, pick it. A diatonic chord is asked numeral_to_chord or
+	// chord_to_numeral; a chord function chord_to_function or function_to_chord; a chart
+	// progression chart_to_numbers or numbers_to_chart; a heard chord cadence_then_chord; a
+	// heard progression progression_by_number.
+	Way GeneratedChoiceWay `json:"way"`
+}
+
+// GeneratedChoiceResponseResponseType Discriminator. The student picked one of the options a generated question offered.
+type GeneratedChoiceResponseResponseType string
+
+// GeneratedChoiceWay How a generated question was asked, which fixes what its options are and which one is
+// right. numeral_to_chord = a key and a numeral are named, pick its chord; chord_to_numeral
+// = a key and a chord are named, pick its numeral; chord_to_function = a key and a chord
+// are named, pick its function; function_to_chord = a key and a function are named, pick the
+// one chord with it; chart_to_numbers = a chart is shown, pick its progression;
+// numbers_to_chart = a progression and a key are named, pick its chart; cadence_then_chord =
+// a cadence sets the key and a chord plays, pick its numeral; progression_by_number = a
+// progression plays, pick it. A diatonic chord is asked numeral_to_chord or
+// chord_to_numeral; a chord function chord_to_function or function_to_chord; a chart
+// progression chart_to_numbers or numbers_to_chart; a heard chord cadence_then_chord; a
+// heard progression progression_by_number.
+type GeneratedChoiceWay string
+
 // HealthStatus Response body for liveness and readiness probes. Shared by every MotifPath
 // service that exposes an HTTP health surface so the contract cannot drift
 // between services.
@@ -1092,6 +1358,42 @@ type LoggedEventPage struct {
 	Total int `json:"total"`
 }
 
+// MultiTapResponse Answer to a note asked within a fret window: the student taps every place of the note in
+// the window, then says they are done. It is right only when the places tapped are exactly
+// the note's places in the window.
+type MultiTapResponse struct {
+	// Cells The places tapped, in the order tapped. A tap taken back is not sent.
+	Cells []struct {
+		// Fret The fret tapped; 0 is the open string.
+		Fret int `json:"fret"`
+
+		// String The string tapped, 1 being the highest-pitched.
+		String int `json:"string"`
+	} `json:"cells"`
+
+	// FretWindow The frets a fretboard drill is asked within, so its board is drawn at full tap size without
+	// scrolling sideways. Five frets, plus the open string when the window starts at the nut: a
+	// from_fret of 0 covers the open string and frets 1 to 5; any other from_fret covers it and the
+	// next four frets, such as 3 to 7. Only the window's places can be tapped, and the question
+	// names it. Every cell of the same drill and layout in a plan carries the same window, and the
+	// cell's fret is always inside it.
+	FretWindow FretWindow `json:"fret_window"`
+
+	// LatencyMs Milliseconds from the moment the note was asked to saying done.
+	LatencyMs int `json:"latency_ms"`
+
+	// ResponseType Discriminator. The student tapped every place of the note they found.
+	ResponseType MultiTapResponseResponseType `json:"response_type"`
+}
+
+// MultiTapResponseResponseType Discriminator. The student tapped every place of the note they found.
+type MultiTapResponseResponseType string
+
+// MusicKey The major key a question was asked in, when its item doesn't fix one: a chart
+// progression, a heard chord, a heard progression or a guide tone. Absent for every other
+// item.
+type MusicKey string
+
 // NameTheNoteResponse Answer to a fretboard cell shown on the fretboard: the student names its note, picking it
 // among four choices.
 type NameTheNoteResponse struct {
@@ -1211,6 +1513,34 @@ type PlannedPracticeItem struct {
 	//   family, or finding one of its degrees. One diagram is one item: the same shape in
 	//   another key has other positions, so it is another item.
 	//
+	// - diatonic_chord:<key>:<numeral> — a numeral's chord in a major key, recalled in the
+	//   head: picking the chord for the numeral, or the numeral for the chord.
+	// - chord_function:<key>:<numeral> — a numeral's harmonic function in a major key: picking
+	//   the function of its chord, or its chord for the function.
+	// - chart_progression:<progression key> — a progression of the progression catalog read
+	//   as a chart: picking the progression for four chords, or its chart for the progression.
+	//   The key is picked each time it is asked, so one item covers every key.
+	// - heard_chord:<numeral> — a numeral recognised by ear in a key a cadence sets. The key is
+	//   picked each time.
+	// - heard_progression:<progression key> — a progression recognised by ear. The key is
+	//   picked each time.
+	// - chord_voicing:<diagram id> — playing one chord voicing cleanly, untimed.
+	// - root_fifth:<layout instrument id>:<chord> — playing a chord's root and fifth on a bass
+	//   layout, cleanly, untimed.
+	// - root_change:<layout instrument id>:<from chord>:<to chord> — changing between two
+	//   chords' roots on a bass layout.
+	// - guide_tone:<layout instrument id>:<progression key> — tapping a chord tone of each chord
+	//   of a progression in time with its playback. The key, the tone and the tempo are picked
+	//   each time.
+	// - fretboard_note:<layout instrument id>:<note> — finding every place of a note within a
+	//   fret window. The window is picked each time.
+	//
+	// In these keys, <key> is a major key spelled as one of C Db D Eb E F F# G Ab A Bb B;
+	// <numeral> is one of I ii iii IV V vi viio (viio is vii°); <chord> is a root spelled the
+	// same way, followed by m (minor), dim (diminished), 7 (dominant seventh) or nothing
+	// (major); <note> is spelled with sharps; <progression key> is a key of the progression
+	// catalog.
+	//
 	// Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
 	// grader, and its golden cases.
 	ItemKey PracticeItemKey `json:"item_key"`
@@ -1250,6 +1580,34 @@ type PracticeItemAnsweredEvent struct {
 	// - diagram_shape:<diagram id> — a catalog shape recalled in the head: naming it among its
 	//   family, or finding one of its degrees. One diagram is one item: the same shape in
 	//   another key has other positions, so it is another item.
+	//
+	// - diatonic_chord:<key>:<numeral> — a numeral's chord in a major key, recalled in the
+	//   head: picking the chord for the numeral, or the numeral for the chord.
+	// - chord_function:<key>:<numeral> — a numeral's harmonic function in a major key: picking
+	//   the function of its chord, or its chord for the function.
+	// - chart_progression:<progression key> — a progression of the progression catalog read
+	//   as a chart: picking the progression for four chords, or its chart for the progression.
+	//   The key is picked each time it is asked, so one item covers every key.
+	// - heard_chord:<numeral> — a numeral recognised by ear in a key a cadence sets. The key is
+	//   picked each time.
+	// - heard_progression:<progression key> — a progression recognised by ear. The key is
+	//   picked each time.
+	// - chord_voicing:<diagram id> — playing one chord voicing cleanly, untimed.
+	// - root_fifth:<layout instrument id>:<chord> — playing a chord's root and fifth on a bass
+	//   layout, cleanly, untimed.
+	// - root_change:<layout instrument id>:<from chord>:<to chord> — changing between two
+	//   chords' roots on a bass layout.
+	// - guide_tone:<layout instrument id>:<progression key> — tapping a chord tone of each chord
+	//   of a progression in time with its playback. The key, the tone and the tempo are picked
+	//   each time.
+	// - fretboard_note:<layout instrument id>:<note> — finding every place of a note within a
+	//   fret window. The window is picked each time.
+	//
+	// In these keys, <key> is a major key spelled as one of C Db D Eb E F F# G Ab A Bb B;
+	// <numeral> is one of I ii iii IV V vi viio (viio is vii°); <chord> is a root spelled the
+	// same way, followed by m (minor), dim (diminished), 7 (dominant seventh) or nothing
+	// (major); <note> is spelled with sharps; <progression key> is a key of the progression
+	// catalog.
 	//
 	// Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
 	// grader, and its golden cases.
@@ -1310,12 +1668,53 @@ type PracticeItemAnsweredEvent1 = interface{}
 //     The instrument is the one whose fretboard layout the cell belongs to, so instruments
 //     that share a layout share the cell. Strings are numbered from 1, the highest-pitched;
 //     fret 0 is the open string.
+//
 //   - exercise:<exercise id> — an authored exercise.
+//
 //   - play_along:<diagram id> — playing a diagram along with its playback, at a tempo.
+//
 //   - chord_change:<from diagram id>:<to diagram id> — changing between two chord diagrams.
+//
 //   - diagram_shape:<diagram id> — a catalog shape recalled in the head: naming it among its
 //     family, or finding one of its degrees. One diagram is one item: the same shape in
 //     another key has other positions, so it is another item.
+//
+//   - diatonic_chord:<key>:<numeral> — a numeral's chord in a major key, recalled in the
+//     head: picking the chord for the numeral, or the numeral for the chord.
+//
+//   - chord_function:<key>:<numeral> — a numeral's harmonic function in a major key: picking
+//     the function of its chord, or its chord for the function.
+//
+//   - chart_progression:<progression key> — a progression of the progression catalog read
+//     as a chart: picking the progression for four chords, or its chart for the progression.
+//     The key is picked each time it is asked, so one item covers every key.
+//
+//   - heard_chord:<numeral> — a numeral recognised by ear in a key a cadence sets. The key is
+//     picked each time.
+//
+//   - heard_progression:<progression key> — a progression recognised by ear. The key is
+//     picked each time.
+//
+//   - chord_voicing:<diagram id> — playing one chord voicing cleanly, untimed.
+//
+//   - root_fifth:<layout instrument id>:<chord> — playing a chord's root and fifth on a bass
+//     layout, cleanly, untimed.
+//
+//   - root_change:<layout instrument id>:<from chord>:<to chord> — changing between two
+//     chords' roots on a bass layout.
+//
+//   - guide_tone:<layout instrument id>:<progression key> — tapping a chord tone of each chord
+//     of a progression in time with its playback. The key, the tone and the tempo are picked
+//     each time.
+//
+//   - fretboard_note:<layout instrument id>:<note> — finding every place of a note within a
+//     fret window. The window is picked each time.
+//
+// In these keys, <key> is a major key spelled as one of C Db D Eb E F F# G Ab A Bb B;
+// <numeral> is one of I ii iii IV V vi viio (viio is vii°); <chord> is a root spelled the
+// same way, followed by m (minor), dim (diminished), 7 (dominant seventh) or nothing
+// (major); <note> is spelled with sharps; <progression key> is a key of the progression
+// catalog.
 //
 // Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
 // grader, and its golden cases.
@@ -1491,11 +1890,14 @@ type ResolvePublishOutboxEntryRequest struct {
 	Reason *string `json:"reason,omitempty"`
 }
 
-// SelfRatingResponse The student's own rating of a take they played: a play-along at a tempo, or chord
-// changes counted over a minute. A play-along rating carries tempo_bpm and no
-// changes_per_minute; a chord-change rating carries changes_per_minute and no tempo_bpm.
+// SelfRatingResponse The student's own rating of a take they played: a play-along at a tempo, chord changes
+// counted over a minute, or one chord played cleanly. A play-along rating carries tempo_bpm
+// and no changes_per_minute; a chord-change or root-change rating carries changes_per_minute
+// and no tempo_bpm; a single chord voicing or a chord's root and fifth (play clean) carries
+// neither.
 type SelfRatingResponse struct {
-	// ChangesPerMinute The number of chord changes made in one minute. Present for a chord change.
+	// ChangesPerMinute The number of chord changes made in one minute. Present for a chord change and a root
+	// change.
 	ChangesPerMinute *int `json:"changes_per_minute,omitempty"`
 
 	// Rating How the take went, in the student's judgement. struggled = fell apart or needed to
@@ -1650,6 +2052,49 @@ type SongChartOpenedEvent struct {
 
 // SongChartOpenedEventEventType defines model for SongChartOpenedEvent.EventType.
 type SongChartOpenedEventEventType string
+
+// TimedTap One tap on the fretboard, and when it was made.
+type TimedTap struct {
+	// AtMs Milliseconds from the downbeat of the progression's first bar to the tap.
+	AtMs int `json:"at_ms"`
+
+	// Fret The fret tapped; 0 is the open string.
+	Fret int `json:"fret"`
+
+	// String The string tapped, 1 being the highest-pitched.
+	String int `json:"string"`
+}
+
+// TimedTapsResponse A take of tapping a chord tone of each chord of a progression in time with its playback,
+// on the fretboard of the item's layout. The progression is played in the key and at the
+// tempo sent, four beats to a bar, one chord per bar. Each tap is kept with the time it
+// was made, so every bar can be graded.
+type TimedTapsResponse struct {
+	// MusicKey The major key a question was asked in, when its item doesn't fix one: a chart
+	// progression, a heard chord, a heard progression or a guide tone. Absent for every other
+	// item.
+	MusicKey MusicKey `json:"music_key"`
+
+	// ResponseType Discriminator. The student tapped along with a progression's playback.
+	ResponseType TimedTapsResponseResponseType `json:"response_type"`
+
+	// Taps Every tap of the take, in the order made. A take with no taps sends an empty list.
+	Taps []TimedTap `json:"taps"`
+
+	// TempoBpm The tempo the progression played at, in beats per minute.
+	TempoBpm int `json:"tempo_bpm"`
+
+	// Tone The chord tone asked for every chord: 3 = its third; 7 = its seventh in the key (the
+	// major seventh of I and IV, the minor seventh of every other chord).
+	Tone TimedTapsResponseTone `json:"tone"`
+}
+
+// TimedTapsResponseResponseType Discriminator. The student tapped along with a progression's playback.
+type TimedTapsResponseResponseType string
+
+// TimedTapsResponseTone The chord tone asked for every chord: 3 = its third; 7 = its seventh in the key (the
+// major seventh of I and IV, the minor seventh of every other chord).
+type TimedTapsResponseTone string
 
 // TrackingEvent A student tracking event submitted by the Vue 3 SPA to the Event Ingestion Service.
 // Exactly one event-specific schema applies, discriminated by event_type. The Event
@@ -2303,6 +2748,108 @@ func (t *PracticeResponse) MergeFindTheDegreeResponse(v FindTheDegreeResponse) e
 	return err
 }
 
+// AsGeneratedChoiceResponse returns the union data inside the PracticeResponse as a GeneratedChoiceResponse
+func (t PracticeResponse) AsGeneratedChoiceResponse() (GeneratedChoiceResponse, error) {
+	var body GeneratedChoiceResponse
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGeneratedChoiceResponse overwrites any union data inside the PracticeResponse as the provided GeneratedChoiceResponse
+func (t *PracticeResponse) FromGeneratedChoiceResponse(v GeneratedChoiceResponse) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"response_type":"generated_choice"}`))
+	t.union = b
+	return err
+}
+
+// MergeGeneratedChoiceResponse performs a merge with any union data inside the PracticeResponse, using the provided GeneratedChoiceResponse
+func (t *PracticeResponse) MergeGeneratedChoiceResponse(v GeneratedChoiceResponse) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"response_type":"generated_choice"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsTimedTapsResponse returns the union data inside the PracticeResponse as a TimedTapsResponse
+func (t PracticeResponse) AsTimedTapsResponse() (TimedTapsResponse, error) {
+	var body TimedTapsResponse
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromTimedTapsResponse overwrites any union data inside the PracticeResponse as the provided TimedTapsResponse
+func (t *PracticeResponse) FromTimedTapsResponse(v TimedTapsResponse) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"response_type":"timed_taps"}`))
+	t.union = b
+	return err
+}
+
+// MergeTimedTapsResponse performs a merge with any union data inside the PracticeResponse, using the provided TimedTapsResponse
+func (t *PracticeResponse) MergeTimedTapsResponse(v TimedTapsResponse) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"response_type":"timed_taps"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsMultiTapResponse returns the union data inside the PracticeResponse as a MultiTapResponse
+func (t PracticeResponse) AsMultiTapResponse() (MultiTapResponse, error) {
+	var body MultiTapResponse
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromMultiTapResponse overwrites any union data inside the PracticeResponse as the provided MultiTapResponse
+func (t *PracticeResponse) FromMultiTapResponse(v MultiTapResponse) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"response_type":"multi_tap"}`))
+	t.union = b
+	return err
+}
+
+// MergeMultiTapResponse performs a merge with any union data inside the PracticeResponse, using the provided MultiTapResponse
+func (t *PracticeResponse) MergeMultiTapResponse(v MultiTapResponse) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"response_type":"multi_tap"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
 // AsNotAnsweredResponse returns the union data inside the PracticeResponse as a NotAnsweredResponse
 func (t PracticeResponse) AsNotAnsweredResponse() (NotAnsweredResponse, error) {
 	var body NotAnsweredResponse
@@ -2355,6 +2902,10 @@ func (t PracticeResponse) ValueByDiscriminator() (interface{}, error) {
 		return t.AsFindTheDegreeResponse()
 	case "find_the_note":
 		return t.AsFindTheNoteResponse()
+	case "generated_choice":
+		return t.AsGeneratedChoiceResponse()
+	case "multi_tap":
+		return t.AsMultiTapResponse()
 	case "name_the_note":
 		return t.AsNameTheNoteResponse()
 	case "name_the_shape":
@@ -2365,6 +2916,8 @@ func (t PracticeResponse) ValueByDiscriminator() (interface{}, error) {
 		return t.AsOptionChoiceResponse()
 	case "self_rating":
 		return t.AsSelfRatingResponse()
+	case "timed_taps":
+		return t.AsTimedTapsResponse()
 	default:
 		return nil, errors.New("unknown discriminator value: " + discriminator)
 	}

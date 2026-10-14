@@ -20,7 +20,7 @@ import (
 
 func registerExerciseSteps(sc *godog.ScenarioContext, w *world) {
 	// ── Exercises and challenges ───────────────────────────────────────────────
-	sc.Step(`^the exercise "([^"]*)" whose correct options are ((?:"[^"]*"(?:, | and )?)+) out of ((?:"[^"]*"(?:, | and )?)+)$`, w.theExercise)
+	sc.Step(`^the exercise "([^"]*)" whose correct options? (?:are|is) ((?:"[^"]*"(?:, | and )?)+) out of ((?:"[^"]*"(?:, | and )?)+)$`, w.theExercise)
 	sc.Step(`^"([^"]*)" is taking the challenge "([^"]*)" of the content node "([^"]*)"$`, w.isTakingTheChallenge)
 	sc.Step(`^"([^"]*)" answers exercise "([^"]*)" by selecting ((?:"[^"]*"(?:, | and )?)+)$`, w.answersBySelecting)
 	sc.Step(`^"([^"]*)" answers exercise "([^"]*)" by selecting an option of another exercise$`, w.answersWithAnotherExercisesOption)
@@ -35,6 +35,8 @@ func registerExerciseSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]*)" has auto-graded evidence for that exercise with a latency of (\d+) milliseconds and (\d+) milliseconds of audio$`, w.hasEvidenceWithAudio)
 	sc.Step(`^the answer is rejected because the option is unknown$`, w.answerRejectedBecause(domain.GradeRejectionUnknownOption))
 	sc.Step(`^"([^"]*)" has no evidence for exercise "([^"]*)"$`, w.hasNoEvidenceForExercise)
+	sc.Step(`^"([^"]*)" sends exercise "([^"]*)" as not answered because its stimulus failed to load$`, w.sendsTheExerciseAsNotAnswered)
+	sc.Step(`^the practice\.item_answered event is kept with the reason "([^"]*)"$`, w.theAnswerIsKeptWithTheReason)
 	sc.Step(`^"([^"]*)" has two pieces of evidence for "([^"]*)", the second one correct$`, w.hasTwoPiecesTheSecondCorrect)
 
 	// ── Fluent times ───────────────────────────────────────────────────────────
@@ -249,6 +251,26 @@ func (w *world) hasTwoPiecesTheSecondCorrect(student, exercise string) error {
 	first, second := evidence[0], evidence[1]
 	if first.Correct == nil || *first.Correct || second.Correct == nil || !*second.Correct {
 		return fmt.Errorf("evidence is correct=%v then correct=%v, want wrong then correct", first.Correct, second.Correct)
+	}
+	return nil
+}
+
+func (w *world) sendsTheExerciseAsNotAnswered(student, exercise string) error {
+	return w.answer(student, w.exerciseKey(exercise, "text_response"), domain.PracticeResponse{
+		Type: domain.PracticeResponseNotAnswered, Reason: "failed_to_load",
+	})
+}
+
+// theAnswerIsKeptWithTheReason checks the skipped answer reached the worker as
+// sent, reason included. Ingestion's event store is what keeps it; the worker
+// only reads it, grades nothing from it, and rejects nothing.
+func (w *world) theAnswerIsKeptWithTheReason(reason string) error {
+	r := w.lastAnswer.Response
+	if r.Type != domain.PracticeResponseNotAnswered || string(r.Reason) != reason {
+		return fmt.Errorf("the answer is %s with reason %q, want not_answered with %q", r.Type, r.Reason, reason)
+	}
+	if reasons := w.logs.rejectionReasons(); len(reasons) != 0 {
+		return fmt.Errorf("a skipped item went to a grader, which rejected it for %v", reasons)
 	}
 	return nil
 }

@@ -126,6 +126,31 @@ func TestMongoPracticeReferenceReader_Instruments(t *testing.T) {
 	})
 }
 
+func TestMongoPracticeReferenceReader_Progressions(t *testing.T) {
+	ctx := context.Background()
+	db := mongoDatabase(t)
+	// The documents as core writes them: a progression is keyed by its catalog key.
+	_, err := db.Collection("practice_reference").InsertMany(ctx, []bson.D{
+		{{Key: "kind", Value: "progression"}, {Key: "id", Value: "04ece418-af2d-5b66-9ebe-a0bd38e3a624"}, {Key: "key", Value: "ii-V-I"},
+			{Key: "mode", Value: "major"}, {Key: "bars", Value: bson.A{"ii", "V", "I", "I"}}, {Key: "confusable", Value: bson.A{"IV-V-I"}},
+			{Key: "updated_at", Value: time.Now()}, {Key: "snapshot_version", Value: 4}},
+		{{Key: "kind", Value: "progression"}, {Key: "id", Value: "455a8344-26f7-5fb2-922a-ece7032c8f2a"}, {Key: "key", Value: "IV-V-I"},
+			{Key: "mode", Value: "major"}, {Key: "bars", Value: bson.A{"IV", "V", "I", "I"}}, {Key: "confusable", Value: bson.A{"ii-V-I"}},
+			{Key: "updated_at", Value: time.Now()}, {Key: "snapshot_version", Value: 4}},
+		{{Key: "kind", Value: "diagram"}, {Key: "id", Value: "ii-V-I"}, {Key: "instrument_ids", Value: bson.A{}}, {Key: "snapshot_version", Value: 1}},
+	})
+	require.NoError(t, err)
+	reader := NewMongoPracticeReferenceReader(db)
+
+	got, err := reader.Progressions(ctx)
+	require.NoError(t, err)
+
+	assert.Equal(t, map[string]domain.ProgressionReference{
+		"ii-V-I": {Key: "ii-V-I", Bars: []string{"ii", "V", "I", "I"}},
+		"IV-V-I": {Key: "IV-V-I", Bars: []string{"IV", "V", "I", "I"}},
+	}, got)
+}
+
 func TestMongoPracticeReferenceReader_Exercises(t *testing.T) {
 	ctx := context.Background()
 	db := mongoDatabase(t)
@@ -243,7 +268,60 @@ func TestMongoPracticeEvidenceRepository(t *testing.T) {
 		Correct:  boolPtr(true), LatencyMs: intPtr(2200),
 		AnswerKey: &domain.AnswerKey{Interval: "5", Cells: []domain.AnswerCell{{String: 4, Fret: 5}, {String: 1, Fret: 3}}},
 	}
-	for _, e := range []domain.PracticeEvidence{later, earlier, other, timed, challenge, named, found} {
+	namedAmong := domain.PracticeEvidence{
+		EvidenceID: "e0000000-0000-4000-8000-000000000008", StudentID: studentA,
+		ItemKey: "fretboard_cell:" + guitar + ":5:3", Source: domain.EvidenceSourceAutoGraded, OccurredAt: monday,
+		GraderID: "fretboard_cell.v2",
+		Response: domain.PracticeResponse{Type: domain.PracticeResponseNameTheNote, NoteName: "C#", Choices: []string{"B", "F", "C", "C#"}, LatencyMs: intPtr(1700)},
+		Correct:  boolPtr(false), LatencyMs: intPtr(1700),
+		AnswerKey: &domain.AnswerKey{String: intPtr(5), Fret: intPtr(3), NoteName: "C", Choices: []string{"B", "F", "C", "C#"}},
+	}
+	heard := domain.PracticeEvidence{
+		EvidenceID: "e0000000-0000-4000-8000-000000000009", StudentID: studentA,
+		ItemKey: "heard_chord:vi", Source: domain.EvidenceSourceAutoGraded, OccurredAt: monday,
+		GraderID: "generated_choice.v1",
+		Response: domain.PracticeResponse{Type: domain.PracticeResponseGeneratedChoice, Way: "cadence_then_chord", MusicKey: "C",
+			Options: []string{"vi", "IV"}, Choice: "IV", LatencyMs: intPtr(3200), AudioMs: intPtr(2500)},
+		Correct: boolPtr(false), LatencyMs: intPtr(3200), AudioMs: intPtr(2500),
+		AnswerKey: &domain.AnswerKey{Way: "cadence_then_chord", MusicKey: "C", Answer: "vi", Offered: []string{"vi", "IV"}},
+	}
+	tappedAlong := domain.PracticeEvidence{
+		EvidenceID: "e0000000-0000-4000-8000-000000000010", StudentID: studentA,
+		ItemKey: "guide_tone:" + guitar + ":ii-V-I", Source: domain.EvidenceSourceAutoGraded, OccurredAt: monday,
+		GraderID: "timed_taps.v1",
+		Response: domain.PracticeResponse{Type: domain.PracticeResponseTimedTaps, MusicKey: "C", Tone: "3", TempoBPM: intPtr(120),
+			Taps: []domain.TimedTap{{AtMs: 100, String: 1, Fret: 1}}},
+		Correct: boolPtr(false), LatencyMs: intPtr(2000),
+		AnswerKey: &domain.AnswerKey{MusicKey: "C", Tone: "3", Bars: []domain.AnswerBar{
+			{Chord: "Dm", NoteName: "F", Hit: true}, {Chord: "G", NoteName: "B", Hit: false},
+		}},
+	}
+	everywhere := domain.PracticeEvidence{
+		EvidenceID: "e0000000-0000-4000-8000-000000000011", StudentID: studentA,
+		ItemKey: "fretboard_note:" + guitar + ":E", Source: domain.EvidenceSourceAutoGraded, OccurredAt: monday,
+		GraderID: "multi_tap.v1",
+		Response: domain.PracticeResponse{Type: domain.PracticeResponseMultiTap, FretWindowFrom: intPtr(0),
+			Cells: []domain.AnswerCell{{String: 1, Fret: 0}}, LatencyMs: intPtr(4000)},
+		Correct: boolPtr(false), LatencyMs: intPtr(4000),
+		AnswerKey: &domain.AnswerKey{NoteName: "E", FretWindowFrom: intPtr(0), Cells: []domain.AnswerCell{{String: 1, Fret: 0}, {String: 6, Fret: 0}}},
+	}
+	noTaps := domain.PracticeEvidence{
+		EvidenceID: "e0000000-0000-4000-8000-000000000012", StudentID: studentA,
+		ItemKey: "guide_tone:" + guitar + ":IV-V-I", Source: domain.EvidenceSourceAutoGraded, OccurredAt: monday,
+		GraderID: "timed_taps.v1",
+		Response: domain.PracticeResponse{Type: domain.PracticeResponseTimedTaps, MusicKey: "C", Tone: "3", TempoBPM: intPtr(120), Taps: []domain.TimedTap{}},
+		Correct:  boolPtr(false), LatencyMs: intPtr(2000),
+		AnswerKey: &domain.AnswerKey{MusicKey: "C", Tone: "3", Bars: []domain.AnswerBar{{Chord: "F", NoteName: "A", Hit: false}}},
+	}
+	noPlaces := domain.PracticeEvidence{
+		EvidenceID: "e0000000-0000-4000-8000-000000000013", StudentID: studentA,
+		ItemKey: "fretboard_note:" + guitar + ":G", Source: domain.EvidenceSourceAutoGraded, OccurredAt: monday,
+		GraderID: "multi_tap.v1",
+		Response: domain.PracticeResponse{Type: domain.PracticeResponseMultiTap, FretWindowFrom: intPtr(3), Cells: []domain.AnswerCell{}, LatencyMs: intPtr(3000)},
+		Correct:  boolPtr(false), LatencyMs: intPtr(3000),
+		AnswerKey: &domain.AnswerKey{NoteName: "G", FretWindowFrom: intPtr(3), Cells: []domain.AnswerCell{{String: 1, Fret: 3}}},
+	}
+	for _, e := range []domain.PracticeEvidence{later, earlier, other, timed, challenge, named, found, namedAmong, heard, tappedAlong, everywhere, noTaps, noPlaces} {
 		inserted, err := repo.Insert(ctx, e)
 		require.NoError(t, err)
 		require.True(t, inserted)
@@ -273,6 +351,14 @@ func TestMongoPracticeEvidenceRepository(t *testing.T) {
 		assert.Equal(t, []domain.PracticeEvidence{named, found}, got)
 	})
 
+	t.Run("the drill v2 answers and a note named among choices keep their responses and answer keys", func(t *testing.T) {
+		for _, e := range []domain.PracticeEvidence{namedAmong, heard, tappedAlong, everywhere, noTaps, noPlaces} {
+			got, err := repo.ListForItem(ctx, studentA, e.ItemKey)
+			require.NoError(t, err)
+			assert.Equal(t, []domain.PracticeEvidence{e}, got, e.ItemKey)
+		}
+	})
+
 	t.Run("a challenge answer keeps its trigger context and audio length", func(t *testing.T) {
 		got, err := repo.ListForItem(ctx, studentA, challenge.ItemKey)
 		require.NoError(t, err)
@@ -294,7 +380,7 @@ func TestMongoPracticeItemStateRepository(t *testing.T) {
 	due := time.Date(2026, 10, 7, 9, 0, 0, 0, time.UTC)
 	last := time.Date(2026, 10, 5, 9, 0, 0, 0, time.UTC)
 	first := domain.ItemFold{Attempts: 1, Counted: 1, Accuracy: 1, Fluency: 0.9, Box: 1, DueAt: &due, LastAt: &last, BestCleanBPM: intPtr(90),
-		RightByResponse: map[domain.PracticeResponseType]int{domain.PracticeResponseNameTheNote: 2, domain.PracticeResponseFindTheNote: 1}}
+		RightByResponse: map[string]int{"name_the_note": 2, "find_the_note": 1}}
 	require.NoError(t, repo.Put(ctx, studentA, itemKey, first))
 	replaced := first
 	replaced.Attempts, replaced.Counted, replaced.Box = 6, 5, 3

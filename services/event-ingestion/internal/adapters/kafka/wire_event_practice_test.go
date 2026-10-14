@@ -116,6 +116,69 @@ func TestToWireEvent_PracticeEvents(t *testing.T) {
 			want: `{` + wireBaseJSON + `,"event_type":"practice.item_answered","practice_session_id":"44444444-4444-4444-8444-444444444444","item_key":"play_along:55555555-5555-4555-8555-555555555555","response":{"response_type":"self_rating","rating":"clean","tempo_bpm":90}}`,
 		},
 		{
+			name: "note named among choices",
+			event: domain.PracticeItemAnsweredEvent{
+				TrackingEventBase: practiceWireBase(domain.EventTypePracticeItemAnswered),
+				PracticeSessionID: "44444444-4444-4444-8444-444444444444",
+				ItemKey:           "fretboard_cell:6ea2d087-ab9c-59dc-9657-8546025414d2:5:3",
+				Response:          domain.PracticeResponse{Type: domain.PracticeResponseNameTheNote, NoteName: "C", Choices: []string{"B", "C", "C#", "F"}, LatencyMs: &latency},
+			},
+			want: `{` + wireBaseJSON + `,"event_type":"practice.item_answered","practice_session_id":"44444444-4444-4444-8444-444444444444","item_key":"fretboard_cell:6ea2d087-ab9c-59dc-9657-8546025414d2:5:3","response":{"response_type":"name_the_note","note_name":"C","choices":["B","C","C#","F"],"latency_ms":1800}}`,
+		},
+		{
+			name: "not answered",
+			event: domain.PracticeItemAnsweredEvent{
+				TrackingEventBase: practiceWireBase(domain.EventTypePracticeItemAnswered),
+				PracticeSessionID: "44444444-4444-4444-8444-444444444444",
+				ItemKey:           "exercise:55555555-5555-4555-8555-555555555555",
+				Response:          domain.PracticeResponse{Type: domain.PracticeResponseNotAnswered, Reason: domain.NotAnsweredFailedToLoad},
+			},
+			want: `{` + wireBaseJSON + `,"event_type":"practice.item_answered","practice_session_id":"44444444-4444-4444-8444-444444444444","item_key":"exercise:55555555-5555-4555-8555-555555555555","response":{"response_type":"not_answered","reason":"failed_to_load"}}`,
+		},
+		{
+			name: "generated choice heard in a key",
+			event: domain.PracticeItemAnsweredEvent{
+				TrackingEventBase: practiceWireBase(domain.EventTypePracticeItemAnswered),
+				PracticeSessionID: "44444444-4444-4444-8444-444444444444",
+				ItemKey:           "heard_chord:vi",
+				Response: domain.PracticeResponse{Type: domain.PracticeResponseGeneratedChoice, Way: "cadence_then_chord", MusicKey: "C",
+					Options: []string{"vi", "IV"}, Choice: "vi", LatencyMs: &latency, AudioMs: &audio},
+			},
+			want: `{` + wireBaseJSON + `,"event_type":"practice.item_answered","practice_session_id":"44444444-4444-4444-8444-444444444444","item_key":"heard_chord:vi","response":{"response_type":"generated_choice","way":"cadence_then_chord","music_key":"C","options":["vi","IV"],"choice":"vi","latency_ms":1800,"audio_ms":5000}}`,
+		},
+		{
+			name: "timed taps with none",
+			event: domain.PracticeItemAnsweredEvent{
+				TrackingEventBase: practiceWireBase(domain.EventTypePracticeItemAnswered),
+				PracticeSessionID: "44444444-4444-4444-8444-444444444444",
+				ItemKey:           "guide_tone:6ea2d087-ab9c-59dc-9657-8546025414d2:ii-V-I",
+				Response:          domain.PracticeResponse{Type: domain.PracticeResponseTimedTaps, MusicKey: "C", Tone: "3", TempoBPM: &tempo, Taps: []domain.TimedTap{}},
+			},
+			want: `{` + wireBaseJSON + `,"event_type":"practice.item_answered","practice_session_id":"44444444-4444-4444-8444-444444444444","item_key":"guide_tone:6ea2d087-ab9c-59dc-9657-8546025414d2:ii-V-I","response":{"response_type":"timed_taps","tempo_bpm":90,"music_key":"C","tone":"3","taps":[]}}`,
+		},
+		{
+			name: "timed taps",
+			event: domain.PracticeItemAnsweredEvent{
+				TrackingEventBase: practiceWireBase(domain.EventTypePracticeItemAnswered),
+				PracticeSessionID: "44444444-4444-4444-8444-444444444444",
+				ItemKey:           "guide_tone:6ea2d087-ab9c-59dc-9657-8546025414d2:ii-V-I",
+				Response: domain.PracticeResponse{Type: domain.PracticeResponseTimedTaps, MusicKey: "C", Tone: "3", TempoBPM: &tempo,
+					Taps: []domain.TimedTap{{AtMs: 0, String: 1, Fret: 1}}},
+			},
+			want: `{` + wireBaseJSON + `,"event_type":"practice.item_answered","practice_session_id":"44444444-4444-4444-8444-444444444444","item_key":"guide_tone:6ea2d087-ab9c-59dc-9657-8546025414d2:ii-V-I","response":{"response_type":"timed_taps","tempo_bpm":90,"music_key":"C","tone":"3","taps":[{"at_ms":0,"string":1,"fret":1}]}}`,
+		},
+		{
+			name: "multi tap at the nut",
+			event: domain.PracticeItemAnsweredEvent{
+				TrackingEventBase: practiceWireBase(domain.EventTypePracticeItemAnswered),
+				PracticeSessionID: "44444444-4444-4444-8444-444444444444",
+				ItemKey:           "fretboard_note:6ea2d087-ab9c-59dc-9657-8546025414d2:E",
+				Response: domain.PracticeResponse{Type: domain.PracticeResponseMultiTap, FretWindowFrom: &fret,
+					Cells: []domain.TappedCell{{String: 1, Fret: 0}}, LatencyMs: &latency},
+			},
+			want: `{` + wireBaseJSON + `,"event_type":"practice.item_answered","practice_session_id":"44444444-4444-4444-8444-444444444444","item_key":"fretboard_note:6ea2d087-ab9c-59dc-9657-8546025414d2:E","response":{"response_type":"multi_tap","latency_ms":1800,"fret_window":{"from_fret":0},"cells":[{"string":1,"fret":0}]}}`,
+		},
+		{
 			name: "session ended early with no felt ratings",
 			event: domain.PracticeSessionEndedEvent{
 				TrackingEventBase: practiceWireBase(domain.EventTypePracticeSessionEnded),

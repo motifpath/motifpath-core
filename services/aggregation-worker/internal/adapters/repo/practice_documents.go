@@ -23,6 +23,108 @@ type practiceResponseDocument struct {
 	Rating           string   `bson:"rating,omitempty"`
 	TempoBPM         *int     `bson:"tempo_bpm,omitempty"`
 	ChangesPerMinute *int     `bson:"changes_per_minute,omitempty"`
+	Choices          []string `bson:"choices,omitempty"`
+	Reason           string   `bson:"reason,omitempty"`
+	Way              string   `bson:"way,omitempty"`
+	MusicKey         string   `bson:"music_key,omitempty"`
+	Options          []string `bson:"options,omitempty"`
+	Choice           string   `bson:"choice,omitempty"`
+	Tone             string   `bson:"tone,omitempty"`
+	// Taps and Cells are pointers so an empty list is kept: the response is stored
+	// exactly as sent, and a take with no taps still sends taps.
+	Taps       *[]timedTapDocument   `bson:"taps,omitempty"`
+	FretWindow *fretWindowDocument   `bson:"fret_window,omitempty"`
+	Cells      *[]answerCellDocument `bson:"cells,omitempty"`
+}
+
+// timedTapDocument is one tap of a take, after the first bar's downbeat.
+type timedTapDocument struct {
+	AtMs   int `bson:"at_ms"`
+	String int `bson:"string"`
+	Fret   int `bson:"fret"`
+}
+
+// fretWindowDocument is a fret window, by its lowest fret.
+type fretWindowDocument struct {
+	FromFret int `bson:"from_fret"`
+}
+
+func toFretWindowDocument(from *int) *fretWindowDocument {
+	if from == nil {
+		return nil
+	}
+	return &fretWindowDocument{FromFret: *from}
+}
+
+func (d *fretWindowDocument) toDomain() *int {
+	if d == nil {
+		return nil
+	}
+	from := d.FromFret
+	return &from
+}
+
+func toCellDocuments(cells []domain.AnswerCell) []answerCellDocument {
+	var docs []answerCellDocument
+	for _, c := range cells {
+		docs = append(docs, answerCellDocument(c))
+	}
+	return docs
+}
+
+func toDomainCells(docs []answerCellDocument) []domain.AnswerCell {
+	var cells []domain.AnswerCell
+	for _, c := range docs {
+		cells = append(cells, domain.AnswerCell(c))
+	}
+	return cells
+}
+
+// toTapDocuments keeps nil as absent and an empty list as empty.
+func toTapDocuments(taps []domain.TimedTap) *[]timedTapDocument {
+	if taps == nil {
+		return nil
+	}
+	docs := make([]timedTapDocument, len(taps))
+	for i, t := range taps {
+		docs[i] = timedTapDocument(t)
+	}
+	return &docs
+}
+
+func toDomainTaps(docs *[]timedTapDocument) []domain.TimedTap {
+	if docs == nil {
+		return nil
+	}
+	taps := make([]domain.TimedTap, len(*docs))
+	for i, t := range *docs {
+		taps[i] = domain.TimedTap(t)
+	}
+	return taps
+}
+
+// toKeptCellDocuments keeps nil as absent and an empty list as empty, as a
+// response's cells must be.
+func toKeptCellDocuments(cells []domain.AnswerCell) *[]answerCellDocument {
+	if cells == nil {
+		return nil
+	}
+	docs := make([]answerCellDocument, len(cells))
+	for i, c := range cells {
+		docs[i] = answerCellDocument(c)
+	}
+	return &docs
+}
+
+func toKeptDomainCells(docs *[]answerCellDocument) []domain.AnswerCell {
+	if docs == nil {
+		return nil
+	}
+	cells := make([]domain.AnswerCell, len(*docs))
+	for i, c := range *docs {
+		cells[i] = domain.AnswerCell(c)
+	}
+	return cells
 }
 
 // practiceEvidenceDocument is a `practice_evidence` document: one piece of
@@ -47,9 +149,11 @@ type practiceEvidenceDocument struct {
 	AnswerKey         *answerKeyDocument       `bson:"answer_key,omitempty"`
 }
 
-// answerKeyDocument is what a right answer was: the asked cell and its note,
-// every exercise option as the student was shown it (stored as core kept it), a
-// shape's family and member, or the asked degree and where it is in the shape.
+// answerKeyDocument is what a right answer was: the asked cell and its note (with
+// the choices it was named among), every exercise option as the student was shown
+// it (stored as core kept it), a shape's family and member, the asked degree and
+// where it is in the shape, a generated question's answer and options, a
+// guide-tone take's bars, or every place of a note in a fret window.
 type answerKeyDocument struct {
 	String      *int                 `bson:"string,omitempty"`
 	Fret        *int                 `bson:"fret,omitempty"`
@@ -59,6 +163,21 @@ type answerKeyDocument struct {
 	Shape       string               `bson:"shape,omitempty"`
 	Interval    string               `bson:"interval,omitempty"`
 	Cells       []answerCellDocument `bson:"cells,omitempty"`
+	Choices     []string             `bson:"choices,omitempty"`
+	FretWindow  *fretWindowDocument  `bson:"fret_window,omitempty"`
+	Way         string               `bson:"way,omitempty"`
+	MusicKey    string               `bson:"music_key,omitempty"`
+	Answer      string               `bson:"answer,omitempty"`
+	Offered     []string             `bson:"offered,omitempty"`
+	Tone        string               `bson:"tone,omitempty"`
+	Bars        []answerBarDocument  `bson:"bars,omitempty"`
+}
+
+// answerBarDocument is one bar of a guide-tone take, graded.
+type answerBarDocument struct {
+	Chord    string `bson:"chord"`
+	NoteName string `bson:"note_name"`
+	Hit      bool   `bson:"hit"`
 }
 
 // answerCellDocument is a string and fret where a right answer was.
@@ -71,9 +190,11 @@ func toAnswerKeyDocument(k *domain.AnswerKey) (*answerKeyDocument, error) {
 	if k == nil {
 		return nil, nil
 	}
-	doc := &answerKeyDocument{String: k.String, Fret: k.Fret, NoteName: k.NoteName, ShapeFamily: k.ShapeFamily, Shape: k.Shape, Interval: k.Interval}
-	for _, c := range k.Cells {
-		doc.Cells = append(doc.Cells, answerCellDocument(c))
+	doc := &answerKeyDocument{String: k.String, Fret: k.Fret, NoteName: k.NoteName, ShapeFamily: k.ShapeFamily, Shape: k.Shape, Interval: k.Interval,
+		Cells: toCellDocuments(k.Cells), Choices: k.Choices, FretWindow: toFretWindowDocument(k.FretWindowFrom),
+		Way: k.Way, MusicKey: k.MusicKey, Answer: k.Answer, Offered: k.Offered, Tone: k.Tone}
+	for _, b := range k.Bars {
+		doc.Bars = append(doc.Bars, answerBarDocument(b))
 	}
 	for _, o := range k.Options {
 		raw := bson.Raw(o.Shown)
@@ -96,9 +217,11 @@ func (d *answerKeyDocument) toDomain() (*domain.AnswerKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	key := &domain.AnswerKey{String: d.String, Fret: d.Fret, NoteName: d.NoteName, Options: options, ShapeFamily: d.ShapeFamily, Shape: d.Shape, Interval: d.Interval}
-	for _, c := range d.Cells {
-		key.Cells = append(key.Cells, domain.AnswerCell(c))
+	key := &domain.AnswerKey{String: d.String, Fret: d.Fret, NoteName: d.NoteName, Options: options, ShapeFamily: d.ShapeFamily, Shape: d.Shape, Interval: d.Interval,
+		Cells: toDomainCells(d.Cells), Choices: d.Choices, FretWindowFrom: d.FretWindow.toDomain(),
+		Way: d.Way, MusicKey: d.MusicKey, Answer: d.Answer, Offered: d.Offered, Tone: d.Tone}
+	for _, b := range d.Bars {
+		key.Bars = append(key.Bars, domain.AnswerBar(b))
 	}
 	return key, nil
 }
@@ -152,6 +275,16 @@ func toEvidenceDocument(e domain.PracticeEvidence) (practiceEvidenceDocument, er
 			Rating:           string(r.Rating),
 			TempoBPM:         r.TempoBPM,
 			ChangesPerMinute: r.ChangesPerMinute,
+			Choices:          r.Choices,
+			Reason:           string(r.Reason),
+			Way:              r.Way,
+			MusicKey:         r.MusicKey,
+			Options:          r.Options,
+			Choice:           r.Choice,
+			Tone:             r.Tone,
+			Taps:             toTapDocuments(r.Taps),
+			FretWindow:       toFretWindowDocument(r.FretWindowFrom),
+			Cells:            toKeptCellDocuments(r.Cells),
 		},
 		Correct:          e.Correct,
 		LatencyMs:        e.LatencyMs,
@@ -192,6 +325,16 @@ func (d practiceEvidenceDocument) toDomain() (domain.PracticeEvidence, error) {
 			Rating:           domain.SelfRating(r.Rating),
 			TempoBPM:         r.TempoBPM,
 			ChangesPerMinute: r.ChangesPerMinute,
+			Choices:          r.Choices,
+			Reason:           domain.NotAnsweredReason(r.Reason),
+			Way:              r.Way,
+			MusicKey:         r.MusicKey,
+			Options:          r.Options,
+			Choice:           r.Choice,
+			Tone:             r.Tone,
+			Taps:             toDomainTaps(r.Taps),
+			FretWindowFrom:   r.FretWindow.toDomain(),
+			Cells:            toKeptDomainCells(r.Cells),
 		},
 		Correct:          d.Correct,
 		LatencyMs:        d.LatencyMs,
@@ -238,7 +381,7 @@ func (d practiceItemStateDocument) toDomain() domain.ItemFold {
 		LastAt:               utc(d.LastAt),
 		BestCleanBPM:         d.BestCleanBPM,
 		BestChangesPerMinute: d.BestChangesPerMinute,
-		RightByResponse:      rightByResponse(d.RightByResponse),
+		RightByResponse:      d.RightByResponse,
 	}
 }
 
@@ -248,26 +391,4 @@ func utc(t *time.Time) *time.Time {
 	}
 	u := t.UTC()
 	return &u
-}
-
-func rightByResponse(counts map[string]int) map[domain.PracticeResponseType]int {
-	if len(counts) == 0 {
-		return nil
-	}
-	byType := make(map[domain.PracticeResponseType]int, len(counts))
-	for asked, n := range counts {
-		byType[domain.PracticeResponseType(asked)] = n
-	}
-	return byType
-}
-
-func rightByResponseDocument(counts map[domain.PracticeResponseType]int) map[string]int {
-	if len(counts) == 0 {
-		return nil
-	}
-	byType := make(map[string]int, len(counts))
-	for asked, n := range counts {
-		byType[string(asked)] = n
-	}
-	return byType
 }

@@ -73,6 +73,27 @@ type practiceResponseWire struct {
 	Rating           string   `json:"rating,omitempty"`
 	TempoBPM         *int     `json:"tempo_bpm,omitempty"`
 	ChangesPerMinute *int     `json:"changes_per_minute,omitempty"`
+	Choices          []string `json:"choices,omitempty"`
+	Reason           string   `json:"reason,omitempty"`
+	Way              string   `json:"way,omitempty"`
+	MusicKey         string   `json:"music_key,omitempty"`
+	Options          []string `json:"options,omitempty"`
+	Choice           string   `json:"choice,omitempty"`
+	Tone             string   `json:"tone,omitempty"`
+	// Taps and Cells are pointers so an empty list, which a take with no taps
+	// sends, is told apart from an absent one.
+	Taps *[]struct {
+		AtMs   int `json:"at_ms"`
+		String int `json:"string"`
+		Fret   int `json:"fret"`
+	} `json:"taps,omitempty"`
+	FretWindow *struct {
+		FromFret int `json:"from_fret"`
+	} `json:"fret_window,omitempty"`
+	Cells *[]struct {
+		String int `json:"string"`
+		Fret   int `json:"fret"`
+	} `json:"cells,omitempty"`
 }
 
 func decodeWireEvent(payload []byte) (wireEvent, error) {

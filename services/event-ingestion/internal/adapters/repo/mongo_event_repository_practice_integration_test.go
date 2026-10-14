@@ -104,6 +104,48 @@ func TestMongoEventRepository_FindByEventID_RoundTripsPracticeEvents(t *testing.
 			ItemKey:           "play_along:55555555-5555-4555-8555-555555555555",
 			Response:          domain.PracticeResponse{Type: domain.PracticeResponseSelfRating, Rating: domain.SelfRatingStruggled, TempoBPM: intRef(60)},
 		},
+		domain.PracticeItemAnsweredEvent{
+			TrackingEventBase: practiceBase("a1000000-0000-4000-8000-000000000101", domain.EventTypePracticeItemAnswered, practiceStudentID, practiceAt),
+			PracticeSessionID: practiceSessionID,
+			ItemKey:           "fretboard_cell:6ea2d087-ab9c-59dc-9657-8546025414d2:5:3",
+			Response:          domain.PracticeResponse{Type: domain.PracticeResponseNameTheNote, NoteName: "C", Choices: []string{"B", "C", "C#", "F"}, LatencyMs: intRef(1800)},
+		},
+		domain.PracticeItemAnsweredEvent{
+			TrackingEventBase: practiceBase("a1000000-0000-4000-8000-000000000102", domain.EventTypePracticeItemAnswered, practiceStudentID, practiceAt),
+			PracticeSessionID: practiceSessionID,
+			ItemKey:           "exercise:55555555-5555-4555-8555-555555555555",
+			Response:          domain.PracticeResponse{Type: domain.PracticeResponseNotAnswered, Reason: domain.NotAnsweredUnavailable},
+		},
+		domain.PracticeItemAnsweredEvent{
+			TrackingEventBase: practiceBase("a1000000-0000-4000-8000-000000000103", domain.EventTypePracticeItemAnswered, practiceStudentID, practiceAt),
+			PracticeSessionID: practiceSessionID,
+			ItemKey:           "heard_chord:vi",
+			Response:          domain.PracticeResponse{Type: domain.PracticeResponseGeneratedChoice, Way: "cadence_then_chord", MusicKey: "C", Options: []string{"vi", "IV"}, Choice: "vi", LatencyMs: intRef(3200), AudioMs: intRef(2500)},
+		},
+		domain.PracticeItemAnsweredEvent{
+			TrackingEventBase: practiceBase("a1000000-0000-4000-8000-000000000104", domain.EventTypePracticeItemAnswered, practiceStudentID, practiceAt),
+			PracticeSessionID: practiceSessionID,
+			ItemKey:           "guide_tone:6ea2d087-ab9c-59dc-9657-8546025414d2:ii-V-I",
+			Response:          domain.PracticeResponse{Type: domain.PracticeResponseTimedTaps, MusicKey: "C", Tone: "3", TempoBPM: intRef(120), Taps: []domain.TimedTap{{AtMs: 0, String: 1, Fret: 1}}},
+		},
+		domain.PracticeItemAnsweredEvent{
+			TrackingEventBase: practiceBase("a1000000-0000-4000-8000-000000000105", domain.EventTypePracticeItemAnswered, practiceStudentID, practiceAt),
+			PracticeSessionID: practiceSessionID,
+			ItemKey:           "guide_tone:6ea2d087-ab9c-59dc-9657-8546025414d2:ii-V-I",
+			Response:          domain.PracticeResponse{Type: domain.PracticeResponseTimedTaps, MusicKey: "C", Tone: "7", TempoBPM: intRef(120), Taps: []domain.TimedTap{}},
+		},
+		domain.PracticeItemAnsweredEvent{
+			TrackingEventBase: practiceBase("a1000000-0000-4000-8000-000000000106", domain.EventTypePracticeItemAnswered, practiceStudentID, practiceAt),
+			PracticeSessionID: practiceSessionID,
+			ItemKey:           "fretboard_note:6ea2d087-ab9c-59dc-9657-8546025414d2:E",
+			Response:          domain.PracticeResponse{Type: domain.PracticeResponseMultiTap, FretWindowFrom: intRef(0), Cells: []domain.TappedCell{{String: 1, Fret: 0}}, LatencyMs: intRef(4000)},
+		},
+		domain.PracticeItemAnsweredEvent{
+			TrackingEventBase: practiceBase("a1000000-0000-4000-8000-000000000107", domain.EventTypePracticeItemAnswered, practiceStudentID, practiceAt),
+			PracticeSessionID: practiceSessionID,
+			ItemKey:           "fretboard_note:6ea2d087-ab9c-59dc-9657-8546025414d2:E",
+			Response:          domain.PracticeResponse{Type: domain.PracticeResponseMultiTap, FretWindowFrom: intRef(3), Cells: []domain.TappedCell{}, LatencyMs: intRef(4000)},
+		},
 		domain.PracticeSessionEndedEvent{
 			TrackingEventBase: practiceBase("a1000000-0000-4000-8000-000000000007", domain.EventTypePracticeSessionEnded, practiceStudentID, practiceAt),
 			PracticeSessionID: practiceSessionID,

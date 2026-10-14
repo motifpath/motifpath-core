@@ -278,10 +278,27 @@ func TestFoldEvidence_AutoGradedAnswers(t *testing.T) {
 		assert.InDelta(t, 0, f.Fluency, 1e-9)
 	})
 
+	t.Run("a generated question is judged against the fluent time of its way, not its response type", func(t *testing.T) {
+		goal := ItemGoal{FluentTimesByWay: map[string][]FluentTime{
+			"numeral_to_chord": {{Version: 1, EffectiveFrom: october1, FluentNetMs: 3000}},
+			"chord_to_numeral": {{Version: 1, EffectiveFrom: october1, FluentNetMs: 5000}},
+		}}
+		toChord, toNumeral := answer(onDay(0), true, 4000), answer(onDay(0), true, 4000)
+		toChord.Response = PracticeResponse{Type: PracticeResponseGeneratedChoice, Way: "numeral_to_chord"}
+		toNumeral.Response = PracticeResponse{Type: PracticeResponseGeneratedChoice, Way: "chord_to_numeral"}
+
+		judgedToChord, ok := JudgeTimed(toChord, goal)
+		require.True(t, ok)
+		judgedToNumeral, ok := JudgeTimed(toNumeral, goal)
+		require.True(t, ok)
+		assert.Equal(t, 3000, judgedToChord.FluentTime.FluentNetMs)
+		assert.Equal(t, 5000, judgedToNumeral.FluentTime.FluentNetMs)
+	})
+
 	t.Run("a cell's answer is judged against the fluent time of the way it was asked", func(t *testing.T) {
-		goal := ItemGoal{FluentTimesByResponse: map[PracticeResponseType][]FluentTime{
-			PracticeResponseNameTheNote: {{Version: 1, EffectiveFrom: october1, FluentNetMs: 3000}},
-			PracticeResponseFindTheNote: {{Version: 1, EffectiveFrom: october1, FluentNetMs: 4000}},
+		goal := ItemGoal{FluentTimesByWay: map[string][]FluentTime{
+			"name_the_note": {{Version: 1, EffectiveFrom: october1, FluentNetMs: 3000}},
+			"find_the_note": {{Version: 1, EffectiveFrom: october1, FluentNetMs: 4000}},
 		}}
 		named, found := answer(onDay(0), true, 3500), answer(onDay(0), true, 3500)
 		named.Response.Type, found.Response.Type = PracticeResponseNameTheNote, PracticeResponseFindTheNote
@@ -301,7 +318,18 @@ func TestFoldEvidence_AutoGradedAnswers(t *testing.T) {
 
 		f := foldAll(t, ItemGoal{}, named, found, wrong)
 
-		assert.Equal(t, map[PracticeResponseType]int{PracticeResponseNameTheNote: 1, PracticeResponseFindTheNote: 1}, f.RightByResponse)
+		assert.Equal(t, map[string]int{"name_the_note": 1, "find_the_note": 1}, f.RightByResponse)
+	})
+
+	t.Run("a generated question's right answers are counted per way, not per response type", func(t *testing.T) {
+		toChord, toNumeral, again := answer(onDay(0), true, 2000), answer(onDay(1), true, 2000), answer(onDay(2), true, 2000)
+		toChord.Response = PracticeResponse{Type: PracticeResponseGeneratedChoice, Way: "numeral_to_chord"}
+		toNumeral.Response = PracticeResponse{Type: PracticeResponseGeneratedChoice, Way: "chord_to_numeral"}
+		again.Response = toChord.Response
+
+		f := foldAll(t, ItemGoal{}, toChord, toNumeral, again)
+
+		assert.Equal(t, map[string]int{"numeral_to_chord": 2, "chord_to_numeral": 1}, f.RightByResponse)
 	})
 
 	t.Run("an answer without its verdict is refused", func(t *testing.T) {
@@ -392,4 +420,24 @@ func TestDailySnapshots_NoEvidenceNoSnapshots(t *testing.T) {
 
 func TestSnapshotDay_IsTheUTCMidnightOfTheDay(t *testing.T) {
 	assert.Equal(t, time.Date(2026, 10, 5, 0, 0, 0, 0, time.UTC), SnapshotDay(onDay(0)))
+}
+
+func TestWayAsked(t *testing.T) {
+	cases := []struct {
+		name string
+		kind PracticeItemKind
+		r    PracticeResponse
+		want string
+	}{
+		{"a generated question, by its way", PracticeItemKindDiatonicChord, PracticeResponse{Type: PracticeResponseGeneratedChoice, Way: "chord_to_numeral"}, "chord_to_numeral"},
+		{"a note found everywhere, by its kind's one template", PracticeItemKindFretboardNote, PracticeResponse{Type: PracticeResponseMultiTap}, "find_every_instance"},
+		{"a guide-tone take, by its kind's one template", PracticeItemKindGuideTone, PracticeResponse{Type: PracticeResponseTimedTaps}, "tap_the_third"},
+		{"a fretboard cell, by its response type", PracticeItemKindFretboardCell, PracticeResponse{Type: PracticeResponseNameTheNote}, "name_the_note"},
+		{"another kind answering with multi_tap never borrows a template", PracticeItemKindDiagramShape, PracticeResponse{Type: PracticeResponseMultiTap}, "multi_tap"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			assert.Equal(t, c.want, WayAsked(c.kind, c.r))
+		})
+	}
 }
