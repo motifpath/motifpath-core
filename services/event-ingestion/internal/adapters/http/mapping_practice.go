@@ -433,13 +433,8 @@ func toGeneratedChoiceResponse(r rawPracticeResponse) (domain.PracticeResponse, 
 	if r.MusicKey != nil && !musicKeys[*r.MusicKey] {
 		return invalidResponse("music_key must be a major key spelled as C, Db, D, Eb, E, F, F#, G, Ab, A, Bb or B")
 	}
-	if len(r.Options) < minOptions || len(r.Options) > maxOptions || !distinct(r.Options) {
-		return invalidResponse(fmt.Sprintf("options must be %d to %d different options", minOptions, maxOptions))
-	}
-	for _, o := range r.Options {
-		if o == "" || len(o) > maxOptionLength {
-			return invalidResponse(fmt.Sprintf("options must be 1 to %d characters long", maxOptionLength))
-		}
+	if why := checkOptions(r.Options); why != "" {
+		return invalidResponse(why)
 	}
 	if r.Choice == nil || *r.Choice == "" || len(*r.Choice) > maxOptionLength {
 		return invalidResponse(fmt.Sprintf("choice must be 1 to %d characters long", maxOptionLength))
@@ -455,6 +450,19 @@ func toGeneratedChoiceResponse(r rawPracticeResponse) (domain.PracticeResponse, 
 	return resp, nil
 }
 
+// checkOptions is why a generated question's options are refused, or "".
+func checkOptions(options []string) string {
+	if len(options) < minOptions || len(options) > maxOptions || !distinct(options) {
+		return fmt.Sprintf("options must be %d to %d different options", minOptions, maxOptions)
+	}
+	for _, o := range options {
+		if o == "" || len(o) > maxOptionLength {
+			return fmt.Sprintf("options must be 1 to %d characters long", maxOptionLength)
+		}
+	}
+	return ""
+}
+
 func toTimedTapsResponse(r rawPracticeResponse) (domain.PracticeResponse, error) {
 	if property := r.strayProperty("music_key", "tone", "tempo_bpm", "taps"); property != "" {
 		return invalidResponse(property + " is not a property of timed_taps")
@@ -468,18 +476,27 @@ func toTimedTapsResponse(r rawPracticeResponse) (domain.PracticeResponse, error)
 	if r.TempoBPM == nil || *r.TempoBPM < 1 || *r.TempoBPM > maxTempoBPM {
 		return invalidResponse(fmt.Sprintf("tempo_bpm must be between 1 and %d", maxTempoBPM))
 	}
-	if r.Taps == nil || len(r.Taps) > maxTaps {
-		return invalidResponse(fmt.Sprintf("taps must list at most %d taps", maxTaps))
-	}
-	taps := make([]domain.TimedTap, 0, len(r.Taps))
-	for _, t := range r.Taps {
-		if t.AtMs == nil || *t.AtMs < 0 || t.String == nil || *t.String < 1 || t.Fret == nil || *t.Fret < 0 {
-			return invalidResponse("each tap needs at_ms of 0 or more, string of 1 or more and fret of 0 or more")
-		}
-		taps = append(taps, domain.TimedTap{AtMs: *t.AtMs, String: *t.String, Fret: *t.Fret})
+	taps, why := toTimedTaps(r.Taps)
+	if why != "" {
+		return invalidResponse(why)
 	}
 	return domain.PracticeResponse{Type: domain.PracticeResponseTimedTaps, MusicKey: *r.MusicKey, Tone: *r.Tone,
 		TempoBPM: r.TempoBPM, Taps: taps}, nil
+}
+
+// toTimedTaps reads a take's taps, or says why they are refused.
+func toTimedTaps(raw []rawTap) ([]domain.TimedTap, string) {
+	if raw == nil || len(raw) > maxTaps {
+		return nil, fmt.Sprintf("taps must list at most %d taps", maxTaps)
+	}
+	taps := make([]domain.TimedTap, 0, len(raw))
+	for _, t := range raw {
+		if t.AtMs == nil || *t.AtMs < 0 || t.String == nil || *t.String < 1 || t.Fret == nil || *t.Fret < 0 {
+			return nil, "each tap needs at_ms of 0 or more, string of 1 or more and fret of 0 or more"
+		}
+		taps = append(taps, domain.TimedTap{AtMs: *t.AtMs, String: *t.String, Fret: *t.Fret})
+	}
+	return taps, ""
 }
 
 func toMultiTapResponse(r rawPracticeResponse) (domain.PracticeResponse, error) {
