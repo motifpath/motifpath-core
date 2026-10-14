@@ -50,6 +50,7 @@ type PracticeSessionService struct {
 	diagrams    ports.DiagramRepository
 	exercises   ports.ExerciseRepository
 	rollup      *KnowledgeRollupService
+	templates   ports.DrillTemplateRepository
 	tapChecks   ports.TapCheckReader
 	feltRatings ports.FeltRatingReader
 	headCount   ports.HeadSessionCounter
@@ -69,6 +70,7 @@ func NewPracticeSessionService(
 	diagrams ports.DiagramRepository,
 	exercises ports.ExerciseRepository,
 	rollup *KnowledgeRollupService,
+	templates ports.DrillTemplateRepository,
 	tapChecks ports.TapCheckReader,
 	feltRatings ports.FeltRatingReader,
 	headCount ports.HeadSessionCounter,
@@ -84,6 +86,7 @@ func NewPracticeSessionService(
 		diagrams:    diagrams,
 		exercises:   exercises,
 		rollup:      rollup,
+		templates:   templates,
 		tapChecks:   tapChecks,
 		feltRatings: feltRatings,
 		headCount:   headCount,
@@ -193,8 +196,16 @@ func knowledgeNodeIDs(nodes []domain.KnowledgeNode) []string {
 //
 // Each pick is fitted to the minutes by its estimated time; a session too
 // short for any of them still offers the first. A session with nothing to
-// offer is not found, as is an instrumentID that doesn't exist.
-func (s *PracticeSessionService) ComposePlan(ctx context.Context, caller domain.User, instrumentID *string, minutes int) (domain.PracticeSessionPlan, error) {
+// offer is not found, as is an instrumentID that doesn't exist. Every pick
+// carries the rung its drill trains, and the plan names the nodes its picks
+// serve as its subjects, the composer having picked them.
+//
+// A session on a subject the student chose, focusNodeID, can't be composed
+// yet: it is refused as invalid.
+func (s *PracticeSessionService) ComposePlan(ctx context.Context, caller domain.User, instrumentID, focusNodeID *string, minutes int) (domain.PracticeSessionPlan, error) {
+	if focusNodeID != nil {
+		return domain.PracticeSessionPlan{}, domain.NewValidationError("focus_node_id", "choosing what to practise is not available yet")
+	}
 	if err := domain.ValidatePracticeMinutes(minutes); err != nil {
 		return domain.PracticeSessionPlan{}, err
 	}
@@ -236,7 +247,7 @@ func (s *PracticeSessionService) ComposePlan(ctx context.Context, caller domain.
 		c.catchUp(p.known, c.stretchWindows(stretch))
 	}
 	c.neverEmpty()
-	return s.newPlan(ctx, caller.ID, instrumentID, minutes, c.plan())
+	return s.newPlan(ctx, caller.ID, instrumentID, minutes, c.plan(), maps)
 }
 
 // newCellTurn reports whether a session in the head is a new-cell turn: the
@@ -254,11 +265,21 @@ func (s *PracticeSessionService) newCellTurn(ctx context.Context, studentID stri
 	return started%2 == 1, nil
 }
 
-// newPlan is the plan of the composed items, with its felt questions and
-// asking for a tap check when one is due. A plan with no item is not found.
-func (s *PracticeSessionService) newPlan(ctx context.Context, studentID string, instrumentID *string, minutes int, items []domain.PracticeSessionItem) (domain.PracticeSessionPlan, error) {
+// newPlan is the plan of the composed items, each with its rung, its
+// subjects named from maps, with its felt questions and asking for a tap
+// check when one is due. A plan with no item is not found.
+func (s *PracticeSessionService) newPlan(ctx context.Context, studentID string, instrumentID *string, minutes int, items []domain.PracticeSessionItem, maps []KnowledgeMap) (domain.PracticeSessionPlan, error) {
 	if len(items) == 0 {
 		return domain.PracticeSessionPlan{}, fmt.Errorf("%w: nothing to practise for this session", domain.ErrNotFound)
+	}
+	if err := s.setRungs(ctx, items); err != nil {
+		return domain.PracticeSessionPlan{}, err
+	}
+	nodes := map[string]domain.KnowledgeNode{}
+	for _, m := range maps {
+		for _, n := range m.Nodes {
+			nodes[n.ID] = n
+		}
 	}
 	feltQuestions, err := s.feltQuestions(ctx, items)
 	if err != nil {
@@ -270,8 +291,26 @@ func (s *PracticeSessionService) newPlan(ctx context.Context, studentID string, 
 	}
 	return domain.PracticeSessionPlan{
 		ID: s.newID(), InstrumentID: instrumentID, Minutes: minutes, Items: items,
+		FocusSource: domain.PracticeFocusSuggested, FocusNodes: domain.ItemsFocus(items, nodes),
 		FeltQuestions: feltQuestions, TapCheckDue: tapCheckDue,
 	}, nil
+}
+
+// setRungs sets the rung of each of items from the installed drill
+// templates.
+func (s *PracticeSessionService) setRungs(ctx context.Context, items []domain.PracticeSessionItem) error {
+	list, err := s.templates.List(ctx)
+	if err != nil {
+		return err
+	}
+	templates := make(map[string]domain.DrillTemplate, len(list))
+	for _, t := range list {
+		templates[t.Key] = t
+	}
+	for i := range items {
+		items[i].Rung = domain.ItemRung(items[i], templates)
+	}
+	return nil
 }
 
 // feltQuestions picks the plan's felt questions, reading felt ratings only

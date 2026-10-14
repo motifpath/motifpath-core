@@ -257,3 +257,28 @@ func TestWarmUpTempo(t *testing.T) {
 		})
 	}
 }
+
+func TestItemsFocus(t *testing.T) {
+	node := func(id string) domain.KnowledgeNode { return domain.KnowledgeNode{ID: id, Key: id} }
+	nodes := map[string]domain.KnowledgeNode{"a": node("a"), "b": node("b"), "c": node("c"), "d": node("d")}
+	item := func(nodeID string, seconds int) domain.PracticeSessionItem {
+		return domain.PracticeSessionItem{NodeID: &nodeID, EstimatedSeconds: seconds}
+	}
+
+	t.Run("names the nodes by planned time, most first, at most three", func(t *testing.T) {
+		got := domain.ItemsFocus([]domain.PracticeSessionItem{
+			item("a", 10), item("b", 30), item("c", 20), item("d", 5), item("a", 15),
+		}, nodes)
+		assert.Equal(t, []domain.KnowledgeNode{node("b"), node("a"), node("c")}, got)
+	})
+
+	t.Run("a tie keeps the node served first", func(t *testing.T) {
+		got := domain.ItemsFocus([]domain.PracticeSessionItem{item("c", 10), item("a", 10)}, nodes)
+		assert.Equal(t, []domain.KnowledgeNode{node("c"), node("a")}, got)
+	})
+
+	t.Run("items serving no known node are left out", func(t *testing.T) {
+		got := domain.ItemsFocus([]domain.PracticeSessionItem{{EstimatedSeconds: 60}, item("gone", 60), item("a", 5)}, nodes)
+		assert.Equal(t, []domain.KnowledgeNode{node("a")}, got)
+	})
+}

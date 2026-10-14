@@ -201,7 +201,7 @@ func (h *Handler) CreatePracticeSessionPlan(ctx context.Context, request generat
 		return generated.CreatePracticeSessionPlan400JSONResponse(validationErrorResponse(domain.NewValidationError("minutes", "is required"))), nil
 	}
 
-	plan, err := h.practiceSession.ComposePlan(ctx, caller, uuidPtrToStringPtr(request.Body.InstrumentId), request.Body.Minutes)
+	plan, err := h.practiceSession.ComposePlan(ctx, caller, uuidPtrToStringPtr(request.Body.InstrumentId), uuidPtrToStringPtr(request.Body.FocusNodeId), request.Body.Minutes)
 	switch kind, valErr := classify(err); {
 	case err == nil:
 		var creatorIDs []string
@@ -237,10 +237,16 @@ func toGeneratedPracticeSessionPlan(plan domain.PracticeSessionPlan, names userN
 	for i, item := range plan.Items {
 		items[i] = toGeneratedPracticeSessionItem(item, names, locale)
 	}
+	focus := make([]generated.PracticeFocusNode, len(plan.FocusNodes))
+	for i, n := range plan.FocusNodes {
+		focus[i] = generated.PracticeFocusNode{NodeId: mustUUID(n.ID), Names: generated.LocalizedNames(n.Names)}
+	}
 	return generated.PracticeSessionPlan{
 		PracticeSessionId: mustUUID(plan.ID),
 		InstrumentId:      uuidPtrFromStringPtr(plan.InstrumentID),
 		Minutes:           plan.Minutes,
+		FocusSource:       generated.PracticeFocusSource(plan.FocusSource),
+		FocusNodes:        focus,
 		Items:             items,
 		FeltQuestions:     plan.FeltQuestions,
 		TapCheckDue:       plan.TapCheckDue,
@@ -252,6 +258,7 @@ func toGeneratedPracticeSessionItem(item domain.PracticeSessionItem, names userN
 		ItemKey:          item.ItemKey,
 		Kind:             generated.PracticeItemKind(item.Kind),
 		Reason:           generated.PracticePickReason(item.Reason),
+		Rung:             generated.PracticeRung(item.Rung),
 		NodeId:           uuidPtrFromStringPtr(item.NodeID),
 		Level:            generated.KnowledgeLevel(item.Level),
 		EstimatedSeconds: item.EstimatedSeconds,

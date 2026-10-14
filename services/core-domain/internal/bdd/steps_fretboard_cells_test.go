@@ -3,6 +3,7 @@
 package bdd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -418,4 +419,23 @@ func (w *world) installationAbortsNaming(key string) error {
 		return fmt.Errorf("installation error %q doesn't name %q", err, key)
 	}
 	return nil
+}
+
+// catalogDrillTemplates lists motifpath-specs' drill catalog templates, as
+// its migrations install them.
+type catalogDrillTemplates struct{}
+
+func (catalogDrillTemplates) List(context.Context) ([]domain.DrillTemplate, error) {
+	var file drillCatalogFile
+	if err := readDrillCatalog(&file); err != nil {
+		return nil, err
+	}
+	templates := make([]domain.DrillTemplate, len(file.Templates))
+	for i, t := range file.Templates {
+		templates[i] = domain.DrillTemplate{
+			Key: t.Key, ItemKind: domain.PracticeItemKind(t.ItemKind), ResponseType: t.ResponseType,
+			Rung: domain.PracticeRung(t.Rung), SecondWay: t.SecondWay,
+		}
+	}
+	return templates, nil
 }

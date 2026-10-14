@@ -324,7 +324,7 @@ func newWorld() *world {
 	w.tapChecks = newFakeTapChecks()
 	w.feltRatings = newFakeFeltRatings()
 	w.practiceActivity = newFakePracticeActivity()
-	practiceSession := application.NewPracticeSessionService(w.instruments, w.studentPaths, w.courseEnrollments, w.paths, w.courseVersions, w.nodes, w.diagrams, w.exercises, w.rollup, w.tapChecks, w.feltRatings, w.practiceActivity, newID, now)
+	practiceSession := application.NewPracticeSessionService(w.instruments, w.studentPaths, w.courseEnrollments, w.paths, w.courseVersions, w.nodes, w.diagrams, w.exercises, w.rollup, catalogDrillTemplates{}, w.tapChecks, w.feltRatings, w.practiceActivity, newID, now)
 	w.summaryNow = fixedNow
 	summaryNow := func() time.Time { return w.summaryNow }
 	summaryRollup := application.NewKnowledgeRollupService(w.knowledge, w.knowledgeEdges, w.practiceItems, w.practiceStates, summaryNow)
