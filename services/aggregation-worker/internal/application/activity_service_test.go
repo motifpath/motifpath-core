@@ -46,6 +46,27 @@ func (f *fakeSessions) Put(_ context.Context, s domain.PracticeSession) error {
 	return nil
 }
 
+// fakeLastActivity keeps the repository's contract: a touch earlier than the
+// stored last activity leaves it as it is.
+type fakeLastActivity struct {
+	at       map[string]time.Time
+	touchErr error
+}
+
+func newFakeLastActivity() *fakeLastActivity {
+	return &fakeLastActivity{at: map[string]time.Time{}}
+}
+
+func (f *fakeLastActivity) Touch(_ context.Context, studentID string, at time.Time) error {
+	if f.touchErr != nil {
+		return f.touchErr
+	}
+	if at.After(f.at[studentID]) {
+		f.at[studentID] = at
+	}
+	return nil
+}
+
 type fakeSongChartCompletions struct {
 	stored    []domain.SongChartCompletion
 	insertErr error
@@ -163,7 +184,7 @@ func lessonCompletedEvent(eventID string, at time.Time) domain.TrackingEvent {
 }
 
 func newActivity() *application.ActivityService {
-	return application.NewActivityService(newFakeSessions(), &fakeLearning{}, &fakeTapChecks{}, &fakeSongChartCompletions{})
+	return application.NewActivityService(newFakeSessions(), &fakeLearning{}, &fakeTapChecks{}, &fakeSongChartCompletions{}, newFakeLastActivity())
 }
 
 type activityFixture struct {
@@ -171,14 +192,15 @@ type activityFixture struct {
 	learning  *fakeLearning
 	tapChecks *fakeTapChecks
 	songs     *fakeSongChartCompletions
+	last      *fakeLastActivity
 	practice  *practiceFixture
 	service   *application.ProcessEventService
 }
 
 func newActivityFixture() *activityFixture {
-	f := &activityFixture{sessions: newFakeSessions(), learning: &fakeLearning{}, tapChecks: &fakeTapChecks{}, songs: &fakeSongChartCompletions{}, practice: newPracticeFixture()}
+	f := &activityFixture{sessions: newFakeSessions(), learning: &fakeLearning{}, tapChecks: &fakeTapChecks{}, songs: &fakeSongChartCompletions{}, last: newFakeLastActivity(), practice: newPracticeFixture()}
 	f.service = application.NewProcessEventService(newFakeRepository(), f.practice.service,
-		application.NewActivityService(f.sessions, f.learning, f.tapChecks, f.songs))
+		application.NewActivityService(f.sessions, f.learning, f.tapChecks, f.songs, f.last))
 	return f
 }
 
@@ -365,6 +387,8 @@ func TestActivityService_ReturnsStorageFailuresForARetry(t *testing.T) {
 			tapCheckEvent("e0000000-0000-4000-8000-0000000000f1", clock(9, 0), 320)},
 		{"keeping a song chart completion", func(f *activityFixture) { f.songs.insertErr = boom },
 			songChartCompletedEvent("e0000000-0000-4000-8000-0000000000a1", asaBranca, clock(20, 0))},
+		{"touching last activity", func(f *activityFixture) { f.last.touchErr = boom },
+			anyEvent("song_chart.opened", "e0000000-0000-4000-8000-0000000000b1", clock(21, 15))},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -531,6 +555,89 @@ func TestActivityService_KeepsEverySongChartCompletion(t *testing.T) {
 			f.handle(t, c.events...)
 
 			assert.Equal(t, c.want, f.songs.stored)
+		})
+	}
+}
+
+func anyEvent(eventType domain.EventType, eventID string, at time.Time) domain.TrackingEvent {
+	return domain.TrackingEvent{EventType: eventType, EventID: eventID, StudentID: alice, OccurredAt: at}
+}
+
+func TestActivityService_KeepsEachStudentsLastActivity(t *testing.T) {
+	cases := []struct {
+		name   string
+		events []domain.TrackingEvent
+		want   time.Time
+	}{
+		{
+			name: "any event of a student's becomes their last activity",
+			events: []domain.TrackingEvent{
+				sessionEndEvent("e0000000-0000-4000-8000-0000000000e1", clock(18, 11), false, 6),
+				anyEvent("song_chart.opened", "e0000000-0000-4000-8000-0000000000b1", clock(21, 15)),
+			},
+			want: clock(21, 15),
+		},
+		{
+			name: "an event that arrives late does not move last activity back",
+			events: []domain.TrackingEvent{
+				anyEvent(domain.EventTypeLessonStarted, "e0000000-0000-4000-8000-0000000000b1", clock(21, 15)),
+				answeredEvent("e0000000-0000-4000-8000-000000000001", clock(18, 3), ""),
+			},
+			want: clock(21, 15),
+		},
+		{
+			name: "events the worker otherwise ignores still count",
+			events: []domain.TrackingEvent{
+				anyEvent("exercise.started", "e0000000-0000-4000-8000-0000000000b1", clock(9, 0)),
+				anyEvent("song_chart.chord_viewed", "e0000000-0000-4000-8000-0000000000b2", clock(9, 5)),
+			},
+			want: clock(9, 5),
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			f := newActivityFixture()
+
+			f.handle(t, c.events...)
+
+			assert.Equal(t, map[string]time.Time{alice: c.want}, f.last.at)
+		})
+	}
+}
+
+func TestActivityService_CountsEachSessionsAnswersOnce(t *testing.T) {
+	cases := []struct {
+		name   string
+		events []domain.TrackingEvent
+		want   int
+	}{
+		{
+			name:   "a session with no answer has answered nothing",
+			events: []domain.TrackingEvent{sessionStartEvent(clock(18, 0))},
+			want:   0,
+		},
+		{
+			name: "each answer given in the session counts, before any end arrives",
+			events: []domain.TrackingEvent{sessionStartEvent(clock(18, 0)),
+				answeredEvent("e0000000-0000-4000-8000-000000000001", clock(18, 3), sessionOne),
+				answeredEvent("e0000000-0000-4000-8000-000000000002", clock(18, 4), sessionOne)},
+			want: 2,
+		},
+		{
+			name: "an answer delivered twice counts once",
+			events: []domain.TrackingEvent{sessionStartEvent(clock(18, 0)),
+				answeredEvent("e0000000-0000-4000-8000-000000000001", clock(18, 3), sessionOne),
+				answeredEvent("e0000000-0000-4000-8000-000000000001", clock(18, 3), sessionOne)},
+			want: 1,
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			f := newActivityFixture()
+
+			f.handle(t, c.events...)
+
+			assert.Equal(t, c.want, f.session(t).AnsweredItems())
 		})
 	}
 }

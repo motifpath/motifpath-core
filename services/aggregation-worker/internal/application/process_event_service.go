@@ -10,7 +10,9 @@ import (
 // ProcessEventService routes each tracking event to what it changes: lesson
 // events derive per-student, per-content-node completion status; practice events
 // feed the evidence processor; completions, practice sessions, tap checks and song
-// charts marked as played are kept as raw activity. Any other event_type is accepted without error and changes nothing.
+// charts marked as played are kept as raw activity. Every event, of any type,
+// moves its student's last activity. Any other event_type is accepted without
+// error and changes nothing else.
 type ProcessEventService struct {
 	repo     ports.CompletionStateRepository
 	practice *PracticeEvidenceService
@@ -24,6 +26,9 @@ func NewProcessEventService(repo ports.CompletionStateRepository, practice *Prac
 // Handle routes event to what it changes. Re-processing the same event
 // (at-least-once Kafka delivery) is safe for every route.
 func (s *ProcessEventService) Handle(ctx context.Context, event domain.TrackingEvent) error {
+	if err := s.activity.Active(ctx, event.StudentID, event.OccurredAt); err != nil {
+		return err
+	}
 	switch event.EventType {
 	case domain.EventTypePracticeItemAnswered:
 		return s.handleAnswer(ctx, event)
@@ -64,10 +69,18 @@ func (s *ProcessEventService) Handle(ctx context.Context, event domain.TrackingE
 }
 
 // updateCompletion applies the completion transition rule to event and persists
-// the result if it changed. Re-processing the same event is safe: recomputing
-// NextStatus from the same current value yields the same next value, so the
-// repeated Upsert is a no-op in effect.
+// the result if it changed, then keeps the node's first start: any lesson event
+// shows the student had started it by then. Re-processing the same event is
+// safe: recomputing NextStatus from the same current value yields the same next
+// value, and an equal start changes nothing.
 func (s *ProcessEventService) updateCompletion(ctx context.Context, event domain.TrackingEvent) error {
+	if err := s.updateStatus(ctx, event); err != nil {
+		return err
+	}
+	return s.repo.MarkStarted(ctx, event.StudentID, event.ContentNodeID, event.OccurredAt)
+}
+
+func (s *ProcessEventService) updateStatus(ctx context.Context, event domain.TrackingEvent) error {
 	current, found, err := s.repo.GetStatus(ctx, event.StudentID, event.ContentNodeID)
 	if err != nil {
 		return err
@@ -97,5 +110,5 @@ func (s *ProcessEventService) handleAnswer(ctx context.Context, event domain.Tra
 	if event.PracticeSessionID == "" {
 		return nil
 	}
-	return s.activity.ItemAnswered(ctx, event.StudentID, event.PracticeSessionID, event.OccurredAt, template)
+	return s.activity.ItemAnswered(ctx, event.StudentID, event.PracticeSessionID, event.EventID, event.OccurredAt, template)
 }

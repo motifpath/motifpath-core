@@ -69,3 +69,16 @@ func (r *MongoCompletionStateRepository) Upsert(ctx context.Context, studentID, 
 	_, err := r.collection.UpdateOne(ctx, filter, update, options.UpdateOne().SetUpsert(true))
 	return err
 }
+
+// MarkStarted lowers the node's started_at to at with $min, so a start that
+// arrives late still counts and a redelivered one changes nothing.
+func (r *MongoCompletionStateRepository) MarkStarted(ctx context.Context, studentID, contentNodeID string, at time.Time) error {
+	filter := bson.D{
+		{Key: "student_id", Value: studentID},
+		{Key: "content_node_id", Value: contentNodeID},
+	}
+	update := bson.D{{Key: "$min", Value: bson.D{{Key: "started_at", Value: at.UTC()}}}}
+
+	_, err := r.collection.UpdateOne(ctx, filter, update, options.UpdateOne().SetUpsert(true))
+	return err
+}

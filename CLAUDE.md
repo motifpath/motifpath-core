@@ -41,7 +41,9 @@ Tracking events (client-emitted; defined in openapi/components/schemas/events.ya
   song_chart.opened, song_chart.chord_viewed, song_chart.completed — what students do in
   a song chart's reader; stored and published. The aggregation worker keeps every
   song_chart.completed raw (song_chart_completions), from which core-domain counts songs
-  played; the other two it does not process
+  played; the other two only move last activity (below)
+  Every event, of any type, moves the student's last activity (`student_activity`, latest
+  occurred_at); lesson.* events also keep a node's first start (`aggregates.started_at`)
 
 Threshold logic: if a ThresholdOverride exists for a student+node pair, it takes
 precedence over the Node's default threshold. ALWAYS apply this rule in the application layer.

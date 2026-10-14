@@ -179,8 +179,15 @@ func newEventService(ctx context.Context, db *mongo.Database, logger *slog.Logge
 		return nil, nil, fmt.Errorf("ensure song chart completion indexes: %w", err)
 	}
 
+	lastActivityRepo := repo.NewMongoLastActivityRepository(db)
+	// Fatal on failure: the unique student_id index is what keeps one last
+	// activity per student.
+	if err := lastActivityRepo.EnsureIndexes(ctx); err != nil {
+		return nil, nil, fmt.Errorf("ensure last activity indexes: %w", err)
+	}
+
 	service := application.NewProcessEventService(completionRepo, practice,
-		application.NewActivityService(sessionRepo, learningRepo, tapCheckRepo, songChartRepo))
+		application.NewActivityService(sessionRepo, learningRepo, tapCheckRepo, songChartRepo, lastActivityRepo))
 	return completionRepo, service, nil
 }
 

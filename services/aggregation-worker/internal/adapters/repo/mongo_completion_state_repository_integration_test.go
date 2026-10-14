@@ -5,6 +5,7 @@ package repo
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -81,4 +82,23 @@ func TestMongoCompletionStateRepository_EnsureIndexes_CreatesUniqueCompoundIndex
 func TestMongoCompletionStateRepository_Ping(t *testing.T) {
 	repository := setupMongoRepository(t)
 	assert.NoError(t, repository.Ping(context.Background()))
+}
+
+func TestMongoCompletionStateRepository_MarkStarted_KeepsTheEarliestStart(t *testing.T) {
+	repository := setupMongoRepository(t)
+	ctx := context.Background()
+	first := time.Date(2026, 10, 5, 19, 0, 0, 0, time.UTC)
+
+	require.NoError(t, repository.Upsert(ctx, "student-1", "node-1", domain.CompletionStatusInProgress))
+	require.NoError(t, repository.MarkStarted(ctx, "student-1", "node-1", first.Add(time.Hour)))
+	require.NoError(t, repository.MarkStarted(ctx, "student-1", "node-1", first))
+	require.NoError(t, repository.MarkStarted(ctx, "student-1", "node-1", first.Add(2*time.Hour)))
+
+	var doc bson.M
+	require.NoError(t, repository.collection.FindOne(ctx, bson.D{
+		{Key: "student_id", Value: "student-1"},
+		{Key: "content_node_id", Value: "node-1"},
+	}).Decode(&doc))
+	assert.Equal(t, bson.NewDateTimeFromTime(first), doc["started_at"])
+	assert.Equal(t, string(domain.CompletionStatusInProgress), doc["status"], "marking the start leaves the status as it is")
 }

@@ -44,7 +44,7 @@ func TestMongoPracticeSessionRepository(t *testing.T) {
 			PlannedItems: []domain.PlannedPracticeItem{{ItemKey: "play_along:" + diagram1, Reason: "due"}},
 		})
 		require.NoError(t, repo.Put(ctx, started))
-		ended := started.Answered(start.Add(3*time.Minute), "").Ended(domain.PracticeSessionEnd{
+		ended := started.Answered("answer-1", start.Add(3*time.Minute), "").Ended(domain.PracticeSessionEnd{
 			EventID: "e2", StudentID: studentA, PracticeSessionID: session1,
 			OccurredAt: start.Add(11 * time.Minute), LeftEarly: true, AnsweredCount: 6,
 		})
@@ -63,7 +63,7 @@ func TestMongoPracticeSessionRepository(t *testing.T) {
 	t.Run("practised drills and felt ratings round-trip, and the felt-rated drills are stored for counting", func(t *testing.T) {
 		rated := domain.PracticeSession{}.Started(domain.PracticeSessionStart{
 			EventID: "e3", StudentID: studentC, PracticeSessionID: session1, OccurredAt: start, Minutes: 5,
-		}).Answered(start.Add(time.Minute), "fretboard_cell:name_the_note").Ended(domain.PracticeSessionEnd{
+		}).Answered("answer-1", start.Add(time.Minute), "fretboard_cell:name_the_note").Ended(domain.PracticeSessionEnd{
 			EventID: "e4", StudentID: studentC, PracticeSessionID: session1, OccurredAt: start.Add(5 * time.Minute), AnsweredCount: 4,
 			FeltRatings: []domain.FeltRating{
 				{DrillTemplateKey: "fretboard_cell:name_the_note", Felt: domain.FeltHard},
@@ -226,4 +226,24 @@ func TestMongoSongChartCompletionRepository(t *testing.T) {
 	assert.Equal(t, studentA, docs[0]["student_id"])
 	assert.Equal(t, completion.SongChartID, docs[0]["song_chart_id"])
 	assert.Equal(t, bson.NewDateTimeFromTime(completion.CompletedAt), docs[0]["completed_at"])
+}
+
+func TestMongoLastActivityRepository(t *testing.T) {
+	ctx := context.Background()
+	db := mongoDatabase(t)
+	repo := NewMongoLastActivityRepository(db)
+	require.NoError(t, repo.EnsureIndexes(ctx))
+	evening := time.Date(2026, 10, 5, 21, 15, 0, 0, time.UTC)
+
+	require.NoError(t, repo.Touch(ctx, studentA, evening.Add(-3*time.Hour)))
+	require.NoError(t, repo.Touch(ctx, studentA, evening))
+	require.NoError(t, repo.Touch(ctx, studentA, evening.Add(-time.Hour)), "a late event")
+	require.NoError(t, repo.Touch(ctx, studentB, evening.Add(time.Hour)))
+
+	var docs []bson.M
+	cursor, err := db.Collection("student_activity").Find(ctx, bson.D{{Key: "student_id", Value: studentA}})
+	require.NoError(t, err)
+	require.NoError(t, cursor.All(ctx, &docs))
+	require.Len(t, docs, 1, "one document per student")
+	assert.Equal(t, bson.NewDateTimeFromTime(evening), docs[0]["last_active_at"], "a late event does not move last activity back")
 }

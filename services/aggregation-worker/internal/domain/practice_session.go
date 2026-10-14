@@ -88,6 +88,9 @@ type PracticeSession struct {
 	// PractisedTemplates are the timed drill templates of the session's
 	// graded answers, each once, in order.
 	PractisedTemplates []string
+	// AnsweredEventIDs are the ids of the answers given in the session, each
+	// once, in the order they arrived.
+	AnsweredEventIDs []string
 	// LastEventAt is the latest practice event recorded for the session.
 	LastEventAt time.Time
 	End         *PracticeSessionEnd
@@ -102,14 +105,24 @@ func (s PracticeSession) Started(e PracticeSessionStart) PracticeSession {
 	return s.touched(at)
 }
 
-// Answered records an answer given in the session at the given time, and
-// the timed drill template it practised; empty when it practised none.
-func (s PracticeSession) Answered(at time.Time, template string) PracticeSession {
+// Answered records the answer eventID given in the session at the given time,
+// and the timed drill template it practised; empty when it practised none. A
+// redelivered answer is recorded once.
+func (s PracticeSession) Answered(eventID string, at time.Time, template string) PracticeSession {
+	if !slices.Contains(s.AnsweredEventIDs, eventID) {
+		s.AnsweredEventIDs = append(slices.Clone(s.AnsweredEventIDs), eventID)
+	}
 	if template != "" && !slices.Contains(s.PractisedTemplates, template) {
 		s.PractisedTemplates = append(slices.Clone(s.PractisedTemplates), template)
 		slices.Sort(s.PractisedTemplates)
 	}
 	return s.touched(at)
+}
+
+// AnsweredItems is how many answers have arrived for the session, whether or
+// not it has ended.
+func (s PracticeSession) AnsweredItems() int {
+	return len(s.AnsweredEventIDs)
 }
 
 // FeltRatedTemplates are the templates of the session's felt ratings that

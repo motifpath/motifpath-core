@@ -2,6 +2,7 @@ package ports
 
 import (
 	"context"
+	"time"
 
 	"github.com/motifpath/aggregation-worker/internal/domain"
 )
@@ -24,4 +25,8 @@ type CompletionStateRepository interface {
 	// already applied domain.NextStatus — this method does not itself guard
 	// against downgrading a completed node.
 	Upsert(ctx context.Context, studentID, contentNodeID string, status domain.CompletionStatus) error
+
+	// MarkStarted makes at when the student first started the node unless an
+	// earlier start is already kept, so a start that arrives late still counts.
+	MarkStarted(ctx context.Context, studentID, contentNodeID string, at time.Time) error
 }

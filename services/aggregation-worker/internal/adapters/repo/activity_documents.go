@@ -19,11 +19,14 @@ type practiceSessionDocument struct {
 	// PractisedTemplates are the timed drills the session's graded answers
 	// practised; FeltRatedTemplates those of its felt ratings that count, kept
 	// in step on every write so felt-rated sessions can be counted per drill.
-	PractisedTemplates []string                    `bson:"practised_templates"`
-	FeltRatedTemplates []string                    `bson:"felt_rated_templates"`
-	LastEventAt        time.Time                   `bson:"last_event_at"`
-	End                *practiceSessionEndDocument `bson:"end"`
-	UpdatedAt          time.Time                   `bson:"updated_at"`
+	PractisedTemplates []string `bson:"practised_templates"`
+	FeltRatedTemplates []string `bson:"felt_rated_templates"`
+	// AnsweredEventIDs are the session's answers, each once, so they can be
+	// counted before, or without, its end.
+	AnsweredEventIDs []string                    `bson:"answered_event_ids"`
+	LastEventAt      time.Time                   `bson:"last_event_at"`
+	End              *practiceSessionEndDocument `bson:"end"`
+	UpdatedAt        time.Time                   `bson:"updated_at"`
 }
 
 type plannedItemDocument struct {
@@ -53,6 +56,7 @@ func toSessionDocument(s domain.PracticeSession) practiceSessionDocument {
 		Minutes:            s.Minutes,
 		PractisedTemplates: s.PractisedTemplates,
 		FeltRatedTemplates: s.FeltRatedTemplates(),
+		AnsweredEventIDs:   s.AnsweredEventIDs,
 		LastEventAt:        s.LastEventAt,
 	}
 	for _, p := range s.PlannedItems {
@@ -80,6 +84,7 @@ func (d practiceSessionDocument) toDomain() domain.PracticeSession {
 		InstrumentID:       d.InstrumentID,
 		Minutes:            d.Minutes,
 		PractisedTemplates: d.PractisedTemplates,
+		AnsweredEventIDs:   d.AnsweredEventIDs,
 		LastEventAt:        d.LastEventAt.UTC(),
 	}
 	for _, p := range d.PlannedItems {
