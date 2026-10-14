@@ -74,6 +74,33 @@ type practiceResponseWire struct {
 	Rating           string   `json:"rating,omitempty"`
 	TempoBPM         *int     `json:"tempo_bpm,omitempty"`
 	ChangesPerMinute *int     `json:"changes_per_minute,omitempty"`
+	Choices          []string `json:"choices,omitempty"`
+	Reason           string   `json:"reason,omitempty"`
+	Way              string   `json:"way,omitempty"`
+	MusicKey         string   `json:"music_key,omitempty"`
+	Options          []string `json:"options,omitempty"`
+	Choice           string   `json:"choice,omitempty"`
+	Tone             string   `json:"tone,omitempty"`
+	// Taps and Cells are pointers so an empty list is kept: a take with no taps
+	// still sends taps, and a multi tap with none still sends cells.
+	Taps       *[]practiceResponseWireTap  `json:"taps,omitempty"`
+	FretWindow *practiceResponseWireWindow `json:"fret_window,omitempty"`
+	Cells      *[]practiceResponseWireCell `json:"cells,omitempty"`
+}
+
+type practiceResponseWireTap struct {
+	AtMs   int `json:"at_ms"`
+	String int `json:"string"`
+	Fret   int `json:"fret"`
+}
+
+type practiceResponseWireCell struct {
+	String int `json:"string"`
+	Fret   int `json:"fret"`
+}
+
+type practiceResponseWireWindow struct {
+	FromFret int `json:"from_fret"`
 }
 
 type feltRatingWire struct {
@@ -161,7 +188,7 @@ func toWireEvent(event domain.TrackingEvent) wireEvent {
 }
 
 func toPracticeResponseWire(r domain.PracticeResponse) *practiceResponseWire {
-	return &practiceResponseWire{
+	out := &practiceResponseWire{
 		ResponseType:     string(r.Type),
 		NoteName:         r.NoteName,
 		Shape:            r.Shape,
@@ -174,7 +201,32 @@ func toPracticeResponseWire(r domain.PracticeResponse) *practiceResponseWire {
 		Rating:           string(r.Rating),
 		TempoBPM:         r.TempoBPM,
 		ChangesPerMinute: r.ChangesPerMinute,
+		Choices:          r.Choices,
+		Reason:           string(r.Reason),
+		Way:              r.Way,
+		MusicKey:         r.MusicKey,
+		Options:          r.Options,
+		Choice:           r.Choice,
+		Tone:             r.Tone,
 	}
+	if r.Taps != nil {
+		taps := make([]practiceResponseWireTap, len(r.Taps))
+		for i, t := range r.Taps {
+			taps[i] = practiceResponseWireTap(t)
+		}
+		out.Taps = &taps
+	}
+	if r.FretWindowFrom != nil {
+		out.FretWindow = &practiceResponseWireWindow{FromFret: *r.FretWindowFrom}
+	}
+	if r.Cells != nil {
+		cells := make([]practiceResponseWireCell, len(r.Cells))
+		for i, c := range r.Cells {
+			cells[i] = practiceResponseWireCell(c)
+		}
+		out.Cells = &cells
+	}
+	return out
 }
 
 func toContentContextWire(cc domain.ContentContext) *contentContextWire {

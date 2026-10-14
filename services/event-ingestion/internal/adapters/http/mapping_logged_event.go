@@ -76,6 +76,33 @@ type practiceResponseJSON struct {
 	Rating           string   `json:"rating,omitempty"`
 	TempoBPM         *int     `json:"tempo_bpm,omitempty"`
 	ChangesPerMinute *int     `json:"changes_per_minute,omitempty"`
+	Choices          []string `json:"choices,omitempty"`
+	Reason           string   `json:"reason,omitempty"`
+	Way              string   `json:"way,omitempty"`
+	MusicKey         string   `json:"music_key,omitempty"`
+	Options          []string `json:"options,omitempty"`
+	Choice           string   `json:"choice,omitempty"`
+	Tone             string   `json:"tone,omitempty"`
+	// Taps and Cells are pointers so an empty list is kept: a take with no taps
+	// still sends taps, and a multi tap with none still sends cells.
+	Taps       *[]practiceResponseJSONTap  `json:"taps,omitempty"`
+	FretWindow *practiceResponseJSONWindow `json:"fret_window,omitempty"`
+	Cells      *[]practiceResponseJSONCell `json:"cells,omitempty"`
+}
+
+type practiceResponseJSONTap struct {
+	AtMs   int `json:"at_ms"`
+	String int `json:"string"`
+	Fret   int `json:"fret"`
+}
+
+type practiceResponseJSONCell struct {
+	String int `json:"string"`
+	Fret   int `json:"fret"`
+}
+
+type practiceResponseJSONWindow struct {
+	FromFret int `json:"from_fret"`
 }
 
 type feltRatingJSON struct {
@@ -163,7 +190,7 @@ func toLoggedEventJSON(event domain.TrackingEvent) loggedEventJSON {
 }
 
 func toPracticeResponseJSON(r domain.PracticeResponse) *practiceResponseJSON {
-	return &practiceResponseJSON{
+	out := &practiceResponseJSON{
 		ResponseType:     string(r.Type),
 		NoteName:         r.NoteName,
 		Shape:            r.Shape,
@@ -176,7 +203,32 @@ func toPracticeResponseJSON(r domain.PracticeResponse) *practiceResponseJSON {
 		Rating:           string(r.Rating),
 		TempoBPM:         r.TempoBPM,
 		ChangesPerMinute: r.ChangesPerMinute,
+		Choices:          r.Choices,
+		Reason:           string(r.Reason),
+		Way:              r.Way,
+		MusicKey:         r.MusicKey,
+		Options:          r.Options,
+		Choice:           r.Choice,
+		Tone:             r.Tone,
 	}
+	if r.Taps != nil {
+		taps := make([]practiceResponseJSONTap, len(r.Taps))
+		for i, t := range r.Taps {
+			taps[i] = practiceResponseJSONTap(t)
+		}
+		out.Taps = &taps
+	}
+	if r.FretWindowFrom != nil {
+		out.FretWindow = &practiceResponseJSONWindow{FromFret: *r.FretWindowFrom}
+	}
+	if r.Cells != nil {
+		cells := make([]practiceResponseJSONCell, len(r.Cells))
+		for i, c := range r.Cells {
+			cells[i] = practiceResponseJSONCell(c)
+		}
+		out.Cells = &cells
+	}
+	return out
 }
 
 func toContentContextJSON(cc domain.ContentContext) *contentContextJSON {

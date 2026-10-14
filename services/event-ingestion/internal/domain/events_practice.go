@@ -11,9 +11,28 @@ var practiceItemKeyPattern = regexp.MustCompile(`^(` +
 	`|play_along:` + uuidPattern +
 	`|chord_change:` + uuidPattern + `:` + uuidPattern +
 	`|diagram_shape:` + uuidPattern +
+	`|diatonic_chord:` + musicKeyPattern + `:` + numeralPattern +
+	`|chord_function:` + musicKeyPattern + `:` + numeralPattern +
+	`|chart_progression:` + progressionKeyPattern +
+	`|heard_chord:` + numeralPattern +
+	`|heard_progression:` + progressionKeyPattern +
+	`|chord_voicing:` + uuidPattern +
+	`|root_fifth:` + uuidPattern + `:` + chordPattern +
+	`|root_change:` + uuidPattern + `:` + chordPattern + `:` + chordPattern +
+	`|guide_tone:` + uuidPattern + `:` + progressionKeyPattern +
+	`|fretboard_note:` + uuidPattern + `:(C|C#|D|D#|E|F|F#|G|G#|A|A#|B)` +
 	`)$`)
 
-const uuidPattern = `[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`
+const (
+	uuidPattern = `[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`
+	// musicKeyPattern is a major key, its root spelled as the chord catalog spells roots.
+	musicKeyPattern = `(C|Db|D|Eb|E|F|F#|G|Ab|A|Bb|B)`
+	// numeralPattern is a degree of a major key; viio stands for vii°.
+	numeralPattern        = `(I|ii|iii|IV|V|vi|viio)`
+	progressionKeyPattern = `[0-9A-Za-z][0-9A-Za-z-]*`
+	// chordPattern is a root, then minor, diminished, dominant seventh or nothing (major).
+	chordPattern = musicKeyPattern + `(m|dim|7)?`
+)
 
 // ValidPracticeItemKey reports whether key names a practice item of a known kind.
 func ValidPracticeItemKey(key string) bool {
@@ -24,13 +43,39 @@ func ValidPracticeItemKey(key string) bool {
 type PracticeResponseType string
 
 const (
-	PracticeResponseNameTheNote   PracticeResponseType = "name_the_note"
-	PracticeResponseFindTheNote   PracticeResponseType = "find_the_note"
-	PracticeResponseOptionChoice  PracticeResponseType = "option_choice"
-	PracticeResponseSelfRating    PracticeResponseType = "self_rating"
-	PracticeResponseNameTheShape  PracticeResponseType = "name_the_shape"
-	PracticeResponseFindTheDegree PracticeResponseType = "find_the_degree"
+	PracticeResponseNameTheNote     PracticeResponseType = "name_the_note"
+	PracticeResponseFindTheNote     PracticeResponseType = "find_the_note"
+	PracticeResponseOptionChoice    PracticeResponseType = "option_choice"
+	PracticeResponseSelfRating      PracticeResponseType = "self_rating"
+	PracticeResponseNameTheShape    PracticeResponseType = "name_the_shape"
+	PracticeResponseFindTheDegree   PracticeResponseType = "find_the_degree"
+	PracticeResponseGeneratedChoice PracticeResponseType = "generated_choice"
+	PracticeResponseTimedTaps       PracticeResponseType = "timed_taps"
+	PracticeResponseMultiTap        PracticeResponseType = "multi_tap"
+	PracticeResponseNotAnswered     PracticeResponseType = "not_answered"
 )
+
+// NotAnsweredReason is why an item was skipped without an answer.
+type NotAnsweredReason string
+
+const (
+	NotAnsweredFailedToLoad NotAnsweredReason = "failed_to_load"
+	NotAnsweredUnavailable  NotAnsweredReason = "unavailable"
+)
+
+// TimedTap is one tap on the fretboard during a take, milliseconds after the
+// downbeat of its first bar.
+type TimedTap struct {
+	AtMs   int
+	String int
+	Fret   int
+}
+
+// TappedCell is one place tapped on the fretboard.
+type TappedCell struct {
+	String int
+	Fret   int
+}
 
 // SelfRating is the student's own judgement of a take.
 type SelfRating string
@@ -51,6 +96,33 @@ type PracticeResponse struct {
 
 	// NoteName (name_the_note) is a letter with an optional # or b, without an octave.
 	NoteName string
+
+	// Choices (name_the_note) are the four notes it was named among, as shown; nil for
+	// an answer given on the earlier twelve-note keypad.
+	Choices []string
+
+	// Reason (not_answered) is why the item was skipped.
+	Reason NotAnsweredReason
+
+	// Way, Options and Choice (generated_choice) are how the question was asked, the
+	// options as shown and the one picked.
+	Way     string
+	Options []string
+	Choice  string
+
+	// MusicKey (generated_choice, timed_taps) is the major key the question was asked
+	// in, when its item doesn't fix one.
+	MusicKey string
+
+	// Tone and Taps (timed_taps) are the chord tone asked and every tap of the take;
+	// TempoBPM is the tempo it played at.
+	Tone string
+	Taps []TimedTap
+
+	// FretWindowFrom and Cells (multi_tap) are the window's lowest fret and every
+	// place tapped.
+	FretWindowFrom *int
+	Cells          []TappedCell
 
 	// Shape (name_the_shape) is the member of its family the student named, by its
 	// key in the practice drill catalog.
@@ -75,8 +147,8 @@ type PracticeResponse struct {
 	// before answering; nil for an exercise without audio. Replays aren't counted.
 	AudioMs *int
 
-	// Rating (self_rating) is always set; TempoBPM for a play-along take,
-	// ChangesPerMinute for a chord-change minute.
+	// Rating (self_rating) is always set; TempoBPM for a play-along take (and on
+	// timed_taps), ChangesPerMinute for a chord-change or root-change minute.
 	Rating           SelfRating
 	TempoBPM         *int
 	ChangesPerMinute *int

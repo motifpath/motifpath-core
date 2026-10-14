@@ -76,6 +76,33 @@ type practiceResponseDoc struct {
 	Rating           string   `bson:"rating,omitempty"`
 	TempoBPM         *int     `bson:"tempo_bpm,omitempty"`
 	ChangesPerMinute *int     `bson:"changes_per_minute,omitempty"`
+	Choices          []string `bson:"choices,omitempty"`
+	Reason           string   `bson:"reason,omitempty"`
+	Way              string   `bson:"way,omitempty"`
+	MusicKey         string   `bson:"music_key,omitempty"`
+	Options          []string `bson:"options,omitempty"`
+	Choice           string   `bson:"choice,omitempty"`
+	Tone             string   `bson:"tone,omitempty"`
+	// Taps and Cells are pointers so an empty list is kept: a take with no taps
+	// still sends taps, and a multi tap with none still sends cells.
+	Taps       *[]practiceResponseDocTap  `bson:"taps,omitempty"`
+	FretWindow *practiceResponseDocWindow `bson:"fret_window,omitempty"`
+	Cells      *[]practiceResponseDocCell `bson:"cells,omitempty"`
+}
+
+type practiceResponseDocTap struct {
+	AtMs   int `bson:"at_ms"`
+	String int `bson:"string"`
+	Fret   int `bson:"fret"`
+}
+
+type practiceResponseDocCell struct {
+	String int `bson:"string"`
+	Fret   int `bson:"fret"`
+}
+
+type practiceResponseDocWindow struct {
+	FromFret int `bson:"from_fret"`
 }
 
 type feltRatingDoc struct {
@@ -282,7 +309,7 @@ func toTriggerContextDoc(tc domain.TriggerContext) *triggerContextDoc {
 }
 
 func toPracticeResponseDoc(r domain.PracticeResponse) *practiceResponseDoc {
-	return &practiceResponseDoc{
+	out := &practiceResponseDoc{
 		ResponseType:     string(r.Type),
 		NoteName:         r.NoteName,
 		Shape:            r.Shape,
@@ -295,14 +322,39 @@ func toPracticeResponseDoc(r domain.PracticeResponse) *practiceResponseDoc {
 		Rating:           string(r.Rating),
 		TempoBPM:         r.TempoBPM,
 		ChangesPerMinute: r.ChangesPerMinute,
+		Choices:          r.Choices,
+		Reason:           string(r.Reason),
+		Way:              r.Way,
+		MusicKey:         r.MusicKey,
+		Options:          r.Options,
+		Choice:           r.Choice,
+		Tone:             r.Tone,
 	}
+	if r.Taps != nil {
+		taps := make([]practiceResponseDocTap, len(r.Taps))
+		for i, t := range r.Taps {
+			taps[i] = practiceResponseDocTap(t)
+		}
+		out.Taps = &taps
+	}
+	if r.FretWindowFrom != nil {
+		out.FretWindow = &practiceResponseDocWindow{FromFret: *r.FretWindowFrom}
+	}
+	if r.Cells != nil {
+		cells := make([]practiceResponseDocCell, len(r.Cells))
+		for i, c := range r.Cells {
+			cells[i] = practiceResponseDocCell(c)
+		}
+		out.Cells = &cells
+	}
+	return out
 }
 
 func fromPracticeResponseDoc(d *practiceResponseDoc) domain.PracticeResponse {
 	if d == nil {
 		return domain.PracticeResponse{}
 	}
-	return domain.PracticeResponse{
+	r := domain.PracticeResponse{
 		Type:             domain.PracticeResponseType(d.ResponseType),
 		NoteName:         d.NoteName,
 		Shape:            d.Shape,
@@ -315,7 +367,31 @@ func fromPracticeResponseDoc(d *practiceResponseDoc) domain.PracticeResponse {
 		Rating:           domain.SelfRating(d.Rating),
 		TempoBPM:         d.TempoBPM,
 		ChangesPerMinute: d.ChangesPerMinute,
+		Choices:          d.Choices,
+		Reason:           domain.NotAnsweredReason(d.Reason),
+		Way:              d.Way,
+		MusicKey:         d.MusicKey,
+		Options:          d.Options,
+		Choice:           d.Choice,
+		Tone:             d.Tone,
 	}
+	if d.Taps != nil {
+		r.Taps = make([]domain.TimedTap, len(*d.Taps))
+		for i, t := range *d.Taps {
+			r.Taps[i] = domain.TimedTap(t)
+		}
+	}
+	if d.FretWindow != nil {
+		from := d.FretWindow.FromFret
+		r.FretWindowFrom = &from
+	}
+	if d.Cells != nil {
+		r.Cells = make([]domain.TappedCell, len(*d.Cells))
+		for i, c := range *d.Cells {
+			r.Cells[i] = domain.TappedCell(c)
+		}
+	}
+	return r
 }
 
 func derefInt(v *int) int {
