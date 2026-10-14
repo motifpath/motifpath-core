@@ -19,6 +19,51 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for AlphaPathNodeStatus.
+const (
+	AlphaPathNodeStatusCompleted  AlphaPathNodeStatus = "completed"
+	AlphaPathNodeStatusInProgress AlphaPathNodeStatus = "in_progress"
+	AlphaPathNodeStatusNotStarted AlphaPathNodeStatus = "not_started"
+)
+
+// Valid indicates whether the value is a known member of the AlphaPathNodeStatus enum.
+func (e AlphaPathNodeStatus) Valid() bool {
+	switch e {
+	case AlphaPathNodeStatusCompleted:
+		return true
+	case AlphaPathNodeStatusInProgress:
+		return true
+	case AlphaPathNodeStatusNotStarted:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AlphaSessionState.
+const (
+	AlphaSessionStateAbandoned  AlphaSessionState = "abandoned"
+	AlphaSessionStateEndedEarly AlphaSessionState = "ended_early"
+	AlphaSessionStateFinished   AlphaSessionState = "finished"
+	AlphaSessionStateInProgress AlphaSessionState = "in_progress"
+)
+
+// Valid indicates whether the value is a known member of the AlphaSessionState enum.
+func (e AlphaSessionState) Valid() bool {
+	switch e {
+	case AlphaSessionStateAbandoned:
+		return true
+	case AlphaSessionStateEndedEarly:
+		return true
+	case AlphaSessionStateFinished:
+		return true
+	case AlphaSessionStateInProgress:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ChordInterval.
 const (
 	ChordIntervalB3    ChordInterval = "b3"
@@ -1588,6 +1633,24 @@ func (e PathDetailLevel) Valid() bool {
 	}
 }
 
+// Defines values for PracticeFocusSource.
+const (
+	Chosen    PracticeFocusSource = "chosen"
+	Suggested PracticeFocusSource = "suggested"
+)
+
+// Valid indicates whether the value is a known member of the PracticeFocusSource enum.
+func (e PracticeFocusSource) Valid() bool {
+	switch e {
+	case Chosen:
+		return true
+	case Suggested:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PracticeItemKind.
 const (
 	PracticeItemKindChordChange   PracticeItemKind = "chord_change"
@@ -1666,6 +1729,39 @@ func (e PracticePickReason) Valid() bool {
 	case PracticePickReasonWarmUp:
 		return true
 	case PracticePickReasonWeak:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PracticeRung.
+const (
+	Hear       PracticeRung = "hear"
+	Know       PracticeRung = "know"
+	Move       PracticeRung = "move"
+	PlayClean  PracticeRung = "play_clean"
+	PlayInTime PracticeRung = "play_in_time"
+	Target     PracticeRung = "target"
+	Use        PracticeRung = "use"
+)
+
+// Valid indicates whether the value is a known member of the PracticeRung enum.
+func (e PracticeRung) Valid() bool {
+	switch e {
+	case Hear:
+		return true
+	case Know:
+		return true
+	case Move:
+		return true
+	case PlayClean:
+		return true
+	case PlayInTime:
+		return true
+	case Target:
+		return true
+	case Use:
 		return true
 	default:
 		return false
@@ -2848,6 +2944,214 @@ type ActivityDay struct {
 	// Practised Whether the student finished a practice session on this day, on any instrument
 	// or without one, by the rule practice_days_last_7 counts.
 	Practised bool `json:"practised"`
+}
+
+// AlphaCohortSummary The alpha as a whole, measured for the requested week.
+type AlphaCohortSummary struct {
+	// AtTargetEveryWeek Students at the target in every one of their weeks so far. A student with no week so far is not counted.
+	AtTargetEveryWeek int `json:"at_target_every_week"`
+
+	// AtTargetInPreviousWeek Students with 3 or more counted sessions in the week before the requested one.
+	AtTargetInPreviousWeek int `json:"at_target_in_previous_week"`
+
+	// AtTargetInWeek Students with 3 or more counted sessions in the requested week.
+	AtTargetInWeek int `json:"at_target_in_week"`
+
+	// FirstPathOverTarget Students who have completed strictly more than 70% of their first path's nodes.
+	FirstPathOverTarget int `json:"first_path_over_target"`
+
+	// MedianFirstPathPercent Median of the students' first-path completion, rounded down to a whole percent; with an even number of students, the mean of the two middle values. Null when the alpha has no students.
+	MedianFirstPathPercent *int `json:"median_first_path_percent"`
+
+	// StudentCount Number of students in the alpha.
+	StudentCount int `json:"student_count"`
+}
+
+// AlphaFirstPath The student's first path — the earliest one they were given, kept even
+// if a later path replaced it — and how much of it they have completed.
+type AlphaFirstPath struct {
+	// CompletedNodes Nodes of this path the student has completed, here or in any other path.
+	CompletedNodes int `json:"completed_nodes"`
+
+	// CompletedPercent completed_nodes over total_nodes, rounded down to a whole percent.
+	CompletedPercent int `json:"completed_percent"`
+
+	// GivenAt When the student was given this path.
+	GivenAt time.Time `json:"given_at"`
+
+	// OverTarget True when completed_nodes over total_nodes is strictly more than 70%, compared exactly rather than on the rounded percent.
+	OverTarget bool `json:"over_target"`
+
+	// StudentPathId The student's copy of the path.
+	StudentPathId openapi_types.UUID `json:"student_path_id"`
+
+	// Title The path's title on the student's copy.
+	Title string `json:"title"`
+
+	// TotalNodes All nodes of this path.
+	TotalNodes int `json:"total_nodes"`
+}
+
+// AlphaObservation The alpha measured for one week.
+type AlphaObservation struct {
+	// Students Every student in the alpha, ordered by fewest counted sessions in the week, then by display name, then by student_id.
+	Students []AlphaStudent `json:"students"`
+
+	// Summary The alpha as a whole, measured for the requested week.
+	Summary AlphaCohortSummary `json:"summary"`
+
+	// Week A Monday-to-Sunday week in São Paulo time.
+	Week AlphaWeekRange `json:"week"`
+}
+
+// AlphaPathNode One node of the student's first path and where the student is with it.
+type AlphaPathNode struct {
+	// CompletedAt When the student first completed the node. Null unless completed.
+	CompletedAt *time.Time `json:"completed_at"`
+
+	// ContentNodeId The content node at this position.
+	ContentNodeId openapi_types.UUID `json:"content_node_id"`
+
+	// Position 1-based position of the node in the path.
+	Position int `json:"position"`
+
+	// StartedAt When the student first started the node. Null when not started.
+	StartedAt *time.Time `json:"started_at"`
+
+	// Status completed — finished, here or in any other path.
+	// in_progress — started but not finished.
+	// not_started — not started yet; a node the student cannot open yet is
+	// reported as not started too.
+	Status AlphaPathNodeStatus `json:"status"`
+
+	// Title Title of the content node.
+	Title string `json:"title"`
+}
+
+// AlphaPathNodeStatus completed — finished, here or in any other path.
+// in_progress — started but not finished.
+// not_started — not started yet; a node the student cannot open yet is
+// reported as not started too.
+type AlphaPathNodeStatus string
+
+// AlphaSession One practice session of a student's, in any state.
+type AlphaSession struct {
+	// EndedAt When the session ended — its end for a finished or ended-early session, its last event for an abandoned one. Null while in progress.
+	EndedAt *time.Time `json:"ended_at"`
+
+	// ItemsAnswered Items the student answered in the session.
+	ItemsAnswered int `json:"items_answered"`
+
+	// PlannedMinutes The minutes the student planned for the session.
+	PlannedMinutes int `json:"planned_minutes"`
+
+	// PracticeSessionId The practice session's id.
+	PracticeSessionId openapi_types.UUID `json:"practice_session_id"`
+
+	// StartedAt When the session started.
+	StartedAt time.Time `json:"started_at"`
+
+	// State finished — ended without leaving early; the only state that counts.
+	// ended_early — the student left before the end.
+	// abandoned — no end arrived and the session has been silent for its
+	// planned minutes plus 15.
+	// in_progress — still within its planned minutes plus 15.
+	State AlphaSessionState `json:"state"`
+}
+
+// AlphaSessionState finished — ended without leaving early; the only state that counts.
+// ended_early — the student left before the end.
+// abandoned — no end arrived and the session has been silent for its
+// planned minutes plus 15.
+// in_progress — still within its planned minutes plus 15.
+type AlphaSessionState string
+
+// AlphaSessionWeek One week of a student's practice sessions.
+type AlphaSessionWeek struct {
+	// FinishedSessions The week's counted sessions.
+	FinishedSessions int `json:"finished_sessions"`
+
+	// Sessions Every session started in the week, in any state, newest first.
+	Sessions []AlphaSession `json:"sessions"`
+
+	// Week A Monday-to-Sunday week in São Paulo time.
+	Week AlphaWeekRange `json:"week"`
+}
+
+// AlphaStudent One student of the alpha, measured for the requested week.
+type AlphaStudent struct {
+	// AtTargetEveryWeek True when the student has at least one week so far and was at the target in all of them.
+	AtTargetEveryWeek bool `json:"at_target_every_week"`
+
+	// AtTargetInWeek True when finished_sessions_in_week is 3 or more.
+	AtTargetInWeek bool `json:"at_target_in_week"`
+
+	// DisplayName The student's display name.
+	DisplayName string `json:"display_name"`
+
+	// FinishedSessionsInWeek Practice sessions started in the requested week and finished.
+	FinishedSessionsInWeek int `json:"finished_sessions_in_week"`
+
+	// FirstPath The student's first path — the earliest one they were given, kept even
+	// if a later path replaced it — and how much of it they have completed.
+	FirstPath AlphaFirstPath `json:"first_path"`
+
+	// LastActiveAt When the student's most recent event of any type occurred. Null when the student has no event at all.
+	LastActiveAt *time.Time `json:"last_active_at"`
+
+	// Quiet True when last_active_at is 7 days or more before now, or, for a student with no event at all, when the first path was given 7 days or more before now.
+	Quiet bool `json:"quiet"`
+
+	// RegisteredAt When the student registered.
+	RegisteredAt time.Time `json:"registered_at"`
+
+	// StudentId The student's user_id.
+	StudentId openapi_types.UUID `json:"student_id"`
+
+	// WeeksAtTargetCount Weeks so far in which the student was at the target.
+	WeeksAtTargetCount int `json:"weeks_at_target_count"`
+
+	// WeeksSoFar The student's most recent finished weeks, up to 8, oldest first. Weeks so far start at the week the first path was given and end before the running week. Empty when none has finished.
+	WeeksSoFar []AlphaWeekCount `json:"weeks_so_far"`
+
+	// WeeksSoFarCount All of the student's weeks so far, including any not listed in weeks_so_far.
+	WeeksSoFarCount int `json:"weeks_so_far_count"`
+}
+
+// AlphaStudentObservation One student of the alpha, measured for one week, with what lies behind the measures.
+type AlphaStudentObservation struct {
+	// FirstPathNodes Every node of the student's first path, in path order.
+	FirstPathNodes []AlphaPathNode `json:"first_path_nodes"`
+
+	// SessionWeeks The requested week, then the week before it.
+	SessionWeeks []AlphaSessionWeek `json:"session_weeks"`
+
+	// Student One student of the alpha, measured for the requested week.
+	Student AlphaStudent `json:"student"`
+
+	// Week A Monday-to-Sunday week in São Paulo time.
+	Week AlphaWeekRange `json:"week"`
+}
+
+// AlphaWeekCount One finished week of a student's, with its counted sessions.
+type AlphaWeekCount struct {
+	// FinishedSessions Practice sessions started in this week and finished.
+	FinishedSessions int `json:"finished_sessions"`
+
+	// WeekStart The Monday the week starts on.
+	WeekStart openapi_types.Date `json:"week_start"`
+}
+
+// AlphaWeekRange A Monday-to-Sunday week in São Paulo time.
+type AlphaWeekRange struct {
+	// Running True when the week contains the current moment, so it is still running.
+	Running bool `json:"running"`
+
+	// WeekEnd The Sunday the week ends on.
+	WeekEnd openapi_types.Date `json:"week_end"`
+
+	// WeekStart The Monday the week starts on.
+	WeekStart openapi_types.Date `json:"week_start"`
 }
 
 // AppConfigEntry One of the app's settings with its value.
@@ -4291,6 +4595,11 @@ type CreateMediaUploadUrlRequestPurpose string
 
 // CreatePracticeSessionPlanRequest What the student chose before practising.
 type CreatePracticeSessionPlanRequest struct {
+	// FocusNodeId The knowledge node the student chose to practise. The session then holds only items
+	// of that node and the nodes part_of it, at any depth. Null (or omitted) for Today's
+	// mix, whose subjects the composer picks.
+	FocusNodeId *openapi_types.UUID `json:"focus_node_id,omitempty"`
+
 	// InstrumentId The instrument in the student's hands. Null (or omitted) for a session
 	// practised in the head, without an instrument.
 	InstrumentId *openapi_types.UUID `json:"instrument_id,omitempty"`
@@ -5883,6 +6192,22 @@ type PracticeDay struct {
 	Practised bool `json:"practised"`
 }
 
+// PracticeFocusNode One subject of a practice session.
+type PracticeFocusNode struct {
+	// Names Text in one or more languages, keyed by Language.code — for example
+	// {"en": "Guitar", "pt_BR": "Violão"}. "any" is never a key: a name is
+	// always words in some language. Clients display the name for the
+	// viewer's locale, falling back to "en", then to any name present.
+	Names LocalizedNames `json:"names"`
+
+	// NodeId The knowledge node practised.
+	NodeId openapi_types.UUID `json:"node_id"`
+}
+
+// PracticeFocusSource Who chose a session's subjects. suggested = the composer picked them for Today's mix;
+// chosen = the student chose the one subject the session holds.
+type PracticeFocusSource string
+
 // PracticeInstrumentCard One instrument at a glance, linking to its practice summary.
 type PracticeInstrumentCard struct {
 	// InstrumentId The instrument.
@@ -6086,6 +6411,14 @@ type PracticeOverview struct {
 // or past the new share.
 type PracticePickReason string
 
+// PracticeRung The rung of the practice ladder an item trains, lowest first. know = recall a fact (a
+// note, a numeral, a shape); hear = recognise it by ear; play_clean = play it cleanly, untimed;
+// play_in_time = play it at a tempo; move = play it in another key or place; target = aim at it
+// while the music moves; use = play it in a piece of music. A drill template has one rung;
+// a play-along and a chord change are play_in_time, a single self-rated chord is play_clean,
+// and a song chart item is use.
+type PracticeRung string
+
 // PracticeSessionItem One item of a composed session, with what the client needs to present it. Exactly
 // one of fretboard_cell, exercise, play_along and diagram_shape is present, matching
 // kind.
@@ -6234,6 +6567,14 @@ type PracticeSessionItem struct {
 	// node the student is ready to start, the skills of their paths first, when nothing else is due
 	// or past the new share.
 	Reason PracticePickReason `json:"reason"`
+
+	// Rung The rung of the practice ladder an item trains, lowest first. know = recall a fact (a
+	// note, a numeral, a shape); hear = recognise it by ear; play_clean = play it cleanly, untimed;
+	// play_in_time = play it at a tempo; move = play it in another key or place; target = aim at it
+	// while the music moves; use = play it in a piece of music. A drill template has one rung;
+	// a play-along and a chord change are play_in_time, a single self-rated chord is play_clean,
+	// and a song chart item is use.
+	Rung PracticeRung `json:"rung"`
 }
 
 // PracticeSessionPlan A composed practice session. Not stored: it exists only in this response and in the
@@ -6244,6 +6585,16 @@ type PracticeSessionPlan struct {
 	// first. The client asks only about the ones the student actually practised in the
 	// session. Empty when the plan has no timed drill, as with play-alongs only.
 	FeltQuestions []string `json:"felt_questions"`
+
+	// FocusNodes The session's subjects, main first, shown to the student as what the session works
+	// on. Every item practises one of them, except the warm-up and, in Today's mix, the
+	// review block: due items of other nodes, at most a fifth of the focus time or 5 items.
+	// One node, the chosen one, when focus_source is chosen.
+	FocusNodes []PracticeFocusNode `json:"focus_nodes"`
+
+	// FocusSource Who chose a session's subjects. suggested = the composer picked them for Today's mix;
+	// chosen = the student chose the one subject the session holds.
+	FocusSource PracticeFocusSource `json:"focus_source"`
 
 	// InstrumentId The instrument in hand, or null for a session in the head.
 	InstrumentId *openapi_types.UUID `json:"instrument_id"`
@@ -6262,6 +6613,61 @@ type PracticeSessionPlan struct {
 	// check before the first item; the student may skip it, and their answers are then
 	// judged on the whole latency.
 	TapCheckDue bool `json:"tap_check_due"`
+}
+
+// PracticeSubject One knowledge node the student can choose to practise, with where they stand on it.
+type PracticeSubject struct {
+	// CurrentRung The rung of the practice ladder an item trains, lowest first. know = recall a fact (a
+	// note, a numeral, a shape); hear = recognise it by ear; play_clean = play it cleanly, untimed;
+	// play_in_time = play it at a tempo; move = play it in another key or place; target = aim at it
+	// while the music moves; use = play it in a piece of music. A drill template has one rung;
+	// a play-along and a chord change are play_in_time, a single self-rated chord is play_clean,
+	// and a song chart item is use.
+	CurrentRung PracticeRung `json:"current_rung"`
+
+	// ItemCount Items of the node and its part_of subtree that the session could pick.
+	ItemCount int `json:"item_count"`
+
+	// Level The highest level at least 80% of those items reach, for the instrument in hand; in
+	// the head, the best of the student's instruments. Null for a wide node (one with
+	// child nodes), shown through its children.
+	Level *KnowledgeLevel `json:"level"`
+
+	// Names Text in one or more languages, keyed by Language.code — for example
+	// {"en": "Guitar", "pt_BR": "Violão"}. "any" is never a key: a name is
+	// always words in some language. Clients display the name for the
+	// viewer's locale, falling back to "en", then to any name present.
+	Names LocalizedNames `json:"names"`
+
+	// NodeId The knowledge node.
+	NodeId openapi_types.UUID `json:"node_id"`
+
+	// OnPath True when the node is a skill of one of the student's paths.
+	OnPath bool `json:"on_path"`
+}
+
+// PracticeSubjectGroup The subjects of one area.
+type PracticeSubjectGroup struct {
+	// AreaNodeId The area, a top-level knowledge node.
+	AreaNodeId openapi_types.UUID `json:"area_node_id"`
+
+	// Names Text in one or more languages, keyed by Language.code — for example
+	// {"en": "Guitar", "pt_BR": "Violão"}. "any" is never a key: a name is
+	// always words in some language. Clients display the name for the
+	// viewer's locale, falling back to "en", then to any name present.
+	Names LocalizedNames `json:"names"`
+
+	// Subjects The area's nodes with material, in catalog order.
+	Subjects []PracticeSubject `json:"subjects"`
+}
+
+// PracticeSubjectList The subjects a student can choose to practise, for one instrument in hand or in the head.
+type PracticeSubjectList struct {
+	// Groups One group per area with at least one subject, in catalog order.
+	Groups []PracticeSubjectGroup `json:"groups"`
+
+	// InstrumentId The instrument in hand, or null for a session in the head.
+	InstrumentId *openapi_types.UUID `json:"instrument_id"`
 }
 
 // PracticeSummary The home for one instrument, derived from the student's evidence.
@@ -7868,6 +8274,9 @@ type WithdrawSongChartRequest struct {
 	Reason string `json:"reason"`
 }
 
+// AlphaWeek defines model for AlphaWeek.
+type AlphaWeek = openapi_types.Date
+
 // AuthoringSort defines model for AuthoringSort.
 type AuthoringSort string
 
@@ -7888,6 +8297,18 @@ type SkillIds = []openapi_types.UUID
 
 // SongChartId defines model for SongChartId.
 type SongChartId = openapi_types.UUID
+
+// GetAlphaObservationParams defines parameters for GetAlphaObservation.
+type GetAlphaObservationParams struct {
+	// Week The Monday the week starts on, in São Paulo time (e.g. 2026-10-12). Defaults to the running week. A date that is not a Monday, or a week after the running one, is rejected.
+	Week *AlphaWeek `form:"week,omitempty" json:"week,omitempty"`
+}
+
+// GetAlphaStudentObservationParams defines parameters for GetAlphaStudentObservation.
+type GetAlphaStudentObservationParams struct {
+	// Week The Monday the week starts on, in São Paulo time (e.g. 2026-10-12). Defaults to the running week. A date that is not a Monday, or a week after the running one, is rejected.
+	Week *AlphaWeek `form:"week,omitempty" json:"week,omitempty"`
+}
 
 // ListCatalogCoursesParams defines parameters for ListCatalogCourses.
 type ListCatalogCoursesParams struct {
@@ -8339,6 +8760,12 @@ type GetPracticeOverviewParams struct {
 	TimeZone *string `form:"time_zone,omitempty" json:"time_zone,omitempty"`
 }
 
+// ListPracticeSubjectsParams defines parameters for ListPracticeSubjects.
+type ListPracticeSubjectsParams struct {
+	// InstrumentId The instrument in hand. Absent means a session in the head.
+	InstrumentId *openapi_types.UUID `form:"instrument_id,omitempty" json:"instrument_id,omitempty"`
+}
+
 // GetPracticeSummaryParams defines parameters for GetPracticeSummary.
 type GetPracticeSummaryParams struct {
 	// InstrumentId The instrument to summarise. Absent means only nodes and items that suit any
@@ -8552,6 +8979,12 @@ func (t *SongChartSection_Content_Item) UnmarshalJSON(b []byte) error {
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// GetAlphaObservation Observe the alpha for one week
+	// (GET /admin/alpha-observation)
+	GetAlphaObservation(w http.ResponseWriter, r *http.Request, params GetAlphaObservationParams)
+	// GetAlphaStudentObservation Observe one student of the alpha
+	// (GET /admin/alpha-observation/students/{student_id})
+	GetAlphaStudentObservation(w http.ResponseWriter, r *http.Request, studentId openapi_types.UUID, params GetAlphaStudentObservationParams)
 	// ListAppConfig List the app's settings
 	// (GET /admin/config)
 	ListAppConfig(w http.ResponseWriter, r *http.Request)
@@ -8849,6 +9282,9 @@ type ServerInterface interface {
 	// CreatePracticeSessionPlan Compose a practice session for the authenticated student
 	// (POST /students/me/practice-sessions)
 	CreatePracticeSessionPlan(w http.ResponseWriter, r *http.Request)
+	// ListPracticeSubjects List the subjects the authenticated student can choose to practise
+	// (GET /students/me/practice-subjects)
+	ListPracticeSubjects(w http.ResponseWriter, r *http.Request, params ListPracticeSubjectsParams)
 	// GetPracticeSummary Read the authenticated student's practice summary for the home
 	// (GET /students/me/practice-summary)
 	GetPracticeSummary(w http.ResponseWriter, r *http.Request, params GetPracticeSummaryParams)
@@ -8881,6 +9317,18 @@ type ServerInterface interface {
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
 
 type Unimplemented struct{}
+
+// GetAlphaObservation Observe the alpha for one week
+// (GET /admin/alpha-observation)
+func (_ Unimplemented) GetAlphaObservation(w http.ResponseWriter, r *http.Request, params GetAlphaObservationParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetAlphaStudentObservation Observe one student of the alpha
+// (GET /admin/alpha-observation/students/{student_id})
+func (_ Unimplemented) GetAlphaStudentObservation(w http.ResponseWriter, r *http.Request, studentId openapi_types.UUID, params GetAlphaStudentObservationParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
 
 // ListAppConfig List the app's settings
 // (GET /admin/config)
@@ -9476,6 +9924,12 @@ func (_ Unimplemented) CreatePracticeSessionPlan(w http.ResponseWriter, r *http.
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// ListPracticeSubjects List the subjects the authenticated student can choose to practise
+// (GET /students/me/practice-subjects)
+func (_ Unimplemented) ListPracticeSubjects(w http.ResponseWriter, r *http.Request, params ListPracticeSubjectsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // GetPracticeSummary Read the authenticated student's practice summary for the home
 // (GET /students/me/practice-summary)
 func (_ Unimplemented) GetPracticeSummary(w http.ResponseWriter, r *http.Request, params GetPracticeSummaryParams) {
@@ -9538,6 +9992,81 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// GetAlphaObservation operation middleware
+func (siw *ServerInterfaceWrapper) GetAlphaObservation(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetAlphaObservationParams
+
+	// ------------- Optional query parameter "week" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "week", r.URL.Query(), &params.Week, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "week"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "week", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAlphaObservation(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetAlphaStudentObservation operation middleware
+func (siw *ServerInterfaceWrapper) GetAlphaStudentObservation(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "student_id" -------------
+	var studentId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "student_id", chi.URLParam(r, "student_id"), &studentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "student_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetAlphaStudentObservationParams
+
+	// ------------- Optional query parameter "week" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "week", r.URL.Query(), &params.Week, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "week"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "week", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAlphaStudentObservation(w, r, studentId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // ListAppConfig operation middleware
 func (siw *ServerInterfaceWrapper) ListAppConfig(w http.ResponseWriter, r *http.Request) {
@@ -13044,6 +13573,39 @@ func (siw *ServerInterfaceWrapper) CreatePracticeSessionPlan(w http.ResponseWrit
 	handler.ServeHTTP(w, r)
 }
 
+// ListPracticeSubjects operation middleware
+func (siw *ServerInterfaceWrapper) ListPracticeSubjects(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListPracticeSubjectsParams
+
+	// ------------- Optional query parameter "instrument_id" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "instrument_id", r.URL.Query(), &params.InstrumentId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "instrument_id"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "instrument_id", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListPracticeSubjects(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetPracticeSummary operation middleware
 func (siw *ServerInterfaceWrapper) GetPracticeSummary(w http.ResponseWriter, r *http.Request) {
 
@@ -13574,6 +14136,12 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Put(options.BaseURL+"/admin/config/{key}", wrapper.SetAppConfig)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/admin/alpha-observation", wrapper.GetAlphaObservation)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/admin/alpha-observation/students/{student_id}", wrapper.GetAlphaStudentObservation)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/courses", wrapper.ListCourses)
 	})
 	r.Group(func(r chi.Router) {
@@ -13643,6 +14211,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/students/me/practice-sessions", wrapper.CreatePracticeSessionPlan)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/students/me/practice-subjects", wrapper.ListPracticeSubjects)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/students/me/practice-summary", wrapper.GetPracticeSummary)
 	})
 	r.Group(func(r chi.Router) {
@@ -13665,6 +14236,149 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 
 	return r
+}
+
+type GetAlphaObservationRequestObject struct {
+	Params GetAlphaObservationParams
+}
+
+type GetAlphaObservationResponseObject interface {
+	VisitGetAlphaObservationResponse(w http.ResponseWriter) error
+}
+
+type GetAlphaObservation200JSONResponse AlphaObservation
+
+func (response GetAlphaObservation200JSONResponse) VisitGetAlphaObservationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAlphaObservation400JSONResponse ValidationError
+
+func (response GetAlphaObservation400JSONResponse) VisitGetAlphaObservationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAlphaObservation401JSONResponse UnauthorizedError
+
+func (response GetAlphaObservation401JSONResponse) VisitGetAlphaObservationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAlphaObservation403JSONResponse ForbiddenError
+
+func (response GetAlphaObservation403JSONResponse) VisitGetAlphaObservationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAlphaStudentObservationRequestObject struct {
+	StudentId openapi_types.UUID `json:"student_id"`
+	Params    GetAlphaStudentObservationParams
+}
+
+type GetAlphaStudentObservationResponseObject interface {
+	VisitGetAlphaStudentObservationResponse(w http.ResponseWriter) error
+}
+
+type GetAlphaStudentObservation200JSONResponse AlphaStudentObservation
+
+func (response GetAlphaStudentObservation200JSONResponse) VisitGetAlphaStudentObservationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAlphaStudentObservation400JSONResponse ValidationError
+
+func (response GetAlphaStudentObservation400JSONResponse) VisitGetAlphaStudentObservationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAlphaStudentObservation401JSONResponse UnauthorizedError
+
+func (response GetAlphaStudentObservation401JSONResponse) VisitGetAlphaStudentObservationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAlphaStudentObservation403JSONResponse ForbiddenError
+
+func (response GetAlphaStudentObservation403JSONResponse) VisitGetAlphaStudentObservationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAlphaStudentObservation404JSONResponse NotFoundError
+
+func (response GetAlphaStudentObservation404JSONResponse) VisitGetAlphaStudentObservationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
 }
 
 type ListAppConfigRequestObject struct {
@@ -20180,6 +20894,70 @@ func (response CreatePracticeSessionPlan404JSONResponse) VisitCreatePracticeSess
 	return err
 }
 
+type ListPracticeSubjectsRequestObject struct {
+	Params ListPracticeSubjectsParams
+}
+
+type ListPracticeSubjectsResponseObject interface {
+	VisitListPracticeSubjectsResponse(w http.ResponseWriter) error
+}
+
+type ListPracticeSubjects200JSONResponse PracticeSubjectList
+
+func (response ListPracticeSubjects200JSONResponse) VisitListPracticeSubjectsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPracticeSubjects400JSONResponse ValidationError
+
+func (response ListPracticeSubjects400JSONResponse) VisitListPracticeSubjectsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPracticeSubjects401JSONResponse UnauthorizedError
+
+func (response ListPracticeSubjects401JSONResponse) VisitListPracticeSubjectsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPracticeSubjects404JSONResponse NotFoundError
+
+func (response ListPracticeSubjects404JSONResponse) VisitListPracticeSubjectsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetPracticeSummaryRequestObject struct {
 	Params GetPracticeSummaryParams
 }
@@ -20756,6 +21534,12 @@ func (response ListVoices401JSONResponse) VisitListVoicesResponse(w http.Respons
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
+	// GetAlphaObservation Observe the alpha for one week
+	// (GET /admin/alpha-observation)
+	GetAlphaObservation(ctx context.Context, request GetAlphaObservationRequestObject) (GetAlphaObservationResponseObject, error)
+	// GetAlphaStudentObservation Observe one student of the alpha
+	// (GET /admin/alpha-observation/students/{student_id})
+	GetAlphaStudentObservation(ctx context.Context, request GetAlphaStudentObservationRequestObject) (GetAlphaStudentObservationResponseObject, error)
 	// ListAppConfig List the app's settings
 	// (GET /admin/config)
 	ListAppConfig(ctx context.Context, request ListAppConfigRequestObject) (ListAppConfigResponseObject, error)
@@ -21053,6 +21837,9 @@ type StrictServerInterface interface {
 	// CreatePracticeSessionPlan Compose a practice session for the authenticated student
 	// (POST /students/me/practice-sessions)
 	CreatePracticeSessionPlan(ctx context.Context, request CreatePracticeSessionPlanRequestObject) (CreatePracticeSessionPlanResponseObject, error)
+	// ListPracticeSubjects List the subjects the authenticated student can choose to practise
+	// (GET /students/me/practice-subjects)
+	ListPracticeSubjects(ctx context.Context, request ListPracticeSubjectsRequestObject) (ListPracticeSubjectsResponseObject, error)
 	// GetPracticeSummary Read the authenticated student's practice summary for the home
 	// (GET /students/me/practice-summary)
 	GetPracticeSummary(ctx context.Context, request GetPracticeSummaryRequestObject) (GetPracticeSummaryResponseObject, error)
@@ -21119,6 +21906,59 @@ type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
 	options     StrictHTTPServerOptions
+}
+
+// GetAlphaObservation operation middleware
+func (sh *strictHandler) GetAlphaObservation(w http.ResponseWriter, r *http.Request, params GetAlphaObservationParams) {
+	var request GetAlphaObservationRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetAlphaObservation(ctx, request.(GetAlphaObservationRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetAlphaObservation")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetAlphaObservationResponseObject); ok {
+		if err := validResponse.VisitGetAlphaObservationResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetAlphaStudentObservation operation middleware
+func (sh *strictHandler) GetAlphaStudentObservation(w http.ResponseWriter, r *http.Request, studentId openapi_types.UUID, params GetAlphaStudentObservationParams) {
+	var request GetAlphaStudentObservationRequestObject
+
+	request.StudentId = studentId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetAlphaStudentObservation(ctx, request.(GetAlphaStudentObservationRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetAlphaStudentObservation")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetAlphaStudentObservationResponseObject); ok {
+		if err := validResponse.VisitGetAlphaStudentObservationResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
 }
 
 // ListAppConfig operation middleware
@@ -23864,6 +24704,32 @@ func (sh *strictHandler) CreatePracticeSessionPlan(w http.ResponseWriter, r *htt
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(CreatePracticeSessionPlanResponseObject); ok {
 		if err := validResponse.VisitCreatePracticeSessionPlanResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListPracticeSubjects operation middleware
+func (sh *strictHandler) ListPracticeSubjects(w http.ResponseWriter, r *http.Request, params ListPracticeSubjectsParams) {
+	var request ListPracticeSubjectsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListPracticeSubjects(ctx, request.(ListPracticeSubjectsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListPracticeSubjects")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListPracticeSubjectsResponseObject); ok {
+		if err := validResponse.VisitListPracticeSubjectsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
