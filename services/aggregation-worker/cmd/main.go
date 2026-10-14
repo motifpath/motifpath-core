@@ -187,7 +187,7 @@ func newEventService(ctx context.Context, db *mongo.Database, logger *slog.Logge
 	}
 
 	service := application.NewProcessEventService(completionRepo, practice,
-		application.NewActivityService(sessionRepo, learningRepo, tapCheckRepo, songChartRepo, lastActivityRepo))
+		application.NewActivityService(sessionRepo, learningRepo, tapCheckRepo, songChartRepo, lastActivityRepo, time.Now))
 	return completionRepo, service, nil
 }
 

@@ -183,8 +183,12 @@ func lessonCompletedEvent(eventID string, at time.Time) domain.TrackingEvent {
 	}
 }
 
+// workerNow is the worker's clock in these tests: the evening of the day
+// the events happen.
+func workerNow() time.Time { return clock(23, 0) }
+
 func newActivity() *application.ActivityService {
-	return application.NewActivityService(newFakeSessions(), &fakeLearning{}, &fakeTapChecks{}, &fakeSongChartCompletions{}, newFakeLastActivity())
+	return application.NewActivityService(newFakeSessions(), &fakeLearning{}, &fakeTapChecks{}, &fakeSongChartCompletions{}, newFakeLastActivity(), workerNow)
 }
 
 type activityFixture struct {
@@ -200,7 +204,7 @@ type activityFixture struct {
 func newActivityFixture() *activityFixture {
 	f := &activityFixture{sessions: newFakeSessions(), learning: &fakeLearning{}, tapChecks: &fakeTapChecks{}, songs: &fakeSongChartCompletions{}, last: newFakeLastActivity(), practice: newPracticeFixture()}
 	f.service = application.NewProcessEventService(newFakeRepository(), f.practice.service,
-		application.NewActivityService(f.sessions, f.learning, f.tapChecks, f.songs, f.last))
+		application.NewActivityService(f.sessions, f.learning, f.tapChecks, f.songs, f.last, workerNow))
 	return f
 }
 
@@ -584,6 +588,13 @@ func TestActivityService_KeepsEachStudentsLastActivity(t *testing.T) {
 				answeredEvent("e0000000-0000-4000-8000-000000000001", clock(18, 3), ""),
 			},
 			want: clock(21, 15),
+		},
+		{
+			name: "an event dated after the worker's clock counts as now, so a fast device clock can't pin it in the future",
+			events: []domain.TrackingEvent{
+				anyEvent("song_chart.opened", "e0000000-0000-4000-8000-0000000000b1", clock(21, 15).AddDate(0, 0, 1)),
+			},
+			want: clock(23, 0),
 		},
 		{
 			name: "events the worker otherwise ignores still count",

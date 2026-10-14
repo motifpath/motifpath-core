@@ -342,7 +342,7 @@ func newWorld() *world {
 	}
 	w.service = application.NewPracticeEvidenceService(w.reference, w.evidence, w.states, w.history, slog.New(w.logs))
 	w.events = application.NewProcessEventService(w.completions, w.service,
-		application.NewActivityService(w.sessionRecords, w.learning, w.tapChecks, &fakeSongChartCompletions{}, w.lastActivity))
+		application.NewActivityService(w.sessionRecords, w.learning, w.tapChecks, &fakeSongChartCompletions{}, w.lastActivity, time.Now))
 	return w
 }
 

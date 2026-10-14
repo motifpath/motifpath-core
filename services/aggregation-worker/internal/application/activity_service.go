@@ -20,6 +20,7 @@ type ActivityService struct {
 	tapChecks ports.TapCheckRepository
 	songs     ports.SongChartCompletionRepository
 	last      ports.LastActivityRepository
+	now       func() time.Time
 }
 
 func NewActivityService(
@@ -28,14 +29,25 @@ func NewActivityService(
 	tapChecks ports.TapCheckRepository,
 	songs ports.SongChartCompletionRepository,
 	last ports.LastActivityRepository,
+	now func() time.Time,
 ) *ActivityService {
-	return &ActivityService{sessions: sessions, learning: learning, tapChecks: tapChecks, songs: songs, last: last}
+	return &ActivityService{sessions: sessions, learning: learning, tapChecks: tapChecks, songs: songs, last: last, now: now}
 }
 
 // Active records that the student did something at the given time; an earlier
-// time than their last activity changes nothing.
+// time than their last activity changes nothing. The time comes from the
+// student's device, so one later than now is taken as now: last activity never
+// moves back, and a device clock running ahead would otherwise pin it in the
+// future for good.
 func (s *ActivityService) Active(ctx context.Context, studentID string, at time.Time) error {
-	return s.last.Touch(ctx, studentID, at)
+	return s.last.Touch(ctx, studentID, minTime(at, s.now()))
+}
+
+func minTime(a, b time.Time) time.Time {
+	if a.Before(b) {
+		return a
+	}
+	return b
 }
 
 // SessionStarted records a session's start and its plan.
