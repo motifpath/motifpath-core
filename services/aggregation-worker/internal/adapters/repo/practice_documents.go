@@ -11,28 +11,30 @@ import (
 // practiceResponseDocument stores the raw response flat, with only its shape's
 // fields, the way ingestion publishes it.
 type practiceResponseDocument struct {
-	ResponseType     string               `bson:"response_type"`
-	NoteName         string               `bson:"note_name,omitempty"`
-	Shape            string               `bson:"shape,omitempty"`
-	Interval         string               `bson:"interval,omitempty"`
-	String           *int                 `bson:"string,omitempty"`
-	Fret             *int                 `bson:"fret,omitempty"`
-	OptionIDs        []string             `bson:"option_ids,omitempty"`
-	LatencyMs        *int                 `bson:"latency_ms,omitempty"`
-	AudioMs          *int                 `bson:"audio_ms,omitempty"`
-	Rating           string               `bson:"rating,omitempty"`
-	TempoBPM         *int                 `bson:"tempo_bpm,omitempty"`
-	ChangesPerMinute *int                 `bson:"changes_per_minute,omitempty"`
-	Choices          []string             `bson:"choices,omitempty"`
-	Reason           string               `bson:"reason,omitempty"`
-	Way              string               `bson:"way,omitempty"`
-	MusicKey         string               `bson:"music_key,omitempty"`
-	Options          []string             `bson:"options,omitempty"`
-	Choice           string               `bson:"choice,omitempty"`
-	Tone             string               `bson:"tone,omitempty"`
-	Taps             []timedTapDocument   `bson:"taps,omitempty"`
-	FretWindow       *fretWindowDocument  `bson:"fret_window,omitempty"`
-	Cells            []answerCellDocument `bson:"cells,omitempty"`
+	ResponseType     string   `bson:"response_type"`
+	NoteName         string   `bson:"note_name,omitempty"`
+	Shape            string   `bson:"shape,omitempty"`
+	Interval         string   `bson:"interval,omitempty"`
+	String           *int     `bson:"string,omitempty"`
+	Fret             *int     `bson:"fret,omitempty"`
+	OptionIDs        []string `bson:"option_ids,omitempty"`
+	LatencyMs        *int     `bson:"latency_ms,omitempty"`
+	AudioMs          *int     `bson:"audio_ms,omitempty"`
+	Rating           string   `bson:"rating,omitempty"`
+	TempoBPM         *int     `bson:"tempo_bpm,omitempty"`
+	ChangesPerMinute *int     `bson:"changes_per_minute,omitempty"`
+	Choices          []string `bson:"choices,omitempty"`
+	Reason           string   `bson:"reason,omitempty"`
+	Way              string   `bson:"way,omitempty"`
+	MusicKey         string   `bson:"music_key,omitempty"`
+	Options          []string `bson:"options,omitempty"`
+	Choice           string   `bson:"choice,omitempty"`
+	Tone             string   `bson:"tone,omitempty"`
+	// Taps and Cells are pointers so an empty list is kept: the response is stored
+	// exactly as sent, and a take with no taps still sends taps.
+	Taps       *[]timedTapDocument   `bson:"taps,omitempty"`
+	FretWindow *fretWindowDocument   `bson:"fret_window,omitempty"`
+	Cells      *[]answerCellDocument `bson:"cells,omitempty"`
 }
 
 // timedTapDocument is one tap of a take, after the first bar's downbeat.
@@ -78,20 +80,51 @@ func toDomainCells(docs []answerCellDocument) []domain.AnswerCell {
 	return cells
 }
 
-func toTapDocuments(taps []domain.TimedTap) []timedTapDocument {
-	var docs []timedTapDocument
-	for _, t := range taps {
-		docs = append(docs, timedTapDocument(t))
+// toTapDocuments keeps nil as absent and an empty list as empty.
+func toTapDocuments(taps []domain.TimedTap) *[]timedTapDocument {
+	if taps == nil {
+		return nil
 	}
-	return docs
+	docs := make([]timedTapDocument, len(taps))
+	for i, t := range taps {
+		docs[i] = timedTapDocument(t)
+	}
+	return &docs
 }
 
-func toDomainTaps(docs []timedTapDocument) []domain.TimedTap {
-	var taps []domain.TimedTap
-	for _, t := range docs {
-		taps = append(taps, domain.TimedTap(t))
+func toDomainTaps(docs *[]timedTapDocument) []domain.TimedTap {
+	if docs == nil {
+		return nil
+	}
+	taps := make([]domain.TimedTap, len(*docs))
+	for i, t := range *docs {
+		taps[i] = domain.TimedTap(t)
 	}
 	return taps
+}
+
+// toKeptCellDocuments keeps nil as absent and an empty list as empty, as a
+// response's cells must be.
+func toKeptCellDocuments(cells []domain.AnswerCell) *[]answerCellDocument {
+	if cells == nil {
+		return nil
+	}
+	docs := make([]answerCellDocument, len(cells))
+	for i, c := range cells {
+		docs[i] = answerCellDocument(c)
+	}
+	return &docs
+}
+
+func toKeptDomainCells(docs *[]answerCellDocument) []domain.AnswerCell {
+	if docs == nil {
+		return nil
+	}
+	cells := make([]domain.AnswerCell, len(*docs))
+	for i, c := range *docs {
+		cells[i] = domain.AnswerCell(c)
+	}
+	return cells
 }
 
 // practiceEvidenceDocument is a `practice_evidence` document: one piece of
@@ -251,7 +284,7 @@ func toEvidenceDocument(e domain.PracticeEvidence) (practiceEvidenceDocument, er
 			Tone:             r.Tone,
 			Taps:             toTapDocuments(r.Taps),
 			FretWindow:       toFretWindowDocument(r.FretWindowFrom),
-			Cells:            toCellDocuments(r.Cells),
+			Cells:            toKeptCellDocuments(r.Cells),
 		},
 		Correct:          e.Correct,
 		LatencyMs:        e.LatencyMs,
@@ -301,7 +334,7 @@ func (d practiceEvidenceDocument) toDomain() (domain.PracticeEvidence, error) {
 			Tone:             r.Tone,
 			Taps:             toDomainTaps(r.Taps),
 			FretWindowFrom:   r.FretWindow.toDomain(),
-			Cells:            toDomainCells(r.Cells),
+			Cells:            toKeptDomainCells(r.Cells),
 		},
 		Correct:          d.Correct,
 		LatencyMs:        d.LatencyMs,

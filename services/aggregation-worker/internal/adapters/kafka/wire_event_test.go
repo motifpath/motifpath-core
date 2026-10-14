@@ -98,6 +98,23 @@ func TestToDomainEvent_PracticeItemAnswered(t *testing.T) {
 			},
 		},
 		{
+			name:    "timed taps with none keep their empty list",
+			payload: `{` + base + `,"item_key":"guide_tone:6ea2d087-ab9c-59dc-9657-8546025414d2:ii-V-I","response":{"response_type":"timed_taps","music_key":"C","tone":"3","tempo_bpm":120,"taps":[]}}`,
+			want: domain.PracticeAnswer{
+				ItemKey:  "guide_tone:6ea2d087-ab9c-59dc-9657-8546025414d2:ii-V-I",
+				Response: domain.PracticeResponse{Type: domain.PracticeResponseTimedTaps, MusicKey: "C", Tone: "3", TempoBPM: intPtr(120), Taps: []domain.TimedTap{}},
+			},
+		},
+		{
+			name:    "multi tap with no place keeps its empty list",
+			payload: `{` + base + `,"item_key":"fretboard_note:6ea2d087-ab9c-59dc-9657-8546025414d2:E","response":{"response_type":"multi_tap","fret_window":{"from_fret":3},"cells":[],"latency_ms":4000}}`,
+			want: domain.PracticeAnswer{
+				ItemKey: "fretboard_note:6ea2d087-ab9c-59dc-9657-8546025414d2:E",
+				Response: domain.PracticeResponse{Type: domain.PracticeResponseMultiTap, FretWindowFrom: intPtr(3),
+					Cells: []domain.AnswerCell{}, LatencyMs: intPtr(4000)},
+			},
+		},
+		{
 			name:    "multi tap at the nut",
 			payload: `{` + base + `,"item_key":"fretboard_note:6ea2d087-ab9c-59dc-9657-8546025414d2:E","response":{"response_type":"multi_tap","fret_window":{"from_fret":0},"cells":[{"string":1,"fret":0}],"latency_ms":4000}}`,
 			want: domain.PracticeAnswer{

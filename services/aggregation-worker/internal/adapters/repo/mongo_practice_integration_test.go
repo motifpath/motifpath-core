@@ -305,7 +305,23 @@ func TestMongoPracticeEvidenceRepository(t *testing.T) {
 		Correct: boolPtr(false), LatencyMs: intPtr(4000),
 		AnswerKey: &domain.AnswerKey{NoteName: "E", FretWindowFrom: intPtr(0), Cells: []domain.AnswerCell{{String: 1, Fret: 0}, {String: 6, Fret: 0}}},
 	}
-	for _, e := range []domain.PracticeEvidence{later, earlier, other, timed, challenge, named, found, namedAmong, heard, tappedAlong, everywhere} {
+	noTaps := domain.PracticeEvidence{
+		EvidenceID: "e0000000-0000-4000-8000-000000000012", StudentID: studentA,
+		ItemKey: "guide_tone:" + guitar + ":IV-V-I", Source: domain.EvidenceSourceAutoGraded, OccurredAt: monday,
+		GraderID: "timed_taps.v1",
+		Response: domain.PracticeResponse{Type: domain.PracticeResponseTimedTaps, MusicKey: "C", Tone: "3", TempoBPM: intPtr(120), Taps: []domain.TimedTap{}},
+		Correct:  boolPtr(false), LatencyMs: intPtr(2000),
+		AnswerKey: &domain.AnswerKey{MusicKey: "C", Tone: "3", Bars: []domain.AnswerBar{{Chord: "F", NoteName: "A", Hit: false}}},
+	}
+	noPlaces := domain.PracticeEvidence{
+		EvidenceID: "e0000000-0000-4000-8000-000000000013", StudentID: studentA,
+		ItemKey: "fretboard_note:" + guitar + ":G", Source: domain.EvidenceSourceAutoGraded, OccurredAt: monday,
+		GraderID: "multi_tap.v1",
+		Response: domain.PracticeResponse{Type: domain.PracticeResponseMultiTap, FretWindowFrom: intPtr(3), Cells: []domain.AnswerCell{}, LatencyMs: intPtr(3000)},
+		Correct:  boolPtr(false), LatencyMs: intPtr(3000),
+		AnswerKey: &domain.AnswerKey{NoteName: "G", FretWindowFrom: intPtr(3), Cells: []domain.AnswerCell{{String: 1, Fret: 3}}},
+	}
+	for _, e := range []domain.PracticeEvidence{later, earlier, other, timed, challenge, named, found, namedAmong, heard, tappedAlong, everywhere, noTaps, noPlaces} {
 		inserted, err := repo.Insert(ctx, e)
 		require.NoError(t, err)
 		require.True(t, inserted)
@@ -336,7 +352,7 @@ func TestMongoPracticeEvidenceRepository(t *testing.T) {
 	})
 
 	t.Run("the drill v2 answers and a note named among choices keep their responses and answer keys", func(t *testing.T) {
-		for _, e := range []domain.PracticeEvidence{namedAmong, heard, tappedAlong, everywhere} {
+		for _, e := range []domain.PracticeEvidence{namedAmong, heard, tappedAlong, everywhere, noTaps, noPlaces} {
 			got, err := repo.ListForItem(ctx, studentA, e.ItemKey)
 			require.NoError(t, err)
 			assert.Equal(t, []domain.PracticeEvidence{e}, got, e.ItemKey)

@@ -226,15 +226,21 @@ func toPracticeAnswer(w wireEvent) *domain.PracticeAnswer {
 		Choice:           r.Choice,
 		Tone:             r.Tone,
 	}
-	for _, t := range r.Taps {
-		response.Taps = append(response.Taps, domain.TimedTap{AtMs: t.AtMs, String: t.String, Fret: t.Fret})
+	if r.Taps != nil {
+		response.Taps = make([]domain.TimedTap, len(*r.Taps))
+		for i, t := range *r.Taps {
+			response.Taps[i] = domain.TimedTap{AtMs: t.AtMs, String: t.String, Fret: t.Fret}
+		}
 	}
 	if r.FretWindow != nil {
 		from := r.FretWindow.FromFret
 		response.FretWindowFrom = &from
 	}
-	for _, c := range r.Cells {
-		response.Cells = append(response.Cells, domain.AnswerCell{String: c.String, Fret: c.Fret})
+	if r.Cells != nil {
+		response.Cells = make([]domain.AnswerCell, len(*r.Cells))
+		for i, c := range *r.Cells {
+			response.Cells[i] = domain.AnswerCell{String: c.String, Fret: c.Fret}
+		}
 	}
 	return &domain.PracticeAnswer{
 		EventID:           w.EventID,

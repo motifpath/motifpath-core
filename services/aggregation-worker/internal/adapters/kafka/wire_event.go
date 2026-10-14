@@ -80,7 +80,9 @@ type practiceResponseWire struct {
 	Options          []string `json:"options,omitempty"`
 	Choice           string   `json:"choice,omitempty"`
 	Tone             string   `json:"tone,omitempty"`
-	Taps             []struct {
+	// Taps and Cells are pointers so an empty list, which a take with no taps
+	// sends, is told apart from an absent one.
+	Taps *[]struct {
 		AtMs   int `json:"at_ms"`
 		String int `json:"string"`
 		Fret   int `json:"fret"`
@@ -88,7 +90,7 @@ type practiceResponseWire struct {
 	FretWindow *struct {
 		FromFret int `json:"from_fret"`
 	} `json:"fret_window,omitempty"`
-	Cells []struct {
+	Cells *[]struct {
 		String int `json:"string"`
 		Fret   int `json:"fret"`
 	} `json:"cells,omitempty"`
