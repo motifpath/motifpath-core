@@ -91,10 +91,12 @@ class RenderTests(unittest.TestCase):
 
 
 class SpecsCatalogTests(unittest.TestCase):
-    def test_the_specs_catalog_builds_with_its_ten_progressions(self):
-        built = pg.load(CATALOG, MAP)
-        self.assertEqual(10, len(built))
-        self.assertIn('12-bar-blues', [p.key for p in built])
+    # The catalog grows in motifpath-specs on its own schedule, so these check what must hold
+    # of it, never its exact contents.
+    def test_the_specs_catalog_builds_with_the_common_progressions(self):
+        keys = [p.key for p in pg.load(CATALOG, MAP)]
+        for key in ('I-V-vi-IV', 'I-vi-IV-V', 'ii-V-I', '12-bar-blues'):
+            self.assertIn(key, keys)
 
 
 if __name__ == '__main__':
