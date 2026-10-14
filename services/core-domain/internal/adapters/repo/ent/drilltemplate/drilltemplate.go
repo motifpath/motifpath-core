@@ -18,6 +18,10 @@ const (
 	FieldItemKind = "item_kind"
 	// FieldResponseType holds the string denoting the response_type field in the database.
 	FieldResponseType = "response_type"
+	// FieldRung holds the string denoting the rung field in the database.
+	FieldRung = "rung"
+	// FieldSecondWay holds the string denoting the second_way field in the database.
+	FieldSecondWay = "second_way"
 	// FieldTimed holds the string denoting the timed field in the database.
 	FieldTimed = "timed"
 	// FieldNames holds the string denoting the names field in the database.
@@ -41,6 +45,8 @@ var Columns = []string{
 	FieldKey,
 	FieldItemKind,
 	FieldResponseType,
+	FieldRung,
+	FieldSecondWay,
 	FieldTimed,
 	FieldNames,
 }
@@ -62,6 +68,10 @@ var (
 	ItemKindValidator func(string) error
 	// ResponseTypeValidator is a validator for the "response_type" field. It is called by the builders before save.
 	ResponseTypeValidator func(string) error
+	// RungValidator is a validator for the "rung" field. It is called by the builders before save.
+	RungValidator func(string) error
+	// SecondWayValidator is a validator for the "second_way" field. It is called by the builders before save.
+	SecondWayValidator func(string) error
 )
 
 // OrderOption defines the ordering options for the DrillTemplate queries.
@@ -85,6 +95,16 @@ func ByItemKind(opts ...sql.OrderTermOption) OrderOption {
 // ByResponseType orders the results by the response_type field.
 func ByResponseType(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldResponseType, opts...).ToFunc()
+}
+
+// ByRung orders the results by the rung field.
+func ByRung(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRung, opts...).ToFunc()
+}
+
+// BySecondWay orders the results by the second_way field.
+func BySecondWay(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSecondWay, opts...).ToFunc()
 }
 
 // ByTimed orders the results by the timed field.

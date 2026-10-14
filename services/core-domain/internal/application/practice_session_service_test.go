@@ -130,6 +130,8 @@ type practiceFixture struct {
 	headSessions   *fakeHeadSessionCounter
 	// cells holds the fretboard cells that suit each instrument.
 	cells     map[string][]domain.ClassifiedItem
+	// templates are the installed drill templates.
+	templates catalogDrillTemplates
 	now       time.Time
 	pathCount int
 	t         *testing.T
@@ -181,6 +183,7 @@ func newPracticeFixture(t *testing.T) *practiceFixture {
 		feltRatings:    &fakeFeltRatingReader{sessions: map[string]int{}},
 		headSessions:   &fakeHeadSessionCounter{started: map[string]int{}},
 		cells:          map[string][]domain.ClassifiedItem{},
+		templates:      catalogDrillTemplates{},
 		now:            time.Date(2026, 10, 4, 12, 0, 0, 0, time.UTC),
 		t:              t,
 	}
@@ -189,7 +192,7 @@ func newPracticeFixture(t *testing.T) *practiceFixture {
 	now := func() time.Time { return f.now }
 	rollup := application.NewKnowledgeRollupService(f.knowledgeNodes, f.edges, practiceItemSource{f: f}, f.states, now)
 	f.svc = application.NewPracticeSessionService(
-		f.instruments, f.studentPaths, f.enrollments, f.learningPaths, f.courseVersions, f.contentNodes, f.diagrams, f.exercises, rollup, f.tapChecks, f.feltRatings, f.headSessions,
+		f.instruments, f.studentPaths, f.enrollments, f.learningPaths, f.courseVersions, f.contentNodes, f.diagrams, f.exercises, rollup, &f.templates, f.tapChecks, f.feltRatings, f.headSessions,
 		func() string { return "session-1" },
 		now,
 	).WithShuffle(keepOrder)
@@ -401,7 +404,7 @@ func (f *practiceFixture) inDays(days int) *time.Time {
 
 func (f *practiceFixture) compose(t *testing.T, instrumentID string, minutes int) domain.PracticeSessionPlan {
 	t.Helper()
-	plan, err := f.svc.ComposePlan(context.Background(), studentCaller(), &instrumentID, minutes)
+	plan, err := f.svc.ComposePlan(context.Background(), studentCaller(), &instrumentID, nil, minutes)
 	require.NoError(t, err)
 	return plan
 }
@@ -430,7 +433,7 @@ func TestPracticeSessionService_ComposePlan(t *testing.T) {
 			f := newPracticeFixture(t)
 			guitar := practiceGuitar
 
-			_, err := f.svc.ComposePlan(ctx, studentCaller(), &guitar, minutes)
+			_, err := f.svc.ComposePlan(ctx, studentCaller(), &guitar, nil, minutes)
 
 			var valErr *domain.ValidationError
 			require.ErrorAs(t, err, &valErr, "minutes %d", minutes)
@@ -442,7 +445,7 @@ func TestPracticeSessionService_ComposePlan(t *testing.T) {
 		f := newPracticeFixture(t)
 		missing := "no-such-instrument"
 
-		_, err := f.svc.ComposePlan(ctx, studentCaller(), &missing, 10)
+		_, err := f.svc.ComposePlan(ctx, studentCaller(), &missing, nil, 10)
 
 		require.ErrorIs(t, err, domain.ErrNotFound)
 	})
@@ -452,7 +455,7 @@ func TestPracticeSessionService_ComposePlan(t *testing.T) {
 		f.onPathFor([]string{practiceGuitar}, "skill-1")
 		f.playAlong("d1", "Lick", practiceGuitar, "skill-1", 120)
 
-		_, err := f.svc.ComposePlan(ctx, studentCaller(), nil, 10)
+		_, err := f.svc.ComposePlan(ctx, studentCaller(), nil, nil, 10)
 
 		require.ErrorIs(t, err, domain.ErrNotFound)
 	})
@@ -678,7 +681,7 @@ func TestPracticeSessionService_ComposePlan(t *testing.T) {
 		f.playAlong("elsewhere", "Elsewhere", practiceGuitar, "skill-other", 100)
 
 		guitar := practiceGuitar
-		_, err := f.svc.ComposePlan(context.Background(), studentCaller(), &guitar, 5)
+		_, err := f.svc.ComposePlan(context.Background(), studentCaller(), &guitar, nil, 5)
 
 		require.ErrorIs(t, err, domain.ErrNotFound)
 	})
@@ -827,7 +830,7 @@ func TestPracticeSessionService_ComposePlan(t *testing.T) {
 		f.states.err = assert.AnError
 
 		guitar := practiceGuitar
-		_, err := f.svc.ComposePlan(ctx, studentCaller(), &guitar, 10)
+		_, err := f.svc.ComposePlan(ctx, studentCaller(), &guitar, nil, 10)
 
 		require.ErrorIs(t, err, assert.AnError)
 	})
@@ -1186,7 +1189,7 @@ func (f *practiceFixture) cellsOn(instrumentID, skillID string, frets int, strs 
 
 func (f *practiceFixture) composeInTheHead(t *testing.T, minutes int) domain.PracticeSessionPlan {
 	t.Helper()
-	plan, err := f.svc.ComposePlan(context.Background(), studentCaller(), nil, minutes)
+	plan, err := f.svc.ComposePlan(context.Background(), studentCaller(), nil, nil, minutes)
 	require.NoError(t, err)
 	return plan
 }
@@ -1287,7 +1290,7 @@ func TestPracticeSessionService_ComposePlanFretboardCells(t *testing.T) {
 		f.onPathFor([]string{practiceGuitar}, "root-strings")
 		f.cellsOn(practiceGuitar, "root-strings", 12, 6, 5)
 
-		_, err := f.svc.ComposePlan(ctx, studentCaller(), strPtr(practiceGuitar), 10)
+		_, err := f.svc.ComposePlan(ctx, studentCaller(), strPtr(practiceGuitar), nil, 10)
 
 		assert.ErrorIs(t, err, domain.ErrNotFound)
 	})
@@ -1345,7 +1348,7 @@ func TestPracticeSessionService_ComposePlanFretboardCells(t *testing.T) {
 		f := newPracticeFixture(t)
 		f.cellsOn(practiceGuitar, "root-strings", 12, 6, 5)
 
-		_, err := f.svc.ComposePlan(ctx, studentCaller(), nil, 5)
+		_, err := f.svc.ComposePlan(ctx, studentCaller(), nil, nil, 5)
 
 		assert.ErrorIs(t, err, domain.ErrNotFound)
 	})
@@ -1400,7 +1403,7 @@ func TestPracticeSessionService_ComposePlanTapCheck(t *testing.T) {
 		boom := fmt.Errorf("mongo down")
 		f.tapChecks.err = boom
 
-		_, err := f.svc.ComposePlan(context.Background(), studentCaller(), nil, 5)
+		_, err := f.svc.ComposePlan(context.Background(), studentCaller(), nil, nil, 5)
 
 		assert.ErrorIs(t, err, boom)
 	})
@@ -1434,7 +1437,7 @@ func TestPracticeSessionService_ComposePlanDiagramShapes(t *testing.T) {
 		f.onPathFor([]string{practiceGuitar}, "caged")
 		f.shapeOn("grip-c-a3", "caged", practiceGuitar)
 
-		plan, err := f.svc.ComposePlan(ctx, studentCaller(), strPtr(practiceGuitar), 10)
+		plan, err := f.svc.ComposePlan(ctx, studentCaller(), strPtr(practiceGuitar), nil, 10)
 
 		require.NoError(t, err)
 		assert.Empty(t, itemsOfKind(plan, domain.PracticeItemKindDiagramShape))
@@ -1532,7 +1535,7 @@ func TestPracticeSessionService_ComposePlanFeltQuestions(t *testing.T) {
 		boom := fmt.Errorf("mongo down")
 		f.feltRatings.err = boom
 
-		_, err := f.svc.ComposePlan(context.Background(), studentCaller(), nil, 5)
+		_, err := f.svc.ComposePlan(context.Background(), studentCaller(), nil, nil, 5)
 
 		assert.ErrorIs(t, err, boom)
 	})
@@ -1882,7 +1885,7 @@ func TestPracticeSessionService_ComposePlanFretWindows(t *testing.T) {
 		f.onPathFor([]string{practiceGuitar}, "root-strings")
 		f.cellsOn(practiceGuitar, "root-strings", 12, 6)
 
-		_, err := f.svc.ComposePlan(context.Background(), studentCaller(), nil, 10)
+		_, err := f.svc.ComposePlan(context.Background(), studentCaller(), nil, nil, 10)
 
 		assert.ErrorContains(t, err, "mongo down")
 	})

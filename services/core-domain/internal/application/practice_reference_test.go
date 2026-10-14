@@ -192,7 +192,7 @@ func TestPracticeReferenceService_SyncExercises(t *testing.T) {
 	t.Run("writes every exercise's reference, across pages", func(t *testing.T) {
 		exercises := seed(t, domain.MaxPageLimit+5)
 		references := newFakePracticeReferenceWriter()
-		svc := application.NewPracticeReferenceService(newFakeDiagramRepository(), exercises, newFakeInstrumentRepository(), fakeDrillThresholds(nil), references)
+		svc := application.NewPracticeReferenceService(newFakeDiagramRepository(), exercises, newFakeInstrumentRepository(), fakeDrillThresholds(nil), fakeProgressions(nil), references)
 
 		synced, err := svc.SyncExercises(ctx)
 
@@ -212,7 +212,7 @@ func TestPracticeReferenceService_SyncExercises(t *testing.T) {
 	t.Run("reports a failed write", func(t *testing.T) {
 		references := newFakePracticeReferenceWriter()
 		references.err = errors.New("mongo down")
-		svc := application.NewPracticeReferenceService(newFakeDiagramRepository(), seed(t, 2), newFakeInstrumentRepository(), fakeDrillThresholds(nil), references)
+		svc := application.NewPracticeReferenceService(newFakeDiagramRepository(), seed(t, 2), newFakeInstrumentRepository(), fakeDrillThresholds(nil), fakeProgressions(nil), references)
 
 		synced, err := svc.SyncExercises(ctx)
 
@@ -241,7 +241,7 @@ func TestPracticeReferenceService_SyncDiagrams(t *testing.T) {
 	t.Run("writes every diagram's reference, across pages", func(t *testing.T) {
 		diagrams := seed(t, domain.MaxPageLimit+5)
 		references := newFakePracticeReferenceWriter()
-		svc := application.NewPracticeReferenceService(diagrams, newFakeExerciseRepository(), newFakeInstrumentRepository(), fakeDrillThresholds(nil), references)
+		svc := application.NewPracticeReferenceService(diagrams, newFakeExerciseRepository(), newFakeInstrumentRepository(), fakeDrillThresholds(nil), fakeProgressions(nil), references)
 
 		synced, err := svc.SyncDiagrams(ctx)
 
@@ -261,7 +261,7 @@ func TestPracticeReferenceService_SyncDiagrams(t *testing.T) {
 	t.Run("reports a failed write", func(t *testing.T) {
 		references := newFakePracticeReferenceWriter()
 		references.err = errors.New("mongo down")
-		svc := application.NewPracticeReferenceService(seed(t, 2), newFakeExerciseRepository(), newFakeInstrumentRepository(), fakeDrillThresholds(nil), references)
+		svc := application.NewPracticeReferenceService(seed(t, 2), newFakeExerciseRepository(), newFakeInstrumentRepository(), fakeDrillThresholds(nil), fakeProgressions(nil), references)
 
 		synced, err := svc.SyncDiagrams(ctx)
 
@@ -280,7 +280,7 @@ func TestPracticeReferenceService_SyncDrillThresholds(t *testing.T) {
 
 	t.Run("writes every installed version in one write", func(t *testing.T) {
 		references := newFakePracticeReferenceWriter()
-		svc := application.NewPracticeReferenceService(newFakeDiagramRepository(), newFakeExerciseRepository(), newFakeInstrumentRepository(), fakeDrillThresholds(installed), references)
+		svc := application.NewPracticeReferenceService(newFakeDiagramRepository(), newFakeExerciseRepository(), newFakeInstrumentRepository(), fakeDrillThresholds(installed), fakeProgressions(nil), references)
 
 		synced, err := svc.SyncDrillThresholds(ctx)
 
@@ -293,9 +293,58 @@ func TestPracticeReferenceService_SyncDrillThresholds(t *testing.T) {
 	t.Run("reports a failed write", func(t *testing.T) {
 		references := newFakePracticeReferenceWriter()
 		references.err = errors.New("mongo down")
-		svc := application.NewPracticeReferenceService(newFakeDiagramRepository(), newFakeExerciseRepository(), newFakeInstrumentRepository(), fakeDrillThresholds(installed), references)
+		svc := application.NewPracticeReferenceService(newFakeDiagramRepository(), newFakeExerciseRepository(), newFakeInstrumentRepository(), fakeDrillThresholds(installed), fakeProgressions(nil), references)
 
 		synced, err := svc.SyncDrillThresholds(ctx)
+
+		require.Error(t, err)
+		assert.Equal(t, 0, synced)
+	})
+}
+
+// catalogProgressions are two confusable progressions as the progression
+// catalog installs them.
+func catalogProgressions() []domain.Progression {
+	return []domain.Progression{
+		{ID: "pr-pop", Key: "I-V-vi-IV", Mode: "major", Bars: []string{"I", "V", "vi", "IV"}, NodeIDs: []string{"node-cp"}, Confusable: []string{"I-vi-IV-V"}, Names: domain.LocalizedText{"en": "I–V–vi–IV (pop)"}},
+		{ID: "pr-doo-wop", Key: "I-vi-IV-V", Mode: "major", Bars: []string{"I", "vi", "IV", "V"}, NodeIDs: []string{"node-cp"}, Confusable: []string{"I-V-vi-IV"}, Names: domain.LocalizedText{"en": "I–vi–IV–V (doo-wop)"}},
+	}
+}
+
+// Harmony and ear drills are graded against the progression catalog, which
+// comes only from migrations, so the sync is how it reaches the snapshot.
+func TestPracticeReferenceService_SyncProgressions(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("writes every installed progression in one write", func(t *testing.T) {
+		references := newFakePracticeReferenceWriter()
+		svc := application.NewPracticeReferenceService(newFakeDiagramRepository(), newFakeExerciseRepository(), newFakeInstrumentRepository(), fakeDrillThresholds(nil), fakeProgressions(catalogProgressions()), references)
+
+		synced, err := svc.SyncProgressions(ctx)
+
+		require.NoError(t, err)
+		assert.Equal(t, 2, synced)
+		assert.Equal(t, 1, references.writeCount())
+		assert.Equal(t, catalogProgressions(), references.progressions())
+	})
+
+	t.Run("writes nothing when none is installed", func(t *testing.T) {
+		references := newFakePracticeReferenceWriter()
+		svc := application.NewPracticeReferenceService(newFakeDiagramRepository(), newFakeExerciseRepository(), newFakeInstrumentRepository(), fakeDrillThresholds(nil), fakeProgressions(nil), references)
+
+		synced, err := svc.SyncProgressions(ctx)
+
+		require.NoError(t, err)
+		assert.Equal(t, 0, synced)
+		assert.Equal(t, 0, references.writeCount())
+	})
+
+	t.Run("reports a failed write", func(t *testing.T) {
+		references := newFakePracticeReferenceWriter()
+		references.err = errors.New("mongo down")
+		svc := application.NewPracticeReferenceService(newFakeDiagramRepository(), newFakeExerciseRepository(), newFakeInstrumentRepository(), fakeDrillThresholds(nil), fakeProgressions(catalogProgressions()), references)
+
+		synced, err := svc.SyncProgressions(ctx)
 
 		require.Error(t, err)
 		assert.Equal(t, 0, synced)
@@ -316,7 +365,7 @@ func TestPracticeReferenceService_Sync(t *testing.T) {
 
 	t.Run("writes the fluent times even when another part fails", func(t *testing.T) {
 		references := newFakePracticeReferenceWriter()
-		svc := application.NewPracticeReferenceService(newFakeDiagramRepository(), failingExercises{newFakeExerciseRepository()}, newFakeInstrumentRepository(), fakeDrillThresholds(installed), references)
+		svc := application.NewPracticeReferenceService(newFakeDiagramRepository(), failingExercises{newFakeExerciseRepository()}, newFakeInstrumentRepository(), fakeDrillThresholds(installed), fakeProgressions(nil), references)
 
 		synced, err := svc.Sync(ctx)
 
@@ -328,12 +377,12 @@ func TestPracticeReferenceService_Sync(t *testing.T) {
 	t.Run("counts every part it wrote", func(t *testing.T) {
 		exercises := newFakeExerciseRepository()
 		require.NoError(t, exercises.Create(ctx, domain.Exercise{ID: "e-1", ExerciseType: domain.ExerciseTypeTextResponse, Options: textResponseOptions()}))
-		svc := application.NewPracticeReferenceService(newFakeDiagramRepository(), exercises, newFakeInstrumentRepository(), fakeDrillThresholds(installed), newFakePracticeReferenceWriter())
+		svc := application.NewPracticeReferenceService(newFakeDiagramRepository(), exercises, newFakeInstrumentRepository(), fakeDrillThresholds(installed), fakeProgressions(catalogProgressions()), newFakePracticeReferenceWriter())
 
 		synced, err := svc.Sync(ctx)
 
 		require.NoError(t, err)
-		assert.Equal(t, application.PracticeReferenceSynced{Diagrams: 0, Exercises: 1, Instruments: 0, DrillThresholds: 1}, synced)
+		assert.Equal(t, application.PracticeReferenceSynced{Diagrams: 0, Exercises: 1, Instruments: 0, DrillThresholds: 1, Progressions: 2}, synced)
 	})
 }
 
@@ -401,7 +450,7 @@ func TestPracticeReferenceService_SyncInstruments(t *testing.T) {
 
 	t.Run("writes every instrument's reference in one write", func(t *testing.T) {
 		references := newFakePracticeReferenceWriter()
-		svc := application.NewPracticeReferenceService(newFakeDiagramRepository(), newFakeExerciseRepository(), seed(t), fakeDrillThresholds(nil), references)
+		svc := application.NewPracticeReferenceService(newFakeDiagramRepository(), newFakeExerciseRepository(), seed(t), fakeDrillThresholds(nil), fakeProgressions(nil), references)
 
 		synced, err := svc.SyncInstruments(ctx)
 
@@ -418,7 +467,7 @@ func TestPracticeReferenceService_SyncInstruments(t *testing.T) {
 	t.Run("reports a failed write", func(t *testing.T) {
 		references := newFakePracticeReferenceWriter()
 		references.err = errors.New("mongo down")
-		svc := application.NewPracticeReferenceService(newFakeDiagramRepository(), newFakeExerciseRepository(), seed(t), fakeDrillThresholds(nil), references)
+		svc := application.NewPracticeReferenceService(newFakeDiagramRepository(), newFakeExerciseRepository(), seed(t), fakeDrillThresholds(nil), fakeProgressions(nil), references)
 
 		synced, err := svc.SyncInstruments(ctx)
 

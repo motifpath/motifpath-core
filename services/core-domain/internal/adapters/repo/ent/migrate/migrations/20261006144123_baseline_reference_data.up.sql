@@ -1266,16 +1266,16 @@ INSERT INTO diagram_concepts (diagram_id,concept_id,linked_at) VALUES ('d59be890
 -- Frozen practice drill catalog, compiled from motifpath-specs catalogs/practice-drills.yaml by
 -- scripts/practice_drills. Each id is the UUID v5 of drill-template/<key> or
 -- drill-threshold/<template key>/v<version>. A row already holding one of these ids stops the migration.
-INSERT INTO "drill_templates" ("id", "key", "item_kind", "response_type", "timed", "names") VALUES
-  ('4c6ffb77-ee8b-5fda-b243-784f4209bc65', 'fretboard_cell:name_the_note', 'fretboard_cell', 'name_the_note', true, '{"en":"Name the note","pt_BR":"Diga a nota"}'),
-  ('6e38da0b-df26-5aa8-ab14-3b6640582174', 'fretboard_cell:find_the_note', 'fretboard_cell', 'find_the_note', true, '{"en":"Find the note","pt_BR":"Ache a nota"}'),
-  ('30abb724-d181-56d0-8255-889411531213', 'diagram_shape:name_the_shape', 'diagram_shape', 'name_the_shape', true, '{"en":"Name the shape","pt_BR":"Diga a forma"}'),
-  ('c11e550e-1612-5414-ba78-298e158700d0', 'diagram_shape:find_the_degree', 'diagram_shape', 'find_the_degree', true, '{"en":"Find the degree","pt_BR":"Ache o grau"}'),
-  ('eee88cdc-8c03-5246-b798-3ccf6941875f', 'exercise:text_response', 'exercise', 'option_choice', true, '{"en":"Text exercises","pt_BR":"Exercícios de texto"}'),
-  ('e11fdaf6-8f60-5348-ab8b-0333cb31c31f', 'exercise:audio_recognition', 'exercise', 'option_choice', true, '{"en":"Listening exercises","pt_BR":"Exercícios de escuta"}'),
-  ('bfe9f72d-a2e9-5f43-a774-115b7da268f8', 'exercise:image_recognition', 'exercise', 'option_choice', true, '{"en":"Image recognition exercises","pt_BR":"Exercícios de reconhecimento de imagem"}'),
-  ('2ba4103e-ce5d-554f-83a5-eba38a6ed2b6', 'exercise:image_choice', 'exercise', 'option_choice', true, '{"en":"Image choice exercises","pt_BR":"Exercícios de escolha de imagem"}'),
-  ('49aed57b-3886-53de-b6d1-4b842acc8ab1', 'exercise:audio_selection', 'exercise', 'option_choice', true, '{"en":"Sound choice exercises","pt_BR":"Exercícios de escolha de som"}');
+INSERT INTO "drill_templates" ("id", "key", "item_kind", "response_type", "rung", "second_way", "timed", "names") VALUES
+  ('4c6ffb77-ee8b-5fda-b243-784f4209bc65', 'fretboard_cell:name_the_note', 'fretboard_cell', 'name_the_note', 'know', 'fretboard_cell:find_the_note', true, '{"en":"Name the note","pt_BR":"Diga a nota"}'),
+  ('6e38da0b-df26-5aa8-ab14-3b6640582174', 'fretboard_cell:find_the_note', 'fretboard_cell', 'find_the_note', 'know', 'fretboard_cell:name_the_note', true, '{"en":"Find the note","pt_BR":"Ache a nota"}'),
+  ('30abb724-d181-56d0-8255-889411531213', 'diagram_shape:name_the_shape', 'diagram_shape', 'name_the_shape', 'know', 'diagram_shape:find_the_degree', true, '{"en":"Name the shape","pt_BR":"Diga a forma"}'),
+  ('c11e550e-1612-5414-ba78-298e158700d0', 'diagram_shape:find_the_degree', 'diagram_shape', 'find_the_degree', 'know', 'diagram_shape:name_the_shape', true, '{"en":"Find the degree","pt_BR":"Ache o grau"}'),
+  ('eee88cdc-8c03-5246-b798-3ccf6941875f', 'exercise:text_response', 'exercise', 'option_choice', 'know', NULL, true, '{"en":"Text exercises","pt_BR":"Exercícios de texto"}'),
+  ('e11fdaf6-8f60-5348-ab8b-0333cb31c31f', 'exercise:audio_recognition', 'exercise', 'option_choice', 'hear', NULL, true, '{"en":"Listening exercises","pt_BR":"Exercícios de escuta"}'),
+  ('bfe9f72d-a2e9-5f43-a774-115b7da268f8', 'exercise:image_recognition', 'exercise', 'option_choice', 'know', NULL, true, '{"en":"Image recognition exercises","pt_BR":"Exercícios de reconhecimento de imagem"}'),
+  ('2ba4103e-ce5d-554f-83a5-eba38a6ed2b6', 'exercise:image_choice', 'exercise', 'option_choice', 'know', NULL, true, '{"en":"Image choice exercises","pt_BR":"Exercícios de escolha de imagem"}'),
+  ('49aed57b-3886-53de-b6d1-4b842acc8ab1', 'exercise:audio_selection', 'exercise', 'option_choice', 'hear', NULL, true, '{"en":"Sound choice exercises","pt_BR":"Exercícios de escolha de som"}');
 INSERT INTO "drill_thresholds" ("id", "template_id", "version", "effective_from", "fluent_net_ms", "source", "sessions", "students") VALUES
   ('bf63ad0e-f1c7-52ba-a303-230472134f6c', '4c6ffb77-ee8b-5fda-b243-784f4209bc65', 1, '2026-10-06T00:00:00Z', 3000, 'default', 0, 0),
   ('b4038212-bd6e-5749-8b39-cc8862e1974e', '6e38da0b-df26-5aa8-ab14-3b6640582174', 1, '2026-10-06T00:00:00Z', 4000, 'default', 0, 0),

@@ -87,7 +87,7 @@ NEVER access the database directly from the domain layer.
   through every article-lesson state (review, paragraph cues, diagram-first, Practise this, language-locked), and three public-domain song charts: published
   with a corrected draft, withdrawn, and a draft whose chords don't all resolve; their preview links are logged). Reference
   data — languages, voices, the catalog instruments, the knowledge map, the basic guitar
-  diagram catalog, the practice drill catalog and the chord catalog — comes only from migrations, with fixed IDs; seeds look it up (knowledge
+  diagram catalog, the practice drill catalog, the chord catalog and the progression catalog — comes only from migrations, with fixed IDs; seeds look it up (knowledge
   nodes by key) and never create it. Hard-refuses to run unless `DATABASE_URL`/`MONGO_URI`
   resolve to `localhost`/`127.0.0.1` — no override exists; see `scripts/db-reset.sh`. **Never run
   against anything but a local dev database.** Back up any real (Clerk-linked) user rows first —
@@ -127,7 +127,10 @@ NEVER access the database directly from the domain layer.
   passes the musical validator first. The drill catalog's diagram shapes (each `diagram_shapes`
   family takes the basic-guitar diagrams whose key matches its pattern) are a third,
   `diagram_shapes_reference_data`, one second after the `diagram_shapes` migration, for the same
-  reason. Run `atlas migrate hash` afterwards.
+  reason. The progression catalog (`scripts/progressions`, from motifpath-specs
+  `catalogs/progressions.yaml`, its nodes checked against the knowledge map) is a fourth,
+  `progressions_reference_data`, one second after the `progressions` migration. Run
+  `atlas migrate hash` afterwards.
 
 ## Auth
 JWT validation uses `clerk-sdk-go/v2` (ADR-009). Each service instantiates one `clerk.Client`

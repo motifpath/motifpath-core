@@ -39,6 +39,26 @@ func (_c *DrillTemplateCreate) SetResponseType(v string) *DrillTemplateCreate {
 	return _c
 }
 
+// SetRung sets the "rung" field.
+func (_c *DrillTemplateCreate) SetRung(v string) *DrillTemplateCreate {
+	_c.mutation.SetRung(v)
+	return _c
+}
+
+// SetSecondWay sets the "second_way" field.
+func (_c *DrillTemplateCreate) SetSecondWay(v string) *DrillTemplateCreate {
+	_c.mutation.SetSecondWay(v)
+	return _c
+}
+
+// SetNillableSecondWay sets the "second_way" field if the given value is not nil.
+func (_c *DrillTemplateCreate) SetNillableSecondWay(v *string) *DrillTemplateCreate {
+	if v != nil {
+		_c.SetSecondWay(*v)
+	}
+	return _c
+}
+
 // SetTimed sets the "timed" field.
 func (_c *DrillTemplateCreate) SetTimed(v bool) *DrillTemplateCreate {
 	_c.mutation.SetTimed(v)
@@ -130,6 +150,19 @@ func (_c *DrillTemplateCreate) check() error {
 			return &ValidationError{Name: "response_type", err: fmt.Errorf(`ent: validator failed for field "DrillTemplate.response_type": %w`, err)}
 		}
 	}
+	if _, ok := _c.mutation.Rung(); !ok {
+		return &ValidationError{Name: "rung", err: errors.New(`ent: missing required field "DrillTemplate.rung"`)}
+	}
+	if v, ok := _c.mutation.Rung(); ok {
+		if err := drilltemplate.RungValidator(v); err != nil {
+			return &ValidationError{Name: "rung", err: fmt.Errorf(`ent: validator failed for field "DrillTemplate.rung": %w`, err)}
+		}
+	}
+	if v, ok := _c.mutation.SecondWay(); ok {
+		if err := drilltemplate.SecondWayValidator(v); err != nil {
+			return &ValidationError{Name: "second_way", err: fmt.Errorf(`ent: validator failed for field "DrillTemplate.second_way": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.Timed(); !ok {
 		return &ValidationError{Name: "timed", err: errors.New(`ent: missing required field "DrillTemplate.timed"`)}
 	}
@@ -182,6 +215,14 @@ func (_c *DrillTemplateCreate) createSpec() (*DrillTemplate, *sqlgraph.CreateSpe
 	if value, ok := _c.mutation.ResponseType(); ok {
 		_spec.SetField(drilltemplate.FieldResponseType, field.TypeString, value)
 		_node.ResponseType = value
+	}
+	if value, ok := _c.mutation.Rung(); ok {
+		_spec.SetField(drilltemplate.FieldRung, field.TypeString, value)
+		_node.Rung = value
+	}
+	if value, ok := _c.mutation.SecondWay(); ok {
+		_spec.SetField(drilltemplate.FieldSecondWay, field.TypeString, value)
+		_node.SecondWay = &value
 	}
 	if value, ok := _c.mutation.Timed(); ok {
 		_spec.SetField(drilltemplate.FieldTimed, field.TypeBool, value)

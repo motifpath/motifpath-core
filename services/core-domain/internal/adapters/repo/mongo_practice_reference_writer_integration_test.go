@@ -40,7 +40,7 @@ func TestMongoPracticeReferenceWriter_DiagramShape(t *testing.T) {
 		"instrument_ids":   bson.A{"guitar", "electric"},
 		"tempo_bpm":        int32(90),
 		"updated_at":       bson.NewDateTimeFromTime(at),
-		"snapshot_version": int32(3),
+		"snapshot_version": int32(4),
 	}, doc)
 
 	t.Run("every reference in one write is stored", func(t *testing.T) {
@@ -84,7 +84,7 @@ func TestMongoPracticeReferenceWriter_DiagramShape(t *testing.T) {
 			bson.D{{Key: "string", Value: int32(5)}, {Key: "fret", Value: int32(3)}, {Key: "interval", Value: "R"}},
 			bson.D{{Key: "string", Value: int32(2)}, {Key: "fret", Value: int32(5)}, {Key: "interval", Value: "3"}},
 		}, got["positions"])
-		assert.Equal(t, int32(3), got["snapshot_version"])
+		assert.Equal(t, int32(4), got["snapshot_version"])
 	})
 
 	t.Run("a diagram that isn't a drill shape leaves the shape fields out", func(t *testing.T) {
@@ -128,7 +128,7 @@ func TestMongoPracticeReferenceWriter_ExerciseShape(t *testing.T) {
 		"instrument_ids":     bson.A{"guitar"},
 		"options":            bson.A{},
 		"updated_at":         bson.NewDateTimeFromTime(at),
-		"snapshot_version":   int32(3),
+		"snapshot_version":   int32(4),
 	}, doc)
 
 	t.Run("an exercise for every instrument stores an empty list", func(t *testing.T) {
@@ -182,7 +182,7 @@ func TestMongoPracticeReferenceWriter_DrillThresholdShape(t *testing.T) {
 		"fluent_net_ms":    int32(6000),
 		"source":           "default",
 		"updated_at":       bson.NewDateTimeFromTime(at),
-		"snapshot_version": int32(3),
+		"snapshot_version": int32(4),
 	}, doc)
 
 	t.Run("an empty write stores nothing and succeeds", func(t *testing.T) {
@@ -251,7 +251,7 @@ func TestMongoPracticeReferenceWriter_InstrumentShape(t *testing.T) {
 		"string_count":     int32(6),
 		"tuning":           bson.A{"E2", "A2", "D3", "G3", "B3", "E4"},
 		"updated_at":       bson.NewDateTimeFromTime(at),
-		"snapshot_version": int32(3),
+		"snapshot_version": int32(4),
 	}, doc)
 
 	t.Run("an instrument without strings stores none and an empty tuning", func(t *testing.T) {
@@ -263,5 +263,45 @@ func TestMongoPracticeReferenceWriter_InstrumentShape(t *testing.T) {
 
 	t.Run("an empty write stores nothing and succeeds", func(t *testing.T) {
 		require.NoError(t, writer.PutInstruments(ctx, nil))
+	})
+}
+
+// TestMongoPracticeReferenceWriter_ProgressionShape pins a progression's
+// document: what harmony and ear graders read of the progression catalog.
+func TestMongoPracticeReferenceWriter_ProgressionShape(t *testing.T) {
+	ctx := context.Background()
+	db := mongoDatabase(t)
+	at := time.Date(2026, 10, 14, 12, 0, 0, 0, time.UTC)
+	writer := NewMongoPracticeReferenceWriter(db, func() time.Time { return at })
+	require.NoError(t, writer.EnsureIndexes(ctx))
+
+	require.NoError(t, writer.PutProgressions(ctx, []domain.Progression{{
+		ID: "pr-1", Key: "ii-V-I", Mode: "major", Bars: []string{"ii", "V", "I", "I"}, NodeIDs: []string{"node-cp", "node-cad"},
+		Confusable: []string{"IV-V-I"}, Names: domain.LocalizedText{"en": "ii–V–I"},
+	}}))
+
+	var doc bson.M
+	require.NoError(t, db.Collection("practice_reference").FindOne(ctx, bson.D{{Key: "kind", Value: "progression"}, {Key: "id", Value: "pr-1"}}).Decode(&doc))
+	delete(doc, "_id")
+	assert.Equal(t, bson.M{
+		"kind":             "progression",
+		"id":               "pr-1",
+		"key":              "ii-V-I",
+		"mode":             "major",
+		"bars":             bson.A{"ii", "V", "I", "I"},
+		"confusable":       bson.A{"IV-V-I"},
+		"updated_at":       bson.NewDateTimeFromTime(at),
+		"snapshot_version": int32(4),
+	}, doc)
+
+	t.Run("a progression confusable with none stores an empty list", func(t *testing.T) {
+		require.NoError(t, writer.PutProgressions(ctx, []domain.Progression{{ID: "pr-2", Key: "I-IV-V-I", Mode: "major", Bars: []string{"I", "IV", "V", "I"}}}))
+		var got bson.M
+		require.NoError(t, db.Collection("practice_reference").FindOne(ctx, bson.D{{Key: "kind", Value: "progression"}, {Key: "id", Value: "pr-2"}}).Decode(&got))
+		assert.Equal(t, bson.A{}, got["confusable"])
+	})
+
+	t.Run("an empty write stores nothing and succeeds", func(t *testing.T) {
+		require.NoError(t, writer.PutProgressions(ctx, nil))
 	})
 }

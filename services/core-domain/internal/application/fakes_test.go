@@ -1962,6 +1962,7 @@ type fakePracticeReferenceWriter struct {
 	exercises map[string]domain.ExerciseReference
 	instrs    map[string]domain.InstrumentReference
 	threshold []domain.DrillThreshold
+	progs     []domain.Progression
 	writes    int
 	err       error
 }
@@ -2004,6 +2005,34 @@ func (f *fakePracticeReferenceWriter) drillThresholds() []domain.DrillThreshold 
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.threshold
+}
+
+func (f *fakePracticeReferenceWriter) PutProgressions(ctx context.Context, progressions []domain.Progression) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if f.err != nil {
+		return f.err
+	}
+	f.writes++
+	f.progs = append(f.progs, progressions...)
+	return nil
+}
+
+func (f *fakePracticeReferenceWriter) progressions() []domain.Progression {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.progs
+}
+
+// fakeProgressions is a ports.ProgressionRepository holding the given
+// installed progressions.
+type fakeProgressions []domain.Progression
+
+func (f fakeProgressions) List(context.Context) ([]domain.Progression, error) {
+	return f, nil
 }
 
 // fakeDrillThresholds is a ports.DrillThresholdRepository holding the given
@@ -2268,4 +2297,26 @@ func (f *fakeExerciseRepository) ListSoundUses(_ context.Context, diagramID stri
 		uses = append(uses, e.SoundUses(diagramID)...)
 	}
 	return uses, nil
+}
+
+// catalogDrillTemplates lists the drill templates the practice drill catalog
+// installs, with their rungs and second ways, then the extra templates a
+// test installs.
+type catalogDrillTemplates struct {
+	extra []domain.DrillTemplate
+}
+
+func (c *catalogDrillTemplates) List(context.Context) ([]domain.DrillTemplate, error) {
+	way := func(key string) *string { return &key }
+	return append([]domain.DrillTemplate{
+		{Key: "diagram_shape:find_the_degree", ItemKind: domain.PracticeItemKindDiagramShape, Rung: domain.PracticeRungKnow, SecondWay: way("diagram_shape:name_the_shape"), Timed: true},
+		{Key: "diagram_shape:name_the_shape", ItemKind: domain.PracticeItemKindDiagramShape, Rung: domain.PracticeRungKnow, SecondWay: way("diagram_shape:find_the_degree"), Timed: true},
+		{Key: "exercise:audio_recognition", ItemKind: domain.PracticeItemKindExercise, Rung: domain.PracticeRungHear, Timed: true},
+		{Key: "exercise:audio_selection", ItemKind: domain.PracticeItemKindExercise, Rung: domain.PracticeRungHear, Timed: true},
+		{Key: "exercise:image_choice", ItemKind: domain.PracticeItemKindExercise, Rung: domain.PracticeRungKnow, Timed: true},
+		{Key: "exercise:image_recognition", ItemKind: domain.PracticeItemKindExercise, Rung: domain.PracticeRungKnow, Timed: true},
+		{Key: "exercise:text_response", ItemKind: domain.PracticeItemKindExercise, Rung: domain.PracticeRungKnow, Timed: true},
+		{Key: "fretboard_cell:find_the_note", ItemKind: domain.PracticeItemKindFretboardCell, Rung: domain.PracticeRungKnow, SecondWay: way("fretboard_cell:name_the_note"), Timed: true},
+		{Key: "fretboard_cell:name_the_note", ItemKind: domain.PracticeItemKindFretboardCell, Rung: domain.PracticeRungKnow, SecondWay: way("fretboard_cell:find_the_note"), Timed: true},
+	}, c.extra...), nil
 }

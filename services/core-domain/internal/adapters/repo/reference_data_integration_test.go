@@ -6,6 +6,7 @@ import (
 	"context"
 	"database/sql"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 
@@ -125,6 +126,8 @@ func TestFreshInstall(t *testing.T) {
 	t.Run("the drill catalog has its templates and every exercise family's default fluent time, with fixed ids", func(t *testing.T) {
 		assert.Equal(t, 9, count(t, "SELECT count(*) FROM drill_templates"))
 		assert.Equal(t, 1, count(t, "SELECT count(*) FROM drill_templates WHERE key = 'fretboard_cell:name_the_note' AND id = '"+catalogID("drill-template/fretboard_cell:name_the_note")+"'"))
+		assert.Equal(t, 1, count(t, "SELECT count(*) FROM drill_templates WHERE key = 'fretboard_cell:name_the_note' AND rung = 'know' AND second_way = 'fretboard_cell:find_the_note'"))
+		assert.Equal(t, 2, count(t, "SELECT count(*) FROM drill_templates WHERE rung = 'hear' AND second_way IS NULL"))
 		assert.Equal(t, map[string]string{
 			catalogID("drill-threshold/exercise:text_response/v1"):        "exercise:text_response|1|2026-10-01|6000|default",
 			catalogID("drill-threshold/exercise:audio_recognition/v1"):    "exercise:audio_recognition|1|2026-10-01|4000|default",
@@ -161,6 +164,21 @@ func TestFreshInstall(t *testing.T) {
 			FROM diagram_shape_families f LEFT JOIN diagram_shapes s ON s.family_id = f.id GROUP BY f.id, f.key`))
 		cAGrip := catalogID("caged/C/A/3")
 		assert.Equal(t, 1, count(t, "SELECT count(*) FROM diagram_shapes WHERE id = '"+catalogID("diagram-shape/"+cAGrip)+"' AND diagram_id = '"+cAGrip+"' AND shape = 'A'"))
+	})
+
+	t.Run("the progressions are installed by number, with fixed ids and their nodes' ids", func(t *testing.T) {
+		assert.Equal(t, 10, count(t, "SELECT count(*) FROM progressions WHERE mode = 'major'"))
+		assert.Equal(t, 1, count(t, "SELECT count(*) FROM progressions WHERE key = 'ii-V-I' AND id = '"+catalogID("progression/ii-V-I")+
+			"' AND bars = '[\"ii\",\"V\",\"I\",\"I\"]' AND confusable = '[\"IV-V-I\"]'"+
+			" AND node_ids = '[\""+catalogID("knowledge-node/common-progressions")+"\",\""+catalogID("knowledge-node/cadences")+"\"]'"))
+	})
+
+	t.Run("installing a progression whose fixed id is already taken stops the migration", func(t *testing.T) {
+		files := migrationFiles(t)
+		_, err := execMigrationFile(ctx, db, files[slices.IndexFunc(files, func(f string) bool {
+			return strings.HasSuffix(f, "_progressions_reference_data.up.sql")
+		})])
+		require.Error(t, err)
 	})
 }
 

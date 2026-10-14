@@ -8,7 +8,9 @@ import (
 )
 
 // DrillTemplate is a way of asking about practice items: what is shown, the
-// response the student gives, and whether the answer is timed. Fluent
+// response the student gives, the rung of the practice ladder it trains, the
+// other template asking the same item, if any, and whether the answer is
+// timed. Fluent
 // times are kept per template, never per item. Templates are reference
 // data, installed only by migrations with fixed IDs.
 type DrillTemplate struct {
@@ -36,6 +38,22 @@ func (DrillTemplate) Fields() []ent.Field {
 		field.String("response_type").
 			MaxLen(50).
 			NotEmpty().
+			Immutable(),
+
+		// rung is the rung of the practice ladder the template trains, such
+		// as know or play_in_time.
+		field.String("rung").
+			MaxLen(20).
+			NotEmpty().
+			Immutable(),
+
+		// second_way is the key of the other template asking the same kind
+		// of item, so an item answered by a lucky guess is asked the other
+		// way; null when the template has none.
+		field.String("second_way").
+			MaxLen(100).
+			Optional().
+			Nillable().
 			Immutable(),
 
 		field.Bool("timed").

@@ -684,6 +684,33 @@ func (e TriggerContextSource) Valid() bool {
 	}
 }
 
+// Defines values for ListLoggedEventsParamsTypeGroup.
+const (
+	Answers          ListLoggedEventsParamsTypeGroup = "answers"
+	Exercises        ListLoggedEventsParamsTypeGroup = "exercises"
+	Lessons          ListLoggedEventsParamsTypeGroup = "lessons"
+	PracticeSessions ListLoggedEventsParamsTypeGroup = "practice_sessions"
+	SongCharts       ListLoggedEventsParamsTypeGroup = "song_charts"
+)
+
+// Valid indicates whether the value is a known member of the ListLoggedEventsParamsTypeGroup enum.
+func (e ListLoggedEventsParamsTypeGroup) Valid() bool {
+	switch e {
+	case Answers:
+		return true
+	case Exercises:
+		return true
+	case Lessons:
+		return true
+	case PracticeSessions:
+		return true
+	case SongCharts:
+		return true
+	default:
+		return false
+	}
+}
+
 // ContentContext Contextual metadata about the ContentNode the student is engaging with. Required on
 // all lesson events. The object is open (additionalProperties allowed) to accommodate
 // future metadata fields without a schema bump; all currently known properties are
@@ -1037,6 +1064,33 @@ type LessonStartedEvent struct {
 
 // LessonStartedEventEventType defines model for LessonStartedEvent.EventType.
 type LessonStartedEventEventType string
+
+// LoggedEvent A tracking event as it was received, with when it was received.
+type LoggedEvent struct {
+	// Event A student tracking event submitted by the Vue 3 SPA to the Event Ingestion Service.
+	// Exactly one event-specific schema applies, discriminated by event_type. The Event
+	// Ingestion Service persists the raw payload to MongoDB and publishes it to the
+	// motifpath.events Kafka topic.
+	Event TrackingEvent `json:"event"`
+
+	// ReceivedAt When the service received and stored the event.
+	ReceivedAt time.Time `json:"received_at"`
+}
+
+// LoggedEventPage One page of the event log.
+type LoggedEventPage struct {
+	// Items The page's events, newest received first.
+	Items []LoggedEvent `json:"items"`
+
+	// Limit The page size used.
+	Limit int `json:"limit"`
+
+	// Offset The number of matching events skipped before this page.
+	Offset int `json:"offset"`
+
+	// Total All events matching the request's filters.
+	Total int `json:"total"`
+}
 
 // NameTheNoteResponse Answer to a fretboard cell shown on the fretboard: the student names its note, picking it
 // among four choices.
@@ -1695,6 +1749,30 @@ type ValidationError struct {
 	// Message Human-readable summary of the validation failure.
 	Message string `json:"message"`
 }
+
+// ListLoggedEventsParams defines parameters for ListLoggedEvents.
+type ListLoggedEventsParams struct {
+	// StudentId Only this student's events. All students' when absent.
+	StudentId *openapi_types.UUID `form:"student_id,omitempty" json:"student_id,omitempty"`
+
+	// TypeGroup Only events of one group of types. All types when absent.
+	// practice_sessions — practice.session_started, practice.session_ended.
+	// answers — practice.item_answered, practice.tap_check_completed.
+	// lessons — lesson.started, lesson.resumed, lesson.completed.
+	// exercises — exercise.started, exercise.progress, exercise.ended.
+	// song_charts — song_chart.opened, song_chart.chord_viewed,
+	// song_chart.completed.
+	TypeGroup *ListLoggedEventsParamsTypeGroup `form:"type_group,omitempty" json:"type_group,omitempty"`
+
+	// Limit Maximum number of events to return in this page.
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Number of matching events to skip before this page.
+	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
+}
+
+// ListLoggedEventsParamsTypeGroup defines parameters for ListLoggedEvents.
+type ListLoggedEventsParamsTypeGroup string
 
 // ResolvePublishOutboxEntryJSONRequestBody defines body for ResolvePublishOutboxEntry for application/json ContentType.
 type ResolvePublishOutboxEntryJSONRequestBody = ResolvePublishOutboxEntryRequest
@@ -2801,6 +2879,9 @@ func (t *TrackingEvent) UnmarshalJSON(b []byte) error {
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// ListLoggedEvents Read the event log
+	// (GET /admin/events)
+	ListLoggedEvents(w http.ResponseWriter, r *http.Request, params ListLoggedEventsParams)
 	// ResolvePublishOutboxEntry Mark a publish_outbox entry as manually resolved
 	// (POST /admin/publish-outbox/{event_id}/resolve)
 	ResolvePublishOutboxEntry(w http.ResponseWriter, r *http.Request, eventId openapi_types.UUID)
@@ -2821,6 +2902,12 @@ type ServerInterface interface {
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
 
 type Unimplemented struct{}
+
+// ListLoggedEvents Read the event log
+// (GET /admin/events)
+func (_ Unimplemented) ListLoggedEvents(w http.ResponseWriter, r *http.Request, params ListLoggedEventsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
 
 // ResolvePublishOutboxEntry Mark a publish_outbox entry as manually resolved
 // (POST /admin/publish-outbox/{event_id}/resolve)
@@ -2860,6 +2947,78 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// ListLoggedEvents operation middleware
+func (siw *ServerInterfaceWrapper) ListLoggedEvents(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListLoggedEventsParams
+
+	// ------------- Optional query parameter "student_id" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "student_id", r.URL.Query(), &params.StudentId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "student_id"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "student_id", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "type_group" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "type_group", r.URL.Query(), &params.TypeGroup, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "type_group"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "type_group", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", r.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "offset"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListLoggedEvents(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // ResolvePublishOutboxEntry operation middleware
 func (siw *ServerInterfaceWrapper) ResolvePublishOutboxEntry(w http.ResponseWriter, r *http.Request) {
@@ -3078,6 +3237,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/admin/publish-outbox/{event_id}/resolve", wrapper.ResolvePublishOutboxEntry)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/admin/events", wrapper.ListLoggedEvents)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/healthz", wrapper.LivenessCheck)
 	})
 	r.Group(func(r chi.Router) {
@@ -3085,6 +3247,84 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 
 	return r
+}
+
+type ListLoggedEventsRequestObject struct {
+	Params ListLoggedEventsParams
+}
+
+type ListLoggedEventsResponseObject interface {
+	VisitListLoggedEventsResponse(w http.ResponseWriter) error
+}
+
+type ListLoggedEvents200JSONResponse LoggedEventPage
+
+func (response ListLoggedEvents200JSONResponse) VisitListLoggedEventsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListLoggedEvents400JSONResponse ValidationError
+
+func (response ListLoggedEvents400JSONResponse) VisitListLoggedEventsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListLoggedEvents401JSONResponse UnauthorizedError
+
+func (response ListLoggedEvents401JSONResponse) VisitListLoggedEventsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListLoggedEvents403JSONResponse ForbiddenError
+
+func (response ListLoggedEvents403JSONResponse) VisitListLoggedEventsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListLoggedEvents503JSONResponse ServiceUnavailableError
+
+func (response ListLoggedEvents503JSONResponse) VisitListLoggedEventsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
 }
 
 type ResolvePublishOutboxEntryRequestObject struct {
@@ -3366,6 +3606,9 @@ func (response ReadinessCheck503JSONResponse) VisitReadinessCheckResponse(w http
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
+	// ListLoggedEvents Read the event log
+	// (GET /admin/events)
+	ListLoggedEvents(ctx context.Context, request ListLoggedEventsRequestObject) (ListLoggedEventsResponseObject, error)
 	// ResolvePublishOutboxEntry Mark a publish_outbox entry as manually resolved
 	// (POST /admin/publish-outbox/{event_id}/resolve)
 	ResolvePublishOutboxEntry(ctx context.Context, request ResolvePublishOutboxEntryRequestObject) (ResolvePublishOutboxEntryResponseObject, error)
@@ -3420,6 +3663,32 @@ type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
 	options     StrictHTTPServerOptions
+}
+
+// ListLoggedEvents operation middleware
+func (sh *strictHandler) ListLoggedEvents(w http.ResponseWriter, r *http.Request, params ListLoggedEventsParams) {
+	var request ListLoggedEventsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListLoggedEvents(ctx, request.(ListLoggedEventsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListLoggedEvents")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListLoggedEventsResponseObject); ok {
+		if err := validResponse.VisitListLoggedEventsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
 }
 
 // ResolvePublishOutboxEntry operation middleware

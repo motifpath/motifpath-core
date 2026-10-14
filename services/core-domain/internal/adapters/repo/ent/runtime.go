@@ -50,6 +50,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathitem"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/position"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/progression"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/schema"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/songchart"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/songchartrevision"
@@ -429,6 +430,28 @@ func init() {
 			return nil
 		}
 	}()
+	// drilltemplateDescRung is the schema descriptor for rung field.
+	drilltemplateDescRung := drilltemplateFields[4].Descriptor()
+	// drilltemplate.RungValidator is a validator for the "rung" field. It is called by the builders before save.
+	drilltemplate.RungValidator = func() func(string) error {
+		validators := drilltemplateDescRung.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(rung string) error {
+			for _, fn := range fns {
+				if err := fn(rung); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// drilltemplateDescSecondWay is the schema descriptor for second_way field.
+	drilltemplateDescSecondWay := drilltemplateFields[5].Descriptor()
+	// drilltemplate.SecondWayValidator is a validator for the "second_way" field. It is called by the builders before save.
+	drilltemplate.SecondWayValidator = drilltemplateDescSecondWay.Validators[0].(func(string) error)
 	drillthresholdFields := schema.DrillThreshold{}.Fields()
 	_ = drillthresholdFields
 	// drillthresholdDescVersion is the schema descriptor for version field.
@@ -577,6 +600,44 @@ func init() {
 	positionDescID := positionFields[0].Descriptor()
 	// position.DefaultID holds the default value on creation for the id field.
 	position.DefaultID = positionDescID.Default.(func() uuid.UUID)
+	progressionFields := schema.Progression{}.Fields()
+	_ = progressionFields
+	// progressionDescKey is the schema descriptor for key field.
+	progressionDescKey := progressionFields[1].Descriptor()
+	// progression.KeyValidator is a validator for the "key" field. It is called by the builders before save.
+	progression.KeyValidator = func() func(string) error {
+		validators := progressionDescKey.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(key string) error {
+			for _, fn := range fns {
+				if err := fn(key); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// progressionDescMode is the schema descriptor for mode field.
+	progressionDescMode := progressionFields[2].Descriptor()
+	// progression.ModeValidator is a validator for the "mode" field. It is called by the builders before save.
+	progression.ModeValidator = func() func(string) error {
+		validators := progressionDescMode.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(mode string) error {
+			for _, fn := range fns {
+				if err := fn(mode); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
 	songchartFields := schema.SongChart{}.Fields()
 	_ = songchartFields
 	// songchartDescTitle is the schema descriptor for title field.

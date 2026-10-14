@@ -10,9 +10,12 @@ CATALOG = SPECS_DIR / 'catalogs/practice-drills.yaml'
 MAP = SPECS_DIR / 'catalogs/knowledge-map.yaml'
 
 
-def template(key, kind='exercise', response='option_choice', timed=True):
-    return {'key': key, 'item_kind': kind, 'response_type': response, 'timed': timed,
-            'names': {'en': key, 'pt_BR': key}, 'id': pd.template_id(key)}
+def template(key, kind=None, response='option_choice', timed=True, rung='know', second_way=None):
+    entry = {'key': key, 'item_kind': kind or key.split(':')[0], 'response_type': response, 'timed': timed,
+             'rung': rung, 'names': {'en': key, 'pt_BR': key}, 'id': pd.template_id(key)}
+    if second_way is not None:
+        entry['second_way'] = second_way
+    return entry
 
 
 def threshold(template_key, version=1, effective_from='2026-10-01', fluent_net_ms=6000, source='default'):
@@ -69,6 +72,35 @@ class ValidationTests(unittest.TestCase):
         self.assertRejected(catalog(templates=[template('exercise:text_response')],
                                     thresholds=[threshold('exercise:text_response', fluent_net_ms=0)]), 'fluent_net_ms')
 
+    def test_a_template_keeps_its_rung_and_second_way(self):
+        drills = pd.build(catalog(templates=[
+            template('fretboard_cell:name_the_note', second_way='fretboard_cell:find_the_note'),
+            template('fretboard_cell:find_the_note', second_way='fretboard_cell:name_the_note'),
+            template('exercise:audio_selection', rung='hear')]))
+        self.assertEqual(['know', 'know', 'hear'], [t.rung for t in drills.templates])
+        self.assertEqual(['fretboard_cell:find_the_note', 'fretboard_cell:name_the_note', None],
+                         [t.second_way for t in drills.templates])
+
+    def test_a_rung_off_the_ladder_is_rejected(self):
+        self.assertRejected(catalog(templates=[template('exercise:text_response', rung='listen')]),
+                            'exercise:text_response')
+
+    def test_a_second_way_no_template_has_is_rejected(self):
+        self.assertRejected(catalog(templates=[
+            template('fretboard_cell:name_the_note', second_way='fretboard_cell:hear_the_note')]),
+            'fretboard_cell:name_the_note')
+
+    def test_a_second_way_asking_another_kind_of_item_is_rejected(self):
+        self.assertRejected(catalog(templates=[
+            template('fretboard_cell:find_the_note'),
+            template('diatonic_chord:numeral_to_chord', second_way='fretboard_cell:find_the_note')]),
+            'diatonic_chord:numeral_to_chord')
+
+    def test_a_template_that_is_its_own_second_way_is_rejected(self):
+        self.assertRejected(catalog(templates=[
+            template('fretboard_cell:name_the_note', second_way='fretboard_cell:name_the_note')]),
+            'fretboard_cell:name_the_note')
+
     def test_a_template_key_appears_once(self):
         self.assertRejected(catalog(templates=[template('exercise:text_response'), template('exercise:text_response')]),
                             'more than once')
@@ -114,6 +146,15 @@ class RenderTests(unittest.TestCase):
         self.assertIn(pd.template_id('fretboard_cell:name_the_note'), sql)
         self.assertIn('INSERT INTO "drill_thresholds"', sql)
         self.assertIn(f"'{pd.threshold_id('exercise:text_response', 1)}', '{pd.template_id('exercise:text_response')}', 1, '2026-10-01T00:00:00Z', 6000, 'default', 0, 0", sql)
+
+    def test_the_sql_installs_each_template_with_its_rung_and_second_way(self):
+        sql = pd.render_sql(pd.build(catalog(templates=[
+            template('fretboard_cell:name_the_note', second_way='fretboard_cell:find_the_note'),
+            template('fretboard_cell:find_the_note', second_way='fretboard_cell:name_the_note'),
+            template('exercise:audio_selection', rung='hear')])))
+        self.assertIn('"rung", "second_way"', sql)
+        self.assertIn("'know', 'fretboard_cell:find_the_note'", sql)
+        self.assertIn("'hear', NULL", sql)
 
     def test_rendering_is_deterministic(self):
         raw = catalog(templates=[template('exercise:text_response')], thresholds=[threshold('exercise:text_response')])

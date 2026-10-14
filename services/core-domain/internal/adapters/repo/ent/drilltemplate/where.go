@@ -69,6 +69,16 @@ func ResponseType(v string) predicate.DrillTemplate {
 	return predicate.DrillTemplate(sql.FieldEQ(FieldResponseType, v))
 }
 
+// Rung applies equality check predicate on the "rung" field. It's identical to RungEQ.
+func Rung(v string) predicate.DrillTemplate {
+	return predicate.DrillTemplate(sql.FieldEQ(FieldRung, v))
+}
+
+// SecondWay applies equality check predicate on the "second_way" field. It's identical to SecondWayEQ.
+func SecondWay(v string) predicate.DrillTemplate {
+	return predicate.DrillTemplate(sql.FieldEQ(FieldSecondWay, v))
+}
+
 // Timed applies equality check predicate on the "timed" field. It's identical to TimedEQ.
 func Timed(v bool) predicate.DrillTemplate {
 	return predicate.DrillTemplate(sql.FieldEQ(FieldTimed, v))
@@ -267,6 +277,146 @@ func ResponseTypeEqualFold(v string) predicate.DrillTemplate {
 // ResponseTypeContainsFold applies the ContainsFold predicate on the "response_type" field.
 func ResponseTypeContainsFold(v string) predicate.DrillTemplate {
 	return predicate.DrillTemplate(sql.FieldContainsFold(FieldResponseType, v))
+}
+
+// RungEQ applies the EQ predicate on the "rung" field.
+func RungEQ(v string) predicate.DrillTemplate {
+	return predicate.DrillTemplate(sql.FieldEQ(FieldRung, v))
+}
+
+// RungNEQ applies the NEQ predicate on the "rung" field.
+func RungNEQ(v string) predicate.DrillTemplate {
+	return predicate.DrillTemplate(sql.FieldNEQ(FieldRung, v))
+}
+
+// RungIn applies the In predicate on the "rung" field.
+func RungIn(vs ...string) predicate.DrillTemplate {
+	return predicate.DrillTemplate(sql.FieldIn(FieldRung, vs...))
+}
+
+// RungNotIn applies the NotIn predicate on the "rung" field.
+func RungNotIn(vs ...string) predicate.DrillTemplate {
+	return predicate.DrillTemplate(sql.FieldNotIn(FieldRung, vs...))
+}
+
+// RungGT applies the GT predicate on the "rung" field.
+func RungGT(v string) predicate.DrillTemplate {
+	return predicate.DrillTemplate(sql.FieldGT(FieldRung, v))
+}
+
+// RungGTE applies the GTE predicate on the "rung" field.
+func RungGTE(v string) predicate.DrillTemplate {
+	return predicate.DrillTemplate(sql.FieldGTE(FieldRung, v))
+}
+
+// RungLT applies the LT predicate on the "rung" field.
+func RungLT(v string) predicate.DrillTemplate {
+	return predicate.DrillTemplate(sql.FieldLT(FieldRung, v))
+}
+
+// RungLTE applies the LTE predicate on the "rung" field.
+func RungLTE(v string) predicate.DrillTemplate {
+	return predicate.DrillTemplate(sql.FieldLTE(FieldRung, v))
+}
+
+// RungContains applies the Contains predicate on the "rung" field.
+func RungContains(v string) predicate.DrillTemplate {
+	return predicate.DrillTemplate(sql.FieldContains(FieldRung, v))
+}
+
+// RungHasPrefix applies the HasPrefix predicate on the "rung" field.
+func RungHasPrefix(v string) predicate.DrillTemplate {
+	return predicate.DrillTemplate(sql.FieldHasPrefix(FieldRung, v))
+}
+
+// RungHasSuffix applies the HasSuffix predicate on the "rung" field.
+func RungHasSuffix(v string) predicate.DrillTemplate {
+	return predicate.DrillTemplate(sql.FieldHasSuffix(FieldRung, v))
+}
+
+// RungEqualFold applies the EqualFold predicate on the "rung" field.
+func RungEqualFold(v string) predicate.DrillTemplate {
+	return predicate.DrillTemplate(sql.FieldEqualFold(FieldRung, v))
+}
+
+// RungContainsFold applies the ContainsFold predicate on the "rung" field.
+func RungContainsFold(v string) predicate.DrillTemplate {
+	return predicate.DrillTemplate(sql.FieldContainsFold(FieldRung, v))
+}
+
+// SecondWayEQ applies the EQ predicate on the "second_way" field.
+func SecondWayEQ(v string) predicate.DrillTemplate {
+	return predicate.DrillTemplate(sql.FieldEQ(FieldSecondWay, v))
+}
+
+// SecondWayNEQ applies the NEQ predicate on the "second_way" field.
+func SecondWayNEQ(v string) predicate.DrillTemplate {
+	return predicate.DrillTemplate(sql.FieldNEQ(FieldSecondWay, v))
+}
+
+// SecondWayIn applies the In predicate on the "second_way" field.
+func SecondWayIn(vs ...string) predicate.DrillTemplate {
+	return predicate.DrillTemplate(sql.FieldIn(FieldSecondWay, vs...))
+}
+
+// SecondWayNotIn applies the NotIn predicate on the "second_way" field.
+func SecondWayNotIn(vs ...string) predicate.DrillTemplate {
+	return predicate.DrillTemplate(sql.FieldNotIn(FieldSecondWay, vs...))
+}
+
+// SecondWayGT applies the GT predicate on the "second_way" field.
+func SecondWayGT(v string) predicate.DrillTemplate {
+	return predicate.DrillTemplate(sql.FieldGT(FieldSecondWay, v))
+}
+
+// SecondWayGTE applies the GTE predicate on the "second_way" field.
+func SecondWayGTE(v string) predicate.DrillTemplate {
+	return predicate.DrillTemplate(sql.FieldGTE(FieldSecondWay, v))
+}
+
+// SecondWayLT applies the LT predicate on the "second_way" field.
+func SecondWayLT(v string) predicate.DrillTemplate {
+	return predicate.DrillTemplate(sql.FieldLT(FieldSecondWay, v))
+}
+
+// SecondWayLTE applies the LTE predicate on the "second_way" field.
+func SecondWayLTE(v string) predicate.DrillTemplate {
+	return predicate.DrillTemplate(sql.FieldLTE(FieldSecondWay, v))
+}
+
+// SecondWayContains applies the Contains predicate on the "second_way" field.
+func SecondWayContains(v string) predicate.DrillTemplate {
+	return predicate.DrillTemplate(sql.FieldContains(FieldSecondWay, v))
+}
+
+// SecondWayHasPrefix applies the HasPrefix predicate on the "second_way" field.
+func SecondWayHasPrefix(v string) predicate.DrillTemplate {
+	return predicate.DrillTemplate(sql.FieldHasPrefix(FieldSecondWay, v))
+}
+
+// SecondWayHasSuffix applies the HasSuffix predicate on the "second_way" field.
+func SecondWayHasSuffix(v string) predicate.DrillTemplate {
+	return predicate.DrillTemplate(sql.FieldHasSuffix(FieldSecondWay, v))
+}
+
+// SecondWayIsNil applies the IsNil predicate on the "second_way" field.
+func SecondWayIsNil() predicate.DrillTemplate {
+	return predicate.DrillTemplate(sql.FieldIsNull(FieldSecondWay))
+}
+
+// SecondWayNotNil applies the NotNil predicate on the "second_way" field.
+func SecondWayNotNil() predicate.DrillTemplate {
+	return predicate.DrillTemplate(sql.FieldNotNull(FieldSecondWay))
+}
+
+// SecondWayEqualFold applies the EqualFold predicate on the "second_way" field.
+func SecondWayEqualFold(v string) predicate.DrillTemplate {
+	return predicate.DrillTemplate(sql.FieldEqualFold(FieldSecondWay, v))
+}
+
+// SecondWayContainsFold applies the ContainsFold predicate on the "second_way" field.
+func SecondWayContainsFold(v string) predicate.DrillTemplate {
+	return predicate.DrillTemplate(sql.FieldContainsFold(FieldSecondWay, v))
 }
 
 // TimedEQ applies the EQ predicate on the "timed" field.

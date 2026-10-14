@@ -60,6 +60,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathitem"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/position"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/progression"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/songchart"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/songchartrevision"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/studentlearningstate"
@@ -162,6 +163,8 @@ type Client struct {
 	LearningPathItem *LearningPathItemClient
 	// Position is the client for interacting with the Position builders.
 	Position *PositionClient
+	// Progression is the client for interacting with the Progression builders.
+	Progression *ProgressionClient
 	// SongChart is the client for interacting with the SongChart builders.
 	SongChart *SongChartClient
 	// SongChartRevision is the client for interacting with the SongChartRevision builders.
@@ -231,6 +234,7 @@ func (c *Client) init() {
 	c.LearningPathInstrument = NewLearningPathInstrumentClient(c.config)
 	c.LearningPathItem = NewLearningPathItemClient(c.config)
 	c.Position = NewPositionClient(c.config)
+	c.Progression = NewProgressionClient(c.config)
 	c.SongChart = NewSongChartClient(c.config)
 	c.SongChartRevision = NewSongChartRevisionClient(c.config)
 	c.StudentLearningState = NewStudentLearningStateClient(c.config)
@@ -374,6 +378,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		LearningPathInstrument:  NewLearningPathInstrumentClient(cfg),
 		LearningPathItem:        NewLearningPathItemClient(cfg),
 		Position:                NewPositionClient(cfg),
+		Progression:             NewProgressionClient(cfg),
 		SongChart:               NewSongChartClient(cfg),
 		SongChartRevision:       NewSongChartRevisionClient(cfg),
 		StudentLearningState:    NewStudentLearningStateClient(cfg),
@@ -444,6 +449,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		LearningPathInstrument:  NewLearningPathInstrumentClient(cfg),
 		LearningPathItem:        NewLearningPathItemClient(cfg),
 		Position:                NewPositionClient(cfg),
+		Progression:             NewProgressionClient(cfg),
 		SongChart:               NewSongChartClient(cfg),
 		SongChartRevision:       NewSongChartRevisionClient(cfg),
 		StudentLearningState:    NewStudentLearningStateClient(cfg),
@@ -491,8 +497,8 @@ func (c *Client) Use(hooks ...Hook) {
 		c.ExerciseOption, c.ExerciseSkill, c.ExpandedContent, c.FretboardCellRange,
 		c.Instrument, c.KnowledgeEdge, c.KnowledgeNode, c.KnowledgeNodeInstrument,
 		c.Language, c.LearningPath, c.LearningPathInstrument, c.LearningPathItem,
-		c.Position, c.SongChart, c.SongChartRevision, c.StudentLearningState,
-		c.StudentPath, c.StudentPathItem, c.User, c.Voice,
+		c.Position, c.Progression, c.SongChart, c.SongChartRevision,
+		c.StudentLearningState, c.StudentPath, c.StudentPathItem, c.User, c.Voice,
 	} {
 		n.Use(hooks...)
 	}
@@ -513,8 +519,8 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 		c.ExerciseOption, c.ExerciseSkill, c.ExpandedContent, c.FretboardCellRange,
 		c.Instrument, c.KnowledgeEdge, c.KnowledgeNode, c.KnowledgeNodeInstrument,
 		c.Language, c.LearningPath, c.LearningPathInstrument, c.LearningPathItem,
-		c.Position, c.SongChart, c.SongChartRevision, c.StudentLearningState,
-		c.StudentPath, c.StudentPathItem, c.User, c.Voice,
+		c.Position, c.Progression, c.SongChart, c.SongChartRevision,
+		c.StudentLearningState, c.StudentPath, c.StudentPathItem, c.User, c.Voice,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -611,6 +617,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.LearningPathItem.mutate(ctx, m)
 	case *PositionMutation:
 		return c.Position.mutate(ctx, m)
+	case *ProgressionMutation:
+		return c.Progression.mutate(ctx, m)
 	case *SongChartMutation:
 		return c.SongChart.mutate(ctx, m)
 	case *SongChartRevisionMutation:
@@ -8450,6 +8458,139 @@ func (c *PositionClient) mutate(ctx context.Context, m *PositionMutation) (Value
 	}
 }
 
+// ProgressionClient is a client for the Progression schema.
+type ProgressionClient struct {
+	config
+}
+
+// NewProgressionClient returns a client for the Progression from the given config.
+func NewProgressionClient(c config) *ProgressionClient {
+	return &ProgressionClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `progression.Hooks(f(g(h())))`.
+func (c *ProgressionClient) Use(hooks ...Hook) {
+	c.hooks.Progression = append(c.hooks.Progression, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `progression.Intercept(f(g(h())))`.
+func (c *ProgressionClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Progression = append(c.inters.Progression, interceptors...)
+}
+
+// Create returns a builder for creating a Progression entity.
+func (c *ProgressionClient) Create() *ProgressionCreate {
+	mutation := newProgressionMutation(c.config, OpCreate)
+	return &ProgressionCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Progression entities.
+func (c *ProgressionClient) CreateBulk(builders ...*ProgressionCreate) *ProgressionCreateBulk {
+	return &ProgressionCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *ProgressionClient) MapCreateBulk(slice any, setFunc func(*ProgressionCreate, int)) *ProgressionCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &ProgressionCreateBulk{err: fmt.Errorf("calling to ProgressionClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*ProgressionCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &ProgressionCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Progression.
+func (c *ProgressionClient) Update() *ProgressionUpdate {
+	mutation := newProgressionMutation(c.config, OpUpdate)
+	return &ProgressionUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ProgressionClient) UpdateOne(_m *Progression) *ProgressionUpdateOne {
+	mutation := newProgressionMutation(c.config, OpUpdateOne, withProgression(_m))
+	return &ProgressionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ProgressionClient) UpdateOneID(id uuid.UUID) *ProgressionUpdateOne {
+	mutation := newProgressionMutation(c.config, OpUpdateOne, withProgressionID(id))
+	return &ProgressionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Progression.
+func (c *ProgressionClient) Delete() *ProgressionDelete {
+	mutation := newProgressionMutation(c.config, OpDelete)
+	return &ProgressionDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ProgressionClient) DeleteOne(_m *Progression) *ProgressionDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ProgressionClient) DeleteOneID(id uuid.UUID) *ProgressionDeleteOne {
+	builder := c.Delete().Where(progression.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ProgressionDeleteOne{builder}
+}
+
+// Query returns a query builder for Progression.
+func (c *ProgressionClient) Query() *ProgressionQuery {
+	return &ProgressionQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeProgression},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Progression entity by its id.
+func (c *ProgressionClient) Get(ctx context.Context, id uuid.UUID) (*Progression, error) {
+	return c.Query().Where(progression.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ProgressionClient) GetX(ctx context.Context, id uuid.UUID) *Progression {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *ProgressionClient) Hooks() []Hook {
+	return c.hooks.Progression
+}
+
+// Interceptors returns the client interceptors.
+func (c *ProgressionClient) Interceptors() []Interceptor {
+	return c.inters.Progression
+}
+
+func (c *ProgressionClient) mutate(ctx context.Context, m *ProgressionMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ProgressionCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ProgressionUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ProgressionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ProgressionDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Progression mutation op: %q", m.Op())
+	}
+}
+
 // SongChartClient is a client for the SongChart schema.
 type SongChartClient struct {
 	config
@@ -9458,8 +9599,8 @@ type (
 		ExerciseLanguage, ExerciseOption, ExerciseSkill, ExpandedContent,
 		FretboardCellRange, Instrument, KnowledgeEdge, KnowledgeNode,
 		KnowledgeNodeInstrument, Language, LearningPath, LearningPathInstrument,
-		LearningPathItem, Position, SongChart, SongChartRevision, StudentLearningState,
-		StudentPath, StudentPathItem, User, Voice []ent.Hook
+		LearningPathItem, Position, Progression, SongChart, SongChartRevision,
+		StudentLearningState, StudentPath, StudentPathItem, User, Voice []ent.Hook
 	}
 	inters struct {
 		AppConfig, Challenge, ChallengeExercise, ChordDefinition, ChordVoicing,
@@ -9472,7 +9613,8 @@ type (
 		ExerciseLanguage, ExerciseOption, ExerciseSkill, ExpandedContent,
 		FretboardCellRange, Instrument, KnowledgeEdge, KnowledgeNode,
 		KnowledgeNodeInstrument, Language, LearningPath, LearningPathInstrument,
-		LearningPathItem, Position, SongChart, SongChartRevision, StudentLearningState,
-		StudentPath, StudentPathItem, User, Voice []ent.Interceptor
+		LearningPathItem, Position, Progression, SongChart, SongChartRevision,
+		StudentLearningState, StudentPath, StudentPathItem, User,
+		Voice []ent.Interceptor
 	}
 )

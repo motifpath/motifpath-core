@@ -37,6 +37,7 @@ func TestFeatures(t *testing.T) {
 				// knowledge state run in the Aggregation Worker.
 				featuresBase + "/practice/compose-practice-session.feature",
 				featuresBase + "/practice/diagram-shapes.feature",
+				featuresBase + "/practice/drill-challenge.feature",
 				featuresBase + "/practice/fretboard-cells.feature",
 				featuresBase + "/practice/fretboard-map.feature",
 				featuresBase + "/practice/node-levels.feature",
@@ -127,6 +128,7 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	registerPracticeOverviewEffortSteps(sc, w)
 	registerNodeLevelSteps(sc, w)
 	registerFretboardCellSteps(sc, w)
+	registerDrillChallengeSteps(sc, w)
 	registerDiagramShapeSteps(sc, w)
 	registerFretboardMapSteps(sc, w)
 	registerTapCheckSteps(sc, w)

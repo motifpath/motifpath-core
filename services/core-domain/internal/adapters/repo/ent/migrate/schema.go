@@ -736,6 +736,8 @@ var (
 		{Name: "key", Type: field.TypeString, Unique: true, Size: 100},
 		{Name: "item_kind", Type: field.TypeString, Size: 50},
 		{Name: "response_type", Type: field.TypeString, Size: 50},
+		{Name: "rung", Type: field.TypeString, Size: 20},
+		{Name: "second_way", Type: field.TypeString, Nullable: true, Size: 100},
 		{Name: "timed", Type: field.TypeBool},
 		{Name: "names", Type: field.TypeJSON},
 	}
@@ -1285,6 +1287,22 @@ var (
 			},
 		},
 	}
+	// ProgressionsColumns holds the columns for the "progressions" table.
+	ProgressionsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "key", Type: field.TypeString, Unique: true, Size: 64},
+		{Name: "mode", Type: field.TypeString, Size: 16},
+		{Name: "bars", Type: field.TypeJSON},
+		{Name: "node_ids", Type: field.TypeJSON},
+		{Name: "confusable", Type: field.TypeJSON},
+		{Name: "names", Type: field.TypeJSON},
+	}
+	// ProgressionsTable holds the schema information for the "progressions" table.
+	ProgressionsTable = &schema.Table{
+		Name:       "progressions",
+		Columns:    ProgressionsColumns,
+		PrimaryKey: []*schema.Column{ProgressionsColumns[0]},
+	}
 	// SongChartsColumns holds the columns for the "song_charts" table.
 	SongChartsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -1518,6 +1536,7 @@ var (
 		LearningPathInstrumentsTable,
 		LearningPathItemsTable,
 		PositionsTable,
+		ProgressionsTable,
 		SongChartsTable,
 		SongChartRevisionsTable,
 		StudentLearningStatesTable,

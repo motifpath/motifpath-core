@@ -150,11 +150,58 @@ type PlannedPlayAlong struct {
 	BestCleanTempoBPM *int
 }
 
+// PracticeFocusSource is who chose a session's subjects.
+type PracticeFocusSource string
+
+const (
+	// PracticeFocusSuggested is Today's mix: the composer picked them.
+	PracticeFocusSuggested PracticeFocusSource = "suggested"
+	// PracticeFocusChosen is a session holding the one subject the student
+	// chose.
+	PracticeFocusChosen PracticeFocusSource = "chosen"
+)
+
+// MaxFocusNodes is the most subjects a session names: what a student can
+// still say they worked on afterwards.
+const MaxFocusNodes = 3
+
+// ItemsFocus names the subjects of a session of items: the nodes its items
+// serve, by the time planned on each, most first, the earliest served on a
+// tie, at most MaxFocusNodes. A node is described by nodes, keyed by id,
+// and one nodes doesn't hold is left out, as are items serving none.
+func ItemsFocus(items []PracticeSessionItem, nodes map[string]KnowledgeNode) []KnowledgeNode {
+	var order []string
+	seconds := map[string]int{}
+	for _, item := range items {
+		if item.NodeID == nil {
+			continue
+		}
+		if _, ok := nodes[*item.NodeID]; !ok {
+			continue
+		}
+		if _, seen := seconds[*item.NodeID]; !seen {
+			order = append(order, *item.NodeID)
+		}
+		seconds[*item.NodeID] += item.EstimatedSeconds
+	}
+	slices.SortStableFunc(order, func(a, b string) int { return seconds[b] - seconds[a] })
+	focus := make([]KnowledgeNode, 0, MaxFocusNodes)
+	for _, id := range order[:min(len(order), MaxFocusNodes)] {
+		focus = append(focus, nodes[id])
+	}
+	return focus
+}
+
 // PracticeSessionItem is one pick of a composed session.
 type PracticeSessionItem struct {
 	ItemKey string
 	Kind    PracticeItemKind
 	Reason  PracticePickReason
+	// Rung is the rung of the practice ladder the pick trains: see ItemRung.
+	Rung PracticeRung
+	// Way is the response type a generated drill item is asked through,
+	// which with Kind names its drill template; empty for any other pick.
+	Way string
 	// NodeID is the knowledge node the pick serves; nil when none applies.
 	NodeID           *string
 	Level            KnowledgeLevel
@@ -168,11 +215,13 @@ type PracticeSessionItem struct {
 }
 
 // DrillTemplateKey is the timed drill template answering the item
-// practises: a fretboard cell's or a diagram shape's way of being asked, or
-// an exercise's type.
+// practises: a generated drill item's kind and the way it is asked, or an
+// exercise's type.
 // A play-along is rated, not timed, so it practises none ("").
 func (i PracticeSessionItem) DrillTemplateKey() string {
 	switch {
+	case i.Way != "":
+		return string(i.Kind) + ":" + i.Way
 	case i.FretboardCell != nil:
 		return string(PracticeItemKindFretboardCell) + ":" + string(i.FretboardCell.Drill)
 	case i.DiagramShape != nil:
@@ -202,10 +251,17 @@ func PlanDrillTemplates(items []PracticeSessionItem) []string {
 // is different content.
 const MaxGeneratedDrillItems = 10
 
-// IsGeneratedDrill reports whether the item is asked by a generated drill:
-// a fretboard cell or a diagram shape.
+// IsGeneratedDrill reports whether the item is asked by a generated drill,
+// such as a fretboard cell or a diagram shape.
 func (i PracticeSessionItem) IsGeneratedDrill() bool {
-	return i.FretboardCell != nil || i.DiagramShape != nil
+	return i.Way != "" || i.FretboardCell != nil || i.DiagramShape != nil
+}
+
+// Ask makes the item ask p: p's planned question on it, and the way it is
+// asked, which names its drill.
+func (i *PracticeSessionItem) Ask(p PlannedDrill) {
+	p.AttachTo(i)
+	i.Way = p.Way()
 }
 
 // MaxFeltQuestions is the most "How did it feel?" questions a session asks,
@@ -247,7 +303,11 @@ type PracticeSessionPlan struct {
 	// InstrumentID is the instrument in hand; nil for a session in the head.
 	InstrumentID *string
 	Minutes      int
-	Items        []PracticeSessionItem
+	// FocusSource says who chose the session's subjects, and FocusNodes
+	// names them, the main subject first.
+	FocusSource PracticeFocusSource
+	FocusNodes  []KnowledgeNode
+	Items       []PracticeSessionItem
 	// FeltQuestions are the timed drill templates the client asks "How did
 	// it feel?" about at the end, if the student practised them: see
 	// FeltQuestions.
