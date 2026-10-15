@@ -41,6 +41,15 @@ type DrillPlanning struct {
 	// Window is the frets a fretboard drill is asked within; nil for any
 	// other drill.
 	Window *FretWindow
+	// Level is the student's level on the item, which picks the harder
+	// variants as it rises; empty for an item never practised.
+	Level KnowledgeLevel
+	// Reading is how a harmony drill draws chords in this session: boxes
+	// on guitar, symbols on bass.
+	Reading GeneratedChordDrawing
+	// Voicing finds the voicing diagram a chord's box is drawn with; false
+	// when the chord has none. Nil when no box is drawn.
+	Voicing func(chord string) (diagramID string, ok bool)
 }
 
 // PlannedDrill is a drill item as a session asks it.

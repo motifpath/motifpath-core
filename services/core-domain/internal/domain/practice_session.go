@@ -206,12 +206,13 @@ type PracticeSessionItem struct {
 	NodeID           *string
 	Level            KnowledgeLevel
 	EstimatedSeconds int
-	// Exactly one of PlayAlong, Exercise, FretboardCell and DiagramShape is
-	// set, matching Kind.
-	PlayAlong     *PlannedPlayAlong
-	Exercise      *Exercise
-	FretboardCell *PlannedFretboardCell
-	DiagramShape  *PlannedDiagramShape
+	// Exactly one of PlayAlong, Exercise, FretboardCell, DiagramShape and
+	// GeneratedChoice is set, matching Kind.
+	PlayAlong       *PlannedPlayAlong
+	Exercise        *Exercise
+	FretboardCell   *PlannedFretboardCell
+	DiagramShape    *PlannedDiagramShape
+	GeneratedChoice *PlannedGeneratedChoice
 }
 
 // DrillTemplateKey is the timed drill template answering the item
