@@ -254,7 +254,9 @@ func foldAnswer(f ItemFold, e PracticeEvidence, goal ItemGoal) (ItemFold, error)
 }
 
 // foldTake folds a self-rated take. Tempos are compared at effective speed, so a
-// take in eighths counts as twice its BPM.
+// take in eighths counts as twice its BPM. A clean take as fast as the best one
+// replaces it: switching note value keeps the effective speed, and the student's
+// next session should resume in the note value they switched to.
 func foldTake(f ItemFold, e PracticeEvidence, goal ItemGoal) ItemFold {
 	f.Attempts++
 	at := e.OccurredAt
@@ -267,7 +269,7 @@ func foldTake(f ItemFold, e PracticeEvidence, goal ItemGoal) ItemFold {
 	if exploresAboveTheEdge(e.Rating, measure, best) {
 		return f
 	}
-	if e.Rating == SelfRatingClean && measure != nil && (best == nil || *measure > *best) {
+	if e.Rating == SelfRatingClean && measure != nil && (best == nil || *measure >= *best) {
 		f.keepBestClean(e)
 	}
 

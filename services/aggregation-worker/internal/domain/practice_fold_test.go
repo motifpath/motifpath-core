@@ -148,6 +148,11 @@ func TestFoldEvidence_TemposCompareAtEffectiveSpeed(t *testing.T) {
 		assert.Equal(t, 130, *f.BestCleanBPM)
 		assert.Equal(t, NoteValueQuarters, *f.BestCleanNoteValue)
 	})
+	t.Run("a clean take tying the best at effective speed replaces it, so the student resumes in its note value", func(t *testing.T) {
+		f := foldAll(t, target100, take(onDay(0), SelfRatingClean, 160), takeIn(onDay(1), SelfRatingClean, 80, NoteValueEighths))
+		assert.Equal(t, 80, *f.BestCleanBPM)
+		assert.Equal(t, NoteValueEighths, *f.BestCleanNoteValue)
+	})
 	t.Run("a take in eighths that isn't clean above the edge at effective speed isn't counted", func(t *testing.T) {
 		before := foldAll(t, target100, take(onDay(0), SelfRatingClean, 110))
 		after, err := FoldEvidence(before, takeIn(onDay(0).Add(time.Minute), SelfRatingStruggled, 60, NoteValueEighths), target100)
