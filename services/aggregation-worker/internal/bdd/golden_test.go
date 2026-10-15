@@ -54,13 +54,14 @@ type goldenCaseFile struct {
 			Result   string `json:"result"`
 			Reason   string `json:"reason"`
 			Evidence struct {
-				Source           string `json:"source"`
-				Correct          *bool  `json:"correct"`
-				LatencyMs        *int   `json:"latency_ms"`
-				AudioMs          *int   `json:"audio_ms"`
-				Rating           string `json:"rating"`
-				TempoBPM         *int   `json:"tempo_bpm"`
-				ChangesPerMinute *int   `json:"changes_per_minute"`
+				Source           string  `json:"source"`
+				Correct          *bool   `json:"correct"`
+				LatencyMs        *int    `json:"latency_ms"`
+				AudioMs          *int    `json:"audio_ms"`
+				Rating           string  `json:"rating"`
+				TempoBPM         *int    `json:"tempo_bpm"`
+				NoteValue        *string `json:"note_value"`
+				ChangesPerMinute *int    `json:"changes_per_minute"`
 				AnswerKey        *struct {
 					String   *int   `json:"string"`
 					Fret     *int   `json:"fret"`
@@ -156,6 +157,7 @@ func TestGraderGoldenCases(t *testing.T) {
 					assert.Equal(t, want.AudioMs, got.Evidence.AudioMs)
 					assert.Equal(t, domain.SelfRating(want.Rating), got.Evidence.Rating)
 					assert.Equal(t, want.TempoBPM, got.Evidence.TempoBPM)
+					assert.Equal(t, noteValueOf(want.NoteValue), got.Evidence.NoteValue)
 					assert.Equal(t, want.ChangesPerMinute, got.Evidence.ChangesPerMinute)
 					if want.AnswerKey == nil {
 						assert.Nil(t, got.Evidence.AnswerKey)
@@ -213,6 +215,7 @@ func decodeGoldenResponse(raw json.RawMessage) (domain.PracticeResponse, error) 
 		AudioMs          *int     `json:"audio_ms"`
 		Rating           string   `json:"rating"`
 		TempoBPM         *int     `json:"tempo_bpm"`
+		NoteValue        *string  `json:"note_value"`
 		ChangesPerMinute *int     `json:"changes_per_minute"`
 		Choices          []string `json:"choices"`
 		Reason           string   `json:"reason"`
@@ -249,6 +252,7 @@ func decodeGoldenResponse(raw json.RawMessage) (domain.PracticeResponse, error) 
 		AudioMs:          w.AudioMs,
 		Rating:           domain.SelfRating(w.Rating),
 		TempoBPM:         w.TempoBPM,
+		NoteValue:        noteValueOf(w.NoteValue),
 		ChangesPerMinute: w.ChangesPerMinute,
 		Choices:          w.Choices,
 		Reason:           domain.NotAnsweredReason(w.Reason),
@@ -268,4 +272,13 @@ func decodeGoldenResponse(raw json.RawMessage) (domain.PracticeResponse, error) 
 		r.Cells = append(r.Cells, domain.AnswerCell{String: c.String, Fret: c.Fret})
 	}
 	return r, nil
+}
+
+// noteValueOf is a golden case's note value, or nil when the case has none.
+func noteValueOf(s *string) *domain.NoteValue {
+	if s == nil {
+		return nil
+	}
+	v := domain.NoteValue(*s)
+	return &v
 }

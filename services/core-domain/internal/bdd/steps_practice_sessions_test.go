@@ -30,6 +30,7 @@ func registerPracticeSessionSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" has a clean play-along "([^"]+)" with a best clean tempo of (\d+) BPM$`, w.hasCleanPlayAlong)
 	sc.Step(`^"([^"]+)" has a clean play-along "([^"]+)" with a best clean tempo of (\d+) BPM and a default playback at (\d+) BPM$`, w.hasCleanPlayAlongAt)
 	sc.Step(`^"([^"]+)"'s best clean tempo on "([^"]+)" is (\d+) BPM and the diagram's default playback is at (\d+) BPM$`, w.hasBestCleanTempoOn)
+	sc.Step(`^"([^"]+)"'s best clean tempo on "([^"]+)" is (\d+) BPM in (\w+) and the diagram's default playback is at (\d+) BPM$`, w.hasBestCleanTempoInNoteValueOn)
 	sc.Step(`^"([^"]+)" has never rated "([^"]+)" clean and the diagram's default playback is at (\d+) BPM$`, w.neverRatedClean)
 
 	sc.Step(`^"([^"]+)" has plenty of due, weak and new items on guitar$`, w.hasPlentyOfEverything)
@@ -66,6 +67,7 @@ func registerPracticeSessionSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^no item in the session has the reason (\w+)$`, w.noItemHasReason)
 	sc.Step(`^every item in the session suits "([^"]+)" or every instrument$`, w.everyItemSuits)
 	sc.Step(`^it starts at (\d+) BPM with a target of (\d+) BPM$`, w.pickedStartsAt)
+	sc.Step(`^it starts at (\d+) BPM in (\w+) with a target of (\d+) BPM$`, w.pickedStartsAtInNoteValue)
 	sc.Step(`^every item in the session has one of the reasons (.+)$`, w.everyItemHasOneOfReasons)
 	sc.Step(`^about (\d+)% of the focus time goes to (\w+) items, (\d+)% to (\w+) items and (\d+)% to (\w+) items$`, w.focusTimeShares3)
 	sc.Step(`^about (\d+)% of the focus time goes to (\w+) items and (\d+)% to (\w+) items$`, w.focusTimeShares2)
@@ -189,6 +191,14 @@ func (w *world) hasBestCleanTempoOn(name, slug string, bestClean, tempo int) err
 	return nil
 }
 
+func (w *world) hasBestCleanTempoInNoteValueOn(name, slug string, bestClean int, noteValue string, tempo int) error {
+	w.putPlayAlong(slug, "guitar", tempo)
+	dueAt := fixedNow.Add(-time.Hour)
+	v := domain.TempoNoteValue(noteValue)
+	w.putPlayAlongState(name, slug, domain.PracticeItemState{Level: domain.KnowledgeLevelLearning, Counted: 2, Box: 1, DueAt: &dueAt, LastAt: &fixedNow, BestCleanBPM: &bestClean, BestCleanNoteValue: &v})
+	return nil
+}
+
 func (w *world) neverRatedClean(_, slug string, tempo int) error {
 	w.putPlayAlong(slug, "guitar", tempo)
 	return nil
@@ -297,6 +307,10 @@ func (w *world) everyItemSuits(instrument string) error {
 }
 
 func (w *world) pickedStartsAt(start, target int) error {
+	return w.pickedStartsAtInNoteValue(start, string(domain.TempoNoteValueQuarters), target)
+}
+
+func (w *world) pickedStartsAtInNoteValue(start int, noteValue string, target int) error {
 	plan, err := w.composedPlan()
 	if err != nil {
 		return err
@@ -308,8 +322,10 @@ func (w *world) pickedStartsAt(start, target int) error {
 		if string(item.Reason) != w.pickedReason {
 			return fmt.Errorf("expected %q to be picked as %s, got %s", w.pickedSlug, w.pickedReason, item.Reason)
 		}
-		if item.PlayAlong.StartTempoBpm != start || item.PlayAlong.TargetTempoBpm != target {
-			return fmt.Errorf("expected %q to start at %d BPM with a target of %d BPM, got %d and %d", w.pickedSlug, start, target, item.PlayAlong.StartTempoBpm, item.PlayAlong.TargetTempoBpm)
+		got := item.PlayAlong
+		if got.StartTempoBpm != start || string(got.StartNoteValue) != noteValue || got.TargetTempoBpm != target {
+			return fmt.Errorf("expected %q to start at %d BPM in %s with a target of %d BPM, got %d in %s and %d",
+				w.pickedSlug, start, noteValue, target, got.StartTempoBpm, got.StartNoteValue, got.TargetTempoBpm)
 		}
 		return nil
 	}

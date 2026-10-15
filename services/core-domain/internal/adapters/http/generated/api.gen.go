@@ -1717,6 +1717,42 @@ func (e MusicKey) Valid() bool {
 	}
 }
 
+// Defines values for NoteValue2.
+const (
+	Eighths       NoteValue2 = "eighths"
+	Halves        NoteValue2 = "halves"
+	Quarters      NoteValue2 = "quarters"
+	Quintuplets   NoteValue2 = "quintuplets"
+	Sextuplets    NoteValue2 = "sextuplets"
+	Sixteenths    NoteValue2 = "sixteenths"
+	ThirtySeconds NoteValue2 = "thirty_seconds"
+	Triplets      NoteValue2 = "triplets"
+)
+
+// Valid indicates whether the value is a known member of the NoteValue2 enum.
+func (e NoteValue2) Valid() bool {
+	switch e {
+	case Eighths:
+		return true
+	case Halves:
+		return true
+	case Quarters:
+		return true
+	case Quintuplets:
+		return true
+	case Sextuplets:
+		return true
+	case Sixteenths:
+		return true
+	case ThirtySeconds:
+		return true
+	case Triplets:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for OptionRegionShape.
 const (
 	Circle    OptionRegionShape = "circle"
@@ -6208,6 +6244,14 @@ type NoteValue struct {
 	Num int `json:"num"`
 }
 
+// NoteValue2 The note value a play-along take was played at: a speed factor on the music as written,
+// with the click staying on the beat. halves = x0.5, quarters = x1 (as written), eighths = x2,
+// triplets = x3, sixteenths = x4, quintuplets = x5, sextuplets = x6, thirty_seconds = x8.
+// A take's effective speed is its tempo_bpm times the factor, in quarter-note beats per
+// minute: 80 BPM in eighths is as fast as 160 BPM in quarters. Tempos of the same item are
+// compared at effective speed. Absent means quarters. Present only with a tempo_bpm.
+type NoteValue2 string
+
 // Option One selectable answer choice within an exercise. An exercise's
 // correct answer is expressed by marking one or more options as
 // is_correct. The fields expected beyond option_id and is_correct
@@ -7013,18 +7057,32 @@ type PracticeSessionItem struct {
 
 	// PlayAlong Present when kind is play_along.
 	PlayAlong *struct {
-		// BestCleanTempoBpm The student's best clean tempo since their latest teacher review. Null when
-		// they have no clean take yet.
+		// BestCleanNoteValue The note value the best clean take was played at. Null when there is no clean
+		// take yet.
+		BestCleanNoteValue *NoteValue2 `json:"best_clean_note_value"`
+
+		// BestCleanTempoBpm The student's best clean tempo since their latest teacher review, as played,
+		// in best_clean_note_value: the clean take with the fastest effective speed. Null
+		// when they have no clean take yet.
 		BestCleanTempoBpm *int `json:"best_clean_tempo_bpm"`
 
 		// DiagramId The diagram played along with.
 		DiagramId openapi_types.UUID `json:"diagram_id"`
 
-		// StartTempoBpm The tempo to play this take at. For a warm-up, about 80% of the student's
-		// best clean tempo; otherwise the tempo ladder's current step.
+		// StartNoteValue The note value a play-along take was played at: a speed factor on the music as written,
+		// with the click staying on the beat. halves = x0.5, quarters = x1 (as written), eighths = x2,
+		// triplets = x3, sixteenths = x4, quintuplets = x5, sextuplets = x6, thirty_seconds = x8.
+		// A take's effective speed is its tempo_bpm times the factor, in quarter-note beats per
+		// minute: 80 BPM in eighths is as fast as 160 BPM in quarters. Tempos of the same item are
+		// compared at effective speed. Absent means quarters. Present only with a tempo_bpm.
+		StartNoteValue NoteValue2 `json:"start_note_value"`
+
+		// StartTempoBpm The tempo to play this take at, in start_note_value. For a warm-up, about 80%
+		// of the student's best clean tempo; otherwise the tempo ladder's current step.
 		StartTempoBpm int `json:"start_tempo_bpm"`
 
-		// TargetTempoBpm The tempo the item aims for, the tempo of the diagram's default playback.
+		// TargetTempoBpm The tempo the item aims for, the tempo of the diagram's default playback, in
+		// quarters (as written).
 		TargetTempoBpm int `json:"target_tempo_bpm"`
 	} `json:"play_along,omitempty"`
 
@@ -7480,7 +7538,8 @@ type SkillProgress struct {
 	Before float32 `json:"before"`
 
 	// Measure What improved. accuracy and fluency are ratios from 0 to 1 over the skill's
-	// practised items; best_clean_tempo_bpm is a tempo.
+	// practised items; best_clean_tempo_bpm is a tempo at effective speed, in
+	// quarter-note beats per minute (80 BPM in eighths is 160).
 	Measure SkillProgressMeasure `json:"measure"`
 
 	// Names Text in one or more languages, keyed by Language.code — for example
@@ -7494,7 +7553,8 @@ type SkillProgress struct {
 }
 
 // SkillProgressMeasure What improved. accuracy and fluency are ratios from 0 to 1 over the skill's
-// practised items; best_clean_tempo_bpm is a tempo.
+// practised items; best_clean_tempo_bpm is a tempo at effective speed, in
+// quarter-note beats per minute (80 BPM in eighths is 160).
 type SkillProgressMeasure string
 
 // SongChart A song chart as admins see it: its draft and what learners are

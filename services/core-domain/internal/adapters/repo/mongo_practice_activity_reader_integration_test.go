@@ -165,15 +165,22 @@ func TestMongoPracticeActivityReader_ReadsAggregationWorkerShape(t *testing.T) {
 	})
 
 	t.Run("a snapshot at a time is each item's day whose end is nearest to it, never more than 12 hours later", func(t *testing.T) {
+		// A snapshot with a best clean tempo has it in eighths.
 		snapshot := func(studentID, itemKey string, day time.Time, accuracy float64, bestCleanBPM *int) bson.D {
+			var noteValue *string
+			if bestCleanBPM != nil {
+				eighths := "eighths"
+				noteValue = &eighths
+			}
 			return bson.D{
 				{Key: "student_id", Value: studentID}, {Key: "item_key", Value: itemKey}, {Key: "day", Value: day},
 				{Key: "rules_version", Value: 1}, {Key: "level", Value: "learning"}, {Key: "counted", Value: 2},
 				{Key: "accuracy", Value: accuracy}, {Key: "fluency", Value: 0.25}, {Key: "box", Value: 1},
-				{Key: "best_clean_bpm", Value: bestCleanBPM}, {Key: "best_changes_per_minute", Value: nil}, {Key: "updated_at", Value: day},
+				{Key: "best_clean_bpm", Value: bestCleanBPM}, {Key: "best_clean_note_value", Value: noteValue},
+				{Key: "best_changes_per_minute", Value: nil}, {Key: "updated_at", Value: day},
 			}
 		}
-		bpm := 80
+		bpm, eighths := 80, domain.TempoNoteValueEighths
 		_, err := db.Collection("practice_item_history").InsertMany(ctx, []any{
 			snapshot("alice", "play_along:d1", at(1, 0), 0.5, nil),
 			snapshot("alice", "play_along:d1", at(2, 0), 0.72, &bpm),
@@ -188,7 +195,7 @@ func TestMongoPracticeActivityReader_ReadsAggregationWorkerShape(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, map[string]domain.PracticeItemSnapshot{
-			"play_along:d1": {ItemKey: "play_along:d1", Counted: 2, Accuracy: 0.72, Fluency: 0.25, BestCleanBPM: &bpm},
+			"play_along:d1": {ItemKey: "play_along:d1", Counted: 2, Accuracy: 0.72, Fluency: 0.25, BestCleanBPM: &bpm, BestCleanNoteValue: &eighths},
 		}, got)
 
 		// 23:00 UTC, when a week begins east of UTC: the day ending an hour

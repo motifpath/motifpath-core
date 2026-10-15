@@ -41,8 +41,12 @@ func referencesExist(key PracticeItemKey, ref PracticeReference) bool {
 	return true
 }
 
-// checkMeasure checks the kind's own measure is there, and no other.
+// checkMeasure checks the kind's own measure is there, and no other. A note value
+// belongs to a tempo only.
 func checkMeasure(measure selfRatedMeasure, r PracticeResponse) GradeRejection {
+	if r.NoteValue != nil && (measure != measureTempo || !r.NoteValue.Valid()) {
+		return GradeRejectionResponseDoesNotFitItem
+	}
 	own, other := r.TempoBPM, r.ChangesPerMinute
 	switch measure {
 	case measureTempo:
@@ -79,6 +83,7 @@ func (selfRatingV1) Grade(key PracticeItemKey, r PracticeResponse, ref PracticeR
 		Source:           EvidenceSourceSelfAssessed,
 		Rating:           r.Rating,
 		TempoBPM:         r.TempoBPM,
+		NoteValue:        r.NoteValue,
 		ChangesPerMinute: r.ChangesPerMinute,
 	}}
 }

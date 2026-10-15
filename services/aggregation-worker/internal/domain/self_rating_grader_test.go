@@ -45,3 +45,14 @@ func TestSelfRatingGrader_RejectsAnUnknownRating(t *testing.T) {
 
 	assert.Equal(t, GradeRejectionResponseDoesNotFitItem, got.Rejection)
 }
+
+func TestSelfRatingGrader_RejectsAnUnknownNoteValue(t *testing.T) {
+	key, err := ParsePracticeItemKey("play_along:" + diagramA)
+	require.NoError(t, err)
+	tempo, fifths := 90, NoteValue("fifths")
+	ref := PracticeReference{Diagrams: map[string]DiagramReference{diagramA: {ID: diagramA}}}
+
+	got := selfRatingV1{}.Grade(key, PracticeResponse{Type: PracticeResponseSelfRating, Rating: SelfRatingClean, TempoBPM: &tempo, NoteValue: &fifths}, ref)
+
+	assert.Equal(t, GradeRejectionResponseDoesNotFitItem, got.Rejection)
+}

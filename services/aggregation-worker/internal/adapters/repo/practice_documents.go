@@ -22,6 +22,7 @@ type practiceResponseDocument struct {
 	AudioMs          *int     `bson:"audio_ms,omitempty"`
 	Rating           string   `bson:"rating,omitempty"`
 	TempoBPM         *int     `bson:"tempo_bpm,omitempty"`
+	NoteValue        *string  `bson:"note_value,omitempty"`
 	ChangesPerMinute *int     `bson:"changes_per_minute,omitempty"`
 	Choices          []string `bson:"choices,omitempty"`
 	Reason           string   `bson:"reason,omitempty"`
@@ -145,6 +146,7 @@ type practiceEvidenceDocument struct {
 	TapMs             *int                     `bson:"tap_ms,omitempty"`
 	Rating            string                   `bson:"rating,omitempty"`
 	TempoBPM          *int                     `bson:"tempo_bpm,omitempty"`
+	NoteValue         *string                  `bson:"note_value,omitempty"`
 	ChangesPerMinute  *int                     `bson:"changes_per_minute,omitempty"`
 	AnswerKey         *answerKeyDocument       `bson:"answer_key,omitempty"`
 }
@@ -274,6 +276,7 @@ func toEvidenceDocument(e domain.PracticeEvidence) (practiceEvidenceDocument, er
 			AudioMs:          r.AudioMs,
 			Rating:           string(r.Rating),
 			TempoBPM:         r.TempoBPM,
+			NoteValue:        noteValueString(r.NoteValue),
 			ChangesPerMinute: r.ChangesPerMinute,
 			Choices:          r.Choices,
 			Reason:           string(r.Reason),
@@ -292,6 +295,7 @@ func toEvidenceDocument(e domain.PracticeEvidence) (practiceEvidenceDocument, er
 		TapMs:            e.TapMs,
 		Rating:           string(e.Rating),
 		TempoBPM:         e.TempoBPM,
+		NoteValue:        noteValueString(e.NoteValue),
 		ChangesPerMinute: e.ChangesPerMinute,
 		AnswerKey:        answerKey,
 	}, nil
@@ -324,6 +328,7 @@ func (d practiceEvidenceDocument) toDomain() (domain.PracticeEvidence, error) {
 			AudioMs:          r.AudioMs,
 			Rating:           domain.SelfRating(r.Rating),
 			TempoBPM:         r.TempoBPM,
+			NoteValue:        domainNoteValue(r.NoteValue),
 			ChangesPerMinute: r.ChangesPerMinute,
 			Choices:          r.Choices,
 			Reason:           domain.NotAnsweredReason(r.Reason),
@@ -342,6 +347,7 @@ func (d practiceEvidenceDocument) toDomain() (domain.PracticeEvidence, error) {
 		TapMs:            d.TapMs,
 		Rating:           domain.SelfRating(d.Rating),
 		TempoBPM:         d.TempoBPM,
+		NoteValue:        domainNoteValue(d.NoteValue),
 		ChangesPerMinute: d.ChangesPerMinute,
 		AnswerKey:        answerKey,
 	}, nil
@@ -364,6 +370,7 @@ type practiceItemStateDocument struct {
 	DueAt                *time.Time `bson:"due_at"`
 	LastAt               *time.Time `bson:"last_at"`
 	BestCleanBPM         *int       `bson:"best_clean_bpm"`
+	BestCleanNoteValue   *string    `bson:"best_clean_note_value"`
 	BestChangesPerMinute *int       `bson:"best_changes_per_minute"`
 	// RightByResponse counts right answers by the way the item was asked.
 	RightByResponse map[string]int `bson:"right_by_response,omitempty"`
@@ -380,6 +387,7 @@ func (d practiceItemStateDocument) toDomain() domain.ItemFold {
 		DueAt:                utc(d.DueAt),
 		LastAt:               utc(d.LastAt),
 		BestCleanBPM:         d.BestCleanBPM,
+		BestCleanNoteValue:   domainNoteValue(d.BestCleanNoteValue),
 		BestChangesPerMinute: d.BestChangesPerMinute,
 		RightByResponse:      d.RightByResponse,
 	}
@@ -391,4 +399,22 @@ func utc(t *time.Time) *time.Time {
 	}
 	u := t.UTC()
 	return &u
+}
+
+// noteValueString is v as stored, or nil without a note value.
+func noteValueString(v *domain.NoteValue) *string {
+	if v == nil {
+		return nil
+	}
+	s := string(*v)
+	return &s
+}
+
+// domainNoteValue is a stored note value back in the domain, or nil when none was stored.
+func domainNoteValue(s *string) *domain.NoteValue {
+	if s == nil {
+		return nil
+	}
+	v := domain.NoteValue(*s)
+	return &v
 }

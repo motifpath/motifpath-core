@@ -40,6 +40,7 @@ func TestMongoPracticeItemStateReader_ReadsAggregationWorkerShape(t *testing.T) 
 		stateDoc("alice", "play_along:d1", bson.D{
 			{Key: "level", Value: "accurate"}, {Key: "counted", Value: 3}, {Key: "box", Value: 2},
 			{Key: "due_at", Value: dueAt}, {Key: "last_at", Value: lastAt}, {Key: "best_clean_bpm", Value: 90},
+			{Key: "best_clean_note_value", Value: "eighths"},
 		}),
 		stateDoc("alice", "play_along:d2", bson.D{
 			{Key: "level", Value: "new"}, {Key: "counted", Value: 0}, {Key: "box", Value: 0},
@@ -62,9 +63,10 @@ func TestMongoPracticeItemStateReader_ReadsAggregationWorkerShape(t *testing.T) 
 
 	states, err := reader.GetStates(ctx, "alice", []string{"play_along:d1", "play_along:d2", "play_along:d3", "fretboard_cell:g:6:3"})
 	require.NoError(t, err)
-	bpm := 90
+	bpm, eighths := 90, domain.TempoNoteValueEighths
 	assert.Equal(t, map[string]domain.PracticeItemState{
-		"play_along:d1": {ItemKey: "play_along:d1", RulesVersion: 1, Level: domain.KnowledgeLevelAccurate, Counted: 3, Box: 2, DueAt: &dueAt, LastAt: &lastAt, Accuracy: 0.7, Fluency: 0.5, BestCleanBPM: &bpm},
+		"play_along:d1": {ItemKey: "play_along:d1", RulesVersion: 1, Level: domain.KnowledgeLevelAccurate, Counted: 3, Box: 2, DueAt: &dueAt, LastAt: &lastAt, Accuracy: 0.7, Fluency: 0.5,
+			BestCleanBPM: &bpm, BestCleanNoteValue: &eighths},
 		"play_along:d2": {ItemKey: "play_along:d2", RulesVersion: 1, Level: domain.KnowledgeLevelNew, LastAt: &lastAt, Accuracy: 0.7, Fluency: 0.5},
 		"fretboard_cell:g:6:3": {
 			ItemKey: "fretboard_cell:g:6:3", RulesVersion: 1, Level: domain.KnowledgeLevelLearning, Counted: 5, Box: 2,

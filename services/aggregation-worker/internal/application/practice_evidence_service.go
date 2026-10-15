@@ -187,6 +187,7 @@ func toEvidence(answer domain.PracticeAnswer, graderID string, graded domain.Gra
 		TapMs:             answer.TapMs,
 		Rating:            graded.Rating,
 		TempoBPM:          graded.TempoBPM,
+		NoteValue:         graded.NoteValue,
 		ChangesPerMinute:  graded.ChangesPerMinute,
 		AnswerKey:         graded.AnswerKey,
 	}

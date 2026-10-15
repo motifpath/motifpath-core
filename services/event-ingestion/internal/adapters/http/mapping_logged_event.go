@@ -75,6 +75,7 @@ type practiceResponseJSON struct {
 	AudioMs          *int     `json:"audio_ms,omitempty"`
 	Rating           string   `json:"rating,omitempty"`
 	TempoBPM         *int     `json:"tempo_bpm,omitempty"`
+	NoteValue        *string  `json:"note_value,omitempty"`
 	ChangesPerMinute *int     `json:"changes_per_minute,omitempty"`
 	Choices          []string `json:"choices,omitempty"`
 	Reason           string   `json:"reason,omitempty"`
@@ -202,6 +203,7 @@ func toPracticeResponseJSON(r domain.PracticeResponse) *practiceResponseJSON {
 		AudioMs:          r.AudioMs,
 		Rating:           string(r.Rating),
 		TempoBPM:         r.TempoBPM,
+		NoteValue:        noteValueString(r.NoteValue),
 		ChangesPerMinute: r.ChangesPerMinute,
 		Choices:          r.Choices,
 		Reason:           string(r.Reason),
@@ -281,4 +283,13 @@ func addSongChartJSON(w *loggedEventJSON, event domain.TrackingEvent) {
 
 func toSongChartContextJSON(c domain.SongChartContext) *songChartContextJSON {
 	return &songChartContextJSON{SongChartID: c.SongChartID, RevisionNumber: c.RevisionNumber}
+}
+
+// noteValueString is v as stored, or nil when the take carries no note value.
+func noteValueString(v *domain.NoteValue) *string {
+	if v == nil {
+		return nil
+	}
+	s := string(*v)
+	return &s
 }

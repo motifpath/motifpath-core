@@ -286,6 +286,7 @@ type rawPracticeResponse struct {
 	AudioMs          *int     `json:"audio_ms"`
 	Rating           *string  `json:"rating"`
 	TempoBPM         *int     `json:"tempo_bpm"`
+	NoteValue        *string  `json:"note_value"`
 	ChangesPerMinute *int     `json:"changes_per_minute"`
 	Choices          []string `json:"choices"`
 	Reason           *string  `json:"reason"`
@@ -323,7 +324,8 @@ func (r rawPracticeResponse) strayProperty(shape ...string) string {
 		{"note_name", r.NoteName != nil}, {"shape", r.Shape != nil}, {"interval", r.Interval != nil},
 		{"string", r.String != nil}, {"fret", r.Fret != nil}, {"option_ids", r.OptionIDs != nil},
 		{"latency_ms", r.LatencyMs != nil}, {"audio_ms", r.AudioMs != nil}, {"rating", r.Rating != nil},
-		{"tempo_bpm", r.TempoBPM != nil}, {"changes_per_minute", r.ChangesPerMinute != nil},
+		{"tempo_bpm", r.TempoBPM != nil}, {"note_value", r.NoteValue != nil},
+		{"changes_per_minute", r.ChangesPerMinute != nil},
 		{"choices", r.Choices != nil}, {"reason", r.Reason != nil}, {"way", r.Way != nil},
 		{"music_key", r.MusicKey != nil}, {"options", r.Options != nil}, {"choice", r.Choice != nil},
 		{"tone", r.Tone != nil}, {"taps", r.Taps != nil}, {"fret_window", r.FretWindow != nil},
@@ -616,7 +618,7 @@ func toOptionChoiceResponse(r rawPracticeResponse) (domain.PracticeResponse, err
 }
 
 func toSelfRatingResponse(r rawPracticeResponse) (domain.PracticeResponse, error) {
-	if property := r.strayProperty("rating", "tempo_bpm", "changes_per_minute"); property != "" {
+	if property := r.strayProperty("rating", "tempo_bpm", "note_value", "changes_per_minute"); property != "" {
 		return invalidResponse(property + " is not a property of self_rating")
 	}
 	if r.Rating == nil {
@@ -634,5 +636,13 @@ func toSelfRatingResponse(r rawPracticeResponse) (domain.PracticeResponse, error
 	if r.ChangesPerMinute != nil && (*r.ChangesPerMinute < 0 || *r.ChangesPerMinute > maxChangesPerMin) {
 		return invalidResponse(fmt.Sprintf("changes_per_minute must be between 0 and %d", maxChangesPerMin))
 	}
-	return domain.PracticeResponse{Type: domain.PracticeResponseSelfRating, Rating: rating, TempoBPM: r.TempoBPM, ChangesPerMinute: r.ChangesPerMinute}, nil
+	var noteValue *domain.NoteValue
+	if r.NoteValue != nil {
+		v := domain.NoteValue(*r.NoteValue)
+		if !v.Valid() {
+			return invalidResponse("note_value must be a note value, such as quarters or eighths")
+		}
+		noteValue = &v
+	}
+	return domain.PracticeResponse{Type: domain.PracticeResponseSelfRating, Rating: rating, TempoBPM: r.TempoBPM, NoteValue: noteValue, ChangesPerMinute: r.ChangesPerMinute}, nil
 }
