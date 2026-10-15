@@ -23,6 +23,9 @@ type fakeNodeItemSource struct {
 	// it shares; cells holds the declared cells per layout instrument.
 	layouts map[string]string
 	cells   map[string][]domain.ClassifiedItem
+	// harmony lists the harmony drills' items, which suit every
+	// instrument; nil until a scenario learns them.
+	harmony func() []domain.ClassifiedItem
 }
 
 func newFakeNodeItemSource(diagrams *fakeDiagramRepo, exercises *fakeExerciseRepo) *fakeNodeItemSource {
@@ -50,6 +53,9 @@ func (f *fakeNodeItemSource) ClassifiedItems(_ context.Context, instrumentID str
 	f.exercises.mu.Unlock()
 	if layout, ok := f.layouts[instrumentID]; ok {
 		items = append(items, f.cells[layout]...)
+	}
+	if f.harmony != nil {
+		items = append(items, f.harmony()...)
 	}
 	return items, nil
 }

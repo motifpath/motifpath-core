@@ -131,6 +131,7 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	registerNodeLevelSteps(sc, w)
 	registerFretboardCellSteps(sc, w)
 	registerDrillChallengeSteps(sc, w)
+	registerHarmonyDrillSteps(sc, w)
 	registerDiagramShapeSteps(sc, w)
 	registerFretboardMapSteps(sc, w)
 	registerTapCheckSteps(sc, w)

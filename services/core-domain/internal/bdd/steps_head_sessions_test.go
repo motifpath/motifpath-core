@@ -175,6 +175,9 @@ func (w *world) noItemHasEitherReason(first, second string) error {
 // cellIsAskedAs checks the drill the cell, or the diagram shape, set up
 // before is asked through.
 func (w *world) cellIsAskedAs(drill string) error {
+	if w.harmonyDrills != nil && w.harmonyDrills.itemKey != "" {
+		return w.harmonyIsAskedAs(drill)
+	}
 	if w.lastShapeKey != "" {
 		return w.shapeIsAskedAsDrill(drill)
 	}
