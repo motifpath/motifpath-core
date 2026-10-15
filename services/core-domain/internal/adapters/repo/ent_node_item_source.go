@@ -92,6 +92,38 @@ func (s *EntNodeItemSource) ClassifiedItems(ctx context.Context, instrumentID st
 // chord and as a chord function, and every progression as a chart, each
 // under its family's nodes (a chart also under its progression's).
 func (s *EntNodeItemSource) harmonyItems(ctx context.Context) ([]domain.ClassifiedItem, error) {
+	nodes, err := s.harmonyNodes(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var items []domain.ClassifiedItem
+	for _, key := range domain.MusicKeys {
+		for _, numeral := range domain.HarmonyItemNumerals {
+			items = append(items,
+				domain.ClassifiedItem{ItemKey: domain.DiatonicChordItem{Key: key, Numeral: numeral}.ItemKey(), NodeIDs: nodes[domain.PracticeItemKindDiatonicChord]},
+				domain.ClassifiedItem{ItemKey: domain.ChordFunctionItem{Key: key, Numeral: numeral}.ItemKey(), NodeIDs: nodes[domain.PracticeItemKindChordFunction]},
+			)
+		}
+	}
+	progressions, err := NewEntProgressionRepository(s.client).List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, p := range progressions {
+		chartNodes := slices.Clone(nodes[domain.PracticeItemKindChartProgression])
+		for _, id := range p.NodeIDs {
+			if !slices.Contains(chartNodes, id) {
+				chartNodes = append(chartNodes, id)
+			}
+		}
+		items = append(items, domain.ClassifiedItem{ItemKey: domain.ChartProgressionItemKey(p.Key), NodeIDs: chartNodes})
+	}
+	return items, nil
+}
+
+// harmonyNodes looks up each harmony family's knowledge nodes by key; a
+// key the knowledge map doesn't have is left out.
+func (s *EntNodeItemSource) harmonyNodes(ctx context.Context) (map[domain.PracticeItemKind][]string, error) {
 	var keys []string
 	for _, nodeKeys := range domain.HarmonyNodeKeys {
 		keys = append(keys, nodeKeys...)
@@ -104,38 +136,15 @@ func (s *EntNodeItemSource) harmonyItems(ctx context.Context) ([]domain.Classifi
 	for _, row := range rows {
 		idOf[row.Key] = row.ID.String()
 	}
-	nodesOf := func(kind domain.PracticeItemKind) []string {
-		var ids []string
-		for _, key := range domain.HarmonyNodeKeys[kind] {
+	nodes := map[domain.PracticeItemKind][]string{}
+	for kind, nodeKeys := range domain.HarmonyNodeKeys {
+		for _, key := range nodeKeys {
 			if id, ok := idOf[key]; ok {
-				ids = append(ids, id)
+				nodes[kind] = append(nodes[kind], id)
 			}
 		}
-		return ids
 	}
-	var items []domain.ClassifiedItem
-	for _, key := range domain.MusicKeys {
-		for _, numeral := range domain.HarmonyItemNumerals {
-			items = append(items,
-				domain.ClassifiedItem{ItemKey: domain.DiatonicChordItem{Key: key, Numeral: numeral}.ItemKey(), NodeIDs: nodesOf(domain.PracticeItemKindDiatonicChord)},
-				domain.ClassifiedItem{ItemKey: domain.ChordFunctionItem{Key: key, Numeral: numeral}.ItemKey(), NodeIDs: nodesOf(domain.PracticeItemKindChordFunction)},
-			)
-		}
-	}
-	progressions, err := NewEntProgressionRepository(s.client).List(ctx)
-	if err != nil {
-		return nil, err
-	}
-	for _, p := range progressions {
-		nodes := slices.Clone(nodesOf(domain.PracticeItemKindChartProgression))
-		for _, id := range p.NodeIDs {
-			if !slices.Contains(nodes, id) {
-				nodes = append(nodes, id)
-			}
-		}
-		items = append(items, domain.ClassifiedItem{ItemKey: domain.ChartProgressionItemKey(p.Key), NodeIDs: nodes})
-	}
-	return items, nil
+	return nodes, nil
 }
 
 // FretboardLayouts lists the layout instruments of the drill catalog's
