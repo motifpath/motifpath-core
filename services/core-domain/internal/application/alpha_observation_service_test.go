@@ -40,6 +40,24 @@ func (f *fakeAlphaActivityReader) SessionsStartedBetween(_ context.Context, stud
 	return out, nil
 }
 
+func (f *fakeAlphaActivityReader) FinishedByWeek(ctx context.Context, studentIDs []string, from, to time.Time) (map[string]domain.FinishedByWeek, error) {
+	sessions, err := f.SessionsStartedBetween(ctx, studentIDs, from, to)
+	if err != nil {
+		return nil, err
+	}
+	byStudent := map[string][]domain.PracticeSessionRecord{}
+	for _, s := range sessions {
+		byStudent[s.StudentID] = append(byStudent[s.StudentID], s)
+	}
+	counts := map[string]domain.FinishedByWeek{}
+	for studentID, theirs := range byStudent {
+		if finished := domain.CountFinishedByWeek(theirs); len(finished) > 0 {
+			counts[studentID] = finished
+		}
+	}
+	return counts, nil
+}
+
 func (f *fakeAlphaActivityReader) FirstCompletions(_ context.Context, studentID string, contentNodeIDs []string) (map[string]time.Time, error) {
 	return pick(f.completions[studentID], contentNodeIDs), nil
 }

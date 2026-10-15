@@ -32,10 +32,13 @@ const (
 	sessionAbandonGrace = 15 * time.Minute
 )
 
-// alphaLocation is the one time zone every alpha week is measured in, so
-// all students share the same weeks.
+// AlphaTimeZone is the one time zone every alpha week is measured in, so all
+// students share the same weeks. A store that buckets sessions into weeks
+// must use it too.
+const AlphaTimeZone = "America/Sao_Paulo"
+
 var alphaLocation = func() *time.Location {
-	loc, err := time.LoadLocation("America/Sao_Paulo")
+	loc, err := time.LoadLocation(AlphaTimeZone)
 	if err != nil {
 		panic(err) // embedded by time/tzdata, so it is always found
 	}
@@ -80,6 +83,10 @@ func (w AlphaWeek) End() time.Time   { return w.start.AddDate(0, 0, 7) }
 // FirstDay and LastDay are the week's Monday and Sunday as calendar dates.
 func (w AlphaWeek) FirstDay() time.Time { return calendarDate(w.start) }
 func (w AlphaWeek) LastDay() time.Time  { return calendarDate(w.start.AddDate(0, 0, 6)) }
+
+// Key names the week by its Monday's date (2006-01-02), the same however the
+// week was reached.
+func (w AlphaWeek) Key() string { return w.FirstDay().Format(time.DateOnly) }
 
 func (w AlphaWeek) Previous() AlphaWeek { return AlphaWeek{start: w.start.AddDate(0, 0, -7)} }
 func (w AlphaWeek) Next() AlphaWeek     { return AlphaWeek{start: w.start.AddDate(0, 0, 7)} }
@@ -187,11 +194,30 @@ func (p FirstPathProgress) OverTarget() bool {
 // AlphaStudentActivity is what a student's weekly measures are taken from.
 type AlphaStudentActivity struct {
 	FirstPathGivenAt time.Time
-	// Sessions are the student's sessions, of any state, at least from the
-	// week their first path was given.
-	Sessions []PracticeSessionRecord
+	// Finished counts the student's finished sessions per week, at least
+	// from the week their first path was given.
+	Finished FinishedByWeek
 	// LastActiveAt is nil when the student has no activity at all.
 	LastActiveAt *time.Time
+}
+
+// FinishedByWeek counts a student's finished sessions in each week they
+// finished any, keyed by AlphaWeek.Key; a week absent from it has none.
+type FinishedByWeek map[string]int
+
+// In is the count of week.
+func (f FinishedByWeek) In(week AlphaWeek) int { return f[week.Key()] }
+
+// CountFinishedByWeek counts the finished ones among sessions in the week
+// each started.
+func CountFinishedByWeek(sessions []PracticeSessionRecord) FinishedByWeek {
+	counts := FinishedByWeek{}
+	for _, s := range sessions {
+		if s.Finished() {
+			counts[AlphaWeekOf(s.StartedAt).Key()]++
+		}
+	}
+	return counts
 }
 
 // AlphaWeekCount is one of a student's finished weeks with its counted
@@ -226,14 +252,14 @@ func (m AlphaStudentMeasure) AtTargetInWeek() bool {
 // running week is never one of them.
 func MeasureAlphaStudent(a AlphaStudentActivity, week AlphaWeek, now time.Time) AlphaStudentMeasure {
 	m := AlphaStudentMeasure{
-		FinishedInWeek:         finishedIn(a.Sessions, week),
-		FinishedInPreviousWeek: finishedIn(a.Sessions, week.Previous()),
+		FinishedInWeek:         a.Finished.In(week),
+		FinishedInPreviousWeek: a.Finished.In(week.Previous()),
 		WeeksSoFar:             []AlphaWeekCount{},
 		Quiet:                  quiet(a, now),
 	}
 	running := AlphaWeekOf(now)
 	for w := AlphaWeekOf(a.FirstPathGivenAt); w.Start().Before(running.Start()); w = w.Next() {
-		count := AlphaWeekCount{WeekStart: w.FirstDay(), Finished: finishedIn(a.Sessions, w)}
+		count := AlphaWeekCount{WeekStart: w.FirstDay(), Finished: a.Finished.In(w)}
 		m.WeeksSoFar = append(m.WeeksSoFar, count)
 		m.WeeksSoFarCount++
 		if count.Finished >= AlphaTargetSessions {
@@ -245,15 +271,6 @@ func MeasureAlphaStudent(a AlphaStudentActivity, week AlphaWeek, now time.Time) 
 	return m
 }
 
-func finishedIn(sessions []PracticeSessionRecord, week AlphaWeek) int {
-	n := 0
-	for _, s := range sessions {
-		if s.Finished() && week.Contains(s.StartedAt) {
-			n++
-		}
-	}
-	return n
-}
 
 // quiet reports a student with no activity for alphaQuietAfter; with no
 // activity at all, counted from when their first path was given.

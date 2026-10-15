@@ -306,7 +306,10 @@ func (s *AlphaObservationService) measure(ctx context.Context, members []alphaMe
 			from = first
 		}
 	}
-	sessions, err := s.activity.SessionsStartedBetween(ctx, ids, from, domain.AlphaWeekOf(now).End())
+	// Only the counts of finished sessions per week are read, never the
+	// sessions themselves: the alpha's whole history would be too much to
+	// load on every page.
+	finished, err := s.activity.FinishedByWeek(ctx, ids, from, domain.AlphaWeekOf(now).End())
 	if err != nil {
 		return nil, err
 	}
@@ -328,7 +331,7 @@ func (s *AlphaObservationService) measure(ctx context.Context, members []alphaMe
 		progress := firstPathProgress(m.firstPath, statuses[m.user.ID])
 		activity := domain.AlphaStudentActivity{
 			FirstPathGivenAt: m.firstPath.AssignedAt,
-			Sessions:         sessionsOf(sessions, m.user.ID),
+			Finished:         finished[m.user.ID],
 		}
 		if at, ok := lastActive[m.user.ID]; ok {
 			activity.LastActiveAt = &at
@@ -424,15 +427,6 @@ func sessionWeek(sessions []domain.PracticeSessionRecord, week domain.AlphaWeek,
 	return out
 }
 
-func sessionsOf(sessions []domain.PracticeSessionRecord, studentID string) []domain.PracticeSessionRecord {
-	var out []domain.PracticeSessionRecord
-	for _, r := range sessions {
-		if r.StudentID == studentID {
-			out = append(out, r)
-		}
-	}
-	return out
-}
 
 func pathNodeIDs(path domain.StudentPath) []string {
 	ids := make([]string, len(path.Items))

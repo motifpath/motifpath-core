@@ -211,7 +211,7 @@ func TestMeasureAlphaStudent_Weeks(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			m := domain.MeasureAlphaStudent(domain.AlphaStudentActivity{FirstPathGivenAt: c.given, Sessions: c.sessions}, week, now)
+			m := domain.MeasureAlphaStudent(domain.AlphaStudentActivity{FirstPathGivenAt: c.given, Finished: domain.CountFinishedByWeek(c.sessions)}, week, now)
 
 			assert.Equal(t, c.wantInWeek, m.FinishedInWeek)
 			assert.Equal(t, c.wantInWeek >= 3, m.AtTargetInWeek())
@@ -364,4 +364,28 @@ func TestCountAlphaFilters(t *testing.T) {
 	}
 
 	assert.Equal(t, domain.AlphaFilterCounts{All: 3, BelowTarget: 2, Quiet: 1}, domain.CountAlphaFilters(students))
+}
+
+func TestCountFinishedByWeek(t *testing.T) {
+	session := func(start time.Time, end *domain.PracticeSessionRecordEnd) domain.PracticeSessionRecord {
+		return domain.PracticeSessionRecord{StartedAt: start, End: end}
+	}
+	finished := &domain.PracticeSessionRecordEnd{At: time.Now()}
+	leftEarly := &domain.PracticeSessionRecordEnd{At: time.Now(), LeftEarly: true}
+
+	got := domain.CountFinishedByWeek([]domain.PracticeSessionRecord{
+		session(saoPauloTime(t, time.October, 12, 18, 0), finished),
+		session(saoPauloTime(t, time.October, 18, 23, 30), finished), // Sunday night is still that week in São Paulo
+		session(saoPauloTime(t, time.October, 13, 18, 0), leftEarly),
+		session(saoPauloTime(t, time.October, 14, 18, 0), nil), // no end yet: not finished
+		session(saoPauloTime(t, time.October, 5, 18, 0), finished),
+	})
+
+	assert.Equal(t, domain.FinishedByWeek{"2026-10-12": 2, "2026-10-05": 1}, got)
+	assert.Equal(t, 2, got.In(domain.AlphaWeekOf(saoPauloTime(t, time.October, 14, 9, 0))))
+	assert.Equal(t, 0, got.In(domain.AlphaWeekOf(saoPauloTime(t, time.September, 28, 9, 0))))
+}
+
+func TestAlphaWeek_Key(t *testing.T) {
+	assert.Equal(t, "2026-10-12", domain.AlphaWeekOf(saoPauloTime(t, time.October, 18, 23, 30)).Key())
 }
