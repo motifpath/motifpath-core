@@ -252,6 +252,14 @@ type world struct {
 	// generated router rather than straight to the handler — only for a
 	// request the handler's typed parameters cannot express.
 	lastRouterStatus int
+
+	// focusOthers holds the due items a focus scenario seeded outside the
+	// session's subjects, most overdue first, and focusDueKeys the due items
+	// a rung scenario expects reviewed.
+	focusOthers  []string
+	focusDueKeys []string
+	// focusNode is the node a scenario's "its" refers to.
+	focusNode string
 }
 
 func newWorld() *world {

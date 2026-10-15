@@ -39,6 +39,7 @@ func TestFeatures(t *testing.T) {
 				featuresBase + "/practice/diagram-shapes.feature",
 				featuresBase + "/practice/drill-challenge.feature",
 				featuresBase + "/practice/fretboard-cells.feature",
+				featuresBase + "/practice/focused-session.feature",
 				featuresBase + "/practice/fretboard-map.feature",
 				featuresBase + "/practice/node-levels.feature",
 				featuresBase + "/practice/practice-summary.feature",
@@ -122,6 +123,7 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	registerHealthSteps(sc, w)
 	registerListingSteps(sc, w)
 	registerPracticeSessionSteps(sc, w)
+	registerPracticeFocusSteps(sc, w)
 	registerPracticeSummarySteps(sc, w)
 	registerPracticeDaysSteps(sc, w)
 	registerSongsPlayedSteps(sc, w)

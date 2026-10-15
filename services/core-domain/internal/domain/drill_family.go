@@ -25,6 +25,15 @@ type DrillItem interface {
 	Plan(way string, planning DrillPlanning) PlannedDrill
 }
 
+// ConfusableItem is a drill item a learner mistakes for others, such as a
+// progression for one that shares most of its chords. A session asks them
+// next to each other, so the student learns to tell them apart.
+type ConfusableItem interface {
+	DrillItem
+	// ConfusableWith lists the keys of the items it is mistaken for.
+	ConfusableWith() []string
+}
+
 // DrillPlanning is what planning a drill item may draw on.
 type DrillPlanning struct {
 	// Pick picks one of n equally fitting choices.

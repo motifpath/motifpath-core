@@ -88,6 +88,8 @@ func registerPracticeSessionSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^the stretch items are of "([^"]+)" before "([^"]+)"$`, w.stretchItemsOfBefore)
 }
 
+// studentPlays makes name a student learning on first and second: a
+// standalone path for both, which teaches no skill yet.
 func (w *world) studentPlays(name, first, second string) error {
 	w.authenticateAs(name, domain.RoleStudent)
 	for _, instrument := range []string{first, second} {
@@ -95,6 +97,16 @@ func (w *world) studentPlays(name, first, second string) error {
 			return err
 		}
 	}
+	w.studentPaths.put(domain.StudentPath{
+		ID:               deterministicUUID("student-path", name+"/plays").String(),
+		StudentID:        w.ensureRegistered(name, domain.RoleStudent).String(),
+		SourceTemplateID: pathID("plays-path").String(),
+		AssignedAt:       fixedNow.Add(-time.Minute),
+	})
+	w.paths.put(domain.LearningPath{
+		ID:            pathID("plays-path").String(),
+		InstrumentIDs: []string{instrumentID(first).String(), instrumentID(second).String()},
+	})
 	return nil
 }
 

@@ -224,6 +224,47 @@ func (h *Handler) CreatePracticeSessionPlan(ctx context.Context, request generat
 	}
 }
 
+func (h *Handler) ListPracticeSubjects(ctx context.Context, request generated.ListPracticeSubjectsRequestObject) (generated.ListPracticeSubjectsResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ListPracticeSubjects401JSONResponse(unauthorizedError()), nil
+	}
+	list, err := h.practiceSession.ListSubjects(ctx, caller, uuidPtrToStringPtr(request.Params.InstrumentId))
+	switch kind, _ := classify(err); {
+	case err == nil:
+		return generated.ListPracticeSubjects200JSONResponse(toGeneratedPracticeSubjectList(list)), nil
+	case kind == errKindNotFound:
+		return generated.ListPracticeSubjects404JSONResponse(notFoundError(notFoundMessage(err))), nil
+	default:
+		return nil, err
+	}
+}
+
+// toGeneratedPracticeSubjectList maps list; a wide node's level is null.
+func toGeneratedPracticeSubjectList(list domain.PracticeSubjectList) generated.PracticeSubjectList {
+	groups := make([]generated.PracticeSubjectGroup, len(list.Groups))
+	for i, g := range list.Groups {
+		subjects := make([]generated.PracticeSubject, len(g.Subjects))
+		for j, s := range g.Subjects {
+			subjects[j] = generated.PracticeSubject{
+				NodeId: mustUUID(s.Node.ID), Names: generated.LocalizedNames(s.Node.Names), OnPath: s.OnPath,
+				ItemCount: s.ItemCount, CurrentRung: generated.PracticeRung(s.CurrentRung),
+			}
+			if s.Level != nil {
+				level := generated.KnowledgeLevel(*s.Level)
+				subjects[j].Level = &level
+			}
+		}
+		groups[i] = generated.PracticeSubjectGroup{AreaNodeId: mustUUID(g.Area.ID), Names: generated.LocalizedNames(g.Area.Names), Subjects: subjects}
+	}
+	out := generated.PracticeSubjectList{Groups: groups}
+	if list.InstrumentID != nil {
+		id := mustUUID(*list.InstrumentID)
+		out.InstrumentId = &id
+	}
+	return out
+}
+
 // notFoundMessage is a domain.ErrNotFound's own explanation, without the
 // sentinel's prefix.
 func notFoundMessage(err error) string {
