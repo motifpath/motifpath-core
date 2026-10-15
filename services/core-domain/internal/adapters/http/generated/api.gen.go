@@ -7240,6 +7240,26 @@ type PracticeSummary struct {
 	StudentInstrumentIds []openapi_types.UUID `json:"student_instrument_ids"`
 }
 
+// Progression A common chord progression of the progression catalog, by number: one numeral per bar of
+// a major key, asked in whatever key a drill picks.
+type Progression struct {
+	// Bars One numeral per bar, such as I V vi IV, or I7 IV7 V7 for a dominant seventh. A
+	// four-bar progression has four, a 12-bar form twelve.
+	Bars []string `json:"bars"`
+
+	// Confusable The keys of the progressions a learner mistakes it for; each lists it back.
+	Confusable []string `json:"confusable"`
+
+	// Key The progression's key in the catalog, such as I-V-vi-IV, as item keys and answers name it.
+	Key string `json:"key"`
+
+	// Names The progression's name in each language, such as "I–V–vi–IV (pop)".
+	Names LocalizedNames `json:"names"`
+
+	// ProgressionId The progression's fixed identifier.
+	ProgressionId openapi_types.UUID `json:"progression_id"`
+}
+
 // PromptDocument A structured rich-text document, authored with MotifPath's
 // Tiptap-based content-authoring editor and persisted exactly as the
 // editor produces it (ProseMirror JSON). Used for an exercise's
@@ -9776,6 +9796,9 @@ type ServerInterface interface {
 	// CreateMediaUploadUrl Request a presigned URL to upload a content-authoring media asset
 	// (POST /media/upload-url)
 	CreateMediaUploadUrl(w http.ResponseWriter, r *http.Request)
+	// ListProgressions List the progression catalog
+	// (GET /progressions)
+	ListProgressions(w http.ResponseWriter, r *http.Request)
 	// ReadinessCheck Readiness probe
 	// (GET /readyz)
 	ReadinessCheck(w http.ResponseWriter, r *http.Request)
@@ -10346,6 +10369,12 @@ func (_ Unimplemented) UnpublishLearningPath(w http.ResponseWriter, r *http.Requ
 // CreateMediaUploadUrl Request a presigned URL to upload a content-authoring media asset
 // (POST /media/upload-url)
 func (_ Unimplemented) CreateMediaUploadUrl(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListProgressions List the progression catalog
+// (GET /progressions)
+func (_ Unimplemented) ListProgressions(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -13658,6 +13687,20 @@ func (siw *ServerInterfaceWrapper) CreateMediaUploadUrl(w http.ResponseWriter, r
 	handler.ServeHTTP(w, r)
 }
 
+// ListProgressions operation middleware
+func (siw *ServerInterfaceWrapper) ListProgressions(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListProgressions(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ReadinessCheck operation middleware
 func (siw *ServerInterfaceWrapper) ReadinessCheck(w http.ResponseWriter, r *http.Request) {
 
@@ -14740,6 +14783,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Patch(options.BaseURL+"/diagrams/{diagram_id}", wrapper.UpdateDiagram)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/progressions", wrapper.ListProgressions)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/chords", wrapper.SearchChords)
@@ -19979,6 +20025,41 @@ func (response CreateMediaUploadUrl404JSONResponse) VisitCreateMediaUploadUrlRes
 	return err
 }
 
+type ListProgressionsRequestObject struct {
+}
+
+type ListProgressionsResponseObject interface {
+	VisitListProgressionsResponse(w http.ResponseWriter) error
+}
+
+type ListProgressions200JSONResponse []Progression
+
+func (response ListProgressions200JSONResponse) VisitListProgressionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListProgressions401JSONResponse UnauthorizedError
+
+func (response ListProgressions401JSONResponse) VisitListProgressionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ReadinessCheckRequestObject struct {
 }
 
@@ -22531,6 +22612,9 @@ type StrictServerInterface interface {
 	// CreateMediaUploadUrl Request a presigned URL to upload a content-authoring media asset
 	// (POST /media/upload-url)
 	CreateMediaUploadUrl(ctx context.Context, request CreateMediaUploadUrlRequestObject) (CreateMediaUploadUrlResponseObject, error)
+	// ListProgressions List the progression catalog
+	// (GET /progressions)
+	ListProgressions(ctx context.Context, request ListProgressionsRequestObject) (ListProgressionsResponseObject, error)
 	// ReadinessCheck Readiness probe
 	// (GET /readyz)
 	ReadinessCheck(ctx context.Context, request ReadinessCheckRequestObject) (ReadinessCheckResponseObject, error)
@@ -24807,6 +24891,30 @@ func (sh *strictHandler) CreateMediaUploadUrl(w http.ResponseWriter, r *http.Req
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(CreateMediaUploadUrlResponseObject); ok {
 		if err := validResponse.VisitCreateMediaUploadUrlResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListProgressions operation middleware
+func (sh *strictHandler) ListProgressions(w http.ResponseWriter, r *http.Request) {
+	var request ListProgressionsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListProgressions(ctx, request.(ListProgressionsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListProgressions")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListProgressionsResponseObject); ok {
+		if err := validResponse.VisitListProgressionsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
