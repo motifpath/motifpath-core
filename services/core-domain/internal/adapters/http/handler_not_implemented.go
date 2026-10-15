@@ -16,3 +16,8 @@ var ErrNotImplemented = errors.New("not implemented yet")
 func (h *Handler) ListPracticeSubjects(context.Context, generated.ListPracticeSubjectsRequestObject) (generated.ListPracticeSubjectsResponseObject, error) {
 	return nil, ErrNotImplemented
 }
+
+// ListAlphaStudents is not implemented yet.
+func (h *Handler) ListAlphaStudents(context.Context, generated.ListAlphaStudentsRequestObject) (generated.ListAlphaStudentsResponseObject, error) {
+	return nil, ErrNotImplemented
+}

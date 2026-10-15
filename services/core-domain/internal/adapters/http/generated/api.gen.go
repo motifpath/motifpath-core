@@ -2593,6 +2593,24 @@ func (e AuthoringSort) Valid() bool {
 	}
 }
 
+// Defines values for GetAlphaObservationParamsFilter.
+const (
+	BelowTarget GetAlphaObservationParamsFilter = "below_target"
+	Quiet       GetAlphaObservationParamsFilter = "quiet"
+)
+
+// Valid indicates whether the value is a known member of the GetAlphaObservationParamsFilter enum.
+func (e GetAlphaObservationParamsFilter) Valid() bool {
+	switch e {
+	case BelowTarget:
+		return true
+	case Quiet:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListCatalogCoursesParamsLevels.
 const (
 	ListCatalogCoursesParamsLevelsAdvanced          ListCatalogCoursesParamsLevels = "advanced"
@@ -2997,6 +3015,18 @@ type AlphaCohortSummary struct {
 	StudentCount int `json:"student_count"`
 }
 
+// AlphaFilterCounts How many students of the whole alpha each filter keeps for the week, whatever q and filter the request carries, so a filter's count never changes when another is picked.
+type AlphaFilterCounts struct {
+	// All Every student in the alpha.
+	All int `json:"all"`
+
+	// BelowTarget Students with fewer than 3 counted sessions in the week.
+	BelowTarget int `json:"below_target"`
+
+	// Quiet Quiet students.
+	Quiet int `json:"quiet"`
+}
+
 // AlphaFirstPath The student's first path — the earliest one they were given, kept even
 // if a later path replaced it — and how much of it they have completed.
 type AlphaFirstPath struct {
@@ -3024,8 +3054,20 @@ type AlphaFirstPath struct {
 
 // AlphaObservation The alpha measured for one week.
 type AlphaObservation struct {
-	// Students Every student in the alpha, ordered by fewest counted sessions in the week, then by display name, then by student_id.
+	// FilterCounts How many students of the whole alpha each filter keeps for the week, whatever q and filter the request carries, so a filter's count never changes when another is picked.
+	FilterCounts AlphaFilterCounts `json:"filter_counts"`
+
+	// Limit The page size that was applied.
+	Limit int `json:"limit"`
+
+	// Offset The number of matching students skipped before this page.
+	Offset int `json:"offset"`
+
+	// Students This page of the students matching q and filter, ordered by fewest counted sessions in the week, then by display name, then by student_id.
 	Students []AlphaStudent `json:"students"`
+
+	// StudentsTotal All students matching q and filter, across every page.
+	StudentsTotal int `json:"students_total"`
 
 	// Summary The alpha as a whole, measured for the requested week.
 	Summary AlphaCohortSummary `json:"summary"`
@@ -6017,6 +6059,21 @@ type PageMeta struct {
 	Total int `json:"total"`
 }
 
+// PagedAlphaStudentRefs defines model for PagedAlphaStudentRefs.
+type PagedAlphaStudentRefs struct {
+	// Items This page of matching students, by display name then user_id.
+	Items []UserRef `json:"items"`
+
+	// Limit The page size that was applied.
+	Limit int `json:"limit"`
+
+	// Offset The number of matching items skipped before this page.
+	Offset int `json:"offset"`
+
+	// Total Number of items matching the filters across all pages.
+	Total int `json:"total"`
+}
+
 // PagedContentNodes defines model for PagedContentNodes.
 type PagedContentNodes struct {
 	Items []ContentNode `json:"items"`
@@ -6715,7 +6772,8 @@ type PracticeSessionPlan struct {
 
 	// FocusNodes The session's subjects, main first, shown to the student as what the session works
 	// on. Every item practises one of them, except the warm-up and, in Today's mix, the
-	// review block: due items of other nodes, at most a fifth of the focus time or 5 items.
+	// review block: due items of other nodes, at most a fifth of the focus time or 5 items,
+	// right after the warm-up.
 	// One node, the chosen one, when focus_source is chosen.
 	FocusNodes []PracticeFocusNode `json:"focus_nodes"`
 
@@ -8429,6 +8487,38 @@ type SongChartId = openapi_types.UUID
 type GetAlphaObservationParams struct {
 	// Week The Monday the week starts on, in São Paulo time (e.g. 2026-10-12). Defaults to the running week. A date that is not a Monday, or a week after the running one, is rejected.
 	Week *AlphaWeek `form:"week,omitempty" json:"week,omitempty"`
+
+	// Q Only students whose display_name contains this text, ignoring case and accents ("joao" matches "João").
+	Q *string `form:"q,omitempty" json:"q,omitempty"`
+
+	// Filter Only some of the students. Every student when absent.
+	// below_target — fewer than 3 counted sessions in the week.
+	// quiet — quiet as AlphaStudent.quiet defines it.
+	Filter *GetAlphaObservationParamsFilter `form:"filter,omitempty" json:"filter,omitempty"`
+
+	// Limit Maximum number of items to return in this page (ADR-031).
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Number of matching items to skip before this page (ADR-031).
+	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
+}
+
+// GetAlphaObservationParamsFilter defines parameters for GetAlphaObservation.
+type GetAlphaObservationParamsFilter string
+
+// ListAlphaStudentsParams defines parameters for ListAlphaStudents.
+type ListAlphaStudentsParams struct {
+	// Q Only students whose display_name contains this text, ignoring case and accents ("joao" matches "João").
+	Q *string `form:"q,omitempty" json:"q,omitempty"`
+
+	// StudentId Only these students. Repeat the parameter for several.
+	StudentId *[]openapi_types.UUID `form:"student_id,omitempty" json:"student_id,omitempty"`
+
+	// Limit Maximum number of items to return in this page (ADR-031).
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Number of matching items to skip before this page (ADR-031).
+	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
 }
 
 // GetAlphaStudentObservationParams defines parameters for GetAlphaStudentObservation.
@@ -9109,6 +9199,9 @@ type ServerInterface interface {
 	// GetAlphaObservation Observe the alpha for one week
 	// (GET /admin/alpha-observation)
 	GetAlphaObservation(w http.ResponseWriter, r *http.Request, params GetAlphaObservationParams)
+	// ListAlphaStudents Find students of the alpha by name or by id
+	// (GET /admin/alpha-observation/students)
+	ListAlphaStudents(w http.ResponseWriter, r *http.Request, params ListAlphaStudentsParams)
 	// GetAlphaStudentObservation Observe one student of the alpha
 	// (GET /admin/alpha-observation/students/{student_id})
 	GetAlphaStudentObservation(w http.ResponseWriter, r *http.Request, studentId openapi_types.UUID, params GetAlphaStudentObservationParams)
@@ -9448,6 +9541,12 @@ type Unimplemented struct{}
 // GetAlphaObservation Observe the alpha for one week
 // (GET /admin/alpha-observation)
 func (_ Unimplemented) GetAlphaObservation(w http.ResponseWriter, r *http.Request, params GetAlphaObservationParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListAlphaStudents Find students of the alpha by name or by id
+// (GET /admin/alpha-observation/students)
+func (_ Unimplemented) ListAlphaStudents(w http.ResponseWriter, r *http.Request, params ListAlphaStudentsParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -10142,8 +10241,132 @@ func (siw *ServerInterfaceWrapper) GetAlphaObservation(w http.ResponseWriter, r 
 		return
 	}
 
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "q", r.URL.Query(), &params.Q, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "q"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "q", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "filter" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "filter", r.URL.Query(), &params.Filter, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "filter"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "filter", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", r.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "offset"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetAlphaObservation(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListAlphaStudents operation middleware
+func (siw *ServerInterfaceWrapper) ListAlphaStudents(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListAlphaStudentsParams
+
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "q", r.URL.Query(), &params.Q, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "q"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "q", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "student_id" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "student_id", r.URL.Query(), &params.StudentId, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "student_id"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "student_id", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", r.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "offset"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListAlphaStudents(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -14266,6 +14489,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/admin/alpha-observation", wrapper.GetAlphaObservation)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/admin/alpha-observation/students", wrapper.ListAlphaStudents)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/admin/alpha-observation/students/{student_id}", wrapper.GetAlphaStudentObservation)
 	})
 	r.Group(func(r chi.Router) {
@@ -14418,6 +14644,70 @@ func (response GetAlphaObservation401JSONResponse) VisitGetAlphaObservationRespo
 type GetAlphaObservation403JSONResponse ForbiddenError
 
 func (response GetAlphaObservation403JSONResponse) VisitGetAlphaObservationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListAlphaStudentsRequestObject struct {
+	Params ListAlphaStudentsParams
+}
+
+type ListAlphaStudentsResponseObject interface {
+	VisitListAlphaStudentsResponse(w http.ResponseWriter) error
+}
+
+type ListAlphaStudents200JSONResponse PagedAlphaStudentRefs
+
+func (response ListAlphaStudents200JSONResponse) VisitListAlphaStudentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListAlphaStudents400JSONResponse ValidationError
+
+func (response ListAlphaStudents400JSONResponse) VisitListAlphaStudentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListAlphaStudents401JSONResponse UnauthorizedError
+
+func (response ListAlphaStudents401JSONResponse) VisitListAlphaStudentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListAlphaStudents403JSONResponse ForbiddenError
+
+func (response ListAlphaStudents403JSONResponse) VisitListAlphaStudentsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -21664,6 +21954,9 @@ type StrictServerInterface interface {
 	// GetAlphaObservation Observe the alpha for one week
 	// (GET /admin/alpha-observation)
 	GetAlphaObservation(ctx context.Context, request GetAlphaObservationRequestObject) (GetAlphaObservationResponseObject, error)
+	// ListAlphaStudents Find students of the alpha by name or by id
+	// (GET /admin/alpha-observation/students)
+	ListAlphaStudents(ctx context.Context, request ListAlphaStudentsRequestObject) (ListAlphaStudentsResponseObject, error)
 	// GetAlphaStudentObservation Observe one student of the alpha
 	// (GET /admin/alpha-observation/students/{student_id})
 	GetAlphaStudentObservation(ctx context.Context, request GetAlphaStudentObservationRequestObject) (GetAlphaStudentObservationResponseObject, error)
@@ -22054,6 +22347,32 @@ func (sh *strictHandler) GetAlphaObservation(w http.ResponseWriter, r *http.Requ
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetAlphaObservationResponseObject); ok {
 		if err := validResponse.VisitGetAlphaObservationResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListAlphaStudents operation middleware
+func (sh *strictHandler) ListAlphaStudents(w http.ResponseWriter, r *http.Request, params ListAlphaStudentsParams) {
+	var request ListAlphaStudentsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListAlphaStudents(ctx, request.(ListAlphaStudentsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListAlphaStudents")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListAlphaStudentsResponseObject); ok {
+		if err := validResponse.VisitListAlphaStudentsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
