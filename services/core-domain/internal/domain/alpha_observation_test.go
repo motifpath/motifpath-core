@@ -211,7 +211,7 @@ func TestMeasureAlphaStudent_Weeks(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			m := domain.MeasureAlphaStudent(domain.AlphaStudentActivity{FirstPathGivenAt: c.given, Sessions: c.sessions}, week, now)
+			m := domain.MeasureAlphaStudent(domain.AlphaStudentActivity{FirstPathGivenAt: c.given, Finished: domain.CountFinishedByWeek(c.sessions)}, week, now)
 
 			assert.Equal(t, c.wantInWeek, m.FinishedInWeek)
 			assert.Equal(t, c.wantInWeek >= 3, m.AtTargetInWeek())
@@ -319,4 +319,73 @@ func TestSortAlphaStudents_NamesSortAlphabeticallyWhateverTheirAccentsOrCase(t *
 		order = append(order, s.DisplayName)
 	}
 	assert.Equal(t, []string{"Álvaro", "Ana", "bruno", "Érica", "Zoe"}, order)
+}
+
+func TestAlphaStudentFilter(t *testing.T) {
+	student := func(name string, inWeek int, quiet bool) domain.AlphaStudent {
+		return domain.AlphaStudent{
+			StudentID: name, DisplayName: name,
+			Measure: domain.AlphaStudentMeasure{FinishedInWeek: inWeek, Quiet: quiet},
+		}
+	}
+	joao := student("João Araújo", 3, false)
+	bia := student("Beatriz Rocha", 1, true)
+
+	tests := []struct {
+		name   string
+		filter domain.AlphaStudentFilter
+		want   []bool // joao, bia
+	}{
+		{"no filter keeps everyone", domain.AlphaStudentFilter{}, []bool{true, true}},
+		{"below the target keeps fewer than 3 counted sessions", domain.AlphaStudentFilter{Keep: domain.AlphaKeepBelowTarget}, []bool{false, true}},
+		{"quiet keeps quiet students", domain.AlphaStudentFilter{Keep: domain.AlphaKeepQuiet}, []bool{false, true}},
+		{"a name matches ignoring case and accents", domain.AlphaStudentFilter{Name: "joao araujo"}, []bool{true, false}},
+		{"a name and a keep must both match", domain.AlphaStudentFilter{Name: "rocha", Keep: domain.AlphaKeepBelowTarget}, []bool{false, true}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, []bool{tt.filter.Matches(joao), tt.filter.Matches(bia)})
+		})
+	}
+}
+
+func TestAlphaStudentKeep_Valid(t *testing.T) {
+	for _, keep := range []domain.AlphaStudentKeep{"", domain.AlphaKeepBelowTarget, domain.AlphaKeepQuiet} {
+		assert.True(t, keep.Valid(), keep)
+	}
+	assert.False(t, domain.AlphaStudentKeep("at_target").Valid())
+}
+
+func TestCountAlphaFilters(t *testing.T) {
+	students := []domain.AlphaStudent{
+		{StudentID: "a", Measure: domain.AlphaStudentMeasure{FinishedInWeek: 0, Quiet: true}},
+		{StudentID: "b", Measure: domain.AlphaStudentMeasure{FinishedInWeek: 2}},
+		{StudentID: "c", Measure: domain.AlphaStudentMeasure{FinishedInWeek: 3}},
+	}
+
+	assert.Equal(t, domain.AlphaFilterCounts{All: 3, BelowTarget: 2, Quiet: 1}, domain.CountAlphaFilters(students))
+}
+
+func TestCountFinishedByWeek(t *testing.T) {
+	session := func(start time.Time, end *domain.PracticeSessionRecordEnd) domain.PracticeSessionRecord {
+		return domain.PracticeSessionRecord{StartedAt: start, End: end}
+	}
+	finished := &domain.PracticeSessionRecordEnd{At: time.Now()}
+	leftEarly := &domain.PracticeSessionRecordEnd{At: time.Now(), LeftEarly: true}
+
+	got := domain.CountFinishedByWeek([]domain.PracticeSessionRecord{
+		session(saoPauloTime(t, time.October, 12, 18, 0), finished),
+		session(saoPauloTime(t, time.October, 18, 23, 30), finished), // Sunday night is still that week in São Paulo
+		session(saoPauloTime(t, time.October, 13, 18, 0), leftEarly),
+		session(saoPauloTime(t, time.October, 14, 18, 0), nil), // no end yet: not finished
+		session(saoPauloTime(t, time.October, 5, 18, 0), finished),
+	})
+
+	assert.Equal(t, domain.FinishedByWeek{"2026-10-12": 2, "2026-10-05": 1}, got)
+	assert.Equal(t, 2, got.In(domain.AlphaWeekOf(saoPauloTime(t, time.October, 14, 9, 0))))
+	assert.Equal(t, 0, got.In(domain.AlphaWeekOf(saoPauloTime(t, time.September, 28, 9, 0))))
+}
+
+func TestAlphaWeek_Key(t *testing.T) {
+	assert.Equal(t, "2026-10-12", domain.AlphaWeekOf(saoPauloTime(t, time.October, 18, 23, 30)).Key())
 }

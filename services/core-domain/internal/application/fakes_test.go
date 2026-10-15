@@ -1450,6 +1450,20 @@ func newFakeCompletionStateReader() *fakeCompletionStateReader {
 	return &fakeCompletionStateReader{statuses: map[string]map[string]domain.CompletionStatus{}}
 }
 
+func (f *fakeCompletionStateReader) GetStatusesForStudents(ctx context.Context, idsByStudent map[string][]string) (map[string]map[string]domain.CompletionStatus, error) {
+	result := map[string]map[string]domain.CompletionStatus{}
+	for studentID, ids := range idsByStudent {
+		statuses, err := f.GetStatuses(ctx, studentID, ids)
+		if err != nil {
+			return nil, err
+		}
+		if len(statuses) > 0 {
+			result[studentID] = statuses
+		}
+	}
+	return result, nil
+}
+
 func (f *fakeCompletionStateReader) GetStatuses(_ context.Context, studentID string, contentNodeIDs []string) (map[string]domain.CompletionStatus, error) {
 	if f.err != nil {
 		return nil, f.err

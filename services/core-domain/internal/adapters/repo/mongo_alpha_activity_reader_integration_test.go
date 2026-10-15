@@ -121,3 +121,47 @@ func TestMongoAlphaActivityReader_ReadsAggregationWorkerShape(t *testing.T) {
 }
 
 func ptrTime(t time.Time) *time.Time { return &t }
+
+// TestMongoAlphaActivityReader_FinishedByWeek counts finished sessions per
+// student and São Paulo week in the database, the way the domain counts a
+// list of sessions, so an observation never has to load every session.
+func TestMongoAlphaActivityReader_FinishedByWeek(t *testing.T) {
+	ctx := context.Background()
+	db := mongoDatabase(t)
+	reader := NewMongoAlphaActivityReader(db)
+	saoPaulo, err := time.LoadLocation("America/Sao_Paulo")
+	require.NoError(t, err)
+	sp := func(month time.Month, day, hour, minute int) time.Time {
+		return time.Date(2026, month, day, hour, minute, 0, 0, saoPaulo)
+	}
+	session := func(studentID, id string, startedAt time.Time, end bson.D) bson.D {
+		return bson.D{
+			{Key: "student_id", Value: studentID}, {Key: "practice_session_id", Value: id},
+			{Key: "started_at", Value: startedAt}, {Key: "minutes", Value: 10},
+			{Key: "answered_event_ids", Value: bson.A{"a"}}, {Key: "last_event_at", Value: startedAt}, {Key: "end", Value: end},
+		}
+	}
+	end := func(leftEarly bool) bson.D {
+		return bson.D{{Key: "event_id", Value: "e"}, {Key: "ended_at", Value: time.Now().UTC()}, {Key: "left_early", Value: leftEarly}, {Key: "answered_count", Value: 3}}
+	}
+	_, err = db.Collection("practice_sessions").InsertMany(ctx, []any{
+		session("dana", "mon", sp(time.October, 12, 18, 0), end(false)),
+		// 02:30 UTC on Monday 19 Oct is still Sunday night in São Paulo.
+		session("dana", "sun-night", sp(time.October, 18, 23, 30), end(false)),
+		session("dana", "left-early", sp(time.October, 13, 18, 0), end(true)),
+		session("dana", "no-end", sp(time.October, 14, 18, 0), nil),
+		session("dana", "week-before", sp(time.October, 5, 18, 0), end(false)),
+		session("dana", "out-of-range", sp(time.September, 21, 18, 0), end(false)),
+		session("eli", "elis", sp(time.October, 12, 9, 0), end(false)),
+		session("fred", "not-asked", sp(time.October, 12, 9, 0), end(false)),
+	})
+	require.NoError(t, err)
+
+	got, err := reader.FinishedByWeek(ctx, []string{"dana", "eli", "gil"}, sp(time.October, 5, 0, 0), sp(time.October, 19, 0, 0))
+
+	require.NoError(t, err)
+	assert.Equal(t, map[string]domain.FinishedByWeek{
+		"dana": {"2026-10-12": 2, "2026-10-05": 1},
+		"eli":  {"2026-10-12": 1},
+	}, got)
+}

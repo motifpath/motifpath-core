@@ -17,4 +17,8 @@ type CompletionStateReader interface {
 	// not_started, mirroring the Aggregation Worker's own GetStatus
 	// found=false handling.
 	GetStatuses(ctx context.Context, studentID string, contentNodeIDs []string) (map[string]domain.CompletionStatus, error)
+	// GetStatusesForStudents is GetStatuses for several students in one
+	// read: for each student, the status of each of their own content node
+	// ids. A student with no recorded status for any of them is absent.
+	GetStatusesForStudents(ctx context.Context, contentNodeIDsByStudent map[string][]string) (map[string]map[string]domain.CompletionStatus, error)
 }

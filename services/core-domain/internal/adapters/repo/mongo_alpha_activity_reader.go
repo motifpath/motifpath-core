@@ -98,6 +98,59 @@ func (r *MongoAlphaActivityReader) SessionsStartedBetween(ctx context.Context, s
 	return records, nil
 }
 
+// finishedWeekDocument is one student's count of finished sessions in one
+// week, the week given by its Monday 00:00 in the alpha's time zone.
+type finishedWeekDocument struct {
+	Key struct {
+		StudentID string    `bson:"student"`
+		Week      time.Time `bson:"week"`
+	} `bson:"_id"`
+	Finished int `bson:"finished"`
+}
+
+// FinishedByWeek counts in the database: a session is finished when it has
+// an end and wasn't left early, and belongs to the week its start falls in.
+func (r *MongoAlphaActivityReader) FinishedByWeek(ctx context.Context, studentIDs []string, from, to time.Time) (map[string]domain.FinishedByWeek, error) {
+	counts := map[string]domain.FinishedByWeek{}
+	if len(studentIDs) == 0 {
+		return counts, nil
+	}
+	cursor, err := r.sessions.Aggregate(ctx, mongo.Pipeline{
+		{{Key: "$match", Value: bson.D{
+			{Key: "student_id", Value: bson.D{{Key: "$in", Value: studentIDs}}},
+			{Key: "started_at", Value: bson.D{{Key: "$gte", Value: from}, {Key: "$lt", Value: to}}},
+			{Key: "end", Value: bson.D{{Key: "$ne", Value: nil}}},
+			{Key: "end.left_early", Value: false},
+		}}},
+		{{Key: "$group", Value: bson.D{
+			{Key: "_id", Value: bson.D{
+				{Key: "student", Value: "$student_id"},
+				{Key: "week", Value: bson.D{{Key: "$dateTrunc", Value: bson.D{
+					{Key: "date", Value: "$started_at"},
+					{Key: "unit", Value: "week"},
+					{Key: "startOfWeek", Value: "monday"},
+					{Key: "timezone", Value: domain.AlphaTimeZone},
+				}}}},
+			}},
+			{Key: "finished", Value: bson.D{{Key: "$sum", Value: 1}}},
+		}}},
+	})
+	if err != nil {
+		return nil, err
+	}
+	var docs []finishedWeekDocument
+	if err := cursor.All(ctx, &docs); err != nil {
+		return nil, err
+	}
+	for _, d := range docs {
+		if counts[d.Key.StudentID] == nil {
+			counts[d.Key.StudentID] = domain.FinishedByWeek{}
+		}
+		counts[d.Key.StudentID][domain.AlphaWeekOf(d.Key.Week).Key()] = d.Finished
+	}
+	return counts, nil
+}
+
 func (r *MongoAlphaActivityReader) FirstCompletions(ctx context.Context, studentID string, contentNodeIDs []string) (map[string]time.Time, error) {
 	firsts := map[string]time.Time{}
 	if len(contentNodeIDs) == 0 {

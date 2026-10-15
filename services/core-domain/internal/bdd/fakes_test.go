@@ -1571,6 +1571,20 @@ func (f *fakeCompletionReader) GetStatuses(_ context.Context, studentID string, 
 	return result, nil
 }
 
+func (f *fakeCompletionReader) GetStatusesForStudents(ctx context.Context, idsByStudent map[string][]string) (map[string]map[string]domain.CompletionStatus, error) {
+	result := map[string]map[string]domain.CompletionStatus{}
+	for studentID, ids := range idsByStudent {
+		statuses, err := f.GetStatuses(ctx, studentID, ids)
+		if err != nil {
+			return nil, err
+		}
+		if len(statuses) > 0 {
+			result[studentID] = statuses
+		}
+	}
+	return result, nil
+}
+
 func (f *fakeCompletionReader) set(studentID, contentNodeID string, status domain.CompletionStatus) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
