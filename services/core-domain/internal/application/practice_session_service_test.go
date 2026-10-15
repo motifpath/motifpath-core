@@ -129,7 +129,7 @@ type practiceFixture struct {
 	feltRatings    *fakeFeltRatingReader
 	headSessions   *fakeHeadSessionCounter
 	// cells holds the fretboard cells that suit each instrument.
-	cells     map[string][]domain.ClassifiedItem
+	cells map[string][]domain.ClassifiedItem
 	// templates are the installed drill templates.
 	templates catalogDrillTemplates
 	now       time.Time
@@ -357,6 +357,16 @@ func (f *practiceFixture) shapeOn(id, skillID string, instrumentIDs ...string) s
 }
 
 // quarterNotes is n quarter-note steps on position p1.
+func notePtr(v domain.TempoNoteValue) *domain.TempoNoteValue { return &v }
+
+// diagram is the stored diagram with this id.
+func (f *practiceFixture) diagram(t *testing.T, id string) domain.Diagram {
+	t.Helper()
+	d, err := f.diagrams.GetByID(context.Background(), id)
+	require.NoError(t, err)
+	return d
+}
+
 func quarterNotes(n int) []domain.SequenceStep {
 	steps := make([]domain.SequenceStep, n)
 	for i := range steps {
@@ -502,7 +512,7 @@ func TestPracticeSessionService_ComposePlan(t *testing.T) {
 		require.NotNil(t, item.NodeID)
 		assert.Equal(t, "skill-1", *item.NodeID)
 		require.NotNil(t, item.PlayAlong)
-		assert.Equal(t, domain.PlannedPlayAlong{DiagramID: "d1", StartTempoBPM: 70, TargetTempoBPM: 120}, *item.PlayAlong)
+		assert.Equal(t, domain.PlannedPlayAlong{DiagramID: "d1", StartTempoBPM: 70, StartNoteValue: domain.TempoNoteValueQuarters, TargetTempoBPM: 120}, *item.PlayAlong)
 	})
 
 	t.Run("a play-along targets its default playback's tempo, whichever playback comes first", func(t *testing.T) {
@@ -518,7 +528,7 @@ func TestPracticeSessionService_ComposePlan(t *testing.T) {
 
 		i := slices.Index(planKeys(plan), "play_along:d1")
 		require.NotEqual(t, -1, i)
-		assert.Equal(t, domain.PlannedPlayAlong{DiagramID: "d1", StartTempoBPM: 70, TargetTempoBPM: 120}, *plan.Items[i].PlayAlong)
+		assert.Equal(t, domain.PlannedPlayAlong{DiagramID: "d1", StartTempoBPM: 70, StartNoteValue: domain.TempoNoteValueQuarters, TargetTempoBPM: 120}, *plan.Items[i].PlayAlong)
 	})
 
 	t.Run("a due play-along starts at the student's best clean tempo", func(t *testing.T) {
@@ -531,7 +541,24 @@ func TestPracticeSessionService_ComposePlan(t *testing.T) {
 
 		require.Len(t, plan.Items, 1)
 		assert.Equal(t, domain.PracticePickDue, plan.Items[0].Reason)
-		assert.Equal(t, domain.PlannedPlayAlong{DiagramID: "d1", StartTempoBPM: 90, TargetTempoBPM: 120, BestCleanTempoBPM: intPtr(90)}, *plan.Items[0].PlayAlong)
+		assert.Equal(t, domain.PlannedPlayAlong{DiagramID: "d1", StartTempoBPM: 90, StartNoteValue: domain.TempoNoteValueQuarters, TargetTempoBPM: 120,
+			BestCleanTempoBPM: intPtr(90), BestCleanNoteValue: notePtr(domain.TempoNoteValueQuarters)}, *plan.Items[0].PlayAlong)
+	})
+
+	t.Run("a due play-along starts in the note value of the student's best clean take", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPath("skill-1")
+		f.playAlong("d1", "Pentatonic run", practiceGuitar, "skill-1", 120)
+		f.state("d1", domain.PracticeItemState{Level: domain.KnowledgeLevelLearning, Counted: 2, Box: 1, DueAt: f.daysAgo(0),
+			BestCleanBPM: intPtr(50), BestCleanNoteValue: notePtr(domain.TempoNoteValueEighths)})
+
+		plan := f.compose(t, practiceGuitar, 3)
+
+		require.Len(t, plan.Items, 1)
+		assert.Equal(t, domain.PlannedPlayAlong{DiagramID: "d1", StartTempoBPM: 50, StartNoteValue: domain.TempoNoteValueEighths, TargetTempoBPM: 120,
+			BestCleanTempoBPM: intPtr(50), BestCleanNoteValue: notePtr(domain.TempoNoteValueEighths)}, *plan.Items[0].PlayAlong)
+		assert.Equal(t, domain.PlayAlongSeconds(f.diagram(t, "d1"), 50, domain.TempoNoteValueEighths, false), plan.Items[0].EstimatedSeconds,
+			"its time is estimated in the note value it is played at")
 	})
 
 	t.Run("start tempos stay between 20 BPM and the target, or a best clean tempo past it", func(t *testing.T) {
@@ -573,6 +600,24 @@ func TestPracticeSessionService_ComposePlan(t *testing.T) {
 		assert.Equal(t, domain.PracticePickWarmUp, warmUp.Reason)
 		assert.Equal(t, 80, warmUp.PlayAlong.StartTempoBPM)
 		assert.Equal(t, "play_along:run", plan.Items[1].ItemKey)
+	})
+
+	t.Run("a warm-up is played in the note value of the best clean take", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPath("skill-1")
+		f.playAlong("scale", "C major scale", practiceGuitar, "skill-1", 120)
+		f.playAlong("run", "Pentatonic run", practiceGuitar, "skill-1", 120)
+		f.state("scale", domain.PracticeItemState{Level: domain.KnowledgeLevelAccurate, Counted: 4, Box: 3, DueAt: f.inDays(3),
+			BestCleanBPM: intPtr(100), BestCleanNoteValue: notePtr(domain.TempoNoteValueEighths)})
+
+		plan := f.compose(t, practiceGuitar, 9)
+
+		require.NotEmpty(t, plan.Items)
+		warmUp := plan.Items[0]
+		assert.Equal(t, domain.PracticePickWarmUp, warmUp.Reason)
+		assert.Equal(t, 80, warmUp.PlayAlong.StartTempoBPM)
+		assert.Equal(t, domain.TempoNoteValueEighths, warmUp.PlayAlong.StartNoteValue)
+		assert.Equal(t, domain.PlayAlongSeconds(f.diagram(t, "scale"), 80, domain.TempoNoteValueEighths, true), warmUp.EstimatedSeconds)
 	})
 
 	t.Run("a short session skips the warm-up", func(t *testing.T) {

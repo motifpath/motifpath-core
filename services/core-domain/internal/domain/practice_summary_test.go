@@ -171,6 +171,21 @@ func TestSkillProgressLines(t *testing.T) {
 		assert.Empty(t, got, "no clean take seven days ago, so no tempo line")
 	})
 
+	t.Run("a tempo line compares effective speed, in quarter-note BPM", func(t *testing.T) {
+		eighths := domain.TempoNoteValueEighths
+		inEighths := practised(0.5, 0, bpm(60))
+		inEighths.BestCleanNoteValue = &eighths
+		now := map[string]domain.PracticeItemState{"a": inEighths, "b": practised(0.5, 0, bpm(110))}
+		then := snapshot(0.5, 0, bpm(50))
+		then.BestCleanNoteValue = &eighths
+
+		got := domain.SkillProgressLines(skill, []string{"a", "b"}, now, map[string]domain.PracticeItemSnapshot{"a": then})
+
+		require.Len(t, got, 1)
+		assert.Equal(t, domain.SkillProgress{NodeID: "skill", Measure: domain.SkillProgressMeasureBestCleanTempo, Before: 100, After: 120}, got[0],
+			"60 BPM in eighths is 120, faster than 110 in quarters")
+	})
+
 	t.Run("a skill with nothing practised has no lines", func(t *testing.T) {
 		assert.Empty(t, domain.SkillProgressLines(skill, []string{"a"}, nil, nil))
 	})

@@ -57,7 +57,7 @@ type PracticeSessionService struct {
 	// sources find the generated drill items, a source per drill family.
 	sources []DrillSource
 	newID   func() string
-	now         func() time.Time
+	now     func() time.Time
 	// shuffle puts equally urgent candidates in random order.
 	shuffle func(n int, swap func(i, j int))
 }
@@ -691,16 +691,20 @@ func targetTempo(d domain.Diagram) int {
 	return playback.TempoBPM
 }
 
-func bestClean(c practiceCandidate) *int {
+// bestClean is the candidate's best clean tempo as played, nil with no clean
+// take, and its note value: quarters without one.
+func bestClean(c practiceCandidate) (*int, domain.TempoNoteValue) {
 	if c.state == nil {
-		return nil
+		return nil, domain.TempoNoteValueQuarters
 	}
-	return c.state.BestCleanBPM
+	return c.state.BestCleanTempo()
 }
 
-// startTempo is the tempo a play-along candidate's ladder starts at.
-func startTempo(c practiceCandidate) int {
-	return domain.PlayAlongStartTempo(targetTempo(*c.diagram), bestClean(c))
+// startTempo is the tempo a play-along candidate's ladder starts at, in the
+// note value of the best clean take, so the student resumes where they left off.
+func startTempo(c practiceCandidate) (int, domain.TempoNoteValue) {
+	bpm, noteValue := bestClean(c)
+	return domain.PlayAlongStartTempo(targetTempo(*c.diagram), bpm), noteValue
 }
 
 // seconds estimates how long c takes as a pick, a play-along on its tempo
@@ -708,7 +712,8 @@ func startTempo(c practiceCandidate) int {
 func (c practiceCandidate) seconds() int {
 	switch {
 	case c.diagram != nil:
-		return domain.PlayAlongSeconds(*c.diagram, startTempo(c), false)
+		tempo, noteValue := startTempo(c)
+		return domain.PlayAlongSeconds(*c.diagram, tempo, noteValue, false)
 	case c.drill != nil:
 		return c.drill.Seconds()
 	default:
@@ -1010,8 +1015,9 @@ func (c *composer) warmUp(candidates []practiceCandidate) {
 	if best == nil {
 		return
 	}
-	tempo := domain.WarmUpTempo(targetTempo(*best.diagram), *best.state.BestCleanBPM)
-	item := c.item(*best, domain.PracticePickWarmUp, tempo, domain.PlayAlongSeconds(*best.diagram, tempo, true))
+	bestBPM, noteValue := best.state.BestCleanTempo()
+	tempo := domain.WarmUpTempo(targetTempo(*best.diagram), *bestBPM)
+	item := c.item(*best, domain.PracticePickWarmUp, tempo, domain.PlayAlongSeconds(*best.diagram, tempo, noteValue, true))
 	if float64(item.EstimatedSeconds) > float64(c.budget)*warmUpMaxShare {
 		return
 	}
@@ -1193,11 +1199,12 @@ func (c *composer) pick(cand practiceCandidate, reason domain.PracticePickReason
 	if cand.diagram == nil {
 		return c.item(cand, reason, 0, cand.seconds())
 	}
-	tempo := startTempo(cand)
-	return c.item(cand, reason, tempo, domain.PlayAlongSeconds(*cand.diagram, tempo, false))
+	tempo, noteValue := startTempo(cand)
+	return c.item(cand, reason, tempo, domain.PlayAlongSeconds(*cand.diagram, tempo, noteValue, false))
 }
 
-// item is cand as a session item; tempo applies to a play-along only.
+// item is cand as a session item; tempo applies to a play-along only, in the
+// note value of its best clean take.
 func (c *composer) item(cand practiceCandidate, reason domain.PracticePickReason, tempo, seconds int) domain.PracticeSessionItem {
 	level := domain.KnowledgeLevelNew
 	if cand.state != nil {
@@ -1225,11 +1232,18 @@ func (c *composer) item(cand practiceCandidate, reason domain.PracticePickReason
 	}
 	if cand.diagram != nil {
 		item.Kind = domain.PracticeItemKindPlayAlong
+		bestBPM, noteValue := bestClean(cand)
+		var bestNoteValue *domain.TempoNoteValue
+		if bestBPM != nil {
+			bestNoteValue = &noteValue
+		}
 		item.PlayAlong = &domain.PlannedPlayAlong{
-			DiagramID:         cand.diagram.ID,
-			StartTempoBPM:     tempo,
-			TargetTempoBPM:    targetTempo(*cand.diagram),
-			BestCleanTempoBPM: bestClean(cand),
+			DiagramID:          cand.diagram.ID,
+			StartTempoBPM:      tempo,
+			StartNoteValue:     noteValue,
+			TargetTempoBPM:     targetTempo(*cand.diagram),
+			BestCleanTempoBPM:  bestBPM,
+			BestCleanNoteValue: bestNoteValue,
 		}
 	}
 	return item

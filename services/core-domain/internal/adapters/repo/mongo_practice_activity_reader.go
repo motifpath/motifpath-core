@@ -51,11 +51,12 @@ type learningActivityDocument struct {
 // practiceItemSnapshotDocument holds the fields this service reads from a
 // `practice_item_history` document.
 type practiceItemSnapshotDocument struct {
-	ItemKey      string  `bson:"item_key"`
-	Counted      int     `bson:"counted"`
-	Accuracy     float64 `bson:"accuracy"`
-	Fluency      float64 `bson:"fluency"`
-	BestCleanBPM *int    `bson:"best_clean_bpm"`
+	ItemKey            string  `bson:"item_key"`
+	Counted            int     `bson:"counted"`
+	Accuracy           float64 `bson:"accuracy"`
+	Fluency            float64 `bson:"fluency"`
+	BestCleanBPM       *int    `bson:"best_clean_bpm"`
+	BestCleanNoteValue *string `bson:"best_clean_note_value"`
 }
 
 // songChartCompletionDocument holds the fields this service reads from a
@@ -264,6 +265,7 @@ func (r *MongoPracticeActivityReader) SnapshotsAt(ctx context.Context, studentID
 		}
 		result[doc.ItemKey] = domain.PracticeItemSnapshot{
 			ItemKey: doc.ItemKey, Counted: doc.Counted, Accuracy: doc.Accuracy, Fluency: doc.Fluency, BestCleanBPM: doc.BestCleanBPM,
+			BestCleanNoteValue: tempoNoteValue(doc.BestCleanNoteValue),
 		}
 	}
 	if err := cursor.Err(); err != nil {

@@ -24,6 +24,8 @@ type practiceItemStateDocument struct {
 	Accuracy     float64    `bson:"accuracy"`
 	Fluency      float64    `bson:"fluency"`
 	BestCleanBPM *int       `bson:"best_clean_bpm"`
+	// BestCleanNoteValue is nil in a state folded before note values: quarters.
+	BestCleanNoteValue *string `bson:"best_clean_note_value"`
 	// RightByResponse is absent until the item has a right answer.
 	RightByResponse map[string]int `bson:"right_by_response"`
 }
@@ -59,17 +61,18 @@ func (r *MongoPracticeItemStateReader) GetStates(ctx context.Context, studentID 
 			return nil, err
 		}
 		result[doc.ItemKey] = domain.PracticeItemState{
-			ItemKey:         doc.ItemKey,
-			RulesVersion:    doc.RulesVersion,
-			Level:           domain.KnowledgeLevel(doc.Level),
-			Counted:         doc.Counted,
-			Box:             doc.Box,
-			DueAt:           utcTime(doc.DueAt),
-			LastAt:          utcTime(doc.LastAt),
-			Accuracy:        doc.Accuracy,
-			Fluency:         doc.Fluency,
-			BestCleanBPM:    doc.BestCleanBPM,
-			RightByResponse: doc.RightByResponse,
+			ItemKey:            doc.ItemKey,
+			RulesVersion:       doc.RulesVersion,
+			Level:              domain.KnowledgeLevel(doc.Level),
+			Counted:            doc.Counted,
+			Box:                doc.Box,
+			DueAt:              utcTime(doc.DueAt),
+			LastAt:             utcTime(doc.LastAt),
+			Accuracy:           doc.Accuracy,
+			Fluency:            doc.Fluency,
+			BestCleanBPM:       doc.BestCleanBPM,
+			BestCleanNoteValue: tempoNoteValue(doc.BestCleanNoteValue),
+			RightByResponse:    doc.RightByResponse,
 		}
 	}
 	if err := cursor.Err(); err != nil {
@@ -85,4 +88,13 @@ func utcTime(t *time.Time) *time.Time {
 	}
 	u := t.UTC()
 	return &u
+}
+
+// tempoNoteValue is a stored note value in the domain, or nil when none was stored.
+func tempoNoteValue(s *string) *domain.TempoNoteValue {
+	if s == nil {
+		return nil
+	}
+	v := domain.TempoNoteValue(*s)
+	return &v
 }

@@ -258,6 +258,65 @@ func TestWarmUpTempo(t *testing.T) {
 	}
 }
 
+func TestPlayAlongSeconds(t *testing.T) {
+	steps := make([]domain.SequenceStep, 8)
+	for i := range steps {
+		steps[i] = domain.SequenceStep{PositionIDs: []string{"p1"}, Value: domain.NoteValue{Num: 1, Den: 4}}
+	}
+	d := domain.Diagram{
+		Playbacks:         []domain.DiagramPlayback{{ID: "pb", TempoBPM: 120, TimeSignature: domain.DefaultTimeSignature, Steps: steps}},
+		DefaultPlaybackID: func() *string { id := "pb"; return &id }(),
+	}
+
+	for _, tc := range []struct {
+		name      string
+		noteValue domain.TempoNoteValue
+		warmUp    bool
+		want      int
+	}{
+		// A take is a count-in bar of 4 clicks plus 8 quarter notes, each followed by a
+		// 10-second rating: at 60 BPM, 4 takes of (4 + 8) s + 10 s.
+		{name: "four takes in quarters", noteValue: domain.TempoNoteValueQuarters, want: 4 * (12 + 10)},
+		{name: "the notes play twice as fast in eighths, the count-in doesn't", noteValue: domain.TempoNoteValueEighths, want: 4 * (8 + 10)},
+		{name: "halves play the notes at half speed", noteValue: domain.TempoNoteValueHalves, want: 4 * (20 + 10)},
+		{name: "a warm-up is two takes", noteValue: domain.TempoNoteValueEighths, warmUp: true, want: 2 * (8 + 10)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, domain.PlayAlongSeconds(d, 60, tc.noteValue, tc.warmUp))
+		})
+	}
+}
+
+func TestPracticeItemState_BestCleanTempo(t *testing.T) {
+	bpm, eighths := 60, domain.TempoNoteValueEighths
+
+	t.Run("is the best clean take as played", func(t *testing.T) {
+		got, v := domain.PracticeItemState{BestCleanBPM: &bpm, BestCleanNoteValue: &eighths}.BestCleanTempo()
+		assert.Equal(t, &bpm, got)
+		assert.Equal(t, domain.TempoNoteValueEighths, v)
+	})
+	t.Run("a best clean take with no note value was played in quarters", func(t *testing.T) {
+		got, v := domain.PracticeItemState{BestCleanBPM: &bpm}.BestCleanTempo()
+		assert.Equal(t, &bpm, got)
+		assert.Equal(t, domain.TempoNoteValueQuarters, v)
+	})
+	t.Run("with no clean take yet, a play-along starts in quarters", func(t *testing.T) {
+		got, v := domain.PracticeItemState{}.BestCleanTempo()
+		assert.Nil(t, got)
+		assert.Equal(t, domain.TempoNoteValueQuarters, v)
+	})
+}
+
+func TestTempoNoteValue_EffectiveSpeed(t *testing.T) {
+	for v, want := range map[domain.TempoNoteValue]float64{
+		domain.TempoNoteValueHalves: 40, domain.TempoNoteValueQuarters: 80, domain.TempoNoteValueEighths: 160,
+		domain.TempoNoteValueTriplets: 240, domain.TempoNoteValueSixteenths: 320, domain.TempoNoteValueQuintuplets: 400,
+		domain.TempoNoteValueSextuplets: 480, domain.TempoNoteValueThirtySeconds: 640,
+	} {
+		assert.InDelta(t, want, v.EffectiveSpeed(80), 1e-9, v)
+	}
+}
+
 func TestItemsFocus(t *testing.T) {
 	node := func(id string) domain.KnowledgeNode { return domain.KnowledgeNode{ID: id, Key: id} }
 	nodes := map[string]domain.KnowledgeNode{"a": node("a"), "b": node("b"), "c": node("c"), "d": node("d")}

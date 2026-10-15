@@ -305,16 +305,25 @@ func toGeneratedPracticeSessionItem(item domain.PracticeSessionItem, names userN
 		EstimatedSeconds: item.EstimatedSeconds,
 	}
 	if p := item.PlayAlong; p != nil {
+		var bestCleanNoteValue *generated.NoteValue2
+		if v := p.BestCleanNoteValue; v != nil {
+			noteValue := generated.NoteValue2(*v)
+			bestCleanNoteValue = &noteValue
+		}
 		out.PlayAlong = &struct {
-			BestCleanTempoBpm *int               `json:"best_clean_tempo_bpm"`
-			DiagramId         openapi_types.UUID `json:"diagram_id"`
-			StartTempoBpm     int                `json:"start_tempo_bpm"`
-			TargetTempoBpm    int                `json:"target_tempo_bpm"`
+			BestCleanNoteValue *generated.NoteValue2 `json:"best_clean_note_value"`
+			BestCleanTempoBpm  *int                  `json:"best_clean_tempo_bpm"`
+			DiagramId          openapi_types.UUID    `json:"diagram_id"`
+			StartNoteValue     generated.NoteValue2  `json:"start_note_value"`
+			StartTempoBpm      int                   `json:"start_tempo_bpm"`
+			TargetTempoBpm     int                   `json:"target_tempo_bpm"`
 		}{
-			BestCleanTempoBpm: p.BestCleanTempoBPM,
-			DiagramId:         mustUUID(p.DiagramID),
-			StartTempoBpm:     p.StartTempoBPM,
-			TargetTempoBpm:    p.TargetTempoBPM,
+			BestCleanNoteValue: bestCleanNoteValue,
+			BestCleanTempoBpm:  p.BestCleanTempoBPM,
+			DiagramId:          mustUUID(p.DiagramID),
+			StartNoteValue:     generated.NoteValue2(p.StartNoteValue),
+			StartTempoBpm:      p.StartTempoBPM,
+			TargetTempoBpm:     p.TargetTempoBPM,
 		}
 	}
 	if e := item.Exercise; e != nil {
