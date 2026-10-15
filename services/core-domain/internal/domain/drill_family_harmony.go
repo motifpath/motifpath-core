@@ -436,3 +436,33 @@ func parseNumeralItemKey(kind PracticeItemKind, itemKey string) (key, numeral st
 	}
 	return key, numeral, true
 }
+
+// voicingDifficulties orders the chord catalog's difficulties, easiest
+// first.
+var voicingDifficulties = []string{"beginner", "intermediate", "advanced"}
+
+// PreferredChordBox is the voicing a harmony drill draws a chord's box
+// with, among its active voicings: the open voicing if there is one, else
+// the easiest, the lowest fret on a tie. False when there is none.
+func PreferredChordBox(voicings []ChordVoicing) (ChordVoicing, bool) {
+	if len(voicings) == 0 {
+		return ChordVoicing{}, false
+	}
+	return slices.MinFunc(voicings, func(a, b ChordVoicing) int {
+		if open := boolRank(a.TemplateKey == nil) - boolRank(b.TemplateKey == nil); open != 0 {
+			return open
+		}
+		if d := slices.Index(voicingDifficulties, a.Difficulty) - slices.Index(voicingDifficulties, b.Difficulty); d != 0 {
+			return d
+		}
+		return a.LowestFret - b.LowestFret
+	}), true
+}
+
+// boolRank sorts true before false.
+func boolRank(b bool) int {
+	if b {
+		return 0
+	}
+	return 1
+}

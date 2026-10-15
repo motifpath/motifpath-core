@@ -320,3 +320,46 @@ func functionOfChord(key, chord string) domain.ChordFunction {
 	}
 	return ""
 }
+
+func TestPreferredChordBox(t *testing.T) {
+	tmpl := func(s string) *string { return &s }
+	tests := []struct {
+		name     string
+		voicings []domain.ChordVoicing
+		want     string
+	}{
+		{
+			name: "the open voicing, whatever the rank",
+			voicings: []domain.ChordVoicing{
+				{DiagramID: "barre", TemplateKey: tmpl("major-e-shape"), Difficulty: "beginner", LowestFret: 1},
+				{DiagramID: "open", Difficulty: "intermediate", LowestFret: 0},
+			},
+			want: "open",
+		},
+		{
+			name: "with no open voicing, the easiest",
+			voicings: []domain.ChordVoicing{
+				{DiagramID: "advanced", TemplateKey: tmpl("a"), Difficulty: "advanced", LowestFret: 1},
+				{DiagramID: "beginner", TemplateKey: tmpl("b"), Difficulty: "beginner", LowestFret: 5},
+				{DiagramID: "intermediate", TemplateKey: tmpl("c"), Difficulty: "intermediate", LowestFret: 2},
+			},
+			want: "beginner",
+		},
+		{
+			name: "between equally easy ones, the lowest fret",
+			voicings: []domain.ChordVoicing{
+				{DiagramID: "high", TemplateKey: tmpl("a"), Difficulty: "intermediate", LowestFret: 7},
+				{DiagramID: "low", TemplateKey: tmpl("b"), Difficulty: "intermediate", LowestFret: 3},
+			},
+			want: "low",
+		},
+		{name: "none to draw", voicings: nil, want: ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, ok := domain.PreferredChordBox(tt.voicings)
+			assert.Equal(t, tt.want != "", ok)
+			assert.Equal(t, tt.want, got.DiagramID)
+		})
+	}
+}
