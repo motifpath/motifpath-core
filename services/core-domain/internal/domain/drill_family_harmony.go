@@ -466,3 +466,11 @@ func boolRank(b bool) int {
 	}
 	return 1
 }
+
+// HarmonyNodeKeys are the knowledge nodes each harmony family's items roll
+// up to; a chart progression also rolls up to its progression's nodes.
+var HarmonyNodeKeys = map[PracticeItemKind][]string{
+	PracticeItemKindDiatonicChord:    {"diatonic-chords", "roman-numerals"},
+	PracticeItemKindChordFunction:    {"chord-function"},
+	PracticeItemKindChartProgression: {"read-chord-charts"},
+}
