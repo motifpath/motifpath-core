@@ -339,7 +339,70 @@ func toGeneratedPracticeSessionItem(item domain.PracticeSessionItem, names userN
 	if d := item.DiagramShape; d != nil {
 		out.DiagramShape = toGeneratedDiagramShape(*d, locale)
 	}
+	if q := item.GeneratedChoice; q != nil {
+		out.GeneratedChoice = toGeneratedChoiceQuestion(*q, locale)
+	}
 	return out
+}
+
+// toGeneratedChoiceQuestion maps a planned harmony question, its names in
+// locale. What the way doesn't give is null, and every list is a list,
+// empty when unused.
+func toGeneratedChoiceQuestion(q domain.PlannedGeneratedChoice, locale string) *generated.GeneratedChoiceQuestion {
+	out := &generated.GeneratedChoiceQuestion{
+		Way:      generated.GeneratedChoiceWay(q.Way()),
+		MusicKey: generated.MusicKey(q.MusicKey),
+		Chart:    nonNilStrings(q.Chart),
+		DrawnAs:  generated.GeneratedChordDrawing(q.DrawnAs),
+	}
+	if q.Numeral != "" {
+		numeral := generated.ChordNumeral(q.Numeral)
+		out.Numeral = &numeral
+	}
+	if q.Chord != "" {
+		chord := q.Chord
+		out.Chord = &chord
+	}
+	if q.Function != "" {
+		function := generated.ChordFunction(q.Function)
+		out.Function = &function
+	}
+	if p := q.Progression; p != nil {
+		out.Progression = &struct {
+			Key  string `json:"key"`
+			Name string `json:"name"`
+		}{Key: p.Key, Name: p.Names.Resolve(locale)}
+	}
+	out.Options = make([]struct {
+		Chart []string `json:"chart"`
+		Name  *string  `json:"name"`
+		Value string   `json:"value"`
+	}, len(q.Options))
+	for i, o := range q.Options {
+		out.Options[i].Value = o.Value
+		out.Options[i].Chart = nonNilStrings(o.Chart)
+		if o.Names != nil {
+			name := o.Names.Resolve(locale)
+			out.Options[i].Name = &name
+		}
+	}
+	out.Voicings = make([]struct {
+		Chord     string             `json:"chord"`
+		DiagramId openapi_types.UUID `json:"diagram_id"`
+	}, len(q.Voicings))
+	for i, box := range q.Voicings {
+		out.Voicings[i].Chord = box.Chord
+		out.Voicings[i].DiagramId = mustUUID(box.DiagramID)
+	}
+	return out
+}
+
+// nonNilStrings is values, or an empty list in place of nil.
+func nonNilStrings(values []string) []string {
+	if values == nil {
+		return []string{}
+	}
+	return values
 }
 
 // generatedDiagramShape is the generated PracticeSessionItem's diagram_shape.
