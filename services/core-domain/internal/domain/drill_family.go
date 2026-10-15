@@ -34,6 +34,15 @@ type ConfusableItem interface {
 	ConfusableWith() []string
 }
 
+// IntroducedInOrder is a drill item whose new items a student meets in a
+// set order instead of at random, such as the numerals of one key before
+// the next key's. IntroductionRank is its place in that order, lowest
+// first.
+type IntroducedInOrder interface {
+	DrillItem
+	IntroductionRank() int
+}
+
 // DrillPlanning is what planning a drill item may draw on.
 type DrillPlanning struct {
 	// Pick picks one of n equally fitting choices.
@@ -41,6 +50,15 @@ type DrillPlanning struct {
 	// Window is the frets a fretboard drill is asked within; nil for any
 	// other drill.
 	Window *FretWindow
+	// Level is the student's level on the item, which picks the harder
+	// variants as it rises; empty for an item never practised.
+	Level KnowledgeLevel
+	// Reading is how a harmony drill draws chords in this session: boxes
+	// on guitar, symbols on bass.
+	Reading GeneratedChordDrawing
+	// Voicing finds the voicing diagram a chord's box is drawn with; false
+	// when the chord has none. Nil when no box is drawn.
+	Voicing func(chord string) (diagramID string, ok bool)
 }
 
 // PlannedDrill is a drill item as a session asks it.

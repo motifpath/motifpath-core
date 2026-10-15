@@ -46,8 +46,8 @@ func (w *world) drillChallenge() *drillChallengeWorld {
 
 // everyDrillItemIsPlanned installs the drill catalog and the shape catalog,
 // then plans every fretboard cell in each way and each window holding it,
-// and every shape in each way and for each degree it can be asked, checking
-// each question.
+// every shape in each way and for each degree it can be asked, and every
+// harmony item in each way, level and reading, checking each question.
 func (w *world) everyDrillItemIsPlanned() error {
 	if err := w.practiceDrillCatalogIsInstalled(); err != nil {
 		return err
@@ -79,7 +79,7 @@ func (w *world) everyDrillItemIsPlanned() error {
 			}
 		}
 	}
-	return nil
+	return w.planEveryHarmonyItem()
 }
 
 func (w *world) checkPlanned(item domain.DrillItem, way string, planning domain.DrillPlanning) {
@@ -117,7 +117,10 @@ func catalogShapeDiagram(shape catalogShape) domain.Diagram {
 
 func (w *world) noPlannedQuestionMarksItsAnswer() error {
 	c := w.drillChallenge()
-	for _, kind := range []domain.PracticeItemKind{domain.PracticeItemKindFretboardCell, domain.PracticeItemKindDiagramShape} {
+	for _, kind := range []domain.PracticeItemKind{
+		domain.PracticeItemKindFretboardCell, domain.PracticeItemKindDiagramShape,
+		domain.PracticeItemKindDiatonicChord, domain.PracticeItemKindChordFunction, domain.PracticeItemKindChartProgression,
+	} {
 		if c.planned[kind] == 0 {
 			return fmt.Errorf("no %s question was planned", kind)
 		}

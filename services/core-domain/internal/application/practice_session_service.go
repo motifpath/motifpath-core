@@ -56,6 +56,9 @@ type PracticeSessionService struct {
 	headCount   ports.HeadSessionCounter
 	// sources find the generated drill items, a source per drill family.
 	sources []DrillSource
+	// harmony is what the harmony drills read; nil when they aren't
+	// installed.
+	harmony *harmonyDrills
 	newID   func() string
 	now     func() time.Time
 	// shuffle puts equally urgent candidates in random order.
@@ -242,10 +245,24 @@ func (s *PracticeSessionService) ComposePlan(ctx context.Context, caller domain.
 	if c.newTurn, err = s.newCellTurn(ctx, caller.ID, instrumentID != nil); err != nil {
 		return domain.PracticeSessionPlan{}, err
 	}
-	if focusNodeID != nil {
-		return s.composeChosen(ctx, c, caller.ID, instrumentID, instrumentIDs, maps, *focusNodeID)
+	var boxes *chordBoxes
+	if s.harmony != nil && instrumentID == nil {
+		if c.reading, err = s.harmony.reading(ctx, instrumentIDs, c.newTurn); err != nil {
+			return domain.PracticeSessionPlan{}, err
+		}
+		boxes = s.harmony.boxes(ctx)
+		c.voicing = boxes.diagramOf
 	}
-	return s.composeMix(ctx, c, caller.ID, instrumentID, instrumentIDs, maps)
+	var plan domain.PracticeSessionPlan
+	if focusNodeID != nil {
+		plan, err = s.composeChosen(ctx, c, caller.ID, instrumentID, instrumentIDs, maps, *focusNodeID)
+	} else {
+		plan, err = s.composeMix(ctx, c, caller.ID, instrumentID, instrumentIDs, maps)
+	}
+	if err == nil && boxes != nil && boxes.err != nil {
+		return domain.PracticeSessionPlan{}, boxes.err
+	}
+	return plan, err
 }
 
 // composeMix composes Today's mix with c: see ComposePlan.
@@ -749,6 +766,10 @@ type composer struct {
 	// and newTurn whether this session is a new-cell turn.
 	windows map[drillWindowKey]domain.FretWindow
 	newTurn bool
+	// reading is how this session's harmony questions draw chords, and
+	// voicing finds a chord's box; nil when no box is drawn.
+	reading domain.GeneratedChordDrawing
+	voicing func(chord string) (string, bool)
 	// templates are the installed drill templates by key, which tell the
 	// rung of each pick.
 	templates map[string]domain.DrillTemplate
@@ -914,7 +935,8 @@ func (c *composer) shuffleCandidates(candidates []practiceCandidate) {
 }
 
 // shuffleWithinNodes keeps candidates' nodes in the order they first
-// appear, and puts each node's candidates in random order.
+// appear, and puts each node's candidates in random order, except that
+// items introduced in a set order keep that order among themselves.
 func (c *composer) shuffleWithinNodes(candidates []practiceCandidate) []practiceCandidate {
 	var order []string
 	byNode := map[string][]practiceCandidate{}
@@ -932,9 +954,29 @@ func (c *composer) shuffleWithinNodes(candidates []practiceCandidate) []practice
 	for _, node := range order {
 		group := byNode[node]
 		c.shuffleCandidates(group)
-		shuffled = append(shuffled, group...)
+		shuffled = append(shuffled, inIntroductionOrder(group)...)
 	}
 	return shuffled
+}
+
+// inIntroductionOrder puts the candidates introduced in a set order back in
+// that order, in the places they hold among the others.
+func inIntroductionOrder(candidates []practiceCandidate) []practiceCandidate {
+	var places []int
+	var ranked []practiceCandidate
+	for i, cand := range candidates {
+		if _, ok := cand.drill.(domain.IntroducedInOrder); ok {
+			places = append(places, i)
+			ranked = append(ranked, cand)
+		}
+	}
+	slices.SortStableFunc(ranked, func(a, b practiceCandidate) int {
+		return a.drill.(domain.IntroducedInOrder).IntroductionRank() - b.drill.(domain.IntroducedInOrder).IntroductionRank()
+	})
+	for n, i := range places {
+		candidates[i] = ranked[n]
+	}
+	return candidates
 }
 
 // takeInTurn reorders candidates one instrument at a time, in the order
@@ -1223,7 +1265,7 @@ func (c *composer) item(cand practiceCandidate, reason domain.PracticePickReason
 		c.confusable[item.ItemKey] = confusable.ConfusableWith()
 	}
 	if cand.drill != nil {
-		planning := domain.DrillPlanning{Pick: rand.IntN}
+		planning := domain.DrillPlanning{Pick: rand.IntN, Level: level, Reading: c.reading, Voicing: c.voicing}
 		if k, ok := windowKey(cand); ok {
 			window := c.windows[k]
 			planning.Window = &window

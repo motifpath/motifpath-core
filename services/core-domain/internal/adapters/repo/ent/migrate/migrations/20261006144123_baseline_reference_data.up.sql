@@ -1275,7 +1275,13 @@ INSERT INTO "drill_templates" ("id", "key", "item_kind", "response_type", "rung"
   ('e11fdaf6-8f60-5348-ab8b-0333cb31c31f', 'exercise:audio_recognition', 'exercise', 'option_choice', 'hear', NULL, true, '{"en":"Listening exercises","pt_BR":"Exercícios de escuta"}'),
   ('bfe9f72d-a2e9-5f43-a774-115b7da268f8', 'exercise:image_recognition', 'exercise', 'option_choice', 'know', NULL, true, '{"en":"Image recognition exercises","pt_BR":"Exercícios de reconhecimento de imagem"}'),
   ('2ba4103e-ce5d-554f-83a5-eba38a6ed2b6', 'exercise:image_choice', 'exercise', 'option_choice', 'know', NULL, true, '{"en":"Image choice exercises","pt_BR":"Exercícios de escolha de imagem"}'),
-  ('49aed57b-3886-53de-b6d1-4b842acc8ab1', 'exercise:audio_selection', 'exercise', 'option_choice', 'hear', NULL, true, '{"en":"Sound choice exercises","pt_BR":"Exercícios de escolha de som"}');
+  ('49aed57b-3886-53de-b6d1-4b842acc8ab1', 'exercise:audio_selection', 'exercise', 'option_choice', 'hear', NULL, true, '{"en":"Sound choice exercises","pt_BR":"Exercícios de escolha de som"}'),
+  ('b4a81a0e-1141-5139-a06a-6f2c7b0341ea', 'diatonic_chord:numeral_to_chord', 'diatonic_chord', 'generated_choice', 'know', 'diatonic_chord:chord_to_numeral', true, '{"en":"Numeral to chord","pt_BR":"Do grau ao acorde"}'),
+  ('cc7434af-9b59-5675-b90f-b340cd2ba8d3', 'diatonic_chord:chord_to_numeral', 'diatonic_chord', 'generated_choice', 'know', 'diatonic_chord:numeral_to_chord', true, '{"en":"Chord to numeral","pt_BR":"Do acorde ao grau"}'),
+  ('a1c08e82-68e2-5d3c-8844-5a79599fc4f3', 'chord_function:chord_to_function', 'chord_function', 'generated_choice', 'know', 'chord_function:function_to_chord', true, '{"en":"Chord to function","pt_BR":"Do acorde à função"}'),
+  ('b0f8fd07-9310-5b17-acb1-77070529421d', 'chord_function:function_to_chord', 'chord_function', 'generated_choice', 'know', 'chord_function:chord_to_function', true, '{"en":"Function to chord","pt_BR":"Da função ao acorde"}'),
+  ('259ed951-c50c-5331-a2de-8475fda08106', 'chart_progression:chart_to_numbers', 'chart_progression', 'generated_choice', 'know', 'chart_progression:numbers_to_chart', true, '{"en":"Read the chart","pt_BR":"Ler a cifra"}'),
+  ('d63bfeed-3175-5b8a-a838-f543cec550ce', 'chart_progression:numbers_to_chart', 'chart_progression', 'generated_choice', 'know', 'chart_progression:chart_to_numbers', true, '{"en":"Pick the chart","pt_BR":"Escolher a cifra"}');
 INSERT INTO "drill_thresholds" ("id", "template_id", "version", "effective_from", "fluent_net_ms", "source", "sessions", "students") VALUES
   ('bf63ad0e-f1c7-52ba-a303-230472134f6c', '4c6ffb77-ee8b-5fda-b243-784f4209bc65', 1, '2026-10-06T00:00:00Z', 3000, 'default', 0, 0),
   ('b4038212-bd6e-5749-8b39-cc8862e1974e', '6e38da0b-df26-5aa8-ab14-3b6640582174', 1, '2026-10-06T00:00:00Z', 4000, 'default', 0, 0),
@@ -1285,7 +1291,13 @@ INSERT INTO "drill_thresholds" ("id", "template_id", "version", "effective_from"
   ('e0364add-6753-58c3-a781-a9589288510e', 'e11fdaf6-8f60-5348-ab8b-0333cb31c31f', 1, '2026-10-01T00:00:00Z', 4000, 'default', 0, 0),
   ('1fa82f45-7f4f-51ee-b974-cf0673eda4a7', 'bfe9f72d-a2e9-5f43-a774-115b7da268f8', 1, '2026-10-01T00:00:00Z', 5000, 'default', 0, 0),
   ('c8d7f798-4ab0-57cb-bf26-5f477154ae87', '2ba4103e-ce5d-554f-83a5-eba38a6ed2b6', 1, '2026-10-01T00:00:00Z', 5000, 'default', 0, 0),
-  ('61b55338-dee3-5391-b556-dc8fe121ea6d', '49aed57b-3886-53de-b6d1-4b842acc8ab1', 1, '2026-10-01T00:00:00Z', 4000, 'default', 0, 0);
+  ('61b55338-dee3-5391-b556-dc8fe121ea6d', '49aed57b-3886-53de-b6d1-4b842acc8ab1', 1, '2026-10-01T00:00:00Z', 4000, 'default', 0, 0),
+  ('5c06f0e7-016c-58e2-aa16-668e7303d0ec', 'b4a81a0e-1141-5139-a06a-6f2c7b0341ea', 1, '2026-10-15T00:00:00Z', 4000, 'default', 0, 0),
+  ('bcac1e2b-b992-5cc4-b79d-84cd0443c2dd', 'cc7434af-9b59-5675-b90f-b340cd2ba8d3', 1, '2026-10-15T00:00:00Z', 4000, 'default', 0, 0),
+  ('0708edcd-3cc5-5b26-956b-b2b31fde84c0', 'a1c08e82-68e2-5d3c-8844-5a79599fc4f3', 1, '2026-10-15T00:00:00Z', 3000, 'default', 0, 0),
+  ('13bb96a1-a854-5ffc-a40e-1f42c9228b73', 'b0f8fd07-9310-5b17-acb1-77070529421d', 1, '2026-10-15T00:00:00Z', 4000, 'default', 0, 0),
+  ('434e18dc-ee2e-532e-b748-d2980df715f0', '259ed951-c50c-5331-a2de-8475fda08106', 1, '2026-10-15T00:00:00Z', 6000, 'default', 0, 0),
+  ('bfcdfcb0-a479-545e-a512-f0cf53e8eace', 'd63bfeed-3175-5b8a-a838-f543cec550ce', 1, '2026-10-15T00:00:00Z', 8000, 'default', 0, 0);
 -- section: fretboard-cells
 -- Frozen fretboard cell ranges, compiled from motifpath-specs catalogs/practice-drills.yaml by
 -- scripts/practice_drills. Each id is the UUID v5 of fretboard-cells/<skill key>/<layout key>.

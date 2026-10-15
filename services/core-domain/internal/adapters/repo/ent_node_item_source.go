@@ -12,6 +12,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramshape"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
 	"github.com/motifpath/core-domain/internal/domain"
 )
 
@@ -79,7 +80,101 @@ func (s *EntNodeItemSource) ClassifiedItems(ctx context.Context, instrumentID st
 	if err != nil {
 		return nil, err
 	}
-	return append(append(items, cells...), shapes...), nil
+	harmony, err := s.harmonyItems(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return slices.Concat(items, cells, shapes, harmony), nil
+}
+
+// harmonyItems generates the harmony drills' items, which suit every
+// instrument: every numeral but the tonic in every major key, as a diatonic
+// chord and as a chord function, and every progression as a chart, each
+// under its family's nodes (a chart also under its progression's).
+func (s *EntNodeItemSource) harmonyItems(ctx context.Context) ([]domain.ClassifiedItem, error) {
+	nodes, err := s.harmonyNodes(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var items []domain.ClassifiedItem
+	for _, key := range domain.MusicKeys {
+		for _, numeral := range domain.HarmonyItemNumerals {
+			items = append(items,
+				domain.ClassifiedItem{ItemKey: domain.DiatonicChordItem{Key: key, Numeral: numeral}.ItemKey(), NodeIDs: nodes[domain.PracticeItemKindDiatonicChord]},
+				domain.ClassifiedItem{ItemKey: domain.ChordFunctionItem{Key: key, Numeral: numeral}.ItemKey(), NodeIDs: nodes[domain.PracticeItemKindChordFunction]},
+			)
+		}
+	}
+	progressions, err := NewEntProgressionRepository(s.client).List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, p := range progressions {
+		chartNodes := slices.Clone(nodes[domain.PracticeItemKindChartProgression])
+		for _, id := range p.NodeIDs {
+			if !slices.Contains(chartNodes, id) {
+				chartNodes = append(chartNodes, id)
+			}
+		}
+		items = append(items, domain.ClassifiedItem{ItemKey: domain.ChartProgressionItemKey(p.Key), NodeIDs: chartNodes})
+	}
+	return items, nil
+}
+
+// harmonyNodes looks up each harmony family's knowledge nodes by key; a
+// key the knowledge map doesn't have is left out.
+func (s *EntNodeItemSource) harmonyNodes(ctx context.Context) (map[domain.PracticeItemKind][]string, error) {
+	var keys []string
+	for _, nodeKeys := range domain.HarmonyNodeKeys {
+		keys = append(keys, nodeKeys...)
+	}
+	rows, err := s.client.KnowledgeNode.Query().Where(knowledgenode.KeyIn(keys...)).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	idOf := make(map[string]string, len(rows))
+	for _, row := range rows {
+		idOf[row.Key] = row.ID.String()
+	}
+	nodes := map[domain.PracticeItemKind][]string{}
+	for kind, nodeKeys := range domain.HarmonyNodeKeys {
+		for _, key := range nodeKeys {
+			if id, ok := idOf[key]; ok {
+				nodes[kind] = append(nodes[kind], id)
+			}
+		}
+	}
+	return nodes, nil
+}
+
+// FretboardLayouts lists the layout instruments of the drill catalog's
+// fretboard cell ranges that instrumentID shares its geometry with, each
+// once; none for an instrument that doesn't exist.
+func (s *EntNodeItemSource) FretboardLayouts(ctx context.Context, instrumentID string) ([]domain.Instrument, error) {
+	parsed, err := uuid.Parse(instrumentID)
+	if err != nil {
+		return nil, nil
+	}
+	row, err := s.client.Instrument.Get(ctx, parsed)
+	if ent.IsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	played := toDomainInstrument(row)
+	ranges, err := s.client.FretboardCellRange.Query().WithLayoutInstrument().All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var layouts []domain.Instrument
+	for _, r := range ranges {
+		layout := toDomainInstrument(r.Edges.LayoutInstrument)
+		if played.SameGeometry(layout) && !slices.ContainsFunc(layouts, func(l domain.Instrument) bool { return l.ID == layout.ID }) {
+			layouts = append(layouts, layout)
+		}
+	}
+	return layouts, nil
 }
 
 // diagramShapes lists the catalog's drill shapes whose diagram is linked to
@@ -160,7 +255,8 @@ func classifiedNodeIDs(skills, concepts []*ent.KnowledgeNode) []string {
 }
 
 // everyInstrumentItems lists the items for every instrument: exercises
-// linked to no instrument. A play-along is always for some instrument.
+// linked to no instrument and the harmony drills' items. A play-along is
+// always for some instrument.
 func (s *EntNodeItemSource) everyInstrumentItems(ctx context.Context) ([]domain.ClassifiedItem, error) {
 	exercises, err := s.client.Exercise.Query().
 		Where(exercise.Not(exercise.HasInstruments())).
@@ -170,7 +266,11 @@ func (s *EntNodeItemSource) everyInstrumentItems(ctx context.Context) ([]domain.
 	if err != nil {
 		return nil, err
 	}
-	return exerciseItems(exercises), nil
+	harmony, err := s.harmonyItems(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return append(exerciseItems(exercises), harmony...), nil
 }
 
 // exerciseItems classifies exercises, read with their skills and concepts.
