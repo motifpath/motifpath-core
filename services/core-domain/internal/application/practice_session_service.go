@@ -443,7 +443,7 @@ func (s *PracticeSessionService) pathCandidates(ctx context.Context, skillIDs []
 	seen := map[string]bool{}
 	var candidates []practiceCandidate
 	for _, skillID := range skillIDs {
-		found, err := s.skillCandidates(ctx, skillID, instrumentID, inHand)
+		found, err := s.skillCandidates(ctx, skillID, isConcept(knowledge.Nodes, skillID), instrumentID, inHand)
 		if err != nil {
 			return nil, err
 		}
@@ -484,16 +484,20 @@ func (s *PracticeSessionService) drillCandidates(ctx context.Context, skillID, i
 }
 
 // skillCandidates lists the play-alongs for instrumentID when it is in
-// hand, then the exercises for it, classified under skillID, each offered
-// for it. With no instrumentID, only the exercises for every instrument.
-// Chord catalog voicings play like play-alongs but aren't practised on their
-// own, so only general diagrams are offered.
-func (s *PracticeSessionService) skillCandidates(ctx context.Context, skillID, instrumentID string, inHand bool) ([]practiceCandidate, error) {
-	candidates, err := s.playAlongCandidates(ctx, skillID, instrumentID, inHand)
+// hand, then the exercises for it, classified under skillID, a concept
+// when concept, each offered for it. With no instrumentID, only the
+// exercises for every instrument. Chord catalog voicings play like
+// play-alongs but aren't practised on their own, so only general diagrams
+// are offered.
+func (s *PracticeSessionService) skillCandidates(ctx context.Context, skillID string, concept bool, instrumentID string, inHand bool) ([]practiceCandidate, error) {
+	candidates, err := s.playAlongCandidates(ctx, skillID, concept, instrumentID, inHand)
 	if err != nil {
 		return nil, err
 	}
 	filter := domain.ExerciseFilter{SkillIDs: []string{skillID}}
+	if concept {
+		filter = domain.ExerciseFilter{ConceptIDs: []string{skillID}}
+	}
 	if instrumentID != "" {
 		filter.InstrumentIDs = []string{instrumentID}
 	}
@@ -511,12 +515,17 @@ func (s *PracticeSessionService) skillCandidates(ctx context.Context, skillID, i
 }
 
 // playAlongCandidates lists the play-alongs for instrumentID classified
-// under skillID when it is in hand; none in the head.
-func (s *PracticeSessionService) playAlongCandidates(ctx context.Context, skillID, instrumentID string, inHand bool) ([]practiceCandidate, error) {
+// under skillID, a concept when concept, when it is in hand; none in the
+// head.
+func (s *PracticeSessionService) playAlongCandidates(ctx context.Context, skillID string, concept bool, instrumentID string, inHand bool) ([]practiceCandidate, error) {
 	if !inHand || instrumentID == "" {
 		return nil, nil
 	}
-	diagrams, err := s.listDiagrams(ctx, domain.DiagramListFilter{SkillIDs: []string{skillID}, InstrumentID: instrumentID, Kind: domain.DiagramKindBasic, Purpose: domain.DiagramPurposeFilterGeneral})
+	filter := domain.DiagramListFilter{SkillIDs: []string{skillID}, InstrumentID: instrumentID, Kind: domain.DiagramKindBasic, Purpose: domain.DiagramPurposeFilterGeneral}
+	if concept {
+		filter.SkillIDs, filter.ConceptIDs = nil, []string{skillID}
+	}
+	diagrams, err := s.listDiagrams(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -558,6 +567,12 @@ func (s *PracticeSessionService) stretchCandidates(ctx context.Context, knowledg
 		}
 	}
 	return stretch, nil
+}
+
+// isConcept reports whether the node id among nodes is a concept, whose
+// items are classified apart from skills'.
+func isConcept(nodes []domain.KnowledgeNode, id string) bool {
+	return slices.ContainsFunc(nodes, func(n domain.KnowledgeNode) bool { return n.ID == id && n.Kind == domain.KnowledgeNodeKindConcept })
 }
 
 // stretchPick is an unseen item and the node it would be a stretch to.

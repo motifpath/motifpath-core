@@ -150,7 +150,7 @@ func (s practiceItemSource) ClassifiedItems(ctx context.Context, instrumentID st
 	var items []domain.ClassifiedItem
 	for _, d := range diagrams.Items {
 		if _, ok := d.DefaultPlayback(); ok {
-			items = append(items, domain.ClassifiedItem{ItemKey: domain.PlayAlongItemKey(d.ID), NodeIDs: d.SkillIDs()})
+			items = append(items, domain.ClassifiedItem{ItemKey: domain.PlayAlongItemKey(d.ID), NodeIDs: append(d.SkillIDs(), d.ConceptIDs()...)})
 		}
 		if d.Shape != nil {
 			items = append(items, domain.ClassifiedItem{ItemKey: domain.DiagramShapeItemKey(d.ID), NodeIDs: d.SkillIDs()})
@@ -161,7 +161,7 @@ func (s practiceItemSource) ClassifiedItems(ctx context.Context, instrumentID st
 		return nil, err
 	}
 	for _, e := range exercises.Items {
-		items = append(items, domain.ClassifiedItem{ItemKey: domain.ExerciseItemKey(e.ID), NodeIDs: exerciseSkillIDs(e)})
+		items = append(items, domain.ClassifiedItem{ItemKey: domain.ExerciseItemKey(e.ID), NodeIDs: append(exerciseSkillIDs(e), nodeIDs(e.Concepts)...)})
 	}
 	return append(items, s.f.cells[instrumentID]...), nil
 }

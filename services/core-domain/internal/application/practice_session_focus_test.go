@@ -306,6 +306,14 @@ func TestPracticeSessionService_ComposePlan_SubjectRungs(t *testing.T) {
 	})
 }
 
+// conceptOf classifies diagramID under conceptID too.
+func (f *practiceFixture) conceptOf(diagramID, conceptID string) {
+	d, err := f.diagrams.GetByID(context.Background(), diagramID)
+	require.NoError(f.t, err)
+	d.Concepts = append(d.Concepts, domain.KnowledgeNode{ID: conceptID})
+	require.NoError(f.t, f.diagrams.Update(context.Background(), d))
+}
+
 func TestPracticeSessionService_ComposePlan_ChosenSubject(t *testing.T) {
 	// progressions puts the skill progressions, with its part_of child
 	// blues-form, off the student's paths, each with new exercises, and the
@@ -421,6 +429,24 @@ func TestPracticeSessionService_ComposePlan_ChosenSubject(t *testing.T) {
 		seconds := secondsByReason(plan)
 		assert.Equal(t, 120, seconds[domain.PracticePickReviewAhead])
 		assert.Greater(t, seconds[domain.PracticePickNew], 180)
+	})
+
+	t.Run("a concept can be chosen, its items classified under it", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.knowledgeNodes.put(domain.KnowledgeNode{ID: "concept-tones", Kind: domain.KnowledgeNodeKindConcept, Key: "concept-tones"})
+		seconds := 30
+		for _, id := range []string{"tones-1", "tones-2"} {
+			require.NoError(t, f.exercises.Create(context.Background(), domain.Exercise{
+				ID: id, Title: id, ExerciseType: domain.ExerciseTypeTextResponse,
+				Concepts: []domain.KnowledgeNode{{ID: "concept-tones"}}, EstimatedDurationSeconds: &seconds,
+			}))
+		}
+		f.playAlong("tones-riff", "Tones riff", practiceGuitar, "skill-riffs", 100)
+		f.conceptOf("tones-riff", "concept-tones")
+
+		plan := f.choose(t, guitar(), "concept-tones", 10)
+
+		assert.ElementsMatch(t, []string{"exercise:tones-1", "exercise:tones-2", "play_along:tones-riff"}, planKeys(plan))
 	})
 
 	t.Run("a node with nothing to practise in hand is not found", func(t *testing.T) {
