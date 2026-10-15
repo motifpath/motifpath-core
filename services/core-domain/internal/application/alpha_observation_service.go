@@ -6,6 +6,9 @@ import (
 	"slices"
 	"time"
 
+	"golang.org/x/text/collate"
+	"golang.org/x/text/language"
+
 	"github.com/motifpath/core-domain/internal/domain"
 	"github.com/motifpath/core-domain/internal/ports"
 )
@@ -40,9 +43,21 @@ func NewAlphaObservationService(
 type AlphaObservation struct {
 	Week    domain.AlphaWeek
 	Running bool
-	Summary domain.AlphaCohortSummary
-	// Students are in domain.NewAlphaStudentOrder's order.
-	Students []AlphaStudentView
+	// Summary and FilterCounts describe the whole alpha, whatever the
+	// filter and the page.
+	Summary      domain.AlphaCohortSummary
+	FilterCounts domain.AlphaFilterCounts
+	// Students is the page of the students the filter keeps, in
+	// domain.NewAlphaStudentOrder's order; StudentsTotal counts all of them.
+	Students      []AlphaStudentView
+	StudentsTotal int
+	Page          domain.PageRequest
+}
+
+// AlphaStudentRef names one student of the alpha.
+type AlphaStudentRef struct {
+	ID          string
+	DisplayName string
 }
 
 // AlphaStudentView is one student of the alpha with what their measures
@@ -112,10 +127,15 @@ type alphaMember struct {
 }
 
 // Observe measures the alpha for week, the Monday it starts on (nil: the
-// running week).
-func (s *AlphaObservationService) Observe(ctx context.Context, caller domain.User, week *time.Time) (AlphaObservation, error) {
+// running week), and returns page of the students filter keeps. Every
+// student is measured, since the summary and the filter counts describe the
+// whole alpha.
+func (s *AlphaObservationService) Observe(ctx context.Context, caller domain.User, week *time.Time, filter domain.AlphaStudentFilter, page domain.PageRequest) (AlphaObservation, error) {
 	if caller.Role != domain.RoleAdmin {
 		return AlphaObservation{}, domain.ErrForbidden
+	}
+	if !filter.Keep.Valid() {
+		return AlphaObservation{}, domain.NewValidationError("filter", "must be one of: below_target, quiet")
 	}
 	now := s.now()
 	measured, err := domain.ParseAlphaWeek(week, now)
@@ -137,12 +157,55 @@ func (s *AlphaObservationService) Observe(ctx context.Context, caller domain.Use
 	}
 	order := domain.NewAlphaStudentOrder()
 	slices.SortFunc(views, func(a, b AlphaStudentView) int { return order(a.Student, b.Student) })
+	kept := slices.DeleteFunc(views, func(v AlphaStudentView) bool { return !filter.Matches(v.Student) })
 	return AlphaObservation{
-		Week:     measured,
-		Running:  measured.IsRunning(now),
-		Summary:  domain.SummarizeAlpha(students),
-		Students: views,
+		Week:          measured,
+		Running:       measured.IsRunning(now),
+		Summary:       domain.SummarizeAlpha(students),
+		FilterCounts:  domain.CountAlphaFilters(students),
+		Students:      window(kept, page),
+		StudentsTotal: len(kept),
+		Page:          page,
 	}, nil
+}
+
+// ListStudents names the students of the alpha whose display name contains
+// name (ignoring case and accents) and, when studentIDs is given, who are
+// among them; ids outside the alpha are left out. Nobody is measured. They
+// come alphabetically as a person reads names, then by id.
+func (s *AlphaObservationService) ListStudents(ctx context.Context, caller domain.User, name string, studentIDs []string, page domain.PageRequest) (domain.Page[AlphaStudentRef], error) {
+	if caller.Role != domain.RoleAdmin {
+		return domain.Page[AlphaStudentRef]{}, domain.ErrForbidden
+	}
+	if len(studentIDs) > domain.MaxPageLimit {
+		return domain.Page[AlphaStudentRef]{}, domain.NewValidationError("student_id", "must name at most 100 students")
+	}
+	members, err := s.alphaMembers(ctx)
+	if err != nil {
+		return domain.Page[AlphaStudentRef]{}, err
+	}
+	refs := []AlphaStudentRef{}
+	for _, m := range members {
+		if len(studentIDs) > 0 && !slices.Contains(studentIDs, m.user.ID) {
+			continue
+		}
+		if name != "" && !domain.ContainsLoosely(m.user.DisplayName, name) {
+			continue
+		}
+		refs = append(refs, AlphaStudentRef{ID: m.user.ID, DisplayName: m.user.DisplayName})
+	}
+	names := collate.New(language.BrazilianPortuguese)
+	slices.SortFunc(refs, func(a, b AlphaStudentRef) int {
+		return cmp.Or(names.CompareString(a.DisplayName, b.DisplayName), cmp.Compare(a.ID, b.ID))
+	})
+	return domain.Page[AlphaStudentRef]{Items: window(refs, page), Total: len(refs)}, nil
+}
+
+// window is the part of items page asks for; past the end it is empty.
+func window[T any](items []T, page domain.PageRequest) []T {
+	start := min(page.Offset, len(items))
+	end := min(start+page.Limit, len(items))
+	return slices.Clone(items[start:end])
 }
 
 // ObserveStudent measures studentID for week, as Observe does, with their

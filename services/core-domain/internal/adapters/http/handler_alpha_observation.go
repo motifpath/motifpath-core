@@ -19,29 +19,82 @@ func (h *Handler) GetAlphaObservation(ctx context.Context, request generated.Get
 	if !ok {
 		return generated.GetAlphaObservation401JSONResponse(unauthorizedError()), nil
 	}
-	observation, err := h.alphaObservation.Observe(ctx, caller, weekParam(request.Params.Week))
+	params := request.Params
+	page, err := domain.NewPageRequest(params.Limit, params.Offset)
+	if err == nil {
+		filter := domain.AlphaStudentFilter{Name: deref(params.Q)}
+		if params.Filter != nil {
+			filter.Keep = domain.AlphaStudentKeep(*params.Filter)
+		}
+		var observation application.AlphaObservation
+		observation, err = h.alphaObservation.Observe(ctx, caller, weekParam(params.Week), filter, page)
+		if err == nil {
+			return toAlphaObservation(observation), nil
+		}
+	}
 	var verr *domain.ValidationError
 	switch {
 	case errors.Is(err, domain.ErrForbidden):
 		return generated.GetAlphaObservation403JSONResponse(forbiddenError(onlyAdminsObserve)), nil
 	case errors.As(err, &verr):
 		return generated.GetAlphaObservation400JSONResponse(validationErrorResponse(verr)), nil
-	case err != nil:
-		return nil, err
 	}
+	return nil, err
+}
+
+func toAlphaObservation(observation application.AlphaObservation) generated.GetAlphaObservation200JSONResponse {
 	students := make([]generated.AlphaStudent, len(observation.Students))
 	for i, s := range observation.Students {
 		students[i] = toAlphaStudent(s)
 	}
 	s := observation.Summary
+	c := observation.FilterCounts
 	return generated.GetAlphaObservation200JSONResponse{
 		Week: toAlphaWeekRange(observation.Week, observation.Running),
 		Summary: generated.AlphaCohortSummary{
 			StudentCount: s.StudentCount, AtTargetInWeek: s.AtTargetInWeek, AtTargetInPreviousWeek: s.AtTargetInPreviousWeek,
 			AtTargetEveryWeek: s.AtTargetEveryWeek, FirstPathOverTarget: s.FirstPathOverTarget, MedianFirstPathPercent: s.MedianFirstPathPercent,
 		},
-		Students: students,
-	}, nil
+		Students:      students,
+		StudentsTotal: observation.StudentsTotal,
+		Limit:         observation.Page.Limit,
+		Offset:        observation.Page.Offset,
+		FilterCounts:  generated.AlphaFilterCounts{All: c.All, BelowTarget: c.BelowTarget, Quiet: c.Quiet},
+	}
+}
+
+func (h *Handler) ListAlphaStudents(ctx context.Context, request generated.ListAlphaStudentsRequestObject) (generated.ListAlphaStudentsResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ListAlphaStudents401JSONResponse(unauthorizedError()), nil
+	}
+	params := request.Params
+	page, err := domain.NewPageRequest(params.Limit, params.Offset)
+	if err == nil {
+		var studentIDs []string
+		if params.StudentId != nil {
+			for _, id := range *params.StudentId {
+				studentIDs = append(studentIDs, id.String())
+			}
+		}
+		var students domain.Page[application.AlphaStudentRef]
+		students, err = h.alphaObservation.ListStudents(ctx, caller, deref(params.Q), studentIDs, page)
+		if err == nil {
+			items := make([]generated.UserRef, len(students.Items))
+			for i, s := range students.Items {
+				items[i] = generated.UserRef{UserId: mustUUID(s.ID), DisplayName: s.DisplayName}
+			}
+			return generated.ListAlphaStudents200JSONResponse{Items: items, Total: students.Total, Limit: page.Limit, Offset: page.Offset}, nil
+		}
+	}
+	var verr *domain.ValidationError
+	switch {
+	case errors.Is(err, domain.ErrForbidden):
+		return generated.ListAlphaStudents403JSONResponse(forbiddenError("only admins may list the alpha's students")), nil
+	case errors.As(err, &verr):
+		return generated.ListAlphaStudents400JSONResponse(validationErrorResponse(verr)), nil
+	}
+	return nil, err
 }
 
 func (h *Handler) GetAlphaStudentObservation(ctx context.Context, request generated.GetAlphaStudentObservationRequestObject) (generated.GetAlphaStudentObservationResponseObject, error) {

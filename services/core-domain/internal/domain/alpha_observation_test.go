@@ -320,3 +320,48 @@ func TestSortAlphaStudents_NamesSortAlphabeticallyWhateverTheirAccentsOrCase(t *
 	}
 	assert.Equal(t, []string{"Álvaro", "Ana", "bruno", "Érica", "Zoe"}, order)
 }
+
+func TestAlphaStudentFilter(t *testing.T) {
+	student := func(name string, inWeek int, quiet bool) domain.AlphaStudent {
+		return domain.AlphaStudent{
+			StudentID: name, DisplayName: name,
+			Measure: domain.AlphaStudentMeasure{FinishedInWeek: inWeek, Quiet: quiet},
+		}
+	}
+	joao := student("João Araújo", 3, false)
+	bia := student("Beatriz Rocha", 1, true)
+
+	tests := []struct {
+		name   string
+		filter domain.AlphaStudentFilter
+		want   []bool // joao, bia
+	}{
+		{"no filter keeps everyone", domain.AlphaStudentFilter{}, []bool{true, true}},
+		{"below the target keeps fewer than 3 counted sessions", domain.AlphaStudentFilter{Keep: domain.AlphaKeepBelowTarget}, []bool{false, true}},
+		{"quiet keeps quiet students", domain.AlphaStudentFilter{Keep: domain.AlphaKeepQuiet}, []bool{false, true}},
+		{"a name matches ignoring case and accents", domain.AlphaStudentFilter{Name: "joao araujo"}, []bool{true, false}},
+		{"a name and a keep must both match", domain.AlphaStudentFilter{Name: "rocha", Keep: domain.AlphaKeepBelowTarget}, []bool{false, true}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, []bool{tt.filter.Matches(joao), tt.filter.Matches(bia)})
+		})
+	}
+}
+
+func TestAlphaStudentKeep_Valid(t *testing.T) {
+	for _, keep := range []domain.AlphaStudentKeep{"", domain.AlphaKeepBelowTarget, domain.AlphaKeepQuiet} {
+		assert.True(t, keep.Valid(), keep)
+	}
+	assert.False(t, domain.AlphaStudentKeep("at_target").Valid())
+}
+
+func TestCountAlphaFilters(t *testing.T) {
+	students := []domain.AlphaStudent{
+		{StudentID: "a", Measure: domain.AlphaStudentMeasure{FinishedInWeek: 0, Quiet: true}},
+		{StudentID: "b", Measure: domain.AlphaStudentMeasure{FinishedInWeek: 2}},
+		{StudentID: "c", Measure: domain.AlphaStudentMeasure{FinishedInWeek: 3}},
+	}
+
+	assert.Equal(t, domain.AlphaFilterCounts{All: 3, BelowTarget: 2, Quiet: 1}, domain.CountAlphaFilters(students))
+}

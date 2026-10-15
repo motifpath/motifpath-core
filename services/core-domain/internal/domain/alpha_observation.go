@@ -356,3 +356,65 @@ func NewAlphaStudentOrder() func(a, b AlphaStudent) int {
 		)
 	}
 }
+
+// AlphaStudentKeep is which students of the alpha a list keeps; the zero
+// value keeps every student.
+type AlphaStudentKeep string
+
+const (
+	// AlphaKeepBelowTarget keeps students with fewer counted sessions in
+	// the week than the target.
+	AlphaKeepBelowTarget AlphaStudentKeep = "below_target"
+	// AlphaKeepQuiet keeps quiet students.
+	AlphaKeepQuiet AlphaStudentKeep = "quiet"
+)
+
+// Valid reports whether k is a keep this service knows; the zero value
+// keeps every student.
+func (k AlphaStudentKeep) Valid() bool {
+	return k == "" || k == AlphaKeepBelowTarget || k == AlphaKeepQuiet
+}
+
+// AlphaStudentFilter narrows a list of the alpha's students. Name, when
+// set, keeps students whose display name contains it, ignoring case and
+// accents; both fields must match.
+type AlphaStudentFilter struct {
+	Name string
+	Keep AlphaStudentKeep
+}
+
+// Matches reports whether s passes every set field of f.
+func (f AlphaStudentFilter) Matches(s AlphaStudent) bool {
+	if f.Name != "" && !ContainsLoosely(s.DisplayName, f.Name) {
+		return false
+	}
+	switch f.Keep {
+	case AlphaKeepBelowTarget:
+		return !s.Measure.AtTargetInWeek()
+	case AlphaKeepQuiet:
+		return s.Measure.Quiet
+	}
+	return true
+}
+
+// AlphaFilterCounts is how many students each keep holds, counted over the
+// whole alpha so a count never moves when another filter is picked.
+type AlphaFilterCounts struct {
+	All         int
+	BelowTarget int
+	Quiet       int
+}
+
+// CountAlphaFilters counts students for every keep.
+func CountAlphaFilters(students []AlphaStudent) AlphaFilterCounts {
+	counts := AlphaFilterCounts{All: len(students)}
+	for _, s := range students {
+		if (AlphaStudentFilter{Keep: AlphaKeepBelowTarget}).Matches(s) {
+			counts.BelowTarget++
+		}
+		if (AlphaStudentFilter{Keep: AlphaKeepQuiet}).Matches(s) {
+			counts.Quiet++
+		}
+	}
+	return counts
+}

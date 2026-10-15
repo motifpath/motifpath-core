@@ -119,6 +119,19 @@ func (f *alphaFixture) finished(studentID string, start time.Time, answered int)
 	})
 }
 
+var (
+	everyone  = domain.AlphaStudentFilter{}
+	firstPage = domain.PageRequest{Limit: domain.DefaultPageLimit}
+)
+
+func studentIDsOrEmpty(o application.AlphaObservation) []string {
+	ids := []string{}
+	for _, s := range o.Students {
+		ids = append(ids, s.Student.StudentID)
+	}
+	return ids
+}
+
 func studentIDs(o application.AlphaObservation) []string {
 	var ids []string
 	for _, s := range o.Students {
@@ -136,7 +149,7 @@ func TestAlphaObservationService_Observe(t *testing.T) {
 		tina := f.user("tina", domain.RoleTeacher)
 		f.path(tina, "Blues guitar basics", 6, f.at(time.September, 21, 9, 0))
 
-		got, err := f.svc.Observe(context.Background(), f.admin, nil)
+		got, err := f.svc.Observe(context.Background(), f.admin, nil, everyone, firstPage)
 
 		require.NoError(t, err)
 		assert.Equal(t, []string{alice}, studentIDs(got))
@@ -162,7 +175,7 @@ func TestAlphaObservationService_Observe(t *testing.T) {
 		f.finished(alice, f.at(time.October, 14, 7, 40), 6)
 		f.activity.lastActive[alice] = f.at(time.October, 14, 7, 50)
 
-		got, err := f.svc.Observe(context.Background(), f.admin, nil)
+		got, err := f.svc.Observe(context.Background(), f.admin, nil, everyone, firstPage)
 
 		require.NoError(t, err)
 		require.Len(t, got.Students, 1)
@@ -188,7 +201,7 @@ func TestAlphaObservationService_Observe(t *testing.T) {
 			}
 		}
 
-		got, err := f.svc.Observe(context.Background(), f.admin, nil)
+		got, err := f.svc.Observe(context.Background(), f.admin, nil, everyone, firstPage)
 
 		require.NoError(t, err)
 		assert.Equal(t, []string{"user-caio", "user-alice", "user-bia"}, studentIDs(got))
@@ -197,7 +210,7 @@ func TestAlphaObservationService_Observe(t *testing.T) {
 	t.Run("only admins may observe", func(t *testing.T) {
 		f := newAlphaFixture(t)
 
-		_, err := f.svc.Observe(context.Background(), domain.User{ID: "t", Role: domain.RoleTeacher}, nil)
+		_, err := f.svc.Observe(context.Background(), domain.User{ID: "t", Role: domain.RoleTeacher}, nil, everyone, firstPage)
 
 		assert.ErrorIs(t, err, domain.ErrForbidden)
 	})
@@ -206,11 +219,161 @@ func TestAlphaObservationService_Observe(t *testing.T) {
 		f := newAlphaFixture(t)
 		wednesday := time.Date(2026, 10, 14, 0, 0, 0, 0, time.UTC)
 
-		_, err := f.svc.Observe(context.Background(), f.admin, &wednesday)
+		_, err := f.svc.Observe(context.Background(), f.admin, &wednesday, everyone, firstPage)
 
 		var verr *domain.ValidationError
 		require.ErrorAs(t, err, &verr)
 		assert.Equal(t, "week", verr.Fields[0].Field)
+	})
+}
+
+func TestAlphaObservationService_Observe_PagesFiltersAndSearch(t *testing.T) {
+	// Five students given a path on 21 Sep: sessions this week 0, 1, 2, 3, 4.
+	setup := func(t *testing.T) (*alphaFixture, []string) {
+		t.Helper()
+		f := newAlphaFixture(t)
+		names := []string{"Ana", "Bia", "Caio", "João Araújo", "Lia"}
+		ids := make([]string, len(names))
+		for i, name := range names {
+			ids[i] = f.user(name, domain.RoleStudent)
+			f.path(ids[i], "Guitar foundations", 10, f.at(time.September, 21, 9, 0))
+			for s := 0; s < i; s++ {
+				f.finished(ids[i], f.at(time.October, 12, 18, s), 5)
+			}
+			f.activity.lastActive[ids[i]] = f.at(time.October, 13, 9, 0)
+		}
+		delete(f.activity.lastActive, ids[0]) // Ana has never been active: quiet
+		return f, ids
+	}
+
+	tests := []struct {
+		name         string
+		filter       domain.AlphaStudentFilter
+		page         domain.PageRequest
+		wantStudents []int // indexes into the setup's students, in order
+		wantTotal    int
+	}{
+		{"a page holds at most limit students, in order", everyone, domain.PageRequest{Limit: 2}, []int{0, 1}, 5},
+		{"the next page continues the same order", everyone, domain.PageRequest{Limit: 2, Offset: 2}, []int{2, 3}, 5},
+		{"an offset past the end is an empty page", everyone, domain.PageRequest{Limit: 2, Offset: 10}, []int{}, 5},
+		{"below the target keeps fewer than 3 counted sessions", domain.AlphaStudentFilter{Keep: domain.AlphaKeepBelowTarget}, firstPage, []int{0, 1, 2}, 3},
+		{"quiet keeps quiet students", domain.AlphaStudentFilter{Keep: domain.AlphaKeepQuiet}, firstPage, []int{0}, 1},
+		{"a name matches ignoring case and accents", domain.AlphaStudentFilter{Name: "joao araujo"}, firstPage, []int{3}, 1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f, ids := setup(t)
+
+			got, err := f.svc.Observe(context.Background(), f.admin, nil, tt.filter, tt.page)
+
+			require.NoError(t, err)
+			want := []string{}
+			for _, i := range tt.wantStudents {
+				want = append(want, ids[i])
+			}
+			assert.Equal(t, want, studentIDsOrEmpty(got))
+			assert.Equal(t, tt.wantTotal, got.StudentsTotal)
+		})
+	}
+
+	t.Run("the summary and every filter's count describe the whole alpha, whatever is asked", func(t *testing.T) {
+		f, _ := setup(t)
+
+		got, err := f.svc.Observe(context.Background(), f.admin, nil, domain.AlphaStudentFilter{Name: "lia", Keep: domain.AlphaKeepQuiet}, domain.PageRequest{Limit: 1})
+
+		require.NoError(t, err)
+		assert.Equal(t, domain.AlphaFilterCounts{All: 5, BelowTarget: 3, Quiet: 1}, got.FilterCounts)
+		assert.Equal(t, 5, got.Summary.StudentCount)
+		assert.Equal(t, 2, got.Summary.AtTargetInWeek)
+	})
+
+	t.Run("an unknown keep is invalid", func(t *testing.T) {
+		f, _ := setup(t)
+
+		_, err := f.svc.Observe(context.Background(), f.admin, nil, domain.AlphaStudentFilter{Keep: "at_target"}, firstPage)
+
+		var invalid *domain.ValidationError
+		require.ErrorAs(t, err, &invalid)
+	})
+}
+
+func TestAlphaObservationService_ListStudents(t *testing.T) {
+	setup := func(t *testing.T) (*alphaFixture, map[string]string) {
+		t.Helper()
+		f := newAlphaFixture(t)
+		ids := map[string]string{}
+		for _, name := range []string{"Camila Rocha", "Beatriz Rocha", "Camila Duarte", "Álvaro Lima"} {
+			ids[name] = f.user(name, domain.RoleStudent)
+			f.path(ids[name], "Guitar foundations", 4, f.at(time.September, 21, 9, 0))
+		}
+		ids["no path"] = f.user("Camila Sem Caminho", domain.RoleStudent)
+		ids["teacher"] = f.user("Camila Professora", domain.RoleTeacher)
+		f.path(ids["teacher"], "Blues guitar basics", 4, f.at(time.September, 21, 9, 0))
+		return f, ids
+	}
+	names := func(page domain.Page[application.AlphaStudentRef]) []string {
+		out := []string{}
+		for _, s := range page.Items {
+			out = append(out, s.DisplayName)
+		}
+		return out
+	}
+
+	tests := []struct {
+		name      string
+		query     string
+		idsOf     []string
+		page      domain.PageRequest
+		want      []string
+		wantTotal int
+	}{
+		{"everyone in the alpha, alphabetically as a person reads names", "", nil, firstPage,
+			[]string{"Álvaro Lima", "Beatriz Rocha", "Camila Duarte", "Camila Rocha"}, 4},
+		{"by part of their name, leaving out anyone outside the alpha", "cami", nil, firstPage,
+			[]string{"Camila Duarte", "Camila Rocha"}, 2},
+		{"a name ignores accents", "alvaro", nil, firstPage, []string{"Álvaro Lima"}, 1},
+		{"by id, leaving out ids outside the alpha", "", []string{"Beatriz Rocha", "teacher", "no path"}, firstPage,
+			[]string{"Beatriz Rocha"}, 1},
+		{"a name and ids must both match", "rocha", []string{"Camila Rocha", "Camila Duarte"}, firstPage,
+			[]string{"Camila Rocha"}, 1},
+		{"a page at a time", "", nil, domain.PageRequest{Limit: 2, Offset: 1},
+			[]string{"Beatriz Rocha", "Camila Duarte"}, 4},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f, ids := setup(t)
+			var studentIDs []string
+			for _, key := range tt.idsOf {
+				studentIDs = append(studentIDs, ids[key])
+			}
+
+			got, err := f.svc.ListStudents(context.Background(), f.admin, tt.query, studentIDs, tt.page)
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, names(got))
+			assert.Equal(t, tt.wantTotal, got.Total)
+		})
+	}
+
+	t.Run("more than 100 ids at once is invalid", func(t *testing.T) {
+		f, _ := setup(t)
+		ids := make([]string, domain.MaxPageLimit+1)
+		for i := range ids {
+			ids[i] = fmt.Sprintf("user-%d", i)
+		}
+
+		_, err := f.svc.ListStudents(context.Background(), f.admin, "", ids, firstPage)
+
+		var invalid *domain.ValidationError
+		require.ErrorAs(t, err, &invalid)
+	})
+
+	t.Run("only admins may list the alpha's students", func(t *testing.T) {
+		f, _ := setup(t)
+
+		_, err := f.svc.ListStudents(context.Background(), domain.User{ID: "t", Role: domain.RoleTeacher}, "a", nil, firstPage)
+
+		require.ErrorIs(t, err, domain.ErrForbidden)
 	})
 }
 
