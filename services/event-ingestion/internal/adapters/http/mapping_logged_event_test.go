@@ -53,6 +53,7 @@ func TestLoggedEvent_ReturnsEachResponseAsSubmitted(t *testing.T) {
 	cases := map[string]struct{ itemKey, response string }{
 		"name the note among choices": {testCellKey, `{"response_type":"name_the_note","note_name":"C","choices":["B","C","C#","F"],"latency_ms":1200}`},
 		"not answered":                {testCellKey, `{"response_type":"not_answered","reason":"unavailable"}`},
+		"self rating in eighths":      {"play_along:" + testDiagramID, `{"response_type":"self_rating","rating":"clean","tempo_bpm":60,"note_value":"eighths"}`},
 		"generated choice":            {"heard_chord:vi", `{"response_type":"generated_choice","way":"cadence_then_chord","music_key":"C","options":["vi","IV"],"choice":"IV","latency_ms":3200,"audio_ms":2500}`},
 		"timed taps":                  {"guide_tone:" + testInstrumentID + ":ii-V-I", `{"response_type":"timed_taps","music_key":"C","tone":"3","tempo_bpm":120,"taps":[{"at_ms":0,"string":1,"fret":1}]}`},
 		"timed taps with none":        {"guide_tone:" + testInstrumentID + ":ii-V-I", `{"response_type":"timed_taps","music_key":"C","tone":"7","tempo_bpm":120,"taps":[]}`},

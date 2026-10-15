@@ -441,6 +441,42 @@ func (e NotAnsweredResponseResponseType) Valid() bool {
 	}
 }
 
+// Defines values for NoteValue.
+const (
+	Eighths       NoteValue = "eighths"
+	Halves        NoteValue = "halves"
+	Quarters      NoteValue = "quarters"
+	Quintuplets   NoteValue = "quintuplets"
+	Sextuplets    NoteValue = "sextuplets"
+	Sixteenths    NoteValue = "sixteenths"
+	ThirtySeconds NoteValue = "thirty_seconds"
+	Triplets      NoteValue = "triplets"
+)
+
+// Valid indicates whether the value is a known member of the NoteValue enum.
+func (e NoteValue) Valid() bool {
+	switch e {
+	case Eighths:
+		return true
+	case Halves:
+		return true
+	case Quarters:
+		return true
+	case Quintuplets:
+		return true
+	case Sextuplets:
+		return true
+	case Sixteenths:
+		return true
+	case ThirtySeconds:
+		return true
+	case Triplets:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for OptionChoiceResponseResponseType.
 const (
 	OptionChoice OptionChoiceResponseResponseType = "option_choice"
@@ -1150,9 +1186,9 @@ type GeneratedChoiceResponse struct {
 	// asked by ear, from the moment its sound started.
 	LatencyMs int `json:"latency_ms"`
 
-	// MusicKey The major key a question was asked in, when its item doesn't fix one: a chart
-	// progression, a heard chord, a heard progression or a guide tone. Absent for every other
-	// item.
+	// MusicKey A major key. In a response, the key a question was asked in when its item doesn't fix one:
+	// a chart progression, a heard chord, a heard progression or a guide tone; absent in a
+	// response to any other item. A planned question always names its key.
 	MusicKey *MusicKey `json:"music_key,omitempty"`
 
 	// Options The options as shown, in the order shown. What an option is depends on the way: a
@@ -1389,9 +1425,9 @@ type MultiTapResponse struct {
 // MultiTapResponseResponseType Discriminator. The student tapped every place of the note they found.
 type MultiTapResponseResponseType string
 
-// MusicKey The major key a question was asked in, when its item doesn't fix one: a chart
-// progression, a heard chord, a heard progression or a guide tone. Absent for every other
-// item.
+// MusicKey A major key. In a response, the key a question was asked in when its item doesn't fix one:
+// a chart progression, a heard chord, a heard progression or a guide tone; absent in a
+// response to any other item. A planned question always names its key.
 type MusicKey string
 
 // NameTheNoteResponse Answer to a fretboard cell shown on the fretboard: the student names its note, picking it
@@ -1466,6 +1502,14 @@ type NotFoundError struct {
 	// Message Human-readable description of what was not found.
 	Message string `json:"message"`
 }
+
+// NoteValue The note value a play-along take was played at: a speed factor on the music as written,
+// with the click staying on the beat. halves = x0.5, quarters = x1 (as written), eighths = x2,
+// triplets = x3, sixteenths = x4, quintuplets = x5, sextuplets = x6, thirty_seconds = x8.
+// A take's effective speed is its tempo_bpm times the factor, in quarter-note beats per
+// minute: 80 BPM in eighths is as fast as 160 BPM in quarters. Tempos of the same item are
+// compared at effective speed. Absent means quarters. Present only with a tempo_bpm.
+type NoteValue string
 
 // OptionChoiceResponse Answer to an authored exercise: the options the student selected. An exercise with one
 // correct option takes one selection; an exercise with several correct options takes
@@ -1892,13 +1936,22 @@ type ResolvePublishOutboxEntryRequest struct {
 
 // SelfRatingResponse The student's own rating of a take they played: a play-along at a tempo, chord changes
 // counted over a minute, or one chord played cleanly. A play-along rating carries tempo_bpm
-// and no changes_per_minute; a chord-change or root-change rating carries changes_per_minute
+// and no changes_per_minute, and may carry the note_value it was played at (quarters when
+// absent); a chord-change or root-change rating carries changes_per_minute
 // and no tempo_bpm; a single chord voicing or a chord's root and fifth (play clean) carries
 // neither.
 type SelfRatingResponse struct {
 	// ChangesPerMinute The number of chord changes made in one minute. Present for a chord change and a root
 	// change.
 	ChangesPerMinute *int `json:"changes_per_minute,omitempty"`
+
+	// NoteValue The note value a play-along take was played at: a speed factor on the music as written,
+	// with the click staying on the beat. halves = x0.5, quarters = x1 (as written), eighths = x2,
+	// triplets = x3, sixteenths = x4, quintuplets = x5, sextuplets = x6, thirty_seconds = x8.
+	// A take's effective speed is its tempo_bpm times the factor, in quarter-note beats per
+	// minute: 80 BPM in eighths is as fast as 160 BPM in quarters. Tempos of the same item are
+	// compared at effective speed. Absent means quarters. Present only with a tempo_bpm.
+	NoteValue *NoteValue `json:"note_value,omitempty"`
 
 	// Rating How the take went, in the student's judgement. struggled = fell apart or needed to
 	// stop; almost = got through with slips; clean = no slips at this measure.
@@ -1907,7 +1960,8 @@ type SelfRatingResponse struct {
 	// ResponseType Discriminator. The student rated a take of their own.
 	ResponseType SelfRatingResponseResponseType `json:"response_type"`
 
-	// TempoBpm The tempo of the take, in beats per minute. Present for a play-along.
+	// TempoBpm The tempo of the take, in beats per minute, as played: the click's tempo. Present for a
+	// play-along.
 	TempoBpm *int `json:"tempo_bpm,omitempty"`
 }
 
@@ -2070,9 +2124,9 @@ type TimedTap struct {
 // tempo sent, four beats to a bar, one chord per bar. Each tap is kept with the time it
 // was made, so every bar can be graded.
 type TimedTapsResponse struct {
-	// MusicKey The major key a question was asked in, when its item doesn't fix one: a chart
-	// progression, a heard chord, a heard progression or a guide tone. Absent for every other
-	// item.
+	// MusicKey A major key. In a response, the key a question was asked in when its item doesn't fix one:
+	// a chart progression, a heard chord, a heard progression or a guide tone; absent in a
+	// response to any other item. A planned question always names its key.
 	MusicKey MusicKey `json:"music_key"`
 
 	// ResponseType Discriminator. The student tapped along with a progression's playback.

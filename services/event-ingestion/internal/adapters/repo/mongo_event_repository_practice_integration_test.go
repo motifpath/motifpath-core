@@ -34,6 +34,8 @@ func practiceBase(eventID string, eventType domain.EventType, studentID string, 
 
 func intRef(v int) *int { return &v }
 
+var eighths = domain.NoteValueEighths
+
 func TestMongoEventRepository_FindByEventID_RoundTripsPracticeEvents(t *testing.T) {
 	repo := setupMongoRepository(t)
 	ctx := context.Background()
@@ -102,7 +104,7 @@ func TestMongoEventRepository_FindByEventID_RoundTripsPracticeEvents(t *testing.
 			TrackingEventBase: practiceBase("a1000000-0000-4000-8000-000000000006", domain.EventTypePracticeItemAnswered, practiceStudentID, practiceAt),
 			PracticeSessionID: practiceSessionID,
 			ItemKey:           "play_along:55555555-5555-4555-8555-555555555555",
-			Response:          domain.PracticeResponse{Type: domain.PracticeResponseSelfRating, Rating: domain.SelfRatingStruggled, TempoBPM: intRef(60)},
+			Response:          domain.PracticeResponse{Type: domain.PracticeResponseSelfRating, Rating: domain.SelfRatingStruggled, TempoBPM: intRef(60), NoteValue: &eighths},
 		},
 		domain.PracticeItemAnsweredEvent{
 			TrackingEventBase: practiceBase("a1000000-0000-4000-8000-000000000101", domain.EventTypePracticeItemAnswered, practiceStudentID, practiceAt),

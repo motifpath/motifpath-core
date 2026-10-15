@@ -32,6 +32,7 @@ func wireJSON(t *testing.T, event domain.TrackingEvent) string {
 
 func TestToWireEvent_PracticeEvents(t *testing.T) {
 	latency, tap, tempo, str, fret, audio := 1800, 350, 90, 6, 0, 5000
+	eighths := domain.NoteValueEighths
 
 	cases := []struct {
 		name  string
@@ -114,6 +115,16 @@ func TestToWireEvent_PracticeEvents(t *testing.T) {
 				Response:          domain.PracticeResponse{Type: domain.PracticeResponseSelfRating, Rating: domain.SelfRatingClean, TempoBPM: &tempo},
 			},
 			want: `{` + wireBaseJSON + `,"event_type":"practice.item_answered","practice_session_id":"44444444-4444-4444-8444-444444444444","item_key":"play_along:55555555-5555-4555-8555-555555555555","response":{"response_type":"self_rating","rating":"clean","tempo_bpm":90}}`,
+		},
+		{
+			name: "self-rated take in eighths",
+			event: domain.PracticeItemAnsweredEvent{
+				TrackingEventBase: practiceWireBase(domain.EventTypePracticeItemAnswered),
+				PracticeSessionID: "44444444-4444-4444-8444-444444444444",
+				ItemKey:           "play_along:55555555-5555-4555-8555-555555555555",
+				Response:          domain.PracticeResponse{Type: domain.PracticeResponseSelfRating, Rating: domain.SelfRatingClean, TempoBPM: &tempo, NoteValue: &eighths},
+			},
+			want: `{` + wireBaseJSON + `,"event_type":"practice.item_answered","practice_session_id":"44444444-4444-4444-8444-444444444444","item_key":"play_along:55555555-5555-4555-8555-555555555555","response":{"response_type":"self_rating","rating":"clean","tempo_bpm":90,"note_value":"eighths"}}`,
 		},
 		{
 			name: "note named among choices",
