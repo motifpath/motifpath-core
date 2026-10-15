@@ -17,6 +17,7 @@ func TestToDomainEvent_PracticeItemAnswered(t *testing.T) {
 	const base = `"event_id":"11111111-1111-4111-8111-111111111111","student_id":"22222222-2222-4222-8222-222222222222","session_id":"33333333-3333-4333-8333-333333333333","occurred_at":"2026-10-04T10:00:00Z","event_type":"practice.item_answered","practice_session_id":"44444444-4444-4444-8444-444444444444"`
 	occurredAt := time.Date(2026, 10, 4, 10, 0, 0, 0, time.UTC)
 
+	eighths := domain.NoteValueEighths
 	cases := []struct {
 		name    string
 		payload string
@@ -28,6 +29,14 @@ func TestToDomainEvent_PracticeItemAnswered(t *testing.T) {
 			want: domain.PracticeAnswer{
 				ItemKey:  "play_along:55555555-5555-4555-8555-555555555555",
 				Response: domain.PracticeResponse{Type: domain.PracticeResponseSelfRating, Rating: domain.SelfRatingClean, TempoBPM: intPtr(90)},
+			},
+		},
+		{
+			name:    "self-rated take in eighths",
+			payload: `{` + base + `,"item_key":"play_along:55555555-5555-4555-8555-555555555555","response":{"response_type":"self_rating","rating":"clean","tempo_bpm":60,"note_value":"eighths"}}`,
+			want: domain.PracticeAnswer{
+				ItemKey:  "play_along:55555555-5555-4555-8555-555555555555",
+				Response: domain.PracticeResponse{Type: domain.PracticeResponseSelfRating, Rating: domain.SelfRatingClean, TempoBPM: intPtr(60), NoteValue: &eighths},
 			},
 		},
 		{

@@ -45,6 +45,8 @@ func answeredFields(itemKey, response string) string {
 
 func intPtr(v int) *int { return &v }
 
+func noteValuePtr(v domain.NoteValue) *domain.NoteValue { return &v }
+
 func TestToDomainEvent_PracticeSessionStarted(t *testing.T) {
 	body := practiceBody(t, "practice.session_started", fmt.Sprintf(
 		`,"practice_session_id":%q,"instrument_id":%q,"minutes":10,"planned_items":[{"item_key":%q,"reason":"warm_up"},{"item_key":%q,"reason":"new"}]`,
@@ -130,6 +132,12 @@ func TestToDomainEvent_PracticeItemAnsweredResponses(t *testing.T) {
 			itemKey:  "play_along:" + testDiagramID,
 			response: `{"response_type":"self_rating","rating":"clean","tempo_bpm":90}`,
 			want:     domain.PracticeResponse{Type: domain.PracticeResponseSelfRating, Rating: domain.SelfRatingClean, TempoBPM: intPtr(90)},
+		},
+		{
+			name:     "self rating of a play-along played in eighths",
+			itemKey:  "play_along:" + testDiagramID,
+			response: `{"response_type":"self_rating","rating":"clean","tempo_bpm":60,"note_value":"eighths"}`,
+			want:     domain.PracticeResponse{Type: domain.PracticeResponseSelfRating, Rating: domain.SelfRatingClean, TempoBPM: intPtr(60), NoteValue: noteValuePtr(domain.NoteValueEighths)},
 		},
 		{
 			name:     "name the note among four choices",
@@ -351,6 +359,8 @@ func TestToDomainEvent_PracticeValidationFailures(t *testing.T) {
 			answeredFields("exercise:"+testDiagramID, fmt.Sprintf(`{"response_type":"option_choice","option_ids":[%q,%q],"latency_ms":900}`, testOptionID, testOptionID)), domain.ErrInvalidField, "response"},
 		{"answered with an unknown rating", "practice.item_answered",
 			answeredFields("play_along:"+testDiagramID, `{"response_type":"self_rating","rating":"perfect","tempo_bpm":90}`), domain.ErrInvalidField, "response"},
+		{"answered with a note value that isn't one", "practice.item_answered",
+			answeredFields("play_along:"+testDiagramID, `{"response_type":"self_rating","rating":"clean","tempo_bpm":60,"note_value":"fifths"}`), domain.ErrInvalidField, "note_value"},
 		{"answered with a tempo above 400", "practice.item_answered",
 			answeredFields("play_along:"+testDiagramID, `{"response_type":"self_rating","rating":"clean","tempo_bpm":401}`), domain.ErrInvalidField, "response"},
 		{"answered naming a note among three choices", "practice.item_answered",

@@ -65,11 +65,20 @@ type PracticeItemState struct {
 	Accuracy float64
 	Fluency  float64
 	// BestCleanBPM is the best tempo rated clean since the latest teacher
-	// review; nil with no clean take.
-	BestCleanBPM *int
+	// review, the fastest at effective speed, as played in
+	// BestCleanNoteValue; nil with no clean take. A nil note value with a
+	// tempo was played in quarters.
+	BestCleanBPM       *int
+	BestCleanNoteValue *TempoNoteValue
 	// RightByResponse counts the right answers by the way the item was
 	// asked, such as name_the_note; nil before any.
 	RightByResponse map[string]int
+}
+
+// BestCleanTempo is the best clean take's tempo as played, nil with no clean
+// take, and the note value it was played at: quarters without one.
+func (s PracticeItemState) BestCleanTempo() (*int, TempoNoteValue) {
+	return s.BestCleanBPM, tempoNoteValueOr(s.BestCleanNoteValue)
 }
 
 // Stale reports whether s was folded under mastery rules older than these.
@@ -142,12 +151,17 @@ const (
 	PracticePickStretch     PracticePickReason = "stretch"
 )
 
-// PlannedPlayAlong is how a play-along is played in a session.
+// PlannedPlayAlong is how a play-along is played in a session: from a
+// start tempo in a note value, toward a target tempo in quarters (as
+// written). The best clean tempo is as played, in its note value; both are
+// nil with no clean take.
 type PlannedPlayAlong struct {
-	DiagramID         string
-	StartTempoBPM     int
-	TargetTempoBPM    int
-	BestCleanTempoBPM *int
+	DiagramID          string
+	StartTempoBPM      int
+	StartNoteValue     TempoNoteValue
+	TargetTempoBPM     int
+	BestCleanTempoBPM  *int
+	BestCleanNoteValue *TempoNoteValue
 }
 
 // PracticeFocusSource is who chose a session's subjects.
@@ -393,9 +407,10 @@ func clampTempo(bpm, ceiling int) int {
 }
 
 // PlayAlongSeconds estimates how long playing d's default playback at tempo
-// takes in a session: takes of a count-in bar plus the playback's steps,
-// each followed by its rating.
-func PlayAlongSeconds(d Diagram, tempo int, warmUp bool) int {
+// in note value v takes in a session: takes of a count-in bar plus the
+// playback's steps, each followed by its rating. The count-in follows the
+// click; the steps play v's times faster than written.
+func PlayAlongSeconds(d Diagram, tempo int, v TempoNoteValue, warmUp bool) int {
 	takes := focusTakes
 	if warmUp {
 		takes = warmUpTakes
@@ -405,10 +420,11 @@ func PlayAlongSeconds(d Diagram, tempo int, warmUp bool) int {
 	if signature.Beats == 0 {
 		signature = DefaultTimeSignature
 	}
-	beats := float64(signature.Beats)
+	var written float64
 	for _, step := range playback.Steps {
-		beats += float64(step.Value.Num) / float64(step.Value.Den) * float64(signature.BeatValue)
+		written += float64(step.Value.Num) / float64(step.Value.Den) * float64(signature.BeatValue)
 	}
+	beats := float64(signature.Beats) + written/v.factor()
 	take := beats * 60 / float64(tempo)
 	return int(math.Ceil(float64(takes) * (take + rateSeconds)))
 }

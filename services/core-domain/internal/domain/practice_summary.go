@@ -149,11 +149,13 @@ type PracticeSessionSpan struct {
 // PracticeItemSnapshot is a student's state on one practice item as it
 // stood at the end of a past day.
 type PracticeItemSnapshot struct {
-	ItemKey      string
-	Counted      int
-	Accuracy     float64
-	Fluency      float64
-	BestCleanBPM *int
+	ItemKey  string
+	Counted  int
+	Accuracy float64
+	Fluency  float64
+	// BestCleanBPM is as played in BestCleanNoteValue (quarters when nil).
+	BestCleanBPM       *int
+	BestCleanNoteValue *TempoNoteValue
 }
 
 // SkillProgressMeasure is what improved in a progress line.
@@ -187,17 +189,18 @@ func (p SkillProgress) improvement() float64 {
 // from the states before to the states now, keyed by item key. Accuracy
 // and fluency are the means over the items practised at each point, and
 // start from 0 for a skill first practised since; the best clean tempo is
-// the best over the items, and needs a clean take on both sides. Only a
+// the best over the items at effective speed, in quarter-note beats per
+// minute, and needs a clean take on both sides. Only a
 // measure that improved has a line; a skill with nothing practised now
 // has none.
 func SkillProgressLines(skill KnowledgeNode, itemKeys []string, now map[string]PracticeItemState, before map[string]PracticeItemSnapshot) []SkillProgress {
 	var after, then progressTotals
 	for _, key := range itemKeys {
 		if s, ok := now[key]; ok && s.Counted > 0 {
-			after.add(s.Accuracy, s.Fluency, s.BestCleanBPM)
+			after.add(s.Accuracy, s.Fluency, effectiveTempo(s.BestCleanBPM, s.BestCleanNoteValue))
 		}
 		if s, ok := before[key]; ok && s.Counted > 0 {
-			then.add(s.Accuracy, s.Fluency, s.BestCleanBPM)
+			then.add(s.Accuracy, s.Fluency, effectiveTempo(s.BestCleanBPM, s.BestCleanNoteValue))
 		}
 	}
 	if after.items == 0 {
@@ -211,28 +214,36 @@ func SkillProgressLines(skill KnowledgeNode, itemKeys []string, now map[string]P
 	}
 	line(SkillProgressMeasureAccuracy, then.meanAccuracy(), after.meanAccuracy())
 	line(SkillProgressMeasureFluency, then.meanFluency(), after.meanFluency())
-	if then.bestBPM != nil && after.bestBPM != nil {
-		line(SkillProgressMeasureBestCleanTempo, float64(*then.bestBPM), float64(*after.bestBPM))
+	if then.bestSpeed != nil && after.bestSpeed != nil {
+		line(SkillProgressMeasureBestCleanTempo, *then.bestSpeed, *after.bestSpeed)
 	}
 	return lines
 }
 
 // progressTotals sums a skill's practised items at one point in time.
 type progressTotals struct {
-	items    int
-	accuracy float64
-	fluency  float64
-	bestBPM  *int
+	items     int
+	accuracy  float64
+	fluency   float64
+	bestSpeed *float64
 }
 
-func (t *progressTotals) add(accuracy, fluency float64, bestBPM *int) {
+func (t *progressTotals) add(accuracy, fluency float64, bestSpeed *float64) {
 	t.items++
 	t.accuracy += accuracy
 	t.fluency += fluency
-	if bestBPM != nil && (t.bestBPM == nil || *bestBPM > *t.bestBPM) {
-		best := *bestBPM
-		t.bestBPM = &best
+	if bestSpeed != nil && (t.bestSpeed == nil || *bestSpeed > *t.bestSpeed) {
+		t.bestSpeed = bestSpeed
 	}
+}
+
+// effectiveTempo is a best clean tempo at effective speed, or nil without one.
+func effectiveTempo(bpm *int, v *TempoNoteValue) *float64 {
+	if bpm == nil {
+		return nil
+	}
+	speed := tempoNoteValueOr(v).EffectiveSpeed(*bpm)
+	return &speed
 }
 
 func (t progressTotals) meanAccuracy() float64 {

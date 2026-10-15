@@ -75,6 +75,7 @@ type practiceResponseDoc struct {
 	AudioMs          *int     `bson:"audio_ms,omitempty"`
 	Rating           string   `bson:"rating,omitempty"`
 	TempoBPM         *int     `bson:"tempo_bpm,omitempty"`
+	NoteValue        *string  `bson:"note_value,omitempty"`
 	ChangesPerMinute *int     `bson:"changes_per_minute,omitempty"`
 	Choices          []string `bson:"choices,omitempty"`
 	Reason           string   `bson:"reason,omitempty"`
@@ -321,6 +322,7 @@ func toPracticeResponseDoc(r domain.PracticeResponse) *practiceResponseDoc {
 		AudioMs:          r.AudioMs,
 		Rating:           string(r.Rating),
 		TempoBPM:         r.TempoBPM,
+		NoteValue:        noteValueString(r.NoteValue),
 		ChangesPerMinute: r.ChangesPerMinute,
 		Choices:          r.Choices,
 		Reason:           string(r.Reason),
@@ -366,6 +368,7 @@ func fromPracticeResponseDoc(d *practiceResponseDoc) domain.PracticeResponse {
 		AudioMs:          d.AudioMs,
 		Rating:           domain.SelfRating(d.Rating),
 		TempoBPM:         d.TempoBPM,
+		NoteValue:        domainNoteValue(d.NoteValue),
 		ChangesPerMinute: d.ChangesPerMinute,
 		Choices:          d.Choices,
 		Reason:           domain.NotAnsweredReason(d.Reason),
@@ -494,4 +497,22 @@ func fromSongChartContextDoc(d *songChartContextDoc) domain.SongChartContext {
 		return domain.SongChartContext{}
 	}
 	return domain.SongChartContext{SongChartID: d.SongChartID, RevisionNumber: d.RevisionNumber}
+}
+
+// noteValueString is v as stored, or nil when the take carries no note value.
+func noteValueString(v *domain.NoteValue) *string {
+	if v == nil {
+		return nil
+	}
+	s := string(*v)
+	return &s
+}
+
+// domainNoteValue is a stored note value back in the domain, or nil when none was stored.
+func domainNoteValue(s *string) *domain.NoteValue {
+	if s == nil {
+		return nil
+	}
+	v := domain.NoteValue(*s)
+	return &v
 }

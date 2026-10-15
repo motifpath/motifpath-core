@@ -165,7 +165,7 @@ func TestMongoPracticeItemHistoryRepository(t *testing.T) {
 	require.NoError(t, repo.EnsureIndexes(ctx))
 	itemKey := "play_along:" + diagram1
 	monday := time.Date(2026, 10, 5, 0, 0, 0, 0, time.UTC)
-	fold := domain.ItemFold{Attempts: 3, Counted: 3, Accuracy: 0.9, Fluency: 0.7, Box: 2, BestCleanBPM: intPtr(90)}
+	fold := domain.ItemFold{Attempts: 3, Counted: 3, Accuracy: 0.9, Fluency: 0.7, Box: 2, BestCleanBPM: intPtr(90), BestCleanNoteValue: &eighths}
 
 	require.NoError(t, repo.Put(ctx, studentA, itemKey, []domain.ItemSnapshot{{Day: monday, Fold: fold}}))
 	better := fold
@@ -189,6 +189,7 @@ func TestMongoPracticeItemHistoryRepository(t *testing.T) {
 	assert.InDelta(t, 0.7, mon["fluency"], 1e-9)
 	assert.Equal(t, string(better.Level()), mon["level"])
 	assert.EqualValues(t, 90, mon["best_clean_bpm"])
+	assert.Equal(t, "eighths", mon["best_clean_note_value"])
 	assert.EqualValues(t, domain.PracticeRulesVersion, mon["rules_version"])
 }
 

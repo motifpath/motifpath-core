@@ -28,6 +28,10 @@ func registerPracticeSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]*)" rates a take of play-along "([^"]*)" as "([^"]*)" without a tempo$`, w.ratesATakeWithoutATempo)
 	sc.Step(`^"([^"]*)" practises the play-along "([^"]*)" and it is in box (\d+)$`, w.practisesThePlayAlongInBox)
 	sc.Step(`^"([^"]*)"'s best clean tempo on "([^"]*)" is (\d+) BPM$`, w.bestCleanTempoIs)
+	sc.Step(`^"([^"]*)" rates a take of (?:play-along )?"([^"]*)" as "([^"]*)" at (\d+) BPM in (\w+)$`, w.ratesATakeInNoteValue)
+	// The same words set up a best clean tempo in a note value (Given) or check one (Then).
+	sc.Given(`^"([^"]*)"'s best clean tempo on "([^"]*)" is (\d+) BPM in (\w+)$`, w.hasBestCleanTempoInNoteValue)
+	sc.Then(`^"([^"]*)"'s best clean tempo on "([^"]*)" is (\d+) BPM in (\w+)$`, w.bestCleanTempoInNoteValueIs)
 
 	// ── Outcomes ───────────────────────────────────────────────────────────────
 	sc.Step(`^"([^"]*)" has self-assessed evidence for play-along "([^"]*)" rated "([^"]*)" at (\d+) BPM$`, w.hasSelfAssessedEvidence)
@@ -89,6 +93,20 @@ func (w *world) ratesATake(student, diagram, r string, bpm int) error {
 	})
 }
 
+func (w *world) ratesATakeInNoteValue(student, diagram, r string, bpm int, noteValue string) error {
+	rt, err := rating(r)
+	if err != nil {
+		return err
+	}
+	v := domain.NoteValue(noteValue)
+	if !v.Valid() {
+		return fmt.Errorf("unknown note value %q", noteValue)
+	}
+	return w.answer(student, w.playAlongKey(diagram), domain.PracticeResponse{
+		Type: domain.PracticeResponseSelfRating, Rating: rt, TempoBPM: &bpm, NoteValue: &v,
+	})
+}
+
 func (w *world) ratesATakeWithoutATempo(student, diagram, r string) error {
 	rt, err := rating(r)
 	if err != nil {
@@ -129,6 +147,26 @@ func (w *world) bestCleanTempoIs(student, diagram string, bpm int) error {
 	}
 	if fold.BestCleanBPM == nil || *fold.BestCleanBPM != bpm {
 		return fmt.Errorf("best clean tempo is %v, want %d", fold.BestCleanBPM, bpm)
+	}
+	return nil
+}
+
+func (w *world) hasBestCleanTempoInNoteValue(student, diagram string, bpm int, noteValue string) error {
+	if err := w.ratesATakeInNoteValue(student, diagram, string(domain.SelfRatingClean), bpm, noteValue); err != nil {
+		return err
+	}
+	return w.bestCleanTempoInNoteValueIs(student, diagram, bpm, noteValue)
+}
+
+func (w *world) bestCleanTempoInNoteValueIs(student, diagram string, bpm int, noteValue string) error {
+	fold, err := w.fold(student, w.playAlongKey(diagram))
+	if err != nil {
+		return err
+	}
+	if fold.BestCleanBPM == nil || *fold.BestCleanBPM != bpm ||
+		fold.BestCleanNoteValue == nil || string(*fold.BestCleanNoteValue) != noteValue {
+		return fmt.Errorf("best clean tempo is %v BPM in %v, want %d BPM in %s",
+			fold.BestCleanBPM, fold.BestCleanNoteValue, bpm, noteValue)
 	}
 	return nil
 }

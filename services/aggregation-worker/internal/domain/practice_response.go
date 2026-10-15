@@ -88,9 +88,12 @@ type PracticeResponse struct {
 	LatencyMs *int
 	// AudioMs (option_choice, generated_choice) is the audio the student hears once
 	// before answering; nil without audio.
-	AudioMs          *int
-	Rating           SelfRating
-	TempoBPM         *int
+	AudioMs  *int
+	Rating   SelfRating
+	TempoBPM *int
+	// NoteValue (self_rating) is the note value a play-along take was played at, as
+	// given; nil when the client sent none.
+	NoteValue        *NoteValue
 	ChangesPerMinute *int
 }
 

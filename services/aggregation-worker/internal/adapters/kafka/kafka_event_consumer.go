@@ -217,6 +217,7 @@ func toPracticeAnswer(w wireEvent) *domain.PracticeAnswer {
 		AudioMs:          r.AudioMs,
 		Rating:           domain.SelfRating(r.Rating),
 		TempoBPM:         r.TempoBPM,
+		NoteValue:        noteValueOf(r.NoteValue),
 		ChangesPerMinute: r.ChangesPerMinute,
 		Choices:          r.Choices,
 		Reason:           domain.NotAnsweredReason(r.Reason),
@@ -264,4 +265,13 @@ func toFeltRatings(wire []feltRatingWire) []domain.FeltRating {
 		ratings[i] = domain.FeltRating{DrillTemplateKey: r.DrillTemplateKey, Felt: domain.Felt(r.Felt)}
 	}
 	return ratings
+}
+
+// noteValueOf is the take's note value, or nil when the event carries none.
+func noteValueOf(s *string) *domain.NoteValue {
+	if s == nil {
+		return nil
+	}
+	v := domain.NoteValue(*s)
+	return &v
 }

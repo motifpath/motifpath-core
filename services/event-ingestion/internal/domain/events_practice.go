@@ -86,6 +86,31 @@ const (
 	SelfRatingClean     SelfRating = "clean"
 )
 
+// NoteValue is the note value a play-along take was played at: a speed factor on the
+// music as written, with the click staying on the beat. Absent means quarters.
+type NoteValue string
+
+const (
+	NoteValueHalves        NoteValue = "halves"
+	NoteValueQuarters      NoteValue = "quarters"
+	NoteValueEighths       NoteValue = "eighths"
+	NoteValueTriplets      NoteValue = "triplets"
+	NoteValueSixteenths    NoteValue = "sixteenths"
+	NoteValueQuintuplets   NoteValue = "quintuplets"
+	NoteValueSextuplets    NoteValue = "sextuplets"
+	NoteValueThirtySeconds NoteValue = "thirty_seconds"
+)
+
+// Valid reports whether v is one of the note values.
+func (v NoteValue) Valid() bool {
+	switch v {
+	case NoteValueHalves, NoteValueQuarters, NoteValueEighths, NoteValueTriplets,
+		NoteValueSixteenths, NoteValueQuintuplets, NoteValueSextuplets, NoteValueThirtySeconds:
+		return true
+	}
+	return false
+}
+
 // PracticeResponse is the student's raw answer to one practice item, exactly as given:
 // it never says whether the answer was right — the aggregation worker grades it. It
 // stands in for practice.yaml's discriminated union as one flat struct, tagged by Type,
@@ -148,9 +173,12 @@ type PracticeResponse struct {
 	AudioMs *int
 
 	// Rating (self_rating) is always set; TempoBPM for a play-along take (and on
-	// timed_taps), ChangesPerMinute for a chord-change or root-change minute.
+	// timed_taps), ChangesPerMinute for a chord-change or root-change minute. NoteValue
+	// is the note value a play-along take was played at, kept as given; nil when the
+	// client sent none.
 	Rating           SelfRating
 	TempoBPM         *int
+	NoteValue        *NoteValue
 	ChangesPerMinute *int
 }
 

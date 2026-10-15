@@ -24,6 +24,7 @@ func registerPracticeSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" submits a practice\.session_started event for a (\d+)-minute session with no planned items$`, w.submitSessionStartedWithNoItems)
 	sc.Step(`^"([^"]+)" submits a practice\.item_answered event naming the note "([^"]+)" for the guitar cell on string (\d+) at fret (\d+)$`, w.submitNameTheNote)
 	sc.Step(`^"([^"]+)" submits a practice\.item_answered event rating a take of a play-along "([^"]+)" at (\d+) BPM$`, w.submitSelfRatedTake)
+	sc.Step(`^"([^"]+)" submits a practice\.item_answered event rating a take of a play-along "([^"]+)" at (\d+) BPM in (?:the note value "([^"]+)"|(\w+))$`, w.submitSelfRatedTakeInNoteValue)
 	sc.Step(`^"([^"]+)" submits a practice\.item_answered event naming a note that claims a tap time of (\d+) milliseconds$`, w.submitNameTheNoteClaimingTap)
 	sc.Step(`^"([^"]+)" submits a practice\.item_answered event for the item key "([^"]+)"$`, w.submitAnswerForItemKey)
 	sc.Step(`^"([^"]+)" submits a practice\.item_answered event whose response also claims it is correct$`, w.submitAnswerClaimingCorrect)
@@ -37,6 +38,7 @@ func registerPracticeSteps(sc *godog.ScenarioContext, w *world) {
 
 	sc.Step(`^the stored and published practice\.item_answered event carries a tap time of (\d+) milliseconds$`, w.answerCarriesTap)
 	sc.Step(`^the stored and published practice\.item_answered event carries no tap time$`, w.answerCarriesNoTap)
+	sc.Step(`^the stored and published practice\.item_answered event keeps the tempo of (\d+) BPM and the note value (\w+)$`, w.answerKeepsTempoAndNoteValue)
 }
 
 var guitarID = deterministicUUID("instrument", "guitar")
@@ -79,6 +81,7 @@ type practiceResponse struct {
 	LatencyMs    *int     `json:"latency_ms,omitempty"`
 	Rating       string   `json:"rating,omitempty"`
 	TempoBPM     int      `json:"tempo_bpm,omitempty"`
+	NoteValue    string   `json:"note_value,omitempty"`
 	OptionIDs    []string `json:"option_ids,omitempty"`
 	Choices      []string `json:"choices,omitempty"`
 	Reason       string   `json:"reason,omitempty"`
@@ -252,6 +255,23 @@ func (w *world) submitSelfRatedTake(name, rating, tempoStr string) error {
 	}))
 }
 
+// submitSelfRatedTakeInNoteValue sends a play-along rating with a note value: a quoted
+// one is sent as written (it may not be one), a bare one is a real value.
+func (w *world) submitSelfRatedTakeInNoteValue(name, rating, tempoStr, quoted, bare string) error {
+	tempo, err := strconv.Atoi(tempoStr)
+	if err != nil {
+		return err
+	}
+	noteValue := bare
+	if quoted != "" {
+		noteValue = quoted
+	}
+	itemKey := "play_along:" + deterministicUUID("diagram", name, "take").String()
+	return w.submitPractice(w.answerEvent(name, itemKey, &practiceResponse{
+		ResponseType: "self_rating", Rating: rating, TempoBPM: tempo, NoteValue: noteValue,
+	}))
+}
+
 func (w *world) submitNameTheNoteClaimingTap(name, tapStr string) error {
 	tap, err := strconv.Atoi(tapStr)
 	if err != nil {
@@ -400,6 +420,26 @@ func (w *world) answerCarriesNoTap() error {
 	for label, got := range map[string]*int{"stored": stored.TapMs, "published": published.TapMs} {
 		if got != nil {
 			return fmt.Errorf("the %s answer carries a tap time of %d, want none", label, *got)
+		}
+	}
+	return nil
+}
+
+func (w *world) answerKeepsTempoAndNoteValue(tempoStr, noteValue string) error {
+	tempo, err := strconv.Atoi(tempoStr)
+	if err != nil {
+		return err
+	}
+	stored, published, err := w.storedAndPublishedAnswer()
+	if err != nil {
+		return err
+	}
+	for label, got := range map[string]domain.PracticeResponse{"stored": stored.Response, "published": published.Response} {
+		if got.TempoBPM == nil || *got.TempoBPM != tempo {
+			return fmt.Errorf("the %s answer's tempo is %v, want %d", label, got.TempoBPM, tempo)
+		}
+		if got.NoteValue == nil || string(*got.NoteValue) != noteValue {
+			return fmt.Errorf("the %s answer's note value is %v, want %s", label, got.NoteValue, noteValue)
 		}
 	}
 	return nil
