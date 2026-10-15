@@ -93,8 +93,9 @@ func TestPracticeSessionService_ComposePlanHarmonyDrills(t *testing.T) {
 		}
 	})
 
-	t.Run("new diatonic chords come key by key around the circle of fifths", func(t *testing.T) {
+	t.Run("new diatonic chords come key by key around the circle of fifths, however new items are shuffled", func(t *testing.T) {
 		f := harmonyFixture(t, practiceGuitar)
+		f.svc.WithShuffle(reverseOrder)
 
 		plan := f.composeInTheHead(t, 20)
 

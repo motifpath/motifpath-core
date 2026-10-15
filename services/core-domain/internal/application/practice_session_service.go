@@ -930,7 +930,8 @@ func (c *composer) shuffleCandidates(candidates []practiceCandidate) {
 }
 
 // shuffleWithinNodes keeps candidates' nodes in the order they first
-// appear, and puts each node's candidates in random order.
+// appear, and puts each node's candidates in random order, except that
+// items introduced in a set order keep that order among themselves.
 func (c *composer) shuffleWithinNodes(candidates []practiceCandidate) []practiceCandidate {
 	var order []string
 	byNode := map[string][]practiceCandidate{}
@@ -948,9 +949,29 @@ func (c *composer) shuffleWithinNodes(candidates []practiceCandidate) []practice
 	for _, node := range order {
 		group := byNode[node]
 		c.shuffleCandidates(group)
-		shuffled = append(shuffled, group...)
+		shuffled = append(shuffled, inIntroductionOrder(group)...)
 	}
 	return shuffled
+}
+
+// inIntroductionOrder puts the candidates introduced in a set order back in
+// that order, in the places they hold among the others.
+func inIntroductionOrder(candidates []practiceCandidate) []practiceCandidate {
+	var places []int
+	var ranked []practiceCandidate
+	for i, cand := range candidates {
+		if _, ok := cand.drill.(domain.IntroducedInOrder); ok {
+			places = append(places, i)
+			ranked = append(ranked, cand)
+		}
+	}
+	slices.SortStableFunc(ranked, func(a, b practiceCandidate) int {
+		return a.drill.(domain.IntroducedInOrder).IntroductionRank() - b.drill.(domain.IntroducedInOrder).IntroductionRank()
+	})
+	for n, i := range places {
+		candidates[i] = ranked[n]
+	}
+	return candidates
 }
 
 // takeInTurn reorders candidates one instrument at a time, in the order

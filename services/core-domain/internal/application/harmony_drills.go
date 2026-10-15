@@ -49,7 +49,6 @@ func (src harmonySource) SkillItems(ctx context.Context, skillID, _ string, _ bo
 			items = append(items, item)
 		}
 	}
-	slices.SortStableFunc(items, func(a, b domain.DrillItem) int { return harmonyOrder(a) - harmonyOrder(b) })
 	return items, nil
 }
 
@@ -83,21 +82,6 @@ func (src harmonySource) item(ctx context.Context, itemKey string, catalog *[]do
 		return nil, false, nil
 	}
 	return domain.ChartProgressionItem{Progression: (*catalog)[i], Catalog: *catalog}, true, nil
-}
-
-// harmonyOrder places a numeral item by its key around the circle of
-// fifths, then its numeral; a chart keeps its catalog place after them.
-func harmonyOrder(item domain.DrillItem) int {
-	var key, numeral string
-	switch i := item.(type) {
-	case domain.DiatonicChordItem:
-		key, numeral = i.Key, i.Numeral
-	case domain.ChordFunctionItem:
-		key, numeral = i.Key, i.Numeral
-	default:
-		return len(domain.NewHarmonyKeyOrder) * len(domain.ChordNumerals)
-	}
-	return slices.Index(domain.NewHarmonyKeyOrder, key)*len(domain.ChordNumerals) + slices.Index(domain.ChordNumerals, numeral)
 }
 
 // reading is how a session's harmony questions draw chords. Only a session

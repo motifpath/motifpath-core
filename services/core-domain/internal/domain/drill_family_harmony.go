@@ -166,6 +166,18 @@ func (i DiatonicChordItem) Plan(way string, planning DrillPlanning) PlannedDrill
 	return q
 }
 
+// IntroductionRank places the item by its key around the circle of fifths,
+// then its numeral: see NewHarmonyKeyOrder.
+func (i DiatonicChordItem) IntroductionRank() int { return numeralRank(i.Key, i.Numeral) }
+
+// IntroductionRank places the item as a diatonic chord's: see
+// NewHarmonyKeyOrder.
+func (i ChordFunctionItem) IntroductionRank() int { return numeralRank(i.Key, i.Numeral) }
+
+func numeralRank(key, numeral string) int {
+	return slices.Index(NewHarmonyKeyOrder, key)*len(ChordNumerals) + slices.Index(ChordNumerals, numeral)
+}
+
 // ChordFunctionItem is a numeral's function in a major key, asked as the
 // function of its chord or its chord for the function.
 type ChordFunctionItem struct {
