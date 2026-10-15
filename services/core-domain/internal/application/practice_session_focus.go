@@ -119,6 +119,16 @@ func (c *composer) subjectPools(p pools) pools {
 	}
 }
 
+// stretchFits reports whether a stretch candidate is worth finding: inside
+// its drill's window, of a subject or of a node that can still become one,
+// and at its subject's new rungs when those are found. Candidates that
+// fail it don't use up the time stretch items are found for.
+func (c *composer) stretchFits(cand practiceCandidate) bool {
+	node := candidateNode(cand)
+	return node != "" && c.inWindow(cand) && c.atNewRung(cand) &&
+		(slices.Contains(c.subjects, node) || len(c.subjects) < domain.MaxFocusNodes)
+}
+
 // stretchSubjects keeps the stretch candidates at their subject's new
 // rungs that are of the subjects, a stretch node becoming one, in order,
 // while there are fewer than domain.MaxFocusNodes.

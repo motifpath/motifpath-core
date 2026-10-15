@@ -231,6 +231,24 @@ func TestPracticeSessionService_ComposePlan_TodaysMixFocus(t *testing.T) {
 		assert.Equal(t, domain.PracticePickApplication, last.Reason)
 	})
 
+	t.Run("a subject's items at other rungs don't use up the time its stretch items are found for", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.playClean()
+		f.exercisesOf("a-clean", "skill-1", domain.ExerciseTypeImageChoice, 40)
+		f.exercisesOf("b-hear", "skill-1", domain.ExerciseTypeAudioRecognition, 10)
+		f.exercisesOf("c-know", "skill-1", domain.ExerciseTypeTextResponse, 40)
+		f.onPath("skill-1")
+
+		plan := f.compose(t, practiceGuitar, 10)
+
+		seconds := 0
+		for _, item := range plan.Items {
+			assert.NotEqual(t, domain.PracticeRungPlayClean, item.Rung, item.ItemKey)
+			seconds += item.EstimatedSeconds
+		}
+		assert.Equal(t, 600, seconds, "unseen know and hear items fill the session past the new share")
+	})
+
 	t.Run("the application ending plays the main subject first", func(t *testing.T) {
 		f, _ := subjectsAndOthers(t)
 		f.playAlong("riff-c", "Riff C", practiceGuitar, "skill-c", 100)

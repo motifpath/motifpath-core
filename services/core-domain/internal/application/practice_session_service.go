@@ -274,7 +274,7 @@ func (s *PracticeSessionService) composeMix(ctx context.Context, c *composer, st
 	if c.remaining() > 0 {
 		var stretch []practiceCandidate
 		for i, id := range instrumentIDs {
-			found, err := s.stretchCandidates(ctx, maps[i], id, inHand, skillIDs, onPath, c.picked, c.inWindow, c.remaining(), s.shuffle)
+			found, err := s.stretchCandidates(ctx, maps[i], id, inHand, skillIDs, onPath, c.picked, c.stretchFits, c.remaining(), s.shuffle)
 			if err != nil {
 				return domain.PracticeSessionPlan{}, err
 			}
@@ -559,8 +559,8 @@ func (s *PracticeSessionService) stretchCandidates(ctx context.Context, knowledg
 		if err != nil {
 			return nil, err
 		}
+		c.nodeID = &pick.nodeID
 		if ok && c.suitsSession(inHand) && fits(c) {
-			c.nodeID = &pick.nodeID
 			c.instrumentID = instrumentID
 			stretch = append(stretch, c)
 			found += c.seconds()
