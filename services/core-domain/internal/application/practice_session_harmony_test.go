@@ -2,6 +2,7 @@ package application_test
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"strings"
 	"testing"
@@ -226,4 +227,22 @@ func TestPracticeSessionService_DrillPlanningKnowsTheItemAndTheSession(t *testin
 	require.NotEmpty(t, planned)
 	assert.Equal(t, domain.KnowledgeLevelAccurate, planned[0].Level, "the item's level picks its variant")
 	assert.Equal(t, domain.GeneratedChordSymbols, planned[0].Reading, "the session's reading")
+}
+
+// failingChordCatalog is a chord catalog that can't be read.
+type failingChordCatalog struct{ fakeChordCatalogRepository }
+
+func (failingChordCatalog) FindChord(context.Context, int, domain.ChordQuality, *int) (domain.ChordDefinition, error) {
+	return domain.ChordDefinition{}, errChordCatalogDown
+}
+
+var errChordCatalogDown = errors.New("chord catalog unavailable")
+
+func TestPracticeSessionService_ComposePlanHarmonyCatalogFailure(t *testing.T) {
+	f := harmonyFixture(t, practiceGuitar)
+	f.svc.WithHarmonyDrills(harmonyProgressions, &failingChordCatalog{}, fakeFretboardLayouts{practiceGuitar: {{ID: practiceGuitar}}})
+
+	_, err := f.svc.ComposePlan(context.Background(), studentCaller(), nil, nil, 10)
+
+	assert.ErrorIs(t, err, errChordCatalogDown, "a catalog outage is an error, never a silent switch to chord symbols")
 }

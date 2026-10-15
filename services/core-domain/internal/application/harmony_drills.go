@@ -118,11 +118,14 @@ func (h *harmonyDrills) reading(ctx context.Context, instrumentIDs []string, odd
 // from C major's; empty when the catalog has none.
 func (h *harmonyDrills) guitarLayoutID(ctx context.Context) (string, error) {
 	c, err := h.chords.FindChord(ctx, 0, domain.ChordQualityMajor, nil)
-	if errors.Is(err, domain.ErrNotFound) || len(c.Voicings) == 0 {
+	if errors.Is(err, domain.ErrNotFound) {
 		return "", nil
 	}
 	if err != nil {
 		return "", err
+	}
+	if len(c.Voicings) == 0 {
+		return "", nil
 	}
 	return c.Voicings[0].InstrumentID, nil
 }
