@@ -64,6 +64,27 @@ func (e AlphaSessionState) Valid() bool {
 	}
 }
 
+// Defines values for ChordFunction.
+const (
+	Dominant    ChordFunction = "dominant"
+	Subdominant ChordFunction = "subdominant"
+	Tonic       ChordFunction = "tonic"
+)
+
+// Valid indicates whether the value is a known member of the ChordFunction enum.
+func (e ChordFunction) Valid() bool {
+	switch e {
+	case Dominant:
+		return true
+	case Subdominant:
+		return true
+	case Tonic:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ChordInterval.
 const (
 	ChordIntervalB3    ChordInterval = "b3"
@@ -121,6 +142,39 @@ func (e ChordInterval) Valid() bool {
 	case ChordIntervalN9:
 		return true
 	case ChordIntervalR:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ChordNumeral.
+const (
+	I    ChordNumeral = "I"
+	IV   ChordNumeral = "IV"
+	Ii   ChordNumeral = "ii"
+	Iii  ChordNumeral = "iii"
+	V    ChordNumeral = "V"
+	Vi   ChordNumeral = "vi"
+	Viio ChordNumeral = "viio"
+)
+
+// Valid indicates whether the value is a known member of the ChordNumeral enum.
+func (e ChordNumeral) Valid() bool {
+	switch e {
+	case I:
+		return true
+	case IV:
+		return true
+	case Ii:
+		return true
+	case Iii:
+		return true
+	case V:
+		return true
+	case Vi:
+		return true
+	case Viio:
 		return true
 	default:
 		return false
@@ -1333,6 +1387,60 @@ func (e FretboardDrill) Valid() bool {
 	}
 }
 
+// Defines values for GeneratedChoiceWay.
+const (
+	CadenceThenChord    GeneratedChoiceWay = "cadence_then_chord"
+	ChartToNumbers      GeneratedChoiceWay = "chart_to_numbers"
+	ChordToFunction     GeneratedChoiceWay = "chord_to_function"
+	ChordToNumeral      GeneratedChoiceWay = "chord_to_numeral"
+	FunctionToChord     GeneratedChoiceWay = "function_to_chord"
+	NumbersToChart      GeneratedChoiceWay = "numbers_to_chart"
+	NumeralToChord      GeneratedChoiceWay = "numeral_to_chord"
+	ProgressionByNumber GeneratedChoiceWay = "progression_by_number"
+)
+
+// Valid indicates whether the value is a known member of the GeneratedChoiceWay enum.
+func (e GeneratedChoiceWay) Valid() bool {
+	switch e {
+	case CadenceThenChord:
+		return true
+	case ChartToNumbers:
+		return true
+	case ChordToFunction:
+		return true
+	case ChordToNumeral:
+		return true
+	case FunctionToChord:
+		return true
+	case NumbersToChart:
+		return true
+	case NumeralToChord:
+		return true
+	case ProgressionByNumber:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GeneratedChordDrawing.
+const (
+	ChordBoxes   GeneratedChordDrawing = "chord_boxes"
+	ChordSymbols GeneratedChordDrawing = "chord_symbols"
+)
+
+// Valid indicates whether the value is a known member of the GeneratedChordDrawing enum.
+func (e GeneratedChordDrawing) Valid() bool {
+	switch e {
+	case ChordBoxes:
+		return true
+	case ChordSymbols:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for HealthStatusChecks.
 const (
 	HealthStatusChecksFail HealthStatusChecks = "fail"
@@ -1555,6 +1663,54 @@ func (e MasteryLevel) Valid() bool {
 	case MasteryLevelFluent:
 		return true
 	case MasteryLevelRetained:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for MusicKey.
+const (
+	A  MusicKey = "A"
+	Ab MusicKey = "Ab"
+	B  MusicKey = "B"
+	Bb MusicKey = "Bb"
+	C  MusicKey = "C"
+	D  MusicKey = "D"
+	Db MusicKey = "Db"
+	E  MusicKey = "E"
+	Eb MusicKey = "Eb"
+	F  MusicKey = "F"
+	F1 MusicKey = "F#"
+	G  MusicKey = "G"
+)
+
+// Valid indicates whether the value is a known member of the MusicKey enum.
+func (e MusicKey) Valid() bool {
+	switch e {
+	case A:
+		return true
+	case Ab:
+		return true
+	case B:
+		return true
+	case Bb:
+		return true
+	case C:
+		return true
+	case D:
+		return true
+	case Db:
+		return true
+	case E:
+		return true
+	case Eb:
+		return true
+	case F:
+		return true
+	case F1:
+		return true
+	case G:
 		return true
 	default:
 		return false
@@ -3365,9 +3521,17 @@ type ChordDefinition struct {
 	Voicings []ChordVoicing `json:"voicings"`
 }
 
+// ChordFunction A chord's harmonic function in a major key. tonic = I, iii and vi (at rest); subdominant =
+// ii and IV (moving away); dominant = V and viio (pulling home).
+type ChordFunction string
+
 // ChordInterval An interval of a chord formula, as the same canonical code a
 // diagram position uses (R is the root).
 type ChordInterval string
+
+// ChordNumeral A scale degree's chord in a major key, as a roman numeral: upper case for a major triad,
+// lower case for a minor one, and viio for the diminished triad on the seventh degree (vii°).
+type ChordNumeral string
 
 // ChordProImportWarning A part of a ChordPro text the import skipped.
 type ChordProImportWarning struct {
@@ -5521,6 +5685,117 @@ type FretboardMapCell struct {
 	String int `json:"string"`
 }
 
+// GeneratedChoiceQuestion A generated question asked among options, as the composer planned it: the way it is asked,
+// the key, what the question gives, and the options in the order they are shown. Exactly the
+// parts the way needs are present; the others are null or empty. Nothing in it marks the
+// answer, and the prompt never names it: the client shows the options as given and sends
+// back the way, the options as shown and the pick, with music_key when the item is a chart
+// progression.
+type GeneratedChoiceQuestion struct {
+	// Chart The chart the question shows, one chord symbol per bar (four or twelve), for
+	// chart_to_numbers. Empty for every other way.
+	Chart []string `json:"chart"`
+
+	// Chord The chord the question gives, as a chord symbol spelled as the chord catalog spells
+	// roots (Bm, F#, Bdim), for chord_to_numeral and chord_to_function. Always one of the key's
+	// triads. Null for every other way.
+	Chord *string `json:"chord"`
+
+	// DrawnAs How the question draws its chords, in the stimulus and in the options. chord_boxes = a
+	// chord box per chord, unnamed until answered, from the voicing the plan names (guitar,
+	// four-bar charts); chord_symbols = the chord symbol (bass, and every 12-bar chart). A 12-bar
+	// chart is laid out in three lines of four bars. A session in the head reads chords the way
+	// of the student's fretboard layout: guitar or bass, taking turns from one session in the
+	// head to the next for a student who plays both, and chord symbols for a student who plays
+	// neither. Every generated harmony question of a session reads them the same way.
+	DrawnAs GeneratedChordDrawing `json:"drawn_as"`
+
+	// Function The function asked for, for function_to_chord. Null for every other way.
+	Function *ChordFunction `json:"function"`
+
+	// MusicKey A major key. In a response, the key a question was asked in when its item doesn't fix one:
+	// a chart progression, a heard chord, a heard progression or a guide tone; absent in a
+	// response to any other item. A planned question always names its key.
+	MusicKey MusicKey `json:"music_key"`
+
+	// Numeral The numeral asked about, for numeral_to_chord. Null for every other way.
+	Numeral *ChordNumeral `json:"numeral"`
+
+	// Options The options in the order to show them, already shuffled. Different from one another,
+	// each a possible answer to the way, the right one among them (four, or two for a 12-bar
+	// progression). Which are offered follows the drill catalog's harmony rules.
+	Options []struct {
+		// Chart For numbers_to_chart, the option's chart, one chord symbol per bar, drawn as
+		// drawn_as says. Empty for every other way.
+		Chart []string `json:"chart"`
+
+		// Name The option's name in the student's language where its value is a key: a function
+		// ("Dominant — pulls home") or a progression ("I – V – vi – IV"). Null for a chord, a
+		// numeral or a chart, which are shown as they are.
+		Name *string `json:"name"`
+
+		// Value The option as the response sends it back: a chord symbol, a numeral, a function, a
+		// progression key, or a chart (its chord symbols one per bar, separated by single
+		// spaces), by way.
+		Value string `json:"value"`
+	} `json:"options"`
+
+	// Progression The progression asked for, for numbers_to_chart. Null for every other way.
+	Progression *struct {
+		// Key The progression's key in the progression catalog, such as I-V-vi-IV.
+		Key string `json:"key"`
+
+		// Name The progression's name in the student's language, such as "I–V–vi–IV (pop)".
+		Name string `json:"name"`
+	} `json:"progression"`
+
+	// Voicings When drawn_as is chord_boxes, the box of every chord the question draws, one per chord
+	// symbol: the chord's open voicing if the catalog has one, else its lowest-difficulty
+	// voicing. Empty when drawn_as is chord_symbols.
+	Voicings []struct {
+		// Chord The chord symbol, as it appears in chord, chart or the options.
+		Chord string `json:"chord"`
+
+		// DiagramId The chord catalog voicing's diagram the client draws as the chord's box.
+		DiagramId openapi_types.UUID `json:"diagram_id"`
+	} `json:"voicings"`
+
+	// Way How a generated question was asked, which fixes what its options are and which one is
+	// right. numeral_to_chord = a key and a numeral are named, pick its chord; chord_to_numeral
+	// = a key and a chord are named, pick its numeral; chord_to_function = a key and a chord
+	// are named, pick its function; function_to_chord = a key and a function are named, pick the
+	// one chord with it; chart_to_numbers = a chart is shown, pick its progression;
+	// numbers_to_chart = a progression and a key are named, pick its chart; cadence_then_chord =
+	// a cadence sets the key and a chord plays, pick its numeral; progression_by_number = a
+	// progression plays, pick it. A diatonic chord is asked numeral_to_chord or
+	// chord_to_numeral; a chord function chord_to_function or function_to_chord; a chart
+	// progression chart_to_numbers or numbers_to_chart; a heard chord cadence_then_chord; a
+	// heard progression progression_by_number.
+	Way GeneratedChoiceWay `json:"way"`
+}
+
+// GeneratedChoiceWay How a generated question was asked, which fixes what its options are and which one is
+// right. numeral_to_chord = a key and a numeral are named, pick its chord; chord_to_numeral
+// = a key and a chord are named, pick its numeral; chord_to_function = a key and a chord
+// are named, pick its function; function_to_chord = a key and a function are named, pick the
+// one chord with it; chart_to_numbers = a chart is shown, pick its progression;
+// numbers_to_chart = a progression and a key are named, pick its chart; cadence_then_chord =
+// a cadence sets the key and a chord plays, pick its numeral; progression_by_number = a
+// progression plays, pick it. A diatonic chord is asked numeral_to_chord or
+// chord_to_numeral; a chord function chord_to_function or function_to_chord; a chart
+// progression chart_to_numbers or numbers_to_chart; a heard chord cadence_then_chord; a
+// heard progression progression_by_number.
+type GeneratedChoiceWay string
+
+// GeneratedChordDrawing How the question draws its chords, in the stimulus and in the options. chord_boxes = a
+// chord box per chord, unnamed until answered, from the voicing the plan names (guitar,
+// four-bar charts); chord_symbols = the chord symbol (bass, and every 12-bar chart). A 12-bar
+// chart is laid out in three lines of four bars. A session in the head reads chords the way
+// of the student's fretboard layout: guitar or bass, taking turns from one session in the
+// head to the next for a student who plays both, and chord symbols for a student who plays
+// neither. Every generated harmony question of a session reads them the same way.
+type GeneratedChordDrawing string
+
 // HealthStatus Response body for liveness and readiness probes. Shared by every MotifPath
 // service that exposes an HTTP health surface so the contract cannot drift
 // between services.
@@ -5909,6 +6184,11 @@ type MediaUploadUrl struct {
 	// at expires_at.
 	UploadUrl string `json:"upload_url"`
 }
+
+// MusicKey A major key. In a response, the key a question was asked in when its item doesn't fix one:
+// a chart progression, a heard chord, a heard progression or a guide tone; absent in a
+// response to any other item. A planned question always names its key.
+type MusicKey string
 
 // NotFoundError Returned when the requested resource does not exist.
 type NotFoundError struct {
@@ -6576,8 +6856,9 @@ type PracticePickReason string
 type PracticeRung string
 
 // PracticeSessionItem One item of a composed session, with what the client needs to present it. Exactly
-// one of fretboard_cell, exercise, play_along and diagram_shape is present, matching
-// kind.
+// one of fretboard_cell, exercise, play_along, diagram_shape and generated_choice is
+// present, matching kind: generated_choice for a diatonic chord, a chord function or a
+// chart progression.
 type PracticeSessionItem struct {
 	// DiagramShape Present when kind is diagram_shape. The client loads the diagram to draw it, with
 	// its labels hidden, and gives instant feedback from it and from shape, graded the
@@ -6660,6 +6941,14 @@ type PracticeSessionItem struct {
 		// String The cell's string, 1 being the highest-pitched.
 		String int `json:"string"`
 	} `json:"fretboard_cell,omitempty"`
+
+	// GeneratedChoice A generated question asked among options, as the composer planned it: the way it is asked,
+	// the key, what the question gives, and the options in the order they are shown. Exactly the
+	// parts the way needs are present; the others are null or empty. Nothing in it marks the
+	// answer, and the prompt never names it: the client shows the options as given and sends
+	// back the way, the options as shown and the pick, with music_key when the item is a chart
+	// progression.
+	GeneratedChoice *GeneratedChoiceQuestion `json:"generated_choice,omitempty"`
 
 	// ItemKey Stable, readable identifier of a practice item: the smallest thing whose knowledge is
 	// tracked. Every answer, rating and review points at one. The prefix is the item kind:

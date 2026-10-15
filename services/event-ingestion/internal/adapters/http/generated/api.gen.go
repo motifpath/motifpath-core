@@ -1150,9 +1150,9 @@ type GeneratedChoiceResponse struct {
 	// asked by ear, from the moment its sound started.
 	LatencyMs int `json:"latency_ms"`
 
-	// MusicKey The major key a question was asked in, when its item doesn't fix one: a chart
-	// progression, a heard chord, a heard progression or a guide tone. Absent for every other
-	// item.
+	// MusicKey A major key. In a response, the key a question was asked in when its item doesn't fix one:
+	// a chart progression, a heard chord, a heard progression or a guide tone; absent in a
+	// response to any other item. A planned question always names its key.
 	MusicKey *MusicKey `json:"music_key,omitempty"`
 
 	// Options The options as shown, in the order shown. What an option is depends on the way: a
@@ -1389,9 +1389,9 @@ type MultiTapResponse struct {
 // MultiTapResponseResponseType Discriminator. The student tapped every place of the note they found.
 type MultiTapResponseResponseType string
 
-// MusicKey The major key a question was asked in, when its item doesn't fix one: a chart
-// progression, a heard chord, a heard progression or a guide tone. Absent for every other
-// item.
+// MusicKey A major key. In a response, the key a question was asked in when its item doesn't fix one:
+// a chart progression, a heard chord, a heard progression or a guide tone; absent in a
+// response to any other item. A planned question always names its key.
 type MusicKey string
 
 // NameTheNoteResponse Answer to a fretboard cell shown on the fretboard: the student names its note, picking it
@@ -2070,9 +2070,9 @@ type TimedTap struct {
 // tempo sent, four beats to a bar, one chord per bar. Each tap is kept with the time it
 // was made, so every bar can be graded.
 type TimedTapsResponse struct {
-	// MusicKey The major key a question was asked in, when its item doesn't fix one: a chart
-	// progression, a heard chord, a heard progression or a guide tone. Absent for every other
-	// item.
+	// MusicKey A major key. In a response, the key a question was asked in when its item doesn't fix one:
+	// a chart progression, a heard chord, a heard progression or a guide tone; absent in a
+	// response to any other item. A planned question always names its key.
 	MusicKey MusicKey `json:"music_key"`
 
 	// ResponseType Discriminator. The student tapped along with a progression's playback.
