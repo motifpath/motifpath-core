@@ -1022,8 +1022,10 @@ func TestPracticeSessionService_ComposePlanMix(t *testing.T) {
 				stretch = append(stretch, *item.NodeID)
 			}
 		}
-		assert.Equal(t, []string{"skill-c-shallow", "skill-b-deep", "skill-a-free"}, stretch,
-			"skill-d-unmet's requirement isn't met, and skill-unmet has no link to the path, so neither is a stretch")
+		assert.Equal(t, []string{"skill-c-shallow", "skill-b-deep"}, stretch,
+			"skill-d-unmet's requirement isn't met, and skill-unmet has no link to the path, so neither is a stretch; "+
+				"skill-a-free comes last, past the three subjects skill-1 starts")
+		assert.Equal(t, []string{"skill-1", "skill-c-shallow", "skill-b-deep"}, focusIDs(plan))
 	})
 
 	t.Run("past the new share, a ready path skill's unseen items come back as stretch before any other node's", func(t *testing.T) {
@@ -1112,19 +1114,6 @@ func TestPracticeSessionService_ComposePlanApplication(t *testing.T) {
 		focus := 20*60 - ending
 		assert.Equal(t, (focus*60/100+focus*25/100)/30*30, seconds[domain.PracticePickDue],
 			"due takes its share and weak's of the focus time: the session less the ending")
-	})
-
-	t.Run("with no play-along on a focus skill, the ending applies another skill of the path", func(t *testing.T) {
-		f := newPracticeFixture(t)
-		f.onPath("skill-1", "chord-tones")
-		f.due(f.exerciseBatch("due", "skill-1", 4, 30)...)
-		f.playAlong("chord-tone-riff", "Chord-tone riff", practiceGuitar, "chord-tones", 100)
-
-		plan := f.compose(t, practiceGuitar, 10)
-
-		last := plan.Items[len(plan.Items)-1]
-		assert.Equal(t, "play_along:chord-tone-riff", last.ItemKey)
-		assert.Equal(t, domain.PracticePickApplication, last.Reason)
 	})
 
 	t.Run("a due play-along keeps its review rather than becoming the ending", func(t *testing.T) {

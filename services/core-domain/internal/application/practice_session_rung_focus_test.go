@@ -52,43 +52,4 @@ func TestPracticeSessionService_ComposePlan_RungsAndFocus(t *testing.T) {
 			assert.Equal(t, domain.PracticeRungPlayInTime, item.Rung)
 		}
 	})
-
-	t.Run("Today's mix is suggested, and names at most three of its items' nodes, the most practised first", func(t *testing.T) {
-		f := newPracticeFixture(t)
-		for _, skill := range []string{"skill-a", "skill-b", "skill-c", "skill-d"} {
-			f.due(f.exerciseBatch(skill, skill, 4, 20)...)
-		}
-		f.due(f.exerciseBatch("skill-b-more", "skill-b", 4, 20)...)
-		f.onPath("skill-a", "skill-b", "skill-c", "skill-d")
-
-		plan := f.compose(t, practiceGuitar, 10)
-
-		assert.Equal(t, domain.PracticeFocusSuggested, plan.FocusSource)
-		require.NotEmpty(t, plan.FocusNodes)
-		assert.LessOrEqual(t, len(plan.FocusNodes), domain.MaxFocusNodes)
-		secondsByNode := map[string]int{}
-		for _, item := range plan.Items {
-			require.NotNil(t, item.NodeID, item.ItemKey)
-			secondsByNode[*item.NodeID] += item.EstimatedSeconds
-		}
-		assert.Equal(t, "skill-b", plan.FocusNodes[0].ID)
-		for _, n := range plan.FocusNodes {
-			assert.Contains(t, secondsByNode, n.ID)
-			assert.LessOrEqual(t, secondsByNode[n.ID], secondsByNode[plan.FocusNodes[0].ID])
-		}
-	})
-
-	t.Run("a session the student chooses isn't composed yet", func(t *testing.T) {
-		f := newPracticeFixture(t)
-		f.exercise("ex-1", "skill-a", 30)
-		f.onPath("skill-a")
-		guitar, node := practiceGuitar, "skill-a"
-
-		_, err := f.svc.ComposePlan(ctx, studentCaller(), &guitar, &node, 10)
-
-		var validation *domain.ValidationError
-		require.ErrorAs(t, err, &validation)
-		require.Len(t, validation.Fields, 1)
-		assert.Equal(t, "focus_node_id", validation.Fields[0].Field)
-	})
 }
