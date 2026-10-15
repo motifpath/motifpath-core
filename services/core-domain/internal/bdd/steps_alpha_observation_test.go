@@ -46,6 +46,24 @@ func (f *fakeAlphaActivity) SessionsStartedBetween(_ context.Context, studentIDs
 	return out, nil
 }
 
+func (f *fakeAlphaActivity) FinishedByWeek(ctx context.Context, studentIDs []string, from, to time.Time) (map[string]domain.FinishedByWeek, error) {
+	sessions, err := f.SessionsStartedBetween(ctx, studentIDs, from, to)
+	if err != nil {
+		return nil, err
+	}
+	byStudent := map[string][]domain.PracticeSessionRecord{}
+	for _, s := range sessions {
+		byStudent[s.StudentID] = append(byStudent[s.StudentID], s)
+	}
+	counts := map[string]domain.FinishedByWeek{}
+	for studentID, theirs := range byStudent {
+		if finished := domain.CountFinishedByWeek(theirs); len(finished) > 0 {
+			counts[studentID] = finished
+		}
+	}
+	return counts, nil
+}
+
 func (f *fakeAlphaActivity) FirstCompletions(_ context.Context, studentID string, ids []string) (map[string]time.Time, error) {
 	return pickTimes(f.completions[studentID], ids), nil
 }
@@ -77,6 +95,8 @@ type alphaWorld struct {
 	cohort      []string
 	observation *generated.AlphaObservation
 	student     *generated.AlphaStudentObservation
+	// found is the last page of students looked up by name or by id.
+	found *generated.PagedAlphaStudentRefs
 }
 
 func newAlphaWorld() *alphaWorld {
@@ -166,6 +186,26 @@ func registerAlphaObservationSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^nodes 1 to (\d+) are completed with their completion dates, node (\d+) is in progress and nodes (\d+) to (\d+) are not started$`, w.nodesByStatus)
 	sc.Step(`^"([^"]+)" is refused for lacking permission$`, w.alphaRefused)
 	sc.Step(`^no student is found$`, w.noStudentFound)
+
+	// ── Pages, filters, search and names ─────────────────────────────────
+	sc.Step(`^the alpha has (\d+) students and (\d+) of them have fewer than 3 counted sessions in the week of (\d+ \w+ \d{4})$`, w.alphaWithBelowTarget)
+	sc.Step(`^the alpha has (\d+) students, (\d+) below the target in the week of (\d+ \w+ \d{4}) and (\d+) quiet$`, w.alphaWithBelowTargetAndQuiet)
+	sc.Step(`^"([^"]+)" and "([^"]+)" are students in the alpha$`, func(a, b string) error { return w.studentsInAlpha(a, b) })
+	sc.Step(`^"([^"]+)", "([^"]+)" and "([^"]+)" are students in the alpha$`, func(a, b, c string) error { return w.studentsInAlpha(a, b, c) })
+	sc.Step(`^"([^"]+)" is a teacher who also learns$`, func(name string) error { return w.teacherGivenPath(name, "Blues guitar basics") })
+	sc.Step(`^"([^"]+)" observes the alpha for the week of (\d+ \w+ \d{4}), (\d+) students at a time$`, w.observesAlphaPaged)
+	sc.Step(`^"([^"]+)" observes the alpha for the week of (\d+ \w+ \d{4}), keeping only the (students below the target|quiet students)$`, w.observesAlphaKeeping)
+	sc.Step(`^"([^"]+)" observes the alpha for the week of (\d+ \w+ \d{4}), searching for "([^"]+)"$`, w.observesAlphaSearching)
+	sc.Step(`^(\d+) students are listed and (\d+) students match$`, w.studentsListedAndMatch)
+	sc.Step(`^asking for the next (\d+) lists the (\d+)(?:st|nd|rd|th) to the (\d+)(?:st|nd|rd|th) student in the same order$`, w.nextPageContinuesOrder)
+	sc.Step(`^those (\d+) students are listed and (\d+) students match$`, w.thoseStudentsListed)
+	sc.Step(`^the filter counts are (\d+) in all, (\d+) below the target and (\d+) quiet$`, w.filterCountsAre)
+	sc.Step(`^the cohort summary still counts all (\d+) students$`, w.summaryCountsAll)
+	sc.Step(`^only "([^"]+)" is listed$`, w.onlyListed)
+	sc.Step(`^"([^"]+)" looks for students of the alpha named "([^"]+)"$`, w.looksForStudentsNamed)
+	sc.Step(`^"([^"]+)" asks for the names of "([^"]+)" and "([^"]+)"$`, w.asksForNamesOf)
+	sc.Step(`^"([^"]+)" and "([^"]+)" are found, in that order$`, w.foundInOrder)
+	sc.Step(`^only "([^"]+)" is named$`, w.onlyNamed)
 }
 
 // ── Time ─────────────────────────────────────────────────────────────────
@@ -566,6 +606,11 @@ func (w *world) observeAlpha(name string, week *time.Time) error {
 	if week != nil {
 		params.Week = &openapi_types.Date{Time: *week}
 	}
+	return w.observeAlphaWith(name, params)
+}
+
+func (w *world) observeAlphaWith(name string, params generated.GetAlphaObservationParams) error {
+	w.alpha.observation = nil
 	resp, err := w.handler.GetAlphaObservation(w.identityCtx(name), generated.GetAlphaObservationRequestObject{Params: params})
 	w.lastResp, w.lastErr = resp, err
 	if ok, isOK := resp.(generated.GetAlphaObservation200JSONResponse); isOK {
@@ -1000,7 +1045,7 @@ func (w *world) nodesByStatus(completedTo, inProgress, notStartedFrom, notStarte
 
 func (w *world) alphaRefused(string) error {
 	switch w.lastResp.(type) {
-	case generated.GetAlphaObservation403JSONResponse, generated.GetAlphaStudentObservation403JSONResponse:
+	case generated.GetAlphaObservation403JSONResponse, generated.GetAlphaStudentObservation403JSONResponse, generated.ListAlphaStudents403JSONResponse:
 		return nil
 	}
 	return fmt.Errorf("expected a refusal for lacking permission, got %#v (err=%v)", w.lastResp, w.lastErr)
@@ -1011,4 +1056,241 @@ func (w *world) noStudentFound() error {
 		return nil
 	}
 	return fmt.Errorf("expected no student found, got %#v (err=%v)", w.lastResp, w.lastErr)
+}
+
+// ── Pages, filters, search and names ─────────────────────────────────────
+
+// alphaWithBelowTarget makes an alpha of n students in which all but the
+// first below are at the target in week.
+func (w *world) alphaWithBelowTarget(n, below int, week string) error {
+	if err := w.alphaHasStudents(n); err != nil {
+		return err
+	}
+	monday, err := weekMonday(week)
+	if err != nil {
+		return err
+	}
+	for _, name := range w.alpha.cohort[below:] {
+		w.threeSessionsInWeekOf(w.studentID(name), monday)
+	}
+	return nil
+}
+
+// alphaWithBelowTargetAndQuiet is alphaWithBelowTarget where only the
+// first quiet students have been away; everyone else was active yesterday.
+func (w *world) alphaWithBelowTargetAndQuiet(n, below int, week string, quiet int) error {
+	if err := w.alphaWithBelowTarget(n, below, week); err != nil {
+		return err
+	}
+	for _, name := range w.alpha.cohort[quiet:] {
+		w.alpha.activity.lastActive[w.studentID(name)] = w.alpha.now.AddDate(0, 0, -1)
+	}
+	return nil
+}
+
+func (w *world) studentsInAlpha(names ...string) error {
+	for _, name := range names {
+		w.givePath(w.studentID(name), "First path of "+name, 10, time.Date(2026, 9, 28, 9, 0, 0, 0, saoPaulo))
+	}
+	return nil
+}
+
+func (w *world) weekParam(week string) (*openapi_types.Date, error) {
+	monday, err := weekMonday(week)
+	if err != nil {
+		return nil, err
+	}
+	return &openapi_types.Date{Time: monday}, nil
+}
+
+func (w *world) observesAlphaPaged(name, week string, limit int) error {
+	date, err := w.weekParam(week)
+	if err != nil {
+		return err
+	}
+	return w.observeAlphaWith(name, generated.GetAlphaObservationParams{Week: date, Limit: &limit})
+}
+
+func (w *world) observesAlphaKeeping(name, week, which string) error {
+	date, err := w.weekParam(week)
+	if err != nil {
+		return err
+	}
+	keep := generated.GetAlphaObservationParamsFilter("below_target")
+	if which == "quiet students" {
+		keep = "quiet"
+	}
+	return w.observeAlphaWith(name, generated.GetAlphaObservationParams{Week: date, Filter: &keep})
+}
+
+func (w *world) observesAlphaSearching(name, week, query string) error {
+	date, err := w.weekParam(week)
+	if err != nil {
+		return err
+	}
+	return w.observeAlphaWith(name, generated.GetAlphaObservationParams{Week: date, Q: &query})
+}
+
+func (w *world) observation() (*generated.AlphaObservation, error) {
+	if w.alpha.observation == nil {
+		return nil, fmt.Errorf("the alpha wasn't observed: %#v (err=%v)", w.lastResp, w.lastErr)
+	}
+	return w.alpha.observation, nil
+}
+
+func (w *world) studentsListedAndMatch(listed, total int) error {
+	o, err := w.observation()
+	if err != nil {
+		return err
+	}
+	if len(o.Students) != listed || o.StudentsTotal != total {
+		return fmt.Errorf("listed %d of %d matching, want %d of %d", len(o.Students), o.StudentsTotal, listed, total)
+	}
+	return nil
+}
+
+// nextPageContinuesOrder asks for the page after the one observed and checks
+// it holds the from-th to the to-th students of the whole list.
+func (w *world) nextPageContinuesOrder(limit, from, to int) error {
+	o, err := w.observation()
+	if err != nil {
+		return err
+	}
+	week := &openapi_types.Date{Time: o.Week.WeekStart.Time}
+	all := domain.MaxPageLimit
+	if err := w.observeAlphaWith("ana", generated.GetAlphaObservationParams{Week: week, Limit: &all}); err != nil {
+		return err
+	}
+	whole, err := w.observation()
+	if err != nil {
+		return err
+	}
+	offset := from - 1
+	if err := w.observeAlphaWith("ana", generated.GetAlphaObservationParams{Week: week, Limit: &limit, Offset: &offset}); err != nil {
+		return err
+	}
+	page, err := w.observation()
+	if err != nil {
+		return err
+	}
+	want := studentIDsOf(whole.Students[from-1 : to])
+	if got := studentIDsOf(page.Students); !slices.Equal(got, want) {
+		return fmt.Errorf("next page: got %v, want %v", got, want)
+	}
+	return nil
+}
+
+func studentIDsOf(students []generated.AlphaStudent) []string {
+	ids := make([]string, len(students))
+	for i, s := range students {
+		ids[i] = s.StudentId.String()
+	}
+	return ids
+}
+
+// thoseStudentsListed checks the first n students of the cohort, the ones
+// below the target, are the ones listed.
+func (w *world) thoseStudentsListed(listed, total int) error {
+	if err := w.studentsListedAndMatch(listed, total); err != nil {
+		return err
+	}
+	var want []string
+	for _, name := range w.alpha.cohort[:listed] {
+		want = append(want, w.userMotifID[name].String())
+	}
+	got := studentIDsOf(w.alpha.observation.Students)
+	slices.Sort(want)
+	slices.Sort(got)
+	if !slices.Equal(got, want) {
+		return fmt.Errorf("students listed: got %v, want %v", got, want)
+	}
+	return nil
+}
+
+func (w *world) filterCountsAre(all, below, quiet int) error {
+	o, err := w.observation()
+	if err != nil {
+		return err
+	}
+	want := generated.AlphaFilterCounts{All: all, BelowTarget: below, Quiet: quiet}
+	if o.FilterCounts != want {
+		return fmt.Errorf("filter counts: got %+v, want %+v", o.FilterCounts, want)
+	}
+	return nil
+}
+
+func (w *world) summaryCountsAll(n int) error {
+	o, err := w.observation()
+	if err != nil {
+		return err
+	}
+	return expect("students counted in the summary", o.Summary.StudentCount, n)
+}
+
+func (w *world) onlyListed(name string) error {
+	o, err := w.observation()
+	if err != nil {
+		return err
+	}
+	var got []string
+	for _, s := range o.Students {
+		got = append(got, s.DisplayName)
+	}
+	if want := []string{w.nameClaim(name)}; !slices.Equal(got, want) {
+		return fmt.Errorf("students listed: got %v, want %v", got, want)
+	}
+	return nil
+}
+
+func (w *world) listAlphaStudents(name string, params generated.ListAlphaStudentsParams) error {
+	w.alpha.found = nil
+	resp, err := w.handler.ListAlphaStudents(w.identityCtx(name), generated.ListAlphaStudentsRequestObject{Params: params})
+	w.lastResp, w.lastErr = resp, err
+	if ok, isOK := resp.(generated.ListAlphaStudents200JSONResponse); isOK {
+		found := generated.PagedAlphaStudentRefs(ok)
+		w.alpha.found = &found
+	}
+	return err
+}
+
+func (w *world) looksForStudentsNamed(name, query string) error {
+	return w.listAlphaStudents(name, generated.ListAlphaStudentsParams{Q: &query})
+}
+
+func (w *world) asksForNamesOf(name, a, b string) error {
+	ids := []openapi_types.UUID{w.userMotifID[a], w.userMotifID[b]}
+	return w.listAlphaStudents(name, generated.ListAlphaStudentsParams{StudentId: &ids})
+}
+
+func (w *world) foundNames() ([]string, error) {
+	if w.alpha.found == nil {
+		return nil, fmt.Errorf("no students were looked up: %#v (err=%v)", w.lastResp, w.lastErr)
+	}
+	names := []string{}
+	for _, s := range w.alpha.found.Items {
+		names = append(names, s.DisplayName)
+	}
+	return names, nil
+}
+
+func (w *world) foundInOrder(a, b string) error {
+	got, err := w.foundNames()
+	if err != nil {
+		return err
+	}
+	if want := []string{w.nameClaim(a), w.nameClaim(b)}; !slices.Equal(got, want) {
+		return fmt.Errorf("students found: got %v, want %v", got, want)
+	}
+	return nil
+}
+
+func (w *world) onlyNamed(name string) error {
+	got, err := w.foundNames()
+	if err != nil {
+		return err
+	}
+	if want := []string{w.nameClaim(name)}; !slices.Equal(got, want) {
+		return fmt.Errorf("students named: got %v, want %v", got, want)
+	}
+	return nil
 }

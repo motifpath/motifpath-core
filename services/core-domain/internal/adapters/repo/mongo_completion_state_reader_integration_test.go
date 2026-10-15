@@ -41,3 +41,32 @@ func TestMongoCompletionStateReader_ReadsAggregationWorkerShape(t *testing.T) {
 		"node-02": domain.CompletionStatusInProgress,
 	}, statuses)
 }
+
+// TestMongoCompletionStateReader_ReadsSeveralStudentsAtOnce verifies one
+// read gives each student their own statuses for their own nodes, and never
+// another student's, or a node that wasn't asked for them.
+func TestMongoCompletionStateReader_ReadsSeveralStudentsAtOnce(t *testing.T) {
+	ctx := context.Background()
+
+	db := mongoDatabase(t)
+	_, err := db.Collection("aggregates").InsertMany(ctx, []any{
+		bson.D{{Key: "student_id", Value: "alice"}, {Key: "content_node_id", Value: "node-01"}, {Key: "status", Value: "completed"}, {Key: "updated_at", Value: time.Now().UTC()}},
+		bson.D{{Key: "student_id", Value: "alice"}, {Key: "content_node_id", Value: "node-09"}, {Key: "status", Value: "completed"}, {Key: "updated_at", Value: time.Now().UTC()}},
+		bson.D{{Key: "student_id", Value: "bob"}, {Key: "content_node_id", Value: "node-09"}, {Key: "status", Value: "in_progress"}, {Key: "updated_at", Value: time.Now().UTC()}},
+		bson.D{{Key: "student_id", Value: "carol"}, {Key: "content_node_id", Value: "node-01"}, {Key: "status", Value: "completed"}, {Key: "updated_at", Value: time.Now().UTC()}},
+	})
+	require.NoError(t, err)
+
+	reader := NewMongoCompletionStateReader(db)
+
+	statuses, err := reader.GetStatusesForStudents(ctx, map[string][]string{
+		"alice": {"node-01", "node-02"}, // node-09 is alice's too, but wasn't asked for her
+		"bob":   {"node-09"},
+		"dan":   {"node-01"},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, map[string]map[string]domain.CompletionStatus{
+		"alice": {"node-01": domain.CompletionStatusCompleted},
+		"bob":   {"node-09": domain.CompletionStatusInProgress},
+	}, statuses)
+}

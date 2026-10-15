@@ -18,6 +18,12 @@ type AlphaActivityReader interface {
 	// whose start hasn't arrived is left out.
 	SessionsStartedBetween(ctx context.Context, studentIDs []string, from, to time.Time) ([]domain.PracticeSessionRecord, error)
 
+	// FinishedByWeek counts the finished sessions of studentIDs that started
+	// at or after from and before to, per student and per week, the way
+	// domain.CountFinishedByWeek counts a list of them. A student with none
+	// is absent.
+	FinishedByWeek(ctx context.Context, studentIDs []string, from, to time.Time) (map[string]domain.FinishedByWeek, error)
+
 	// FirstCompletions returns when the student first completed each of
 	// contentNodeIDs; a node never completed is absent.
 	FirstCompletions(ctx context.Context, studentID string, contentNodeIDs []string) (map[string]time.Time, error)
