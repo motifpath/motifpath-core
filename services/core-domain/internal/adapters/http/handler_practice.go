@@ -452,3 +452,31 @@ func toGeneratedDiagramShape(d domain.PlannedDiagramShape, locale string) *gener
 	}
 	return out
 }
+
+// ListProgressions lists the progression catalog to any signed-in user.
+func (h *Handler) ListProgressions(ctx context.Context, _ generated.ListProgressionsRequestObject) (generated.ListProgressionsResponseObject, error) {
+	if _, ok := h.resolveCaller(ctx); !ok {
+		return generated.ListProgressions401JSONResponse(unauthorizedError()), nil
+	}
+	progressions, err := h.progressionCatalog.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make(generated.ListProgressions200JSONResponse, len(progressions))
+	for i, p := range progressions {
+		out[i] = toGeneratedProgression(p)
+	}
+	return out, nil
+}
+
+// toGeneratedProgression maps a catalog progression; its lists are never
+// null.
+func toGeneratedProgression(p domain.Progression) generated.Progression {
+	return generated.Progression{
+		ProgressionId: mustUUID(p.ID),
+		Key:           p.Key,
+		Bars:          nonNilStrings(p.Bars),
+		Confusable:    nonNilStrings(p.Confusable),
+		Names:         generated.LocalizedNames(p.Names),
+	}
+}
