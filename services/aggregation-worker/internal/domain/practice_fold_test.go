@@ -25,6 +25,13 @@ func take(at time.Time, rating SelfRating, bpm int) PracticeEvidence {
 	}
 }
 
+// takeIn is a take played at a note value.
+func takeIn(at time.Time, rating SelfRating, bpm int, v NoteValue) PracticeEvidence {
+	e := take(at, rating, bpm)
+	e.NoteValue = &v
+	return e
+}
+
 var target100 = ItemGoal{TargetTempoBPM: ptr(100)}
 
 func foldAll(t *testing.T, goal ItemGoal, evidence ...PracticeEvidence) ItemFold {
@@ -123,6 +130,66 @@ func TestFoldEvidence_ExplorationIsNotForgetting(t *testing.T) {
 		f := foldAll(t, target100, take(onDay(0), SelfRatingStruggled, 140))
 		assert.Equal(t, 1, f.Counted)
 	})
+}
+
+func TestFoldEvidence_TemposCompareAtEffectiveSpeed(t *testing.T) {
+	t.Run("a clean take in eighths beats a faster-looking tempo in quarters", func(t *testing.T) {
+		f := foldAll(t, target100, take(onDay(0), SelfRatingClean, 110), takeIn(onDay(1), SelfRatingClean, 60, NoteValueEighths))
+		assert.Equal(t, 60, *f.BestCleanBPM)
+		assert.Equal(t, NoteValueEighths, *f.BestCleanNoteValue)
+	})
+	t.Run("a clean take slower at effective speed keeps the best as played", func(t *testing.T) {
+		f := foldAll(t, target100, takeIn(onDay(0), SelfRatingClean, 60, NoteValueEighths), take(onDay(1), SelfRatingClean, 110))
+		assert.Equal(t, 60, *f.BestCleanBPM)
+		assert.Equal(t, NoteValueEighths, *f.BestCleanNoteValue)
+	})
+	t.Run("a clean take in quarters keeps quarters as its note value", func(t *testing.T) {
+		f := foldAll(t, target100, takeIn(onDay(0), SelfRatingClean, 60, NoteValueEighths), take(onDay(1), SelfRatingClean, 130))
+		assert.Equal(t, 130, *f.BestCleanBPM)
+		assert.Equal(t, NoteValueQuarters, *f.BestCleanNoteValue)
+	})
+	t.Run("a take in eighths that isn't clean above the edge at effective speed isn't counted", func(t *testing.T) {
+		before := foldAll(t, target100, take(onDay(0), SelfRatingClean, 110))
+		after, err := FoldEvidence(before, takeIn(onDay(0).Add(time.Minute), SelfRatingStruggled, 60, NoteValueEighths), target100)
+		require.NoError(t, err)
+		assert.Equal(t, before.Counted, after.Counted)
+	})
+	t.Run("a take in quarters slower than a best clean tempo in eighths is a miss", func(t *testing.T) {
+		before := foldAll(t, target100, takeIn(onDay(0), SelfRatingClean, 60, NoteValueEighths))
+		after, err := FoldEvidence(before, take(onDay(0).Add(time.Minute), SelfRatingStruggled, 110), target100)
+		require.NoError(t, err)
+		assert.Equal(t, before.Counted+1, after.Counted)
+	})
+	t.Run("halves count at half the tempo", func(t *testing.T) {
+		before := foldAll(t, target100, take(onDay(0), SelfRatingClean, 60))
+		after, err := FoldEvidence(before, takeIn(onDay(0).Add(time.Minute), SelfRatingStruggled, 100, NoteValueHalves), target100)
+		require.NoError(t, err)
+		assert.Equal(t, before.Counted+1, after.Counted, "100 in halves is 50, slower than the best clean 60")
+	})
+	t.Run("fluency compares the effective speed with the target", func(t *testing.T) {
+		f := foldAll(t, target100, takeIn(onDay(0), SelfRatingClean, 40, NoteValueEighths))
+		assert.InDelta(t, 0.8, f.Fluency, 1e-9)
+	})
+}
+
+func TestNoteValue_Factor(t *testing.T) {
+	cases := []struct {
+		v    *NoteValue
+		want float64
+	}{
+		{nil, 1},
+		{ptr(NoteValueHalves), 0.5},
+		{ptr(NoteValueQuarters), 1},
+		{ptr(NoteValueEighths), 2},
+		{ptr(NoteValueTriplets), 3},
+		{ptr(NoteValueSixteenths), 4},
+		{ptr(NoteValueQuintuplets), 5},
+		{ptr(NoteValueSextuplets), 6},
+		{ptr(NoteValueThirtySeconds), 8},
+	}
+	for _, tc := range cases {
+		assert.InDelta(t, tc.want, EffectiveSpeed(1, tc.v), 1e-9, "%v", tc.v)
+	}
 }
 
 func TestFoldEvidence_Levels(t *testing.T) {

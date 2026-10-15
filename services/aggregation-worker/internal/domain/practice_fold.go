@@ -38,6 +38,7 @@ type PracticeEvidence struct {
 	TapMs             *int
 	Rating            SelfRating
 	TempoBPM          *int
+	NoteValue         *NoteValue
 	ChangesPerMinute  *int
 	// AnswerKey is what a right answer was, for auto-graded evidence.
 	AnswerKey *AnswerKey
@@ -165,7 +166,10 @@ type ItemFold struct {
 	LastAt *time.Time
 	// BestCleanBPM and BestChangesPerMinute are the best clean measures since the
 	// last teacher review: the edge above which a take that isn't clean explores.
+	// The best clean tempo is the fastest at effective speed, kept as played: its
+	// BPM and BestCleanNoteValue, which is nil only in a fold from before note values.
 	BestCleanBPM         *int
+	BestCleanNoteValue   *NoteValue
 	BestChangesPerMinute *int
 	// RightByResponse counts the right answers by the way the item was asked
 	// (WayAsked), so an item asked more than one way can next be asked the way it
@@ -249,21 +253,22 @@ func foldAnswer(f ItemFold, e PracticeEvidence, goal ItemGoal) (ItemFold, error)
 	return f, nil
 }
 
-// foldTake folds a self-rated take.
+// foldTake folds a self-rated take. Tempos are compared at effective speed, so a
+// take in eighths counts as twice its BPM.
 func foldTake(f ItemFold, e PracticeEvidence, goal ItemGoal) ItemFold {
 	f.Attempts++
 	at := e.OccurredAt
 	f.LastAt = &at
 
-	measure, best, target := e.TempoBPM, &f.BestCleanBPM, goal.TargetTempoBPM
+	measure, best, target := effectiveTempo(e.TempoBPM, e.NoteValue), effectiveTempo(f.BestCleanBPM, f.BestCleanNoteValue), goal.TargetTempoBPM
 	if e.ChangesPerMinute != nil {
-		measure, best, target = e.ChangesPerMinute, &f.BestChangesPerMinute, goal.TargetChangesPerMinute
+		measure, best, target = asSpeed(e.ChangesPerMinute), asSpeed(f.BestChangesPerMinute), goal.TargetChangesPerMinute
 	}
-	if exploresAboveTheEdge(e.Rating, measure, *best) {
+	if exploresAboveTheEdge(e.Rating, measure, best) {
 		return f
 	}
-	if e.Rating == SelfRatingClean {
-		*best = higher(*best, measure)
+	if e.Rating == SelfRatingClean && measure != nil && (best == nil || *measure > *best) {
+		f.keepBestClean(e)
 	}
 
 	r := readRating(e.Rating, goalRatio(measure, target))
@@ -272,27 +277,50 @@ func foldTake(f ItemFold, e PracticeEvidence, goal ItemGoal) ItemFold {
 	return f
 }
 
+// keepBestClean makes the clean take e the best one, kept as played.
+func (f *ItemFold) keepBestClean(e PracticeEvidence) {
+	if e.ChangesPerMinute != nil {
+		v := *e.ChangesPerMinute
+		f.BestChangesPerMinute = &v
+		return
+	}
+	bpm, noteValue := *e.TempoBPM, NoteValueQuarters
+	if e.NoteValue != nil {
+		noteValue = *e.NoteValue
+	}
+	f.BestCleanBPM, f.BestCleanNoteValue = &bpm, &noteValue
+}
+
+// effectiveTempo is a tempo at effective speed, or nil without a tempo.
+func effectiveTempo(bpm *int, v *NoteValue) *float64 {
+	if bpm == nil {
+		return nil
+	}
+	speed := EffectiveSpeed(*bpm, v)
+	return &speed
+}
+
+func asSpeed(measure *int) *float64 {
+	if measure == nil {
+		return nil
+	}
+	speed := float64(*measure)
+	return &speed
+}
+
 // exploresAboveTheEdge reports a take that isn't clean above the best clean
 // measure. The tempo ladder pushes every session to the student's edge, so such
 // a take is exploring, not forgetting, and doesn't count against them.
-func exploresAboveTheEdge(rating SelfRating, measure, best *int) bool {
+func exploresAboveTheEdge(rating SelfRating, measure, best *float64) bool {
 	return rating != SelfRatingClean && measure != nil && best != nil && *measure > *best
 }
 
-func higher(best, measure *int) *int {
-	if measure == nil || (best != nil && *best >= *measure) {
-		return best
-	}
-	v := *measure
-	return &v
-}
-
 // goalRatio is how far a take got toward the item's goal, capped at 1.
-func goalRatio(measure, target *int) float64 {
+func goalRatio(measure *float64, target *int) float64 {
 	if measure == nil || target == nil || *target <= 0 {
 		return 1
 	}
-	return math.Min(1, float64(*measure)/float64(*target))
+	return math.Min(1, *measure/float64(*target))
 }
 
 // readRating maps a rating onto the three readings: clean is a hit, almost

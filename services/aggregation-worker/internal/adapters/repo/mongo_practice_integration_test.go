@@ -218,11 +218,14 @@ func takeEvidence(id, student string, at time.Time, rating domain.SelfRating) do
 		OccurredAt:        at,
 		PracticeSessionID: "5e551000-0000-4000-8000-000000000001",
 		GraderID:          "self_rating.v1",
-		Response:          domain.PracticeResponse{Type: domain.PracticeResponseSelfRating, Rating: rating, TempoBPM: intPtr(90)},
+		Response:          domain.PracticeResponse{Type: domain.PracticeResponseSelfRating, Rating: rating, TempoBPM: intPtr(90), NoteValue: &eighths},
 		Rating:            rating,
 		TempoBPM:          intPtr(90),
+		NoteValue:         &eighths,
 	}
 }
+
+var eighths = domain.NoteValueEighths
 
 func TestMongoPracticeEvidenceRepository(t *testing.T) {
 	ctx := context.Background()
@@ -379,7 +382,7 @@ func TestMongoPracticeItemStateRepository(t *testing.T) {
 
 	due := time.Date(2026, 10, 7, 9, 0, 0, 0, time.UTC)
 	last := time.Date(2026, 10, 5, 9, 0, 0, 0, time.UTC)
-	first := domain.ItemFold{Attempts: 1, Counted: 1, Accuracy: 1, Fluency: 0.9, Box: 1, DueAt: &due, LastAt: &last, BestCleanBPM: intPtr(90),
+	first := domain.ItemFold{Attempts: 1, Counted: 1, Accuracy: 1, Fluency: 0.9, Box: 1, DueAt: &due, LastAt: &last, BestCleanBPM: intPtr(90), BestCleanNoteValue: &eighths,
 		RightByResponse: map[string]int{"name_the_note": 2, "find_the_note": 1}}
 	require.NoError(t, repo.Put(ctx, studentA, itemKey, first))
 	replaced := first
@@ -398,6 +401,7 @@ func TestMongoPracticeItemStateRepository(t *testing.T) {
 			{Key: "student_id", Value: studentA}, {Key: "item_key", Value: itemKey},
 		}).Decode(&doc))
 		assert.EqualValues(t, domain.PracticeRulesVersion, doc["rules_version"])
+		assert.Equal(t, "eighths", doc["best_clean_note_value"], "core-domain reads the best clean take's note value by this name")
 		assert.Equal(t, string(replaced.Level()), doc["level"])
 		count, err := db.Collection("practice_item_state").CountDocuments(ctx, bson.D{})
 		require.NoError(t, err)

@@ -54,6 +54,7 @@ func (r *MongoPracticeItemHistoryRepository) Put(ctx context.Context, studentID,
 				Fluency:              f.Fluency,
 				Box:                  f.Box,
 				BestCleanBPM:         f.BestCleanBPM,
+				BestCleanNoteValue:   noteValueString(f.BestCleanNoteValue),
 				BestChangesPerMinute: f.BestChangesPerMinute,
 				UpdatedAt:            updatedAt,
 			}).

@@ -150,6 +150,7 @@ type practiceItemSnapshotDocument struct {
 	Fluency              float64   `bson:"fluency"`
 	Box                  int       `bson:"box"`
 	BestCleanBPM         *int      `bson:"best_clean_bpm"`
+	BestCleanNoteValue   *string   `bson:"best_clean_note_value"`
 	BestChangesPerMinute *int      `bson:"best_changes_per_minute"`
 	UpdatedAt            time.Time `bson:"updated_at"`
 }

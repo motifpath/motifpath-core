@@ -293,7 +293,7 @@ type world struct {
 
 	// completions is each student's completion status per content node, as
 	// lesson events leave it.
-	completions *fakeCompletion
+	completions  *fakeCompletion
 	lastActivity *fakeLastActivity
 	// tapMs is each student's tap time, stamped on their timed answers the way
 	// ingestion stamps it.

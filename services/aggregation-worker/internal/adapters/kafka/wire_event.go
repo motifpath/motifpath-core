@@ -72,6 +72,7 @@ type practiceResponseWire struct {
 	AudioMs          *int     `json:"audio_ms,omitempty"`
 	Rating           string   `json:"rating,omitempty"`
 	TempoBPM         *int     `json:"tempo_bpm,omitempty"`
+	NoteValue        *string  `json:"note_value,omitempty"`
 	ChangesPerMinute *int     `json:"changes_per_minute,omitempty"`
 	Choices          []string `json:"choices,omitempty"`
 	Reason           string   `json:"reason,omitempty"`

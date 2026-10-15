@@ -33,6 +33,7 @@ type GradedEvidence struct {
 	AudioMs          *int
 	Rating           SelfRating
 	TempoBPM         *int
+	NoteValue        *NoteValue
 	ChangesPerMinute *int
 	// AnswerKey is what a right answer was, kept with auto-graded evidence so a
 	// disputed answer can be checked from the evidence alone; nil when the grader
