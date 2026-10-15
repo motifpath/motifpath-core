@@ -314,13 +314,18 @@ func (s *AlphaObservationService) measure(ctx context.Context, members []alphaMe
 	if err != nil {
 		return nil, err
 	}
+	nodesByStudent := make(map[string][]string, len(members))
+	for _, m := range members {
+		nodesByStudent[m.user.ID] = pathNodeIDs(m.firstPath)
+	}
+	statuses, err := s.completion.GetStatusesForStudents(ctx, nodesByStudent)
+	if err != nil {
+		return nil, err
+	}
 
 	views := make([]AlphaStudentView, len(members))
 	for i, m := range members {
-		progress, err := s.firstPathProgress(ctx, m)
-		if err != nil {
-			return nil, err
-		}
+		progress := firstPathProgress(m.firstPath, statuses[m.user.ID])
 		activity := domain.AlphaStudentActivity{
 			FirstPathGivenAt: m.firstPath.AssignedAt,
 			Sessions:         sessionsOf(sessions, m.user.ID),
@@ -343,20 +348,16 @@ func (s *AlphaObservationService) measure(ctx context.Context, members []alphaMe
 	return views, nil
 }
 
-// firstPathProgress counts the first path's completed nodes; a node
-// completed in any path counts.
-func (s *AlphaObservationService) firstPathProgress(ctx context.Context, m alphaMember) (domain.FirstPathProgress, error) {
-	statuses, err := s.completion.GetStatuses(ctx, m.user.ID, pathNodeIDs(m.firstPath))
-	if err != nil {
-		return domain.FirstPathProgress{}, err
-	}
-	progress := domain.FirstPathProgress{Total: len(m.firstPath.Items)}
-	for _, item := range m.firstPath.Items {
+// firstPathProgress counts path's completed nodes among statuses, the
+// student's statuses for its nodes; a node completed in any path counts.
+func firstPathProgress(path domain.StudentPath, statuses map[string]domain.CompletionStatus) domain.FirstPathProgress {
+	progress := domain.FirstPathProgress{Total: len(path.Items)}
+	for _, item := range path.Items {
 		if statuses[item.ContentNodeID] == domain.CompletionStatusCompleted {
 			progress.Completed++
 		}
 	}
-	return progress, nil
+	return progress
 }
 
 // pathNodes lists the first path's nodes in path order with where the
