@@ -4,8 +4,8 @@
 # combination matrix (every CourseStatus, every CourseEnrollmentStatus,
 # standalone paths current and archived, every ExerciseType). Also clears
 # the local dev Mongo's completion aggregates collection, since seed-full
-# writes fresh ones, the worker's practice and activity state, and rebuilds
-# the practice reference snapshot.
+# writes fresh ones, the worker's practice and activity state and the event
+# log, and rebuilds the practice reference snapshot.
 #
 # HARD, NON-OVERRIDABLE PRODUCTION GUARD: refuses to run unless both
 # DATABASE_URL and MONGO_URI resolve to localhost/127.0.0.1. There is no
@@ -70,14 +70,18 @@ for _ in $(seq 1 60); do
   sleep 1
 done
 
-# The worker's practice and activity state is keyed by user ids the reset just
-# replaced, and is only ever built forward from new events: left in place, it
-# would mix orphaned rows with daily snapshots and sessions missing their past.
-echo "==> Clearing local Mongo completion aggregates and practice state"
+# Everything kept per student in Mongo is keyed by user ids the reset just
+# replaced: the worker's practice and activity state, which is only ever built
+# forward from new events, and the event log itself (with its publish outbox).
+# Left in place, it would mix orphaned rows with daily snapshots and sessions
+# missing their past, and the admin event log would list events of users who
+# no longer exist.
+echo "==> Clearing local Mongo per-student state and the event log"
 docker compose exec -T mongodb mongosh --quiet -u motifpath -p motifpath --authenticationDatabase admin \
   --eval "const db2 = db.getSiblingDB('${MONGO_DATABASE}');
     for (const c of ['aggregates', 'practice_evidence', 'practice_item_state', 'practice_item_history',
-                     'practice_sessions', 'learning_activity']) { db2.getCollection(c).deleteMany({}); }" \
+                     'practice_sessions', 'learning_activity', 'student_activity', 'song_chart_completions',
+                     'tap_checks', 'events', 'publish_outbox']) { db2.getCollection(c).deleteMany({}); }" \
   >/dev/null 2>&1 || true
 
 echo "==> Applying migrations from scratch"
