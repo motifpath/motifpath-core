@@ -33,6 +33,7 @@ LANGUAGES = ('en', 'pt_BR')
 TEMPLATE_KEY = re.compile(r'^[a-z][a-z_]*:[a-z][a-z_]*$')
 SOURCES = ('default', 'benchmark', 'calibrated')
 RUNGS = ('know', 'hear', 'play_clean', 'play_in_time', 'move', 'target', 'use')
+LEVELS = ('new', 'learning', 'accurate', 'fluent', 'retained')
 
 
 
@@ -57,6 +58,7 @@ class Template:
     names: dict
     rung: str = 'know'
     second_way: str = None
+    comes_back: bool = False
 
     @property
     def id(self):
@@ -82,6 +84,7 @@ class Threshold:
 class Drills:
     templates: list
     thresholds: list
+    hear_tempo_bpm: dict = None
 
 
 def build(raw, installed=frozenset(), today=None):
@@ -105,7 +108,10 @@ def build(raw, installed=frozenset(), today=None):
         if not isinstance(entry.get('timed'), bool):
             raise ValueError(f'template {key!r} needs timed: true or false')
         t = Template(key, entry.get('item_kind', ''), entry.get('response_type', ''), entry['timed'],
-                     {lang: names[lang] for lang in LANGUAGES}, entry.get('rung'), entry.get('second_way'))
+                     {lang: names[lang] for lang in LANGUAGES}, entry.get('rung'), entry.get('second_way'),
+                     entry.get('comes_back', False))
+        if not isinstance(t.comes_back, bool):
+            raise ValueError(f'template {key!r} needs comes_back: true or false')
         if t.rung not in RUNGS:
             raise ValueError(f'template {key!r} has rung {t.rung!r}, not one of {RUNGS}')
         if not t.item_kind or not key.startswith(t.item_kind + ':') or not t.response_type:
@@ -160,7 +166,19 @@ def build(raw, installed=frozenset(), today=None):
             if expected > 1 and t.effective_from <= versions[expected - 2].effective_from:
                 raise ValueError(f'{key!r} v{t.version} effective_from must be later than v{expected - 1}\'s')
         thresholds.extend(versions)
-    return Drills(list(templates.values()), thresholds)
+    return Drills(list(templates.values()), thresholds, build_hear_tempo(raw.get('hear_tempo_bpm')))
+
+
+def build_hear_tempo(raw):
+    """Validates the tempo a question asked by ear starts at, per knowledge level: a positive
+    whole number of BPM for every level. None when the catalog gives none."""
+    if raw is None:
+        return None
+    for level in LEVELS:
+        bpm = raw.get(level)
+        if not isinstance(bpm, int) or isinstance(bpm, bool) or bpm <= 0:
+            raise ValueError(f'hear_tempo_bpm needs a positive whole number of BPM for {level!r}')
+    return {level: raw[level] for level in LEVELS}
 
 
 @dataclass
@@ -355,10 +373,11 @@ def render_sql(drills):
     out = ['-- Frozen practice drill catalog, compiled from motifpath-specs catalogs/practice-drills.yaml by',
            '-- scripts/practice_drills. Each id is the UUID v5 of drill-template/<key> or',
            '-- drill-threshold/<template key>/v<version>. A row already holding one of these ids stops the migration.',
-           'INSERT INTO "drill_templates" ("id", "key", "item_kind", "response_type", "rung", "second_way", "timed", "names") VALUES']
+           'INSERT INTO "drill_templates" ("id", "key", "item_kind", "response_type", "rung", "second_way", "comes_back", "timed", "names") VALUES']
     out.append(',\n'.join(
         f"  ({sql_text(t.id)}, {sql_text(t.key)}, {sql_text(t.item_kind)}, {sql_text(t.response_type)}, "
         f"{sql_text(t.rung)}, {sql_text(t.second_way) if t.second_way else 'NULL'}, "
+        f"{'true' if t.comes_back else 'false'}, "
         f"{'true' if t.timed else 'false'}, {sql_text(compact(t.names))})"
         for t in drills.templates) + ';')
     if drills.thresholds:
