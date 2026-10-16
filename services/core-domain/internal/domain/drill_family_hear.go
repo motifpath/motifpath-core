@@ -48,6 +48,8 @@ func HearTempoBPM(level KnowledgeLevel) int {
 		return 90
 	case KnowledgeLevelFluent, KnowledgeLevelRetained:
 		return 110
+	case KnowledgeLevelNew, KnowledgeLevelLearning:
+		return 70
 	}
 	return 70
 }
