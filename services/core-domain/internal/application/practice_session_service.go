@@ -247,7 +247,7 @@ func (s *PracticeSessionService) ComposePlan(ctx context.Context, caller domain.
 	}
 	var boxes *chordBoxes
 	if s.harmony != nil && instrumentID == nil {
-		if c.reading, c.bassLine, err = s.harmony.reading(ctx, instrumentIDs, c.newTurn); err != nil {
+		if c.reading, c.bassInstrumentID, err = s.harmony.reading(ctx, instrumentIDs, c.newTurn); err != nil {
 			return domain.PracticeSessionPlan{}, err
 		}
 		boxes = s.harmony.boxes(ctx)
@@ -787,9 +787,9 @@ type composer struct {
 	// confusable holds, by item key, the keys of the items each pick is
 	// mistaken for.
 	confusable map[string][]string
-	// bassLine is whether this session reads chords on bass, so a question
-	// asked by ear plays a root line.
-	bassLine bool
+	// bassInstrumentID is the bass this session reads chords on, whose
+	// voice plays a root line under a question asked by ear; empty on guitar.
+	bassInstrumentID string
 	// comebacks holds, by item key, each pick asked a way that comes back,
 	// planned again for its second time later in the session.
 	comebacks map[string]domain.PracticeSessionItem
@@ -1274,7 +1274,7 @@ func (c *composer) item(cand practiceCandidate, reason domain.PracticePickReason
 		c.confusable[item.ItemKey] = confusable.ConfusableWith()
 	}
 	if cand.drill != nil {
-		planning := domain.DrillPlanning{Pick: rand.IntN, Level: level, Reading: c.reading, Voicing: c.voicing, BassLine: c.bassLine}
+		planning := domain.DrillPlanning{Pick: rand.IntN, Level: level, Reading: c.reading, Voicing: c.voicing, BassInstrumentID: c.bassInstrumentID}
 		if k, ok := windowKey(cand); ok {
 			window := c.windows[k]
 			planning.Window = &window

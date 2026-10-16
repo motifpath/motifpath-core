@@ -105,35 +105,37 @@ func (src harmonySource) progression(ctx context.Context, key string, catalog *[
 	return (*catalog)[i], true, nil
 }
 
-// reading is how a session's harmony questions draw chords, and whether
-// its questions asked by ear play a bass line. Only a session in the head
-// asks them, so it reads the student's fretboard layouts: boxes on the
-// guitar layout (the chord catalog's), symbols and a bass line on any
-// other; a student with both takes turns, boxes on an even turn. Symbols
-// and no bass line when the student has no fretboard layout at all.
-func (h *harmonyDrills) reading(ctx context.Context, instrumentIDs []string, oddTurn bool) (domain.GeneratedChordDrawing, bool, error) {
+// reading is how a session's harmony questions draw chords, and the bass
+// whose voice plays a root line under its questions asked by ear. Only a
+// session in the head asks them, so it reads the student's fretboard
+// layouts: boxes on the guitar layout (the chord catalog's), symbols and a
+// bass line on the first other; a student with both takes turns, boxes on
+// an even turn. Symbols and no bass line when the student has no fretboard
+// layout at all.
+func (h *harmonyDrills) reading(ctx context.Context, instrumentIDs []string, oddTurn bool) (domain.GeneratedChordDrawing, string, error) {
 	guitar, err := h.guitarLayoutID(ctx)
 	if err != nil {
-		return "", false, err
+		return "", "", err
 	}
-	var onGuitar, onOther bool
+	var onGuitar bool
+	var bass string
 	for _, id := range instrumentIDs {
 		layouts, err := h.layouts.FretboardLayouts(ctx, id)
 		if err != nil {
-			return "", false, err
+			return "", "", err
 		}
 		for _, l := range layouts {
 			if l.ID == guitar {
 				onGuitar = true
-			} else {
-				onOther = true
+			} else if bass == "" {
+				bass = l.ID
 			}
 		}
 	}
-	if onGuitar && (!onOther || !oddTurn) {
-		return domain.GeneratedChordBoxes, false, nil
+	if onGuitar && (bass == "" || !oddTurn) {
+		return domain.GeneratedChordBoxes, "", nil
 	}
-	return domain.GeneratedChordSymbols, onOther, nil
+	return domain.GeneratedChordSymbols, bass, nil
 }
 
 // guitarLayoutID is the layout the chord catalog's voicings are on, read

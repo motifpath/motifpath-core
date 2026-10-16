@@ -410,9 +410,14 @@ func toGeneratedChoiceQuestion(q domain.PlannedGeneratedChoice, locale string) *
 }
 
 // toGeneratedChoicePlayback maps what a question asked by ear plays; a bar
-// with no numeral shown has a null numeral.
+// with no numeral shown has a null numeral, and a playback with no bass
+// line a null bass instrument.
 func toGeneratedChoicePlayback(p domain.GeneratedPlayback) *generated.GeneratedChoicePlayback {
-	out := &generated.GeneratedChoicePlayback{TempoBpm: p.TempoBPM, BassLine: p.BassLine}
+	out := &generated.GeneratedChoicePlayback{TempoBpm: p.TempoBPM, BassLine: p.BassInstrumentID != ""}
+	if p.BassInstrumentID != "" {
+		bass := mustUUID(p.BassInstrumentID)
+		out.BassInstrumentId = &bass
+	}
 	out.Bars = make([]struct {
 		Chord   string                  `json:"chord"`
 		Numeral *generated.ChordNumeral `json:"numeral"`
