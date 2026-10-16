@@ -394,9 +394,15 @@ func (w *world) harmonyClassified() []domain.ClassifiedItem {
 				domain.ClassifiedItem{ItemKey: domain.ChordFunctionItem{Key: key, Numeral: numeral}.ItemKey(), NodeIDs: nodes(domain.PracticeItemKindChordFunction)})
 		}
 	}
+	for _, numeral := range domain.HarmonyItemNumerals {
+		items = append(items, domain.ClassifiedItem{ItemKey: domain.HeardChordItem{Numeral: numeral}.ItemKey(), NodeIDs: nodes(domain.PracticeItemKindHeardChord)})
+	}
 	progressions, err := catalogProgressions{}.List(context.Background())
 	if err == nil {
 		for _, p := range progressions {
+			if len(p.Bars) == domain.HeardProgressionBars {
+				items = append(items, domain.ClassifiedItem{ItemKey: domain.HeardProgressionItemKey(p.Key), NodeIDs: nodes(domain.PracticeItemKindHeardProgression)})
+			}
 			items = append(items, domain.ClassifiedItem{ItemKey: domain.ChartProgressionItemKey(p.Key), NodeIDs: nodes(domain.PracticeItemKindChartProgression)})
 		}
 	}
@@ -518,6 +524,9 @@ func (w *world) harmonyItemPlanned() (generated.PracticeSessionItem, error) {
 // harmonyPlannedFor composes a session in the head in which the item a
 // step named is planned.
 func (w *world) harmonyPlannedFor(string) error {
+	if w.hear().item != nil {
+		return w.planHeard()
+	}
 	return w.composeSession(15, nil)
 }
 
@@ -598,8 +607,8 @@ func functionOfChord(key, chord string) domain.ChordFunction {
 	return ""
 }
 
-// planEveryHarmonyItem plans every harmony item in every way, level and
-// reading, checking each question.
+// planEveryHarmonyItem plans every harmony and ear item in every way, level
+// and reading, checking each question.
 func (w *world) planEveryHarmonyItem() error {
 	progressions, err := catalogProgressions{}.List(context.Background())
 	if err != nil {
@@ -611,12 +620,18 @@ func (w *world) planEveryHarmonyItem() error {
 			items = append(items, domain.DiatonicChordItem{Key: key, Numeral: numeral}, domain.ChordFunctionItem{Key: key, Numeral: numeral})
 		}
 	}
+	for _, numeral := range domain.HarmonyItemNumerals {
+		items = append(items, domain.HeardChordItem{Numeral: numeral})
+	}
 	for _, p := range progressions {
 		items = append(items, domain.ChartProgressionItem{Progression: p, Catalog: progressions})
+		if len(p.Bars) == domain.HeardProgressionBars {
+			items = append(items, domain.HeardProgressionItem{Progression: p, Catalog: progressions})
+		}
 	}
 	for _, item := range items {
 		for _, way := range item.Ways() {
-			for _, level := range []domain.KnowledgeLevel{domain.KnowledgeLevelLearning, domain.KnowledgeLevelFluent} {
+			for _, level := range []domain.KnowledgeLevel{domain.KnowledgeLevelLearning, domain.KnowledgeLevelAccurate, domain.KnowledgeLevelFluent} {
 				for _, instrument := range []string{"guitar", "electric-bass"} {
 					planning := w.readingOn(instrument)
 					planning.Level = level
