@@ -38,6 +38,7 @@ func TestFeatures(t *testing.T) {
 				featuresBase + "/practice/compose-practice-session.feature",
 				featuresBase + "/practice/diagram-shapes.feature",
 				featuresBase + "/practice/drill-challenge.feature",
+				featuresBase + "/practice/progression-catalog.feature",
 				featuresBase + "/practice/fretboard-cells.feature",
 				featuresBase + "/practice/focused-session.feature",
 				featuresBase + "/practice/fretboard-map.feature",
@@ -132,6 +133,7 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	registerFretboardCellSteps(sc, w)
 	registerDrillChallengeSteps(sc, w)
 	registerHarmonyDrillSteps(sc, w)
+	registerProgressionCatalogSteps(sc, w)
 	registerDiagramShapeSteps(sc, w)
 	registerFretboardMapSteps(sc, w)
 	registerTapCheckSteps(sc, w)

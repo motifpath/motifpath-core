@@ -46,28 +46,29 @@ func uuidPtrToStringPtr(id *openapi_types.UUID) *string {
 // OpenAPI operation, each translating between generated wire types and the
 // application layer.
 type Handler struct {
-	identity         *application.IdentityService
-	content          *application.ContentService
-	challenge        *application.ChallengeService
-	exercise         *application.ExerciseService
-	knowledgeNode    *application.KnowledgeNodeService
-	knowledgeEdge    *application.KnowledgeEdgeService
-	media            *application.MediaService
-	path             *application.LearningPathService
-	pathCatalog      *application.PathCatalogService
-	studentPath      *application.StudentPathService
-	course           *application.CourseService
-	courseEnrollment *application.CourseEnrollmentService
-	instrument       *application.InstrumentService
-	voice            *application.VoiceService
-	diagram          *application.DiagramService
-	practiceSession  *application.PracticeSessionService
-	practiceSummary  *application.PracticeSummaryService
-	chordCatalog     *application.ChordCatalogService
-	songChart        *application.SongChartService
-	appConfig        *application.AppConfigService
-	startingPoints   *application.StartingPointsService
-	alphaObservation *application.AlphaObservationService
+	identity           *application.IdentityService
+	content            *application.ContentService
+	challenge          *application.ChallengeService
+	exercise           *application.ExerciseService
+	knowledgeNode      *application.KnowledgeNodeService
+	knowledgeEdge      *application.KnowledgeEdgeService
+	media              *application.MediaService
+	path               *application.LearningPathService
+	pathCatalog        *application.PathCatalogService
+	studentPath        *application.StudentPathService
+	course             *application.CourseService
+	courseEnrollment   *application.CourseEnrollmentService
+	instrument         *application.InstrumentService
+	voice              *application.VoiceService
+	diagram            *application.DiagramService
+	practiceSession    *application.PracticeSessionService
+	practiceSummary    *application.PracticeSummaryService
+	chordCatalog       *application.ChordCatalogService
+	progressionCatalog *application.ProgressionCatalogService
+	songChart          *application.SongChartService
+	appConfig          *application.AppConfigService
+	startingPoints     *application.StartingPointsService
+	alphaObservation   *application.AlphaObservationService
 
 	// pingers back the readiness probe only; the health probes never touch
 	// the application services above.
@@ -96,6 +97,7 @@ func NewHandler(
 	practiceSession *application.PracticeSessionService,
 	practiceSummary *application.PracticeSummaryService,
 	chordCatalog *application.ChordCatalogService,
+	progressionCatalog *application.ProgressionCatalogService,
 	songChart *application.SongChartService,
 	appConfig *application.AppConfigService,
 	startingPoints *application.StartingPointsService,
@@ -122,6 +124,7 @@ func NewHandler(
 		practiceSession:       practiceSession,
 		practiceSummary:       practiceSummary,
 		chordCatalog:          chordCatalog,
+		progressionCatalog:    progressionCatalog,
 		songChart:             songChart,
 		appConfig:             appConfig,
 		startingPoints:        startingPoints,
