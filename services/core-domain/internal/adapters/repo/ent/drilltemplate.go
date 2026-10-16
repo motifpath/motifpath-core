@@ -28,6 +28,8 @@ type DrillTemplate struct {
 	Rung string `json:"rung,omitempty"`
 	// SecondWay holds the value of the "second_way" field.
 	SecondWay *string `json:"second_way,omitempty"`
+	// ComesBack holds the value of the "comes_back" field.
+	ComesBack bool `json:"comes_back,omitempty"`
 	// Timed holds the value of the "timed" field.
 	Timed bool `json:"timed,omitempty"`
 	// Names holds the value of the "names" field.
@@ -63,7 +65,7 @@ func (*DrillTemplate) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case drilltemplate.FieldNames:
 			values[i] = new([]byte)
-		case drilltemplate.FieldTimed:
+		case drilltemplate.FieldComesBack, drilltemplate.FieldTimed:
 			values[i] = new(sql.NullBool)
 		case drilltemplate.FieldKey, drilltemplate.FieldItemKind, drilltemplate.FieldResponseType, drilltemplate.FieldRung, drilltemplate.FieldSecondWay:
 			values[i] = new(sql.NullString)
@@ -120,6 +122,12 @@ func (_m *DrillTemplate) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.SecondWay = new(string)
 				*_m.SecondWay = value.String
+			}
+		case drilltemplate.FieldComesBack:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field comes_back", values[i])
+			} else if value.Valid {
+				_m.ComesBack = value.Bool
 			}
 		case drilltemplate.FieldTimed:
 			if value, ok := values[i].(*sql.NullBool); !ok {
@@ -192,6 +200,9 @@ func (_m *DrillTemplate) String() string {
 		builder.WriteString("second_way=")
 		builder.WriteString(*v)
 	}
+	builder.WriteString(", ")
+	builder.WriteString("comes_back=")
+	builder.WriteString(fmt.Sprintf("%v", _m.ComesBack))
 	builder.WriteString(", ")
 	builder.WriteString("timed=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Timed))

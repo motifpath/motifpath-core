@@ -79,6 +79,11 @@ func SecondWay(v string) predicate.DrillTemplate {
 	return predicate.DrillTemplate(sql.FieldEQ(FieldSecondWay, v))
 }
 
+// ComesBack applies equality check predicate on the "comes_back" field. It's identical to ComesBackEQ.
+func ComesBack(v bool) predicate.DrillTemplate {
+	return predicate.DrillTemplate(sql.FieldEQ(FieldComesBack, v))
+}
+
 // Timed applies equality check predicate on the "timed" field. It's identical to TimedEQ.
 func Timed(v bool) predicate.DrillTemplate {
 	return predicate.DrillTemplate(sql.FieldEQ(FieldTimed, v))
@@ -417,6 +422,16 @@ func SecondWayEqualFold(v string) predicate.DrillTemplate {
 // SecondWayContainsFold applies the ContainsFold predicate on the "second_way" field.
 func SecondWayContainsFold(v string) predicate.DrillTemplate {
 	return predicate.DrillTemplate(sql.FieldContainsFold(FieldSecondWay, v))
+}
+
+// ComesBackEQ applies the EQ predicate on the "comes_back" field.
+func ComesBackEQ(v bool) predicate.DrillTemplate {
+	return predicate.DrillTemplate(sql.FieldEQ(FieldComesBack, v))
+}
+
+// ComesBackNEQ applies the NEQ predicate on the "comes_back" field.
+func ComesBackNEQ(v bool) predicate.DrillTemplate {
+	return predicate.DrillTemplate(sql.FieldNEQ(FieldComesBack, v))
 }
 
 // TimedEQ applies the EQ predicate on the "timed" field.
