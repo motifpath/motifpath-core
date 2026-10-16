@@ -247,7 +247,7 @@ func (s *PracticeSessionService) ComposePlan(ctx context.Context, caller domain.
 	}
 	var boxes *chordBoxes
 	if s.harmony != nil && instrumentID == nil {
-		if c.reading, err = s.harmony.reading(ctx, instrumentIDs, c.newTurn); err != nil {
+		if c.reading, c.bassLine, err = s.harmony.reading(ctx, instrumentIDs, c.newTurn); err != nil {
 			return domain.PracticeSessionPlan{}, err
 		}
 		boxes = s.harmony.boxes(ctx)
@@ -787,6 +787,12 @@ type composer struct {
 	// confusable holds, by item key, the keys of the items each pick is
 	// mistaken for.
 	confusable map[string][]string
+	// bassLine is whether this session reads chords on bass, so a question
+	// asked by ear plays a root line.
+	bassLine bool
+	// comebacks holds, by item key, each pick asked a way that comes back,
+	// planned again for its second time later in the session.
+	comebacks map[string]domain.PracticeSessionItem
 }
 
 // drillWindowKey is a fretboard drill of a layout, which takes one window.
@@ -810,6 +816,7 @@ func newComposer(now time.Time, minutes int, shuffle func(n int, swap func(i, j 
 		now: now, budget: minutes * 60, shuffle: shuffle, picked: map[string]bool{}, drills: map[string]int{},
 		windows: map[drillWindowKey]domain.FretWindow{}, templates: templates,
 		subjectOf: candidateNode, newRungs: map[string][]domain.PracticeRung{}, confusable: map[string][]string{},
+		comebacks: map[string]domain.PracticeSessionItem{},
 	}
 }
 
@@ -1185,7 +1192,7 @@ func (c *composer) take(candidates []practiceCandidate, reason domain.PracticePi
 		if item.IsGeneratedDrill() && c.drills[item.DrillTemplateKey()] >= domain.MaxGeneratedDrillItems {
 			continue
 		}
-		if c.used+item.EstimatedSeconds > limit {
+		if c.used+c.cost(item) > limit {
 			if c.first == nil {
 				c.first = &item
 			}
@@ -1209,7 +1216,7 @@ func (c *composer) neverEmpty() {
 
 func (c *composer) reserve(item domain.PracticeSessionItem) {
 	c.picked[item.ItemKey] = true
-	c.used += item.EstimatedSeconds
+	c.used += c.cost(item)
 	if item.IsGeneratedDrill() {
 		c.drills[item.DrillTemplateKey()]++
 	}
@@ -1217,7 +1224,8 @@ func (c *composer) reserve(item domain.PracticeSessionItem) {
 
 // plan lists the session's items in order: the warm-up, the review block,
 // the picks, each with their drills taking turns but the main subject's
-// confusable items next to each other, then the application ending.
+// confusable items next to each other, then the application ending. An
+// item asked a way that comes back is asked again a few items later.
 func (c *composer) plan() []domain.PracticeSessionItem {
 	var items []domain.PracticeSessionItem
 	if c.warm != nil {
@@ -1229,6 +1237,7 @@ func (c *composer) plan() []domain.PracticeSessionItem {
 		return cmp.Compare(slices.Index(reasonOrder, a.Reason), slices.Index(reasonOrder, b.Reason))
 	})
 	items = append(items, c.confusablesTogether(takeTurns(picks))...)
+	items = withComebacks(items, c.comebacks, c.confusable)
 	if c.ending != nil {
 		items = append(items, *c.ending)
 	}
@@ -1265,12 +1274,17 @@ func (c *composer) item(cand practiceCandidate, reason domain.PracticePickReason
 		c.confusable[item.ItemKey] = confusable.ConfusableWith()
 	}
 	if cand.drill != nil {
-		planning := domain.DrillPlanning{Pick: rand.IntN, Level: level, Reading: c.reading, Voicing: c.voicing}
+		planning := domain.DrillPlanning{Pick: rand.IntN, Level: level, Reading: c.reading, Voicing: c.voicing, BassLine: c.bassLine}
 		if k, ok := windowKey(cand); ok {
 			window := c.windows[k]
 			planning.Window = &window
 		}
 		item.Ask(cand.drill.Plan(domain.NextDrillWay(cand.drill, cand.state), planning))
+		if c.comesBack(item) {
+			again := item
+			again.Ask(cand.drill.Plan(item.Way, planning))
+			c.comebacks[item.ItemKey] = again
+		}
 	}
 	if cand.diagram != nil {
 		item.Kind = domain.PracticeItemKindPlayAlong

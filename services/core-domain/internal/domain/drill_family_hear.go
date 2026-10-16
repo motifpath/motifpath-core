@@ -1,6 +1,9 @@
 package domain
 
-import "slices"
+import (
+	"slices"
+	"strings"
+)
 
 // The ear drills: a numeral heard after the key is set, and a progression
 // heard in a key. They are generated from the major keys and the
@@ -9,6 +12,10 @@ const (
 	PracticeItemKindHeardChord       PracticeItemKind = "heard_chord"
 	PracticeItemKindHeardProgression PracticeItemKind = "heard_progression"
 )
+
+// HeardProgressionBars is how many bars a heard progression has: a longer
+// one is too long to hold in mind before answering.
+const HeardProgressionBars = 4
 
 // HearItemSeconds is how long a question asked by ear takes in a session:
 // up to five bars heard at the slowest starting tempo, then the answer.
@@ -106,6 +113,16 @@ func keySetting(level KnowledgeLevel) []string {
 
 func fluent(level KnowledgeLevel) bool {
 	return level == KnowledgeLevelFluent || level == KnowledgeLevelRetained
+}
+
+// ParseHeardChordItemKey reads a heard_chord item key; false for any other
+// key, or one whose numeral isn't a heard chord's.
+func ParseHeardChordItemKey(itemKey string) (HeardChordItem, bool) {
+	numeral, found := strings.CutPrefix(itemKey, string(PracticeItemKindHeardChord)+":")
+	if !found || !slices.Contains(HarmonyItemNumerals, numeral) {
+		return HeardChordItem{}, false
+	}
+	return HeardChordItem{Numeral: numeral}, true
 }
 
 // HeardProgressionItem is a 4-bar progression of the catalog heard in a key

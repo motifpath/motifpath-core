@@ -342,3 +342,49 @@ func TestEntNodeItemSource_FretboardLayouts(t *testing.T) {
 		assert.Empty(t, layoutIDs(t, "not-a-uuid"))
 	})
 }
+
+func TestEntNodeItemSource_HearItems(t *testing.T) {
+	ctx := context.Background()
+	db := startMigrationPostgres(t, ctx)
+	for _, file := range migrationFiles(t) {
+		_, err := execMigrationFile(ctx, db, file)
+		require.NoError(t, err)
+	}
+	client := ent.NewClient(ent.Driver(entsql.OpenDB(dialect.Postgres, db)))
+	source := NewEntNodeItemSource(client)
+
+	heard := func(items []domain.ClassifiedItem, kind domain.PracticeItemKind) map[string][]string {
+		byKey := map[string][]string{}
+		for _, item := range items {
+			if strings.HasPrefix(item.ItemKey, string(kind)+":") {
+				byKey[item.ItemKey] = item.NodeIDs
+			}
+		}
+		return byKey
+	}
+
+	t.Run("every instrument has a heard chord for each numeral but the tonic, under the ear nodes", func(t *testing.T) {
+		for _, instrumentID := range []string{acousticGuitarID, electricBassID, ""} {
+			got, err := source.ClassifiedItems(ctx, instrumentID)
+			require.NoError(t, err)
+			items := heard(got, domain.PracticeItemKindHeardChord)
+
+			assert.Len(t, items, 6, instrumentID)
+			assert.ElementsMatch(t, []string{catalogID("knowledge-node/hear-chord-quality"), catalogID("knowledge-node/hear-progressions")}, items["heard_chord:vi"], instrumentID)
+			assert.NotContains(t, items, "heard_chord:I", "the tonic is never an item")
+		}
+	})
+
+	t.Run("every 4-bar progression is a heard item under hear-progressions and its own nodes, and no 12-bar one", func(t *testing.T) {
+		got, err := source.ClassifiedItems(ctx, electricBassID)
+		require.NoError(t, err)
+		items := heard(got, domain.PracticeItemKindHeardProgression)
+
+		assert.Len(t, items, 8)
+		assert.ElementsMatch(t, []string{
+			catalogID("knowledge-node/hear-progressions"), catalogID("knowledge-node/common-progressions"), catalogID("knowledge-node/cadences"),
+		}, items["heard_progression:ii-V-I"])
+		assert.NotContains(t, items, "heard_progression:12-bar-blues")
+		assert.NotContains(t, items, "heard_progression:12-bar-blues-quick-change")
+	})
+}
