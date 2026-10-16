@@ -56,9 +56,13 @@ type DrillPlanning struct {
 	// Reading is how a harmony drill draws chords in this session: boxes
 	// on guitar, symbols on bass.
 	Reading GeneratedChordDrawing
-	// Voicing finds the voicing diagram a chord's box is drawn with; false
-	// when the chord has none. Nil when no box is drawn.
+	// Voicing finds the voicing diagram a chord's box is drawn or sounded
+	// with; false when the chord has none. Nil outside a session in the
+	// head.
 	Voicing func(chord string) (diagramID string, ok bool)
+	// BassLine is whether the session reads chords on bass, so a question
+	// asked by ear plays each chord's root under it.
+	BassLine bool
 }
 
 // PlannedDrill is a drill item as a session asks it.

@@ -65,11 +65,12 @@ type QuestionProgression struct {
 	Names LocalizedText
 }
 
-// PlannedGeneratedChoice is a harmony question as a session asks it: the
-// way, the key, what it gives (a numeral, a chord, a function, a
+// PlannedGeneratedChoice is a harmony or ear question as a session asks
+// it: the way, the key, what it gives (a numeral, a chord, a function, a
 // progression or a chart, by way), how its chords are drawn, the options in
-// the order shown and the box of every chord drawn. Answer is the right
-// option's value, kept to check the plan and never shown.
+// the order shown, the box of every chord drawn or sounded, and what a
+// question asked by ear plays. Answer is the right option's value, kept to
+// check the plan and never shown.
 type PlannedGeneratedChoice struct {
 	AskedWay    string
 	MusicKey    string
@@ -81,6 +82,7 @@ type PlannedGeneratedChoice struct {
 	DrawnAs     GeneratedChordDrawing
 	Options     []GeneratedOption
 	Voicings    []ChordBox
+	Playback    *GeneratedPlayback
 	Answer      string
 	itemKind    PracticeItemKind
 }
@@ -277,7 +279,7 @@ func (i ChartProgressionItem) Plan(way string, planning DrillPlanning) PlannedDr
 		keys = EasyChartKeys
 	}
 	key := keys[planning.Pick(len(keys))]
-	offered := i.confusables(planning.Pick)
+	offered := confusableProgressions(i.Progression, i.Catalog, planning.Pick)
 	q := &PlannedGeneratedChoice{AskedWay: way, MusicKey: key, itemKind: PracticeItemKindChartProgression}
 	if way == "numbers_to_chart" {
 		q.Progression = &QuestionProgression{Key: i.Progression.Key, Names: i.Progression.Names}
@@ -304,23 +306,23 @@ func (i ChartProgressionItem) Plan(way string, planning DrillPlanning) PlannedDr
 	return q
 }
 
-// confusables is the progression, then its confusables, then theirs, as
-// many as fit in the options, all of its length. A tie at the last ring
-// that doesn't fit whole is broken by pick.
-func (i ChartProgressionItem) confusables(pick func(int) int) []Progression {
+// confusableProgressions is progression, then its confusables in catalog,
+// then theirs, as many as fit in the options, all of its length. A tie at
+// the last ring that doesn't fit whole is broken by pick.
+func confusableProgressions(progression Progression, catalog []Progression, pick func(int) int) []Progression {
 	byKey := map[string]Progression{}
-	for _, p := range i.Catalog {
+	for _, p := range catalog {
 		byKey[p.Key] = p
 	}
-	offered := []Progression{i.Progression}
-	seen := map[string]bool{i.Progression.Key: true}
-	ring := []Progression{i.Progression}
+	offered := []Progression{progression}
+	seen := map[string]bool{progression.Key: true}
+	ring := []Progression{progression}
 	for len(ring) > 0 && len(offered) < harmonyOptions {
 		var next []Progression
 		for _, p := range ring {
 			for _, key := range p.Confusable {
 				c, ok := byKey[key]
-				if ok && !seen[key] && len(c.Bars) == len(i.Progression.Bars) {
+				if ok && !seen[key] && len(c.Bars) == len(progression.Bars) {
 					seen[key] = true
 					next = append(next, c)
 				}
