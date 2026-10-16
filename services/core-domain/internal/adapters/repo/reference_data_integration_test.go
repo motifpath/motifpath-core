@@ -73,8 +73,8 @@ func TestFreshInstall(t *testing.T) {
 	})
 
 	t.Run("the knowledge map has its nodes and edges, with fixed ids", func(t *testing.T) {
-		assert.Equal(t, map[string]string{"skill": "216", "concept": "124"}, stringPairs(t, ctx, db, "SELECT kind, count(*)::text FROM knowledge_nodes GROUP BY kind"))
-		assert.Equal(t, map[string]string{"applies": "335", "requires": "136"}, stringPairs(t, ctx, db, "SELECT type, count(*)::text FROM knowledge_edges GROUP BY type"))
+		assert.Equal(t, map[string]string{"skill": "216", "concept": "125"}, stringPairs(t, ctx, db, "SELECT kind, count(*)::text FROM knowledge_nodes GROUP BY kind"))
+		assert.Equal(t, map[string]string{"applies": "357", "requires": "140"}, stringPairs(t, ctx, db, "SELECT type, count(*)::text FROM knowledge_edges GROUP BY type"))
 		assert.Equal(t, 1, count(t, "SELECT count(*) FROM knowledge_nodes WHERE key = 'scales' AND id = '"+catalogID("knowledge-node/scales")+"'"))
 		assert.Equal(t, 1, count(t, "SELECT count(*) FROM knowledge_edges WHERE id = '"+catalogID("knowledge-edge/requires/change-chords/play-open-chords")+"'"))
 	})

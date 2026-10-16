@@ -85,6 +85,11 @@ def share_instrument(a, b):
     return not a or not b or bool(set(a) & set(b))
 
 
+def scope(instruments):
+    """The catalog instruments a node is for; empty = every instrument."""
+    return instruments or list(INSTRUMENTS)
+
+
 def build(raw):
     """Validates raw (the parsed YAML) against the map's rules and returns its
     nodes, parents before children, and its edges, applies before requires."""
@@ -94,7 +99,7 @@ def build(raw):
             if key not in INSTRUMENTS:
                 raise ValueError(f'alias {alias!r} names unknown instrument {key!r}')
 
-    nodes = {}
+    nodes, levels, unapplied = {}, {}, {}
     for kind, entries in (('concept', raw.get('concepts') or []), ('skill', raw.get('skills') or [])):
         for entry in entries:
             key = entry.get('key', '')
@@ -118,6 +123,9 @@ def build(raw):
             if kind == 'concept' and entry.get('applies'):
                 raise ValueError(f'concept {key!r} cannot apply anything')
             nodes[key] = (Node(key, kind, {lang: names[lang] for lang in LANGUAGES}, entry.get('parent'), instruments), entry.get('applies') or [])
+            levels[key] = entry.get('level')
+            if 'unapplied' in entry:
+                unapplied[key] = str(entry['unapplied'] or '').strip()
 
     for key, (n, _) in nodes.items():
         if n.parent is None:
@@ -187,7 +195,63 @@ def build(raw):
     for key in graph:
         if key not in state:
             visit(key)
+    check_reach(nodes, levels, unapplied, graph)
     return Graph(ordered, edges)
+
+
+def check_reach(nodes, levels, unapplied, requires):
+    """Checks that content can be classified, and readiness measured, on every
+    instrument: each leaf skill applies a concept valid on each of its instruments
+    (or says in unapplied why none fits), each leaf concept below the advanced
+    placeholders is applied or required, each requires target has a leaf where
+    the edge counts, and a node's requires count on all its instruments or none."""
+    children = {}
+    for n, _ in nodes.values():
+        if n.parent:
+            children.setdefault(n.parent, []).append(n.key)
+
+    def node_for(key, instrument):
+        return instrument in scope(nodes[key][0].instruments)
+
+    def leaves(key):
+        if key not in children:
+            return [key]
+        return [leaf for child in children[key] for leaf in leaves(child)]
+
+    applied = set()
+    for key, (n, applies) in nodes.items():
+        applied.update(applies)
+        if key in unapplied:
+            if n.kind != 'skill' or key in children:
+                raise ValueError(f'{key!r} says why it applies no concept, but only a leaf skill can')
+            if not unapplied[key] or applies:
+                raise ValueError(f'{key!r} needs either applied concepts or a reason in unapplied, not both')
+            continue
+        if n.kind != 'skill' or key in children:
+            continue
+        for instrument in scope(n.instruments):
+            if not any(node_for(c, instrument) for c in applies):
+                raise ValueError(f'{key!r} applies no concept for {instrument!r}; apply one or say why in unapplied')
+
+    required = {target for targets in requires.values() for target in targets}
+    for key, (n, _) in nodes.items():
+        if n.kind == 'concept' and key not in children and levels[key] != 'A' and key not in applied | required:
+            raise ValueError(f'concept {key!r} is neither applied nor required')
+
+    for source, targets in requires.items():
+        counted = set()
+        for target in targets:
+            for instrument in scope(nodes[source][0].instruments):
+                if not node_for(target, instrument):
+                    continue
+                if not any(node_for(leaf, instrument) for leaf in leaves(target)):
+                    raise ValueError(f'requires {source!r} → {target!r} counts for {instrument!r}, '
+                                     f'where {target!r} has no leaf to measure')
+                counted.add(instrument)
+        uncounted = [i for i in scope(nodes[source][0].instruments) if i not in counted]
+        if counted and uncounted:
+            raise ValueError(f'{source!r} requires nothing that counts for {uncounted[0]!r}; '
+                             'give that instrument its own prerequisite')
 
 
 def load(path):
