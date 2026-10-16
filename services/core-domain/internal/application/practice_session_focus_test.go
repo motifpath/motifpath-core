@@ -559,6 +559,21 @@ func TestPracticeSessionService_ComposePlan_Confusables(t *testing.T) {
 		assert.Equal(t, 1, second-first)
 		assert.Len(t, plan.Items, 8, "nothing is lost on the way")
 	})
+
+	t.Run("items a learner confuses are asked next to each other in any subject, not only the main one", func(t *testing.T) {
+		f := newFamily(t, "skill-fake", map[string]string{"00": "05"})
+		f.skill("skill-main")
+		f.dueSince(5, f.exercisesOf("main", "skill-main", domain.ExerciseTypeTextResponse, 12)...)
+		f.onPathFor([]string{practiceGuitar}, "skill-main", "skill-fake")
+
+		plan := f.composeInTheHead(t, 30)
+
+		require.Equal(t, "skill-main", focusIDs(plan)[0], "the confusable items are not the main subject's")
+		first, second := position(plan, "00"), position(plan, "05")
+		require.GreaterOrEqual(t, first, 0)
+		require.GreaterOrEqual(t, second, 0)
+		assert.Equal(t, 1, second-first)
+	})
 }
 
 func TestPracticeSessionService_ComposePlan_FocusHoldsForAnyStudent(t *testing.T) {

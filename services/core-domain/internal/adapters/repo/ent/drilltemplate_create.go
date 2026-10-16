@@ -59,6 +59,20 @@ func (_c *DrillTemplateCreate) SetNillableSecondWay(v *string) *DrillTemplateCre
 	return _c
 }
 
+// SetComesBack sets the "comes_back" field.
+func (_c *DrillTemplateCreate) SetComesBack(v bool) *DrillTemplateCreate {
+	_c.mutation.SetComesBack(v)
+	return _c
+}
+
+// SetNillableComesBack sets the "comes_back" field if the given value is not nil.
+func (_c *DrillTemplateCreate) SetNillableComesBack(v *bool) *DrillTemplateCreate {
+	if v != nil {
+		_c.SetComesBack(*v)
+	}
+	return _c
+}
+
 // SetTimed sets the "timed" field.
 func (_c *DrillTemplateCreate) SetTimed(v bool) *DrillTemplateCreate {
 	_c.mutation.SetTimed(v)
@@ -99,6 +113,7 @@ func (_c *DrillTemplateCreate) Mutation() *DrillTemplateMutation {
 
 // Save creates the DrillTemplate in the database.
 func (_c *DrillTemplateCreate) Save(ctx context.Context) (*DrillTemplate, error) {
+	_c.defaults()
 	return withHooks(ctx, _c.sqlSave, _c.mutation, _c.hooks)
 }
 
@@ -121,6 +136,14 @@ func (_c *DrillTemplateCreate) Exec(ctx context.Context) error {
 func (_c *DrillTemplateCreate) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
+	}
+}
+
+// defaults sets the default values of the builder before save.
+func (_c *DrillTemplateCreate) defaults() {
+	if _, ok := _c.mutation.ComesBack(); !ok {
+		v := drilltemplate.DefaultComesBack
+		_c.mutation.SetComesBack(v)
 	}
 }
 
@@ -162,6 +185,9 @@ func (_c *DrillTemplateCreate) check() error {
 		if err := drilltemplate.SecondWayValidator(v); err != nil {
 			return &ValidationError{Name: "second_way", err: fmt.Errorf(`ent: validator failed for field "DrillTemplate.second_way": %w`, err)}
 		}
+	}
+	if _, ok := _c.mutation.ComesBack(); !ok {
+		return &ValidationError{Name: "comes_back", err: errors.New(`ent: missing required field "DrillTemplate.comes_back"`)}
 	}
 	if _, ok := _c.mutation.Timed(); !ok {
 		return &ValidationError{Name: "timed", err: errors.New(`ent: missing required field "DrillTemplate.timed"`)}
@@ -224,6 +250,10 @@ func (_c *DrillTemplateCreate) createSpec() (*DrillTemplate, *sqlgraph.CreateSpe
 		_spec.SetField(drilltemplate.FieldSecondWay, field.TypeString, value)
 		_node.SecondWay = &value
 	}
+	if value, ok := _c.mutation.ComesBack(); ok {
+		_spec.SetField(drilltemplate.FieldComesBack, field.TypeBool, value)
+		_node.ComesBack = value
+	}
 	if value, ok := _c.mutation.Timed(); ok {
 		_spec.SetField(drilltemplate.FieldTimed, field.TypeBool, value)
 		_node.Timed = value
@@ -269,6 +299,7 @@ func (_c *DrillTemplateCreateBulk) Save(ctx context.Context) ([]*DrillTemplate, 
 	for i := range _c.builders {
 		func(i int, root context.Context) {
 			builder := _c.builders[i]
+			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 				mutation, ok := m.(*DrillTemplateMutation)
 				if !ok {

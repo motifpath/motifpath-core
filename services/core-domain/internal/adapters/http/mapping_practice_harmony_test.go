@@ -74,5 +74,43 @@ func TestToGeneratedPracticeSessionItem_GeneratedChoice(t *testing.T) {
 		assert.Equal(t, "I–V–vi–IV (pop)", q.Progression.Name)
 		assert.Equal(t, "C G Am F", q.Options[0].Value)
 		assert.Equal(t, []string{"C", "G", "Am", "F"}, q.Options[0].Chart)
+		assert.Nil(t, q.Playback)
+	})
+
+	t.Run("a heard chord gives its playback: the tempo, the bass line, and only the key's numerals", func(t *testing.T) {
+		planning := domain.DrillPlanning{Pick: first, Reading: domain.GeneratedChordSymbols, BassLine: true, Voicing: func(string) (string, bool) { return emBox, true }}
+		got := toGeneratedPracticeSessionItem(plan(domain.HeardChordItem{Numeral: "vi"}, "cadence_then_chord", planning), nil, "en")
+
+		assert.Equal(t, generated.PracticeItemKindHeardChord, got.Kind)
+		q := got.GeneratedChoice
+		require.NotNil(t, q)
+		assert.Equal(t, generated.CadenceThenChord, q.Way)
+		assert.Equal(t, generated.MusicKey("C"), q.MusicKey)
+		assert.Nil(t, q.Chord)
+		require.NotNil(t, q.Playback)
+		assert.Equal(t, 70, q.Playback.TempoBpm)
+		assert.True(t, q.Playback.BassLine)
+		require.Len(t, q.Playback.Bars, 5)
+		assert.Equal(t, "F", q.Playback.Bars[1].Chord)
+		require.NotNil(t, q.Playback.Bars[1].Numeral)
+		assert.Equal(t, generated.ChordNumeral("IV"), *q.Playback.Bars[1].Numeral)
+		assert.Equal(t, "Am", q.Playback.Bars[4].Chord)
+		assert.Nil(t, q.Playback.Bars[4].Numeral, "the asked chord's bar shows no numeral")
+		assert.Len(t, q.Voicings, 4, "every chord it sounds, though the session reads symbols")
+
+		body, err := json.Marshal(q)
+		require.NoError(t, err)
+		assert.Contains(t, string(body), `"numeral":null`)
+	})
+
+	t.Run("a heard chord seen by sight gives the chord and no playback", func(t *testing.T) {
+		got := toGeneratedPracticeSessionItem(plan(domain.HeardChordItem{Numeral: "vi"}, "see_then_name", domain.DrillPlanning{Pick: first, Reading: domain.GeneratedChordSymbols}), nil, "en")
+
+		q := got.GeneratedChoice
+		require.NotNil(t, q)
+		assert.Equal(t, generated.SeeThenName, q.Way)
+		require.NotNil(t, q.Chord)
+		assert.Equal(t, "Am", *q.Chord)
+		assert.Nil(t, q.Playback)
 	})
 }
