@@ -164,6 +164,12 @@ func TestToDomainEvent_PracticeItemAnsweredResponses(t *testing.T) {
 			want:     domain.PracticeResponse{Type: domain.PracticeResponseGeneratedChoice, Way: "cadence_then_chord", MusicKey: "C", Options: []string{"vi", "IV"}, Choice: "vi", LatencyMs: intPtr(3200), AudioMs: intPtr(2500)},
 		},
 		{
+			name:     "generated choice of a heard chord seen in a key",
+			itemKey:  "heard_chord:vi",
+			response: `{"response_type":"generated_choice","way":"see_then_name","music_key":"G","options":["I","ii","iii","IV","V","vi","viio"],"choice":"vi","latency_ms":2600}`,
+			want:     domain.PracticeResponse{Type: domain.PracticeResponseGeneratedChoice, Way: "see_then_name", MusicKey: "G", Options: []string{"I", "ii", "iii", "IV", "V", "vi", "viio"}, Choice: "vi", LatencyMs: intPtr(2600)},
+		},
+		{
 			name:     "timed taps",
 			itemKey:  "guide_tone:" + testInstrumentID + ":ii-V-I",
 			response: `{"response_type":"timed_taps","music_key":"C","tone":"3","tempo_bpm":120,"taps":[{"at_ms":100,"string":1,"fret":1},{"at_ms":2300,"string":2,"fret":0}]}`,
