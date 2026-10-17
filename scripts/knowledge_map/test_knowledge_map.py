@@ -8,17 +8,21 @@ SPECS_DIR = Path(os.environ.get('SPECS_DIR', Path(__file__).resolve().parents[3]
 MAP = SPECS_DIR / 'catalogs/knowledge-map.yaml'
 
 
-def node(key, kind='skill', parent=None, instruments='all', applies=None):
+def node(key, kind='skill', parent=None, instruments='all', applies=None, level=None, unapplied=None):
     n = {'key': key, 'names': {'en': key, 'pt_BR': key}, 'instruments': instruments}
     if parent:
         n['parent'] = parent
     if applies:
         n['applies'] = applies
+    if level:
+        n['level'] = level
+    if unapplied is not None:
+        n['unapplied'] = unapplied
     return n
 
 
 def catalog(concepts=(), skills=(), requires=()):
-    return {'instruments': {'guitars': ['guitar', 'electric-guitar'], 'bass': ['electric-bass']},
+    return {'instruments': {'guitars': ['guitar', 'electric-guitar'], 'acoustic': ['guitar'], 'bass': ['electric-bass']},
             'concepts': list(concepts), 'skills': list(skills), 'requires': list(requires)}
 
 
@@ -40,8 +44,9 @@ class ValidationTests(unittest.TestCase):
         self.assertEqual(km.stable_id('knowledge-edge/requires/play-pentatonic/scales'), graph.edges[-1].id)
 
     def test_parents_install_before_children(self):
-        graph = km.build(catalog(concepts=[node('child', 'concept', 'root'), node('root', 'concept')]))
-        self.assertEqual(['root', 'child'], [n.key for n in graph.nodes])
+        graph = km.build(catalog(concepts=[node('child', 'concept', 'root'), node('root', 'concept')],
+                                 skills=[node('s', applies=['child'])]))
+        self.assertEqual(['root', 'child', 's'], [n.key for n in graph.nodes])
 
     def test_rejections(self):
         cases = [
@@ -54,7 +59,7 @@ class ValidationTests(unittest.TestCase):
             ('an unknown instrument alias', catalog(skills=[node('x', instruments='banjo')]), 'banjo'),
             ('applies to a skill', catalog(skills=[node('a'), node('b', applies=['a'])]), 'concept'),
             ('requires without a level', catalog(skills=[node('a'), node('b')], requires=[{'from': 'a', 'to': 'b'}]), 'level'),
-            ('a requires cycle', catalog(skills=[node('a'), node('b')], requires=[
+            ('a requires cycle', catalog(concepts=[node('c', 'concept')], skills=[node('a', applies=['c']), node('b', applies=['c'])], requires=[
                 {'from': 'a', 'to': 'b', 'level': 'fluent'}, {'from': 'b', 'to': 'a', 'level': 'fluent'}]), 'cycle'),
             ('requires between nodes sharing no instrument', catalog(
                 skills=[node('a', instruments='guitars'), node('b', instruments='bass')],
@@ -63,6 +68,48 @@ class ValidationTests(unittest.TestCase):
         for name, raw, fragment in cases:
             with self.subTest(name):
                 self.assertRejected(raw, fragment)
+
+    def test_classification_and_readiness_reach_every_instrument(self):
+        theory = node('theory', 'concept')
+        cases = [
+            ('a leaf skill with no concept', catalog(concepts=[theory], skills=[node('s', applies=['theory']), node('t')]),
+             "'t' applies no concept for"),
+            ('a leaf skill whose concepts miss one of its instruments', catalog(
+                concepts=[theory, node('shapes', 'concept', instruments='guitars')],
+                skills=[node('s', applies=['theory']), node('t', instruments='guitars', applies=['shapes']),
+                        node('u', applies=['shapes'])]),
+             "'u' applies no concept for 'electric-bass'"),
+            ('a reason to apply nothing, with concepts too', catalog(
+                concepts=[theory], skills=[node('s', applies=['theory'], unapplied='a habit')]), 'not both'),
+            ('a blank reason to apply nothing', catalog(concepts=[theory], skills=[node('s', applies=['theory']), node('t', unapplied=' ')]),
+             'not both'),
+            ('a reason to apply nothing on a concept', catalog(
+                concepts=[node('c', 'concept', unapplied='why')], skills=[node('s', applies=['c'])]), 'only a leaf skill'),
+            ('an unreachable concept', catalog(concepts=[theory, node('modes', 'concept', level='I')],
+                                               skills=[node('s', applies=['theory'])]),
+             "'modes' is neither applied nor required"),
+            ('a requires target with no leaf where the edge counts', catalog(
+                concepts=[theory],
+                skills=[node('fingerstyle', instruments='guitars'),
+                        node('pima', 'skill', 'fingerstyle', instruments='acoustic', applies=['theory']),
+                        node('hybrid', instruments='guitars', applies=['theory'])],
+                requires=[{'from': 'hybrid', 'to': 'fingerstyle', 'level': 'accurate'}]),
+             "counts for 'electric-guitar'"),
+            ('requires that count for one instrument only', catalog(
+                concepts=[theory],
+                skills=[node('a', instruments='guitars', applies=['theory']), node('b', applies=['theory'])],
+                requires=[{'from': 'b', 'to': 'a', 'level': 'accurate'}]),
+             "'b' requires nothing that counts for 'electric-bass'"),
+        ]
+        for name, raw, fragment in cases:
+            with self.subTest(name):
+                self.assertRejected(raw, fragment)
+
+    def test_placeholders_and_explained_skills_build(self):
+        graph = km.build(catalog(
+            concepts=[node('theory', 'concept'), node('extensions', 'concept', level='A')],
+            skills=[node('s', applies=['theory']), node('plan', unapplied='a routine organises other skills')]))
+        self.assertEqual(['theory', 'extensions', 's', 'plan'], [n.key for n in graph.nodes])
 
 
 class InstrumentIconTests(unittest.TestCase):
@@ -77,9 +124,9 @@ class CatalogTests(unittest.TestCase):
     def test_the_reviewed_map_builds_with_its_counts(self):
         graph = km.load(MAP)
         kinds = [n.kind for n in graph.nodes]
-        self.assertEqual((216, 124), (kinds.count('skill'), kinds.count('concept')))
+        self.assertEqual((216, 125), (kinds.count('skill'), kinds.count('concept')))
         types = [e.type for e in graph.edges]
-        self.assertEqual((335, 136), (types.count('applies'), types.count('requires')))
+        self.assertEqual((357, 140), (types.count('applies'), types.count('requires')))
 
     def test_rendering_is_deterministic(self):
         self.assertEqual(km.render_sql(km.load(MAP)), km.render_sql(km.load(MAP)))
