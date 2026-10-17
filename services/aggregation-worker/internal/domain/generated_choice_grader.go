@@ -20,7 +20,7 @@ var waysOf = map[PracticeItemKind][]string{
 	PracticeItemKindDiatonicChord:    {"numeral_to_chord", "chord_to_numeral"},
 	PracticeItemKindChordFunction:    {"chord_to_function", "function_to_chord"},
 	PracticeItemKindChartProgression: {"chart_to_numbers", "numbers_to_chart"},
-	PracticeItemKindHeardChord:       {"cadence_then_chord"},
+	PracticeItemKindHeardChord:       {"cadence_then_chord", "see_then_name"},
 	PracticeItemKindHeardProgression: {"progression_by_number"},
 }
 
@@ -117,7 +117,7 @@ func answerSpaceOf(way string, q generatedQuestion, ref PracticeReference) answe
 	case "numeral_to_chord", "function_to_chord":
 		right, _ := chordOf(q.key, q.numeral)
 		return answerSpace{identify: chordOfTheKey(q.key), right: right.symbol(), answer: right.symbol()}
-	case "chord_to_numeral", "cadence_then_chord":
+	case "chord_to_numeral", "cadence_then_chord", "see_then_name":
 		return answerSpace{identify: oneOf(keyNumerals), right: q.numeral, answer: q.numeral}
 	case "chord_to_function":
 		fn := numeralFunction[q.numeral]

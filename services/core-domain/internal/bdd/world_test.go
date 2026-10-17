@@ -52,6 +52,7 @@ type world struct {
 	fretboardCells    *fretboardCellWorld
 	drillChallenges   *drillChallengeWorld
 	harmonyDrills     *harmonyWorld
+	hearDrills        *hearWorld
 	shapeWorld        *diagramShapeWorld
 	songCharts        *songChartWorld
 	// dueDays holds the cells a scenario made due on two days.

@@ -48,6 +48,7 @@ var (
 var generatedChoiceWays = map[string]bool{
 	"numeral_to_chord": true, "chord_to_numeral": true, "chord_to_function": true, "function_to_chord": true,
 	"chart_to_numbers": true, "numbers_to_chart": true, "cadence_then_chord": true, "progression_by_number": true,
+	"see_then_name": true,
 }
 
 // musicKeys are the major keys, spelled as the chord catalog spells roots.

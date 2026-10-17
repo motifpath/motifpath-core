@@ -124,28 +124,35 @@ func TestFreshInstall(t *testing.T) {
 	})
 
 	t.Run("the drill catalog has its templates and every exercise family's default fluent time, with fixed ids", func(t *testing.T) {
-		assert.Equal(t, 15, count(t, "SELECT count(*) FROM drill_templates"))
+		assert.Equal(t, 18, count(t, "SELECT count(*) FROM drill_templates"))
 		assert.Equal(t, 1, count(t, "SELECT count(*) FROM drill_templates WHERE key = 'fretboard_cell:name_the_note' AND id = '"+catalogID("drill-template/fretboard_cell:name_the_note")+"'"))
 		assert.Equal(t, 1, count(t, "SELECT count(*) FROM drill_templates WHERE key = 'fretboard_cell:name_the_note' AND rung = 'know' AND second_way = 'fretboard_cell:find_the_note'"))
-		assert.Equal(t, 2, count(t, "SELECT count(*) FROM drill_templates WHERE rung = 'hear' AND second_way IS NULL"))
+		assert.Equal(t, 3, count(t, "SELECT count(*) FROM drill_templates WHERE rung = 'hear' AND second_way IS NULL"))
+		assert.Equal(t, 1, count(t, "SELECT count(*) FROM drill_templates WHERE key = 'heard_chord:cadence_then_chord' AND id = '"+catalogID("drill-template/heard_chord:cadence_then_chord")+"'"+
+			" AND item_kind = 'heard_chord' AND rung = 'hear' AND second_way = 'heard_chord:see_then_name' AND comes_back"))
+		assert.Equal(t, 2, count(t, "SELECT count(*) FROM drill_templates WHERE comes_back AND key IN ('heard_chord:cadence_then_chord', 'heard_progression:progression_by_number')"))
+		assert.Equal(t, 2, count(t, "SELECT count(*) FROM drill_templates WHERE comes_back"))
 		assert.Equal(t, 1, count(t, "SELECT count(*) FROM drill_templates WHERE key = 'diatonic_chord:numeral_to_chord' AND id = '"+catalogID("drill-template/diatonic_chord:numeral_to_chord")+"'"+
 			" AND item_kind = 'diatonic_chord' AND response_type = 'generated_choice' AND rung = 'know' AND second_way = 'diatonic_chord:chord_to_numeral'"))
 		assert.Equal(t, map[string]string{
-			catalogID("drill-threshold/exercise:text_response/v1"):             "exercise:text_response|1|2026-10-01|6000|default",
-			catalogID("drill-threshold/exercise:audio_recognition/v1"):         "exercise:audio_recognition|1|2026-10-01|4000|default",
-			catalogID("drill-threshold/exercise:image_recognition/v1"):         "exercise:image_recognition|1|2026-10-01|5000|default",
-			catalogID("drill-threshold/exercise:image_choice/v1"):              "exercise:image_choice|1|2026-10-01|5000|default",
-			catalogID("drill-threshold/exercise:audio_selection/v1"):           "exercise:audio_selection|1|2026-10-01|4000|default",
-			catalogID("drill-threshold/fretboard_cell:name_the_note/v1"):       "fretboard_cell:name_the_note|1|2026-10-06|3000|default",
-			catalogID("drill-threshold/fretboard_cell:find_the_note/v1"):       "fretboard_cell:find_the_note|1|2026-10-06|4000|default",
-			catalogID("drill-threshold/diagram_shape:name_the_shape/v1"):       "diagram_shape:name_the_shape|1|2026-10-07|4000|default",
-			catalogID("drill-threshold/diagram_shape:find_the_degree/v1"):      "diagram_shape:find_the_degree|1|2026-10-07|4000|default",
-			catalogID("drill-threshold/diatonic_chord:numeral_to_chord/v1"):    "diatonic_chord:numeral_to_chord|1|2026-10-15|4000|default",
-			catalogID("drill-threshold/diatonic_chord:chord_to_numeral/v1"):    "diatonic_chord:chord_to_numeral|1|2026-10-15|4000|default",
-			catalogID("drill-threshold/chord_function:chord_to_function/v1"):   "chord_function:chord_to_function|1|2026-10-15|3000|default",
-			catalogID("drill-threshold/chord_function:function_to_chord/v1"):   "chord_function:function_to_chord|1|2026-10-15|4000|default",
-			catalogID("drill-threshold/chart_progression:chart_to_numbers/v1"): "chart_progression:chart_to_numbers|1|2026-10-15|6000|default",
-			catalogID("drill-threshold/chart_progression:numbers_to_chart/v1"): "chart_progression:numbers_to_chart|1|2026-10-15|8000|default",
+			catalogID("drill-threshold/exercise:text_response/v1"):                  "exercise:text_response|1|2026-10-01|6000|default",
+			catalogID("drill-threshold/exercise:audio_recognition/v1"):              "exercise:audio_recognition|1|2026-10-01|4000|default",
+			catalogID("drill-threshold/exercise:image_recognition/v1"):              "exercise:image_recognition|1|2026-10-01|5000|default",
+			catalogID("drill-threshold/exercise:image_choice/v1"):                   "exercise:image_choice|1|2026-10-01|5000|default",
+			catalogID("drill-threshold/exercise:audio_selection/v1"):                "exercise:audio_selection|1|2026-10-01|4000|default",
+			catalogID("drill-threshold/fretboard_cell:name_the_note/v1"):            "fretboard_cell:name_the_note|1|2026-10-06|3000|default",
+			catalogID("drill-threshold/fretboard_cell:find_the_note/v1"):            "fretboard_cell:find_the_note|1|2026-10-06|4000|default",
+			catalogID("drill-threshold/diagram_shape:name_the_shape/v1"):            "diagram_shape:name_the_shape|1|2026-10-07|4000|default",
+			catalogID("drill-threshold/diagram_shape:find_the_degree/v1"):           "diagram_shape:find_the_degree|1|2026-10-07|4000|default",
+			catalogID("drill-threshold/diatonic_chord:numeral_to_chord/v1"):         "diatonic_chord:numeral_to_chord|1|2026-10-15|4000|default",
+			catalogID("drill-threshold/diatonic_chord:chord_to_numeral/v1"):         "diatonic_chord:chord_to_numeral|1|2026-10-15|4000|default",
+			catalogID("drill-threshold/chord_function:chord_to_function/v1"):        "chord_function:chord_to_function|1|2026-10-15|3000|default",
+			catalogID("drill-threshold/chord_function:function_to_chord/v1"):        "chord_function:function_to_chord|1|2026-10-15|4000|default",
+			catalogID("drill-threshold/chart_progression:chart_to_numbers/v1"):      "chart_progression:chart_to_numbers|1|2026-10-15|6000|default",
+			catalogID("drill-threshold/chart_progression:numbers_to_chart/v1"):      "chart_progression:numbers_to_chart|1|2026-10-15|8000|default",
+			catalogID("drill-threshold/heard_chord:cadence_then_chord/v1"):          "heard_chord:cadence_then_chord|1|2026-10-16|3000|default",
+			catalogID("drill-threshold/heard_chord:see_then_name/v1"):               "heard_chord:see_then_name|1|2026-10-16|4000|default",
+			catalogID("drill-threshold/heard_progression:progression_by_number/v1"): "heard_progression:progression_by_number|1|2026-10-16|5000|default",
 		}, stringPairs(t, ctx, db, `SELECT th.id::text, concat_ws('|', te.key, th.version, to_char(th.effective_from AT TIME ZONE 'UTC', 'YYYY-MM-DD'), th.fluent_net_ms, th.source)
 			FROM drill_thresholds th JOIN drill_templates te ON te.id = th.template_id`))
 	})

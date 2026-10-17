@@ -20417,6 +20417,7 @@ type DrillTemplateMutation struct {
 	response_type     *string
 	rung              *string
 	second_way        *string
+	comes_back        *bool
 	timed             *bool
 	names             *map[string]string
 	clearedFields     map[string]struct{}
@@ -20725,6 +20726,42 @@ func (m *DrillTemplateMutation) ResetSecondWay() {
 	delete(m.clearedFields, drilltemplate.FieldSecondWay)
 }
 
+// SetComesBack sets the "comes_back" field.
+func (m *DrillTemplateMutation) SetComesBack(b bool) {
+	m.comes_back = &b
+}
+
+// ComesBack returns the value of the "comes_back" field in the mutation.
+func (m *DrillTemplateMutation) ComesBack() (r bool, exists bool) {
+	v := m.comes_back
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldComesBack returns the old "comes_back" field's value of the DrillTemplate entity.
+// If the DrillTemplate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DrillTemplateMutation) OldComesBack(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldComesBack is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldComesBack requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldComesBack: %w", err)
+	}
+	return oldValue.ComesBack, nil
+}
+
+// ResetComesBack resets all changes to the "comes_back" field.
+func (m *DrillTemplateMutation) ResetComesBack() {
+	m.comes_back = nil
+}
+
 // SetTimed sets the "timed" field.
 func (m *DrillTemplateMutation) SetTimed(b bool) {
 	m.timed = &b
@@ -20885,7 +20922,7 @@ func (m *DrillTemplateMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *DrillTemplateMutation) Fields() []string {
-	fields := make([]string, 0, 7)
+	fields := make([]string, 0, 8)
 	if m.key != nil {
 		fields = append(fields, drilltemplate.FieldKey)
 	}
@@ -20900,6 +20937,9 @@ func (m *DrillTemplateMutation) Fields() []string {
 	}
 	if m.second_way != nil {
 		fields = append(fields, drilltemplate.FieldSecondWay)
+	}
+	if m.comes_back != nil {
+		fields = append(fields, drilltemplate.FieldComesBack)
 	}
 	if m.timed != nil {
 		fields = append(fields, drilltemplate.FieldTimed)
@@ -20925,6 +20965,8 @@ func (m *DrillTemplateMutation) Field(name string) (ent.Value, bool) {
 		return m.Rung()
 	case drilltemplate.FieldSecondWay:
 		return m.SecondWay()
+	case drilltemplate.FieldComesBack:
+		return m.ComesBack()
 	case drilltemplate.FieldTimed:
 		return m.Timed()
 	case drilltemplate.FieldNames:
@@ -20948,6 +20990,8 @@ func (m *DrillTemplateMutation) OldField(ctx context.Context, name string) (ent.
 		return m.OldRung(ctx)
 	case drilltemplate.FieldSecondWay:
 		return m.OldSecondWay(ctx)
+	case drilltemplate.FieldComesBack:
+		return m.OldComesBack(ctx)
 	case drilltemplate.FieldTimed:
 		return m.OldTimed(ctx)
 	case drilltemplate.FieldNames:
@@ -20995,6 +21039,13 @@ func (m *DrillTemplateMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetSecondWay(v)
+		return nil
+	case drilltemplate.FieldComesBack:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetComesBack(v)
 		return nil
 	case drilltemplate.FieldTimed:
 		v, ok := value.(bool)
@@ -21082,6 +21133,9 @@ func (m *DrillTemplateMutation) ResetField(name string) error {
 		return nil
 	case drilltemplate.FieldSecondWay:
 		m.ResetSecondWay()
+		return nil
+	case drilltemplate.FieldComesBack:
+		m.ResetComesBack()
 		return nil
 	case drilltemplate.FieldTimed:
 		m.ResetTimed()

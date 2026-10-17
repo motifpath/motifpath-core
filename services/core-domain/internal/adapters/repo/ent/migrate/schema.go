@@ -738,6 +738,7 @@ var (
 		{Name: "response_type", Type: field.TypeString, Size: 50},
 		{Name: "rung", Type: field.TypeString, Size: 20},
 		{Name: "second_way", Type: field.TypeString, Nullable: true, Size: 100},
+		{Name: "comes_back", Type: field.TypeBool, Default: false},
 		{Name: "timed", Type: field.TypeBool},
 		{Name: "names", Type: field.TypeJSON},
 	}

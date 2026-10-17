@@ -1397,6 +1397,7 @@ const (
 	NumbersToChart      GeneratedChoiceWay = "numbers_to_chart"
 	NumeralToChord      GeneratedChoiceWay = "numeral_to_chord"
 	ProgressionByNumber GeneratedChoiceWay = "progression_by_number"
+	SeeThenName         GeneratedChoiceWay = "see_then_name"
 )
 
 // Valid indicates whether the value is a known member of the GeneratedChoiceWay enum.
@@ -1417,6 +1418,8 @@ func (e GeneratedChoiceWay) Valid() bool {
 	case NumeralToChord:
 		return true
 	case ProgressionByNumber:
+		return true
+	case SeeThenName:
 		return true
 	default:
 		return false
@@ -5721,20 +5724,54 @@ type FretboardMapCell struct {
 	String int `json:"string"`
 }
 
+// GeneratedChoicePlayback The sound of a question asked by ear: bars in 4/4, one chord a bar, played in the voicings
+// the question lists. The student may change the tempo and the note value before or between
+// plays; the answer is never graded on either. A note value is a speed factor: eighths play
+// two chords a bar, at twice the speed.
+type GeneratedChoicePlayback struct {
+	// Bars The bars in the order they play. cadence_then_chord: the cadence I IV V I with their
+	// numerals, or only I with its numeral once the student is accurate on the item, then the
+	// asked chord with no numeral. progression_by_number: the progression's four bars, none
+	// with a numeral.
+	Bars []struct {
+		// Chord The bar's chord symbol, spelled as the chord catalog spells roots. It is sounded,
+		// never shown.
+		Chord string `json:"chord"`
+
+		// Numeral The numeral shown on the bar, for the bars that set the key. Null for a bar whose
+		// chord is asked, shown as "?".
+		Numeral *ChordNumeral `json:"numeral"`
+	} `json:"bars"`
+
+	// BassInstrumentId The instrument whose voice and tuning play the bass line: the student's fretboard layout
+	// the session reads chords on. Set exactly when bass_line is true; null otherwise. A session
+	// in the head has no instrument of its own, so the client can't find it any other way.
+	BassInstrumentId *openapi_types.UUID `json:"bass_instrument_id"`
+
+	// BassLine True when the session reads chords on electric-bass: each chord's root plays under it in
+	// the bass voice, on every beat of its bar. False otherwise.
+	BassLine bool `json:"bass_line"`
+
+	// TempoBpm The tempo it starts at, in quarter notes per minute, set by the student's level on the
+	// item: 70 while new or learning, 90 once accurate, 110 once fluent.
+	TempoBpm int `json:"tempo_bpm"`
+}
+
 // GeneratedChoiceQuestion A generated question asked among options, as the composer planned it: the way it is asked,
 // the key, what the question gives, and the options in the order they are shown. Exactly the
 // parts the way needs are present; the others are null or empty. Nothing in it marks the
 // answer, and the prompt never names it: the client shows the options as given and sends
 // back the way, the options as shown and the pick, with music_key when the item is a chart
-// progression.
+// progression, a heard chord or a heard progression. A question asked by ear also carries
+// the playback the client sounds before the options can be picked.
 type GeneratedChoiceQuestion struct {
 	// Chart The chart the question shows, one chord symbol per bar (four or twelve), for
 	// chart_to_numbers. Empty for every other way.
 	Chart []string `json:"chart"`
 
 	// Chord The chord the question gives, as a chord symbol spelled as the chord catalog spells
-	// roots (Bm, F#, Bdim), for chord_to_numeral and chord_to_function. Always one of the key's
-	// triads. Null for every other way.
+	// roots (Bm, F#, Bdim), for chord_to_numeral, chord_to_function and see_then_name. Always
+	// one of the key's triads. Null for every other way.
 	Chord *string `json:"chord"`
 
 	// DrawnAs How the question draws its chords, in the stimulus and in the options. chord_boxes = a
@@ -5757,9 +5794,11 @@ type GeneratedChoiceQuestion struct {
 	// Numeral The numeral asked about, for numeral_to_chord. Null for every other way.
 	Numeral *ChordNumeral `json:"numeral"`
 
-	// Options The options in the order to show them, already shuffled. Different from one another,
-	// each a possible answer to the way, the right one among them (four, or two for a 12-bar
-	// progression). Which are offered follows the drill catalog's harmony rules.
+	// Options The options in the order to show them, already shuffled; all seven numerals come in scale
+	// order instead, since where one sits then says nothing. Different from one another,
+	// each a possible answer to the way, the right one among them: four, two for a 12-bar
+	// progression, and all seven numerals for a heard chord once the student is fluent on it.
+	// Which are offered follows the drill catalog's harmony and ear rules.
 	Options []struct {
 		// Chart For numbers_to_chart, the option's chart, one chord symbol per bar, drawn as
 		// drawn_as says. Empty for every other way.
@@ -5776,6 +5815,10 @@ type GeneratedChoiceQuestion struct {
 		Value string `json:"value"`
 	} `json:"options"`
 
+	// Playback What the client plays before the options can be picked, for cadence_then_chord and
+	// progression_by_number. Null for every other way.
+	Playback *GeneratedChoicePlayback `json:"playback,omitempty"`
+
 	// Progression The progression asked for, for numbers_to_chart. Null for every other way.
 	Progression *struct {
 		// Key The progression's key in the progression catalog, such as I-V-vi-IV.
@@ -5785,9 +5828,11 @@ type GeneratedChoiceQuestion struct {
 		Name string `json:"name"`
 	} `json:"progression"`
 
-	// Voicings When drawn_as is chord_boxes, the box of every chord the question draws, one per chord
-	// symbol: the chord's open voicing if the catalog has one, else its lowest-difficulty
-	// voicing. Empty when drawn_as is chord_symbols.
+	// Voicings The voicing of every chord the question draws as a box or sounds, one per chord symbol:
+	// the chord's open voicing if the catalog has one, else its lowest-difficulty voicing. A
+	// question asked by ear lists every chord of its playback, whatever drawn_as says; any
+	// other question lists the chords it draws when drawn_as is chord_boxes, and none when it
+	// is chord_symbols.
 	Voicings []struct {
 		// Chord The chord symbol, as it appears in chord, chart or the options.
 		Chord string `json:"chord"`
@@ -5803,10 +5848,11 @@ type GeneratedChoiceQuestion struct {
 	// one chord with it; chart_to_numbers = a chart is shown, pick its progression;
 	// numbers_to_chart = a progression and a key are named, pick its chart; cadence_then_chord =
 	// a cadence sets the key and a chord plays, pick its numeral; progression_by_number = a
-	// progression plays, pick it. A diatonic chord is asked numeral_to_chord or
+	// progression plays, pick it; see_then_name = a key is named and a chord is shown, pick its
+	// numeral. A diatonic chord is asked numeral_to_chord or
 	// chord_to_numeral; a chord function chord_to_function or function_to_chord; a chart
-	// progression chart_to_numbers or numbers_to_chart; a heard chord cadence_then_chord; a
-	// heard progression progression_by_number.
+	// progression chart_to_numbers or numbers_to_chart; a heard chord cadence_then_chord or
+	// see_then_name; a heard progression progression_by_number.
 	Way GeneratedChoiceWay `json:"way"`
 }
 
@@ -5817,10 +5863,11 @@ type GeneratedChoiceQuestion struct {
 // one chord with it; chart_to_numbers = a chart is shown, pick its progression;
 // numbers_to_chart = a progression and a key are named, pick its chart; cadence_then_chord =
 // a cadence sets the key and a chord plays, pick its numeral; progression_by_number = a
-// progression plays, pick it. A diatonic chord is asked numeral_to_chord or
+// progression plays, pick it; see_then_name = a key is named and a chord is shown, pick its
+// numeral. A diatonic chord is asked numeral_to_chord or
 // chord_to_numeral; a chord function chord_to_function or function_to_chord; a chart
-// progression chart_to_numbers or numbers_to_chart; a heard chord cadence_then_chord; a
-// heard progression progression_by_number.
+// progression chart_to_numbers or numbers_to_chart; a heard chord cadence_then_chord or
+// see_then_name; a heard progression progression_by_number.
 type GeneratedChoiceWay string
 
 // GeneratedChordDrawing How the question draws its chords, in the stimulus and in the options. chord_boxes = a
@@ -6991,7 +7038,8 @@ type PracticeSessionItem struct {
 	// parts the way needs are present; the others are null or empty. Nothing in it marks the
 	// answer, and the prompt never names it: the client shows the options as given and sends
 	// back the way, the options as shown and the pick, with music_key when the item is a chart
-	// progression.
+	// progression, a heard chord or a heard progression. A question asked by ear also carries
+	// the playback the client sounds before the options can be picked.
 	GeneratedChoice *GeneratedChoiceQuestion `json:"generated_choice,omitempty"`
 
 	// ItemKey Stable, readable identifier of a practice item: the smallest thing whose knowledge is

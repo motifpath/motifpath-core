@@ -452,6 +452,10 @@ func init() {
 	drilltemplateDescSecondWay := drilltemplateFields[5].Descriptor()
 	// drilltemplate.SecondWayValidator is a validator for the "second_way" field. It is called by the builders before save.
 	drilltemplate.SecondWayValidator = drilltemplateDescSecondWay.Validators[0].(func(string) error)
+	// drilltemplateDescComesBack is the schema descriptor for comes_back field.
+	drilltemplateDescComesBack := drilltemplateFields[6].Descriptor()
+	// drilltemplate.DefaultComesBack holds the default value on creation for the comes_back field.
+	drilltemplate.DefaultComesBack = drilltemplateDescComesBack.Default.(bool)
 	drillthresholdFields := schema.DrillThreshold{}.Fields()
 	_ = drillthresholdFields
 	// drillthresholdDescVersion is the schema descriptor for version field.

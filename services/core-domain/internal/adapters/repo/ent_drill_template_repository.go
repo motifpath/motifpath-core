@@ -32,6 +32,7 @@ func (r *EntDrillTemplateRepository) List(ctx context.Context) ([]domain.DrillTe
 			ResponseType: row.ResponseType,
 			Rung:         domain.PracticeRung(row.Rung),
 			SecondWay:    row.SecondWay,
+			ComesBack:    row.ComesBack,
 			Timed:        row.Timed,
 			Names:        domain.LocalizedText(row.Names),
 		}

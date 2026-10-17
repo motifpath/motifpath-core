@@ -50,8 +50,11 @@ type DrillTemplate struct {
 	ResponseType string
 	Rung         PracticeRung
 	SecondWay    *string
-	Timed        bool
-	Names        LocalizedText
+	// ComesBack is whether an item asked this way is asked this way again
+	// later in the same session, after at least three other items.
+	ComesBack bool
+	Timed     bool
+	Names     LocalizedText
 }
 
 // CheckDrillTemplates reports, as ErrInvalidDrillCatalog, the first template

@@ -22,6 +22,8 @@ const (
 	FieldRung = "rung"
 	// FieldSecondWay holds the string denoting the second_way field in the database.
 	FieldSecondWay = "second_way"
+	// FieldComesBack holds the string denoting the comes_back field in the database.
+	FieldComesBack = "comes_back"
 	// FieldTimed holds the string denoting the timed field in the database.
 	FieldTimed = "timed"
 	// FieldNames holds the string denoting the names field in the database.
@@ -47,6 +49,7 @@ var Columns = []string{
 	FieldResponseType,
 	FieldRung,
 	FieldSecondWay,
+	FieldComesBack,
 	FieldTimed,
 	FieldNames,
 }
@@ -72,6 +75,8 @@ var (
 	RungValidator func(string) error
 	// SecondWayValidator is a validator for the "second_way" field. It is called by the builders before save.
 	SecondWayValidator func(string) error
+	// DefaultComesBack holds the default value on creation for the "comes_back" field.
+	DefaultComesBack bool
 )
 
 // OrderOption defines the ordering options for the DrillTemplate queries.
@@ -105,6 +110,11 @@ func ByRung(opts ...sql.OrderTermOption) OrderOption {
 // BySecondWay orders the results by the second_way field.
 func BySecondWay(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldSecondWay, opts...).ToFunc()
+}
+
+// ByComesBack orders the results by the comes_back field.
+func ByComesBack(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldComesBack, opts...).ToFunc()
 }
 
 // ByTimed orders the results by the timed field.

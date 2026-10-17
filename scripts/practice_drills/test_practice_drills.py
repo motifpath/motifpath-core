@@ -10,11 +10,13 @@ CATALOG = SPECS_DIR / 'catalogs/practice-drills.yaml'
 MAP = SPECS_DIR / 'catalogs/knowledge-map.yaml'
 
 
-def template(key, kind=None, response='option_choice', timed=True, rung='know', second_way=None):
+def template(key, kind=None, response='option_choice', timed=True, rung='know', second_way=None, comes_back=None):
     entry = {'key': key, 'item_kind': kind or key.split(':')[0], 'response_type': response, 'timed': timed,
              'rung': rung, 'names': {'en': key, 'pt_BR': key}, 'id': pd.template_id(key)}
     if second_way is not None:
         entry['second_way'] = second_way
+    if comes_back is not None:
+        entry['comes_back'] = comes_back
     return entry
 
 
@@ -101,6 +103,31 @@ class ValidationTests(unittest.TestCase):
             template('fretboard_cell:name_the_note', second_way='fretboard_cell:name_the_note')]),
             'fretboard_cell:name_the_note')
 
+    def test_a_template_comes_back_only_when_marked(self):
+        drills = pd.build(catalog(templates=[
+            template('heard_progression:progression_by_number', rung='hear', comes_back=True),
+            template('exercise:text_response')]))
+        self.assertEqual([True, False], [t.comes_back for t in drills.templates])
+
+    def test_comes_back_must_be_true_or_false(self):
+        self.assertRejected(catalog(templates=[
+            template('heard_progression:progression_by_number', rung='hear', comes_back='yes')]), 'comes_back')
+
+    def test_a_hear_tempo_for_every_level_is_accepted(self):
+        raw = catalog()
+        raw['hear_tempo_bpm'] = {'new': 70, 'learning': 70, 'accurate': 90, 'fluent': 110, 'retained': 110}
+        self.assertEqual(90, pd.build(raw).hear_tempo_bpm['accurate'])
+
+    def test_a_hear_tempo_missing_a_level_is_rejected(self):
+        raw = catalog()
+        raw['hear_tempo_bpm'] = {'new': 70, 'learning': 70, 'accurate': 90, 'fluent': 110}
+        self.assertRejected(raw, 'retained')
+
+    def test_a_hear_tempo_must_be_a_positive_whole_number(self):
+        raw = catalog()
+        raw['hear_tempo_bpm'] = {'new': 70, 'learning': 0, 'accurate': 90, 'fluent': 110, 'retained': 110}
+        self.assertRejected(raw, 'learning')
+
     def test_a_template_key_appears_once(self):
         self.assertRejected(catalog(templates=[template('exercise:text_response'), template('exercise:text_response')]),
                             'more than once')
@@ -156,6 +183,14 @@ class RenderTests(unittest.TestCase):
         self.assertIn("'know', 'fretboard_cell:find_the_note'", sql)
         self.assertIn("'hear', NULL", sql)
 
+    def test_the_sql_installs_whether_each_template_comes_back(self):
+        sql = pd.render_sql(pd.build(catalog(templates=[
+            template('heard_progression:progression_by_number', rung='hear', comes_back=True),
+            template('exercise:audio_selection', rung='hear')])))
+        self.assertIn('"second_way", "comes_back", "timed"', sql)
+        self.assertIn("'hear', NULL, true, true", sql)
+        self.assertIn("'hear', NULL, false, true", sql)
+
     def test_rendering_is_deterministic(self):
         raw = catalog(templates=[template('exercise:text_response')], thresholds=[threshold('exercise:text_response')])
         self.assertEqual(pd.render_sql(pd.build(raw)), pd.render_sql(pd.build(raw)))
@@ -174,6 +209,9 @@ class CatalogTests(unittest.TestCase):
         timed = {t.key for t in drills.templates if t.timed}
         self.assertEqual(timed, {t.template for t in drills.thresholds if t.version == 1},
                          'every timed template starts with a version 1')
+
+    def test_the_specs_catalog_gives_a_hear_tempo_for_every_level(self):
+        self.assertEqual(set(pd.LEVELS), set(pd.load(CATALOG).hear_tempo_bpm))
 
     def test_the_specs_catalog_cells_cover_the_guitar_and_bass_fretboards(self):
         ranges = pd.load_cells(CATALOG, MAP)

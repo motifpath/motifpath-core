@@ -87,10 +87,12 @@ func (s *EntNodeItemSource) ClassifiedItems(ctx context.Context, instrumentID st
 	return slices.Concat(items, cells, shapes, harmony), nil
 }
 
-// harmonyItems generates the harmony drills' items, which suit every
-// instrument: every numeral but the tonic in every major key, as a diatonic
-// chord and as a chord function, and every progression as a chart, each
-// under its family's nodes (a chart also under its progression's).
+// harmonyItems generates the harmony and ear drills' items, which suit
+// every instrument: every numeral but the tonic in every major key, as a
+// diatonic chord and as a chord function; every numeral but the tonic as a
+// heard chord; every progression as a chart, and every 4-bar one as a heard
+// progression, each under its family's nodes (a progression's item also
+// under the progression's).
 func (s *EntNodeItemSource) harmonyItems(ctx context.Context) ([]domain.ClassifiedItem, error) {
 	nodes, err := s.harmonyNodes(ctx)
 	if err != nil {
@@ -105,20 +107,37 @@ func (s *EntNodeItemSource) harmonyItems(ctx context.Context) ([]domain.Classifi
 			)
 		}
 	}
+	for _, numeral := range domain.HarmonyItemNumerals {
+		items = append(items, domain.ClassifiedItem{ItemKey: domain.HeardChordItem{Numeral: numeral}.ItemKey(), NodeIDs: nodes[domain.PracticeItemKindHeardChord]})
+	}
 	progressions, err := NewEntProgressionRepository(s.client).List(ctx)
 	if err != nil {
 		return nil, err
 	}
 	for _, p := range progressions {
-		chartNodes := slices.Clone(nodes[domain.PracticeItemKindChartProgression])
-		for _, id := range p.NodeIDs {
-			if !slices.Contains(chartNodes, id) {
-				chartNodes = append(chartNodes, id)
-			}
+		items = append(items, domain.ClassifiedItem{
+			ItemKey: domain.ChartProgressionItemKey(p.Key),
+			NodeIDs: withNodes(nodes[domain.PracticeItemKindChartProgression], p.NodeIDs),
+		})
+		if len(p.Bars) == domain.HeardProgressionBars {
+			items = append(items, domain.ClassifiedItem{
+				ItemKey: domain.HeardProgressionItemKey(p.Key),
+				NodeIDs: withNodes(nodes[domain.PracticeItemKindHeardProgression], p.NodeIDs),
+			})
 		}
-		items = append(items, domain.ClassifiedItem{ItemKey: domain.ChartProgressionItemKey(p.Key), NodeIDs: chartNodes})
 	}
 	return items, nil
+}
+
+// withNodes is a copy of familyNodes, then each of extra it doesn't hold.
+func withNodes(familyNodes, extra []string) []string {
+	out := slices.Clone(familyNodes)
+	for _, id := range extra {
+		if !slices.Contains(out, id) {
+			out = append(out, id)
+		}
+	}
+	return out
 }
 
 // harmonyNodes looks up each harmony family's knowledge nodes by key; a

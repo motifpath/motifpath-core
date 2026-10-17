@@ -28,6 +28,7 @@ type drillCatalogFile struct {
 		ResponseType string  `yaml:"response_type"`
 		Rung         string  `yaml:"rung"`
 		SecondWay    *string `yaml:"second_way"`
+		ComesBack    bool    `yaml:"comes_back"`
 	} `yaml:"templates"`
 	FretboardCells []struct {
 		Skill   string `yaml:"skill"`
@@ -434,7 +435,7 @@ func (catalogDrillTemplates) List(context.Context) ([]domain.DrillTemplate, erro
 	for i, t := range file.Templates {
 		templates[i] = domain.DrillTemplate{
 			Key: t.Key, ItemKind: domain.PracticeItemKind(t.ItemKind), ResponseType: t.ResponseType,
-			Rung: domain.PracticeRung(t.Rung), SecondWay: t.SecondWay,
+			Rung: domain.PracticeRung(t.Rung), SecondWay: t.SecondWay, ComesBack: t.ComesBack,
 		}
 	}
 	return templates, nil

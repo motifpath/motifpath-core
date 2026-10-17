@@ -354,7 +354,7 @@ func toGeneratedPracticeSessionItem(item domain.PracticeSessionItem, names userN
 	return out
 }
 
-// toGeneratedChoiceQuestion maps a planned harmony question, its names in
+// toGeneratedChoiceQuestion maps a planned harmony or ear question, its names in
 // locale. What the way doesn't give is null, and every list is a list,
 // empty when unused.
 func toGeneratedChoiceQuestion(q domain.PlannedGeneratedChoice, locale string) *generated.GeneratedChoiceQuestion {
@@ -402,6 +402,32 @@ func toGeneratedChoiceQuestion(q domain.PlannedGeneratedChoice, locale string) *
 	for i, box := range q.Voicings {
 		out.Voicings[i].Chord = box.Chord
 		out.Voicings[i].DiagramId = mustUUID(box.DiagramID)
+	}
+	if q.Playback != nil {
+		out.Playback = toGeneratedChoicePlayback(*q.Playback)
+	}
+	return out
+}
+
+// toGeneratedChoicePlayback maps what a question asked by ear plays; a bar
+// with no numeral shown has a null numeral, and a playback with no bass
+// line a null bass instrument.
+func toGeneratedChoicePlayback(p domain.GeneratedPlayback) *generated.GeneratedChoicePlayback {
+	out := &generated.GeneratedChoicePlayback{TempoBpm: p.TempoBPM, BassLine: p.BassInstrumentID != ""}
+	if p.BassInstrumentID != "" {
+		bass := mustUUID(p.BassInstrumentID)
+		out.BassInstrumentId = &bass
+	}
+	out.Bars = make([]struct {
+		Chord   string                  `json:"chord"`
+		Numeral *generated.ChordNumeral `json:"numeral"`
+	}, len(p.Bars))
+	for i, bar := range p.Bars {
+		out.Bars[i].Chord = bar.Chord
+		if bar.Numeral != "" {
+			numeral := generated.ChordNumeral(bar.Numeral)
+			out.Bars[i].Numeral = &numeral
+		}
 	}
 	return out
 }

@@ -248,31 +248,98 @@ func subtreeNodeIDs(maps []KnowledgeMap, nodeID string) []string {
 	return subtree
 }
 
-// confusablesTogether moves, in picks, each item of the main subject right
-// after the first earlier item of the main subject it is mistaken for, so
-// the student tells them apart; any other pick keeps its place.
+// confusablesTogether gathers, in picks, the items of a subject a learner
+// mistakes for one another where the first of them is, laid out so that
+// items mistaken for each other come one after the other: a chain such as
+// vi–IV–I–V, I–V–vi–IV, I–vi–IV–V, I–vi–ii–V keeps every link side by
+// side. Any other pick keeps its place.
 func (c *composer) confusablesTogether(picks []domain.PracticeSessionItem) []domain.PracticeSessionItem {
-	if len(c.subjects) == 0 {
-		return picks
-	}
-	main := func(item domain.PracticeSessionItem) bool { return item.NodeID != nil && *item.NodeID == c.subjects[0] }
 	ordered := slices.Clone(picks)
-	for i := 0; i < len(ordered)-1; i++ {
-		with := c.confusable[ordered[i].ItemKey]
-		if len(with) == 0 || !main(ordered[i]) || slices.Contains(with, ordered[i+1].ItemKey) {
+	gathered := map[string]bool{}
+	for i := 0; i < len(ordered); i++ {
+		if gathered[ordered[i].ItemKey] {
 			continue
 		}
-		j := slices.IndexFunc(ordered[i+2:], func(item domain.PracticeSessionItem) bool {
-			return main(item) && slices.Contains(with, item.ItemKey)
-		})
-		if j < 0 {
+		group := c.confusableGroup(ordered, i)
+		for _, item := range group {
+			gathered[item.ItemKey] = true
+		}
+		if len(group) == 1 {
 			continue
 		}
-		partner := ordered[i+2+j]
-		ordered = slices.Insert(slices.Delete(ordered, i+2+j, i+3+j), i+1, partner)
-		i++
+		rest := slices.DeleteFunc(slices.Clone(ordered[i:]), func(item domain.PracticeSessionItem) bool { return gathered[item.ItemKey] })
+		ordered = slices.Concat(ordered[:i], c.chained(group), rest)
+		i += len(group) - 1
 	}
 	return ordered
+}
+
+// mistaken reports whether a learner mistakes a for b, or b for a.
+func (c *composer) mistaken(a, b domain.PracticeSessionItem) bool {
+	return slices.Contains(c.confusable[a.ItemKey], b.ItemKey) || slices.Contains(c.confusable[b.ItemKey], a.ItemKey)
+}
+
+// confusableGroup is the item at from in picks and every later pick of its
+// subject linked to it by items mistaken for one another, in picks order.
+func (c *composer) confusableGroup(picks []domain.PracticeSessionItem, from int) []domain.PracticeSessionItem {
+	first := picks[from]
+	group := []domain.PracticeSessionItem{first}
+	if first.NodeID == nil {
+		return group
+	}
+	in := map[int]bool{from: true}
+	for grew := true; grew; {
+		grew = false
+		for j := from + 1; j < len(picks); j++ {
+			item := picks[j]
+			if in[j] || item.NodeID == nil || *item.NodeID != *first.NodeID {
+				continue
+			}
+			if slices.ContainsFunc(group, func(member domain.PracticeSessionItem) bool { return c.mistaken(member, item) }) {
+				in[j], grew = true, true
+				group = append(group, item)
+			}
+		}
+	}
+	slices.SortFunc(group, func(a, b domain.PracticeSessionItem) int {
+		return slices.IndexFunc(picks, func(p domain.PracticeSessionItem) bool { return p.ItemKey == a.ItemKey }) -
+			slices.IndexFunc(picks, func(p domain.PracticeSessionItem) bool { return p.ItemKey == b.ItemKey })
+	})
+	return group
+}
+
+// chained orders group so each next item is one the previous is mistaken
+// for whenever one is left: it starts from the earliest item with the
+// fewest such links in the group, the end of a chain.
+func (c *composer) chained(group []domain.PracticeSessionItem) []domain.PracticeSessionItem {
+	links := func(item domain.PracticeSessionItem, among []domain.PracticeSessionItem) int {
+		n := 0
+		for _, other := range among {
+			if other.ItemKey != item.ItemKey && c.mistaken(item, other) {
+				n++
+			}
+		}
+		return n
+	}
+	left := slices.Clone(group)
+	start := 0
+	for i, item := range left {
+		if links(item, group) < links(left[start], group) {
+			start = i
+		}
+	}
+	out := []domain.PracticeSessionItem{left[start]}
+	left = slices.Delete(left, start, start+1)
+	for len(left) > 0 {
+		last := out[len(out)-1]
+		next := slices.IndexFunc(left, func(item domain.PracticeSessionItem) bool { return c.mistaken(last, item) })
+		if next < 0 {
+			next = 0
+		}
+		out = append(out, left[next])
+		left = slices.Delete(left, next, next+1)
+	}
+	return out
 }
 
 // ListSubjects lists the subjects caller can choose to practise with
