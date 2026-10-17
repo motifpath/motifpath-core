@@ -1,0 +1,133 @@
+name: Deploy
+
+# Replaces one environment's containers on the VM with images already in ECR.
+# Nothing is built here: production deploys the exact tag staging ran, and a
+# rollback is this workflow run again with the previous tag.
+#
+# Staging deploys automatically after build-images.yml builds a `stage`
+# commit. Production is always started by hand.
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to deploy
+        type: choice
+        options: [staging, production]
+        required: true
+      image_tag:
+        description: Full commit SHA of the images to deploy
+        type: string
+        required: true
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+      image_tag:
+        type: string
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-1
+  DEPLOY_ENV: ${{ inputs.environment }}
+  IMAGE_TAG: ${{ inputs.image_tag }}
+
+jobs:
+  deploy:
+    name: Deploy ${{ inputs.image_tag }} to ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Validate inputs
+        env:
+          ROLE: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          INSTANCE: ${{ vars.VM_INSTANCE_ID }}
+        run: |
+          [[ "$DEPLOY_ENV" =~ ^(staging|production)$ ]] || { echo "::error::unknown environment '$DEPLOY_ENV'"; exit 1; }
+          [[ "$IMAGE_TAG" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::image_tag must be a full 40-char commit SHA"; exit 1; }
+          [[ -n "$ROLE" && -n "$INSTANCE" ]] || { echo "::error::environment '$DEPLOY_ENV' needs variables AWS_DEPLOY_ROLE_ARN and VM_INSTANCE_ID; see deploy/README.md"; exit 1; }
+
+      # The deploy bundle (compose files, env settings, deploy.sh) comes from
+      # the same commit as the images, so config and code always match.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.image_tag }}
+          fetch-depth: 0
+
+      # Production only runs what has been promoted to main. Staging runs
+      # release candidates from stage, or a hotfix already on main.
+      - name: Check the commit is on a release branch
+        run: |
+          git fetch --quiet origin main stage 2>/dev/null || git fetch --quiet origin main
+          on() { git rev-parse --verify --quiet "origin/$1" >/dev/null && git merge-base --is-ancestor "$IMAGE_TAG" "origin/$1"; }
+          if [[ "$DEPLOY_ENV" == production ]]; then
+            on main || { echo "::error::$IMAGE_TAG is not on main; promote stage to main first"; exit 1; }
+          else
+            on stage || on main || { echo "::error::$IMAGE_TAG is on neither stage nor main"; exit 1; }
+          fi
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Check every image exists
+        run: |
+          for svc in core-domain event-ingestion aggregation-worker; do
+            aws ecr describe-images --repository-name "motifpath/$svc" --image-ids imageTag="$IMAGE_TAG" >/dev/null \
+              || { echo "::error::motifpath/$svc:$IMAGE_TAG is not in ECR; run Build images for this commit"; exit 1; }
+          done
+
+      - name: Run deploy.sh on the VM
+        env:
+          INSTANCE: ${{ vars.VM_INSTANCE_ID }}
+        run: |
+          set -euo pipefail
+          bundle=$(tar -C deploy -czf - . | base64 -w0)
+          # Unpacks into a fresh directory first, so a failed transfer never
+          # leaves a half-written bundle where the live one was.
+          params=$(jq -n --arg env "$DEPLOY_ENV" --arg tag "$IMAGE_TAG" --arg b "$bundle" '{
+            commands: [
+              "set -eu",
+              "d=/opt/motifpath/\($env)",
+              "rm -rf \"$d.next\" && mkdir -p \"$d.next\"",
+              "echo \($b) | base64 -d | tar -xz -C \"$d.next\"",
+              "rm -rf \"$d\" && mv \"$d.next\" \"$d\"",
+              "bash \"$d/deploy.sh\" \($env) \($tag)"
+            ],
+            executionTimeout: ["1800"]
+          }')
+          id=$(aws ssm send-command \
+            --instance-ids "$INSTANCE" \
+            --document-name AWS-RunShellScript \
+            --comment "deploy $DEPLOY_ENV ${IMAGE_TAG:0:12}" \
+            --parameters "$params" \
+            --query Command.CommandId --output text)
+          echo "SSM command $id"
+
+          while :; do
+            sleep 10
+            status=$(aws ssm get-command-invocation --command-id "$id" --instance-id "$INSTANCE" \
+              --query Status --output text 2>/dev/null || echo Pending)
+            case "$status" in
+              Pending|InProgress|Delayed) continue ;;
+              *) break ;;
+            esac
+          done
+
+          aws ssm get-command-invocation --command-id "$id" --instance-id "$INSTANCE" \
+            --query StandardOutputContent --output text
+          err=$(aws ssm get-command-invocation --command-id "$id" --instance-id "$INSTANCE" \
+            --query StandardErrorContent --output text)
+          [[ -z "$err" || "$err" == None ]] || { echo "--- stderr ---"; echo "$err"; }
+
+          [[ "$status" == Success ]] || { echo "::error::deploy finished with status $status"; exit 1; }
+          echo "### Deployed \`$IMAGE_TAG\` to $DEPLOY_ENV" >> "$GITHUB_STEP_SUMMARY"

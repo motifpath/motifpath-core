@@ -195,6 +195,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       images: ${{ steps.filter.outputs.images }}
+      deploy: ${{ steps.filter.outputs.deploy }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -205,6 +206,9 @@ jobs:
               - 'services/**'
               - '**/Dockerfile'
               - 'compose.images.yaml'
+              - '.github/workflows/ci.yml'
+            deploy:
+              - 'deploy/**'
               - '.github/workflows/ci.yml'
 
   image-smoke:
@@ -250,15 +254,61 @@ jobs:
         if: always()
         run: docker compose -f compose.images.yaml down -v
 
+  deploy-config:
+    name: Deploy Config
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.deploy == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      # Stand-ins for what deploy.sh renders from SSM on the VM; enough to
+      # prove every variable the compose files use is set by one file or the
+      # other, so a missing one fails here instead of mid-deploy.
+      - name: Render each environment's compose file
+        run: |
+          set -euo pipefail
+          printf '%s\n' "DATABASE_URL='postgres://u:p@db:5432/x'" "MONGO_URI='mongodb://m'" \
+            "CLERK_SECRET_KEY='sk_test_x'" "ECR_REGISTRY='123456789012.dkr.ecr.us-east-1.amazonaws.com'" \
+            "MEDIA_S3_BUCKET='bucket'" > "$RUNNER_TEMP/secrets.env"
+          for env in staging production; do
+            IMAGE_TAG=0000000000000000000000000000000000000000 docker compose -p "$env" \
+              --env-file "deploy/env/$env.env" --env-file "$RUNNER_TEMP/secrets.env" \
+              -f deploy/compose.yaml config --quiet
+            echo "$env: compose config OK"
+          done
+          ACME_EMAIL=ci@example.com AWS_REGION=us-east-1 docker compose -f deploy/edge/compose.yaml config --quiet
+
+      - name: Validate the Caddyfile
+        run: |
+          image=$(sed -n 's/^ *image: *\(caddy:[^ ]*\)$/\1/p' deploy/edge/compose.yaml)
+          docker run --rm -e ACME_EMAIL=ci@example.com -v "$PWD/deploy/edge:/etc/caddy:ro" "$image" \
+            caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+
+      # The edge must proxy to the same loopback ports the environments publish.
+      - name: Check Caddyfile ports match the env files
+        run: |
+          set -euo pipefail
+          for env in staging production; do
+            for name in CORE_DOMAIN EVENT_INGESTION; do
+              port=$(sed -n "s/^${name}_HOST_PORT=//p" "deploy/env/$env.env")
+              grep -q "reverse_proxy 127.0.0.1:$port$" deploy/edge/Caddyfile \
+                || { echo "Caddyfile has no reverse_proxy to $env ${name}_HOST_PORT=$port"; exit 1; }
+            done
+          done
+
+      - name: ShellCheck deploy.sh
+        run: shellcheck deploy/deploy.sh
+
   all-checks:
     name: All checks passed
     runs-on: ubuntu-latest
-    needs: [lint, test, test-bdd, test-catalogs, codegen, test-integration, changes, image-smoke]
+    needs: [lint, test, test-bdd, test-catalogs, codegen, test-integration, changes, image-smoke, deploy-config]
     if: always()
     steps:
       - name: Verify required jobs succeeded
         run: |
-          # image-smoke is path-filtered — "skipped" is an accepted result,
+          # image-smoke and deploy-config are path-filtered — "skipped" is an accepted result,
           # a real failure is not.
           [[ "${{ needs.changes.result }}"          == "success"             ]] || { echo "changes failed";          exit 1; }
           [[ "${{ needs.lint.result }}"             == "success"             ]] || { echo "lint failed";             exit 1; }
@@ -268,4 +318,5 @@ jobs:
           [[ "${{ needs.codegen.result }}"          == "success"             ]] || { echo "codegen failed";          exit 1; }
           [[ "${{ needs.test-integration.result }}" == "success"             ]] || { echo "test-integration failed"; exit 1; }
           [[ "${{ needs.image-smoke.result }}"      =~ ^(success|skipped)$   ]] || { echo "image-smoke failed";      exit 1; }
+          [[ "${{ needs.deploy-config.result }}"    =~ ^(success|skipped)$   ]] || { echo "deploy-config failed";    exit 1; }
           echo "All required CI checks passed"
