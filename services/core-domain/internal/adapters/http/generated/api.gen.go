@@ -5743,6 +5743,11 @@ type GeneratedChoicePlayback struct {
 		Numeral *ChordNumeral `json:"numeral"`
 	} `json:"bars"`
 
+	// BassInstrumentId The instrument whose voice and tuning play the bass line: the student's fretboard layout
+	// the session reads chords on. Set exactly when bass_line is true; null otherwise. A session
+	// in the head has no instrument of its own, so the client can't find it any other way.
+	BassInstrumentId *openapi_types.UUID `json:"bass_instrument_id"`
+
 	// BassLine True when the session reads chords on electric-bass: each chord's root plays under it in
 	// the bass voice, on every beat of its bar. False otherwise.
 	BassLine bool `json:"bass_line"`

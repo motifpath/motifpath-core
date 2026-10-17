@@ -153,10 +153,10 @@ func TestPracticeSessionService_ComposePlanHearBassLine(t *testing.T) {
 	tests := []struct {
 		name  string
 		plays []string
-		want  bool
+		want  string
 	}{
-		{name: "a bassist hears a root line under the chords", plays: []string{practiceBass}, want: true},
-		{name: "a guitarist hears no root line", plays: []string{practiceGuitar}, want: false},
+		{name: "a bassist hears a root line under the chords, on the bass", plays: []string{practiceBass}, want: practiceBass},
+		{name: "a guitarist hears no root line", plays: []string{practiceGuitar}, want: ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -167,7 +167,7 @@ func TestPracticeSessionService_ComposePlanHearBassLine(t *testing.T) {
 			items := heardItems(plan)
 			require.NotEmpty(t, items)
 			for _, item := range items {
-				assert.Equal(t, tt.want, item.GeneratedChoice.Playback.BassLine, item.ItemKey)
+				assert.Equal(t, tt.want, item.GeneratedChoice.Playback.BassInstrumentID, item.ItemKey)
 				assert.NotEmpty(t, item.GeneratedChoice.Voicings, "the chords keep their guitar voicing")
 			}
 		})

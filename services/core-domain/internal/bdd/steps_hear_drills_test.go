@@ -139,7 +139,10 @@ func (w *world) heardProgressionPlannedReading(progression, key, instrument stri
 		return err
 	}
 	planning := w.readingOn(instrument)
-	planning.Voicing, planning.BassLine = catalogChordBox, instrument == "electric-bass"
+	planning.Voicing = catalogChordBox
+	if instrument == "electric-bass" {
+		planning.BassInstrumentID = instrumentID(instrument).String()
+	}
 	if planning.Pick, err = keyFirst(key); err != nil {
 		return err
 	}
@@ -440,8 +443,8 @@ func (w *world) playbackHasBassLine() error {
 	if err != nil {
 		return err
 	}
-	if !p.BassLine {
-		return fmt.Errorf("its playback has no bass line")
+	if want := instrumentID("electric-bass").String(); p.BassInstrumentID != want {
+		return fmt.Errorf("its playback's bass line plays on %q, want the electric-bass %q", p.BassInstrumentID, want)
 	}
 	return nil
 }

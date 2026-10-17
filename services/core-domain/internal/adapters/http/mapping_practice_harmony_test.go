@@ -13,6 +13,7 @@ import (
 
 func TestToGeneratedPracticeSessionItem_GeneratedChoice(t *testing.T) {
 	emBox := "1e1f9a7c-3f5b-5d55-9b0c-7a6a1d5f2e10"
+	bassID := "5c0d3b1e-8a2f-4e6b-9d7c-2f1a0b9e8d71"
 	plan := func(item domain.DrillItem, way string, planning domain.DrillPlanning) domain.PracticeSessionItem {
 		out := domain.PracticeSessionItem{ItemKey: item.ItemKey(), Reason: domain.PracticePickNew, Level: domain.KnowledgeLevelNew, EstimatedSeconds: item.Seconds()}
 		out.Ask(item.Plan(way, planning))
@@ -78,7 +79,7 @@ func TestToGeneratedPracticeSessionItem_GeneratedChoice(t *testing.T) {
 	})
 
 	t.Run("a heard chord gives its playback: the tempo, the bass line, and only the key's numerals", func(t *testing.T) {
-		planning := domain.DrillPlanning{Pick: first, Reading: domain.GeneratedChordSymbols, BassLine: true, Voicing: func(string) (string, bool) { return emBox, true }}
+		planning := domain.DrillPlanning{Pick: first, Reading: domain.GeneratedChordSymbols, BassInstrumentID: bassID, Voicing: func(string) (string, bool) { return emBox, true }}
 		got := toGeneratedPracticeSessionItem(plan(domain.HeardChordItem{Numeral: "vi"}, "cadence_then_chord", planning), nil, "en")
 
 		assert.Equal(t, generated.PracticeItemKindHeardChord, got.Kind)
@@ -90,6 +91,8 @@ func TestToGeneratedPracticeSessionItem_GeneratedChoice(t *testing.T) {
 		require.NotNil(t, q.Playback)
 		assert.Equal(t, 70, q.Playback.TempoBpm)
 		assert.True(t, q.Playback.BassLine)
+		require.NotNil(t, q.Playback.BassInstrumentId, "the bass the root line plays on")
+		assert.Equal(t, bassID, q.Playback.BassInstrumentId.String())
 		require.Len(t, q.Playback.Bars, 5)
 		assert.Equal(t, "F", q.Playback.Bars[1].Chord)
 		require.NotNil(t, q.Playback.Bars[1].Numeral)

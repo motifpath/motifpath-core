@@ -60,9 +60,10 @@ type DrillPlanning struct {
 	// with; false when the chord has none. Nil outside a session in the
 	// head.
 	Voicing func(chord string) (diagramID string, ok bool)
-	// BassLine is whether the session reads chords on bass, so a question
-	// asked by ear plays each chord's root under it.
-	BassLine bool
+	// BassInstrumentID is the bass the session reads chords on, whose voice
+	// plays each chord's root under a question asked by ear; empty when it
+	// reads them on guitar, so no root line plays.
+	BassInstrumentID string
 }
 
 // PlannedDrill is a drill item as a session asks it.

@@ -23,12 +23,12 @@ const HearItemSeconds = 20
 
 // GeneratedPlayback is what a question asked by ear plays before it can be
 // answered: bars in 4/4, one chord a bar, from TempoBPM, in the chords'
-// voicings, with each chord's root under it in the bass voice when
-// BassLine is set.
+// voicings, with each chord's root under it in the voice of the bass
+// BassInstrumentID names; no root line when it is empty.
 type GeneratedPlayback struct {
-	TempoBPM int
-	BassLine bool
-	Bars     []PlaybackBar
+	TempoBPM         int
+	BassInstrumentID string
+	Bars             []PlaybackBar
 }
 
 // PlaybackBar is one bar of a playback: the chord sounded, never shown,
@@ -187,7 +187,7 @@ func (i HeardProgressionItem) Plan(way string, planning DrillPlanning) PlannedDr
 // level, with the voicing of every chord it sounds whatever the session's
 // reading. Nothing is drawn, so its chords count as symbols.
 func (q *PlannedGeneratedChoice) play(bars []PlaybackBar, planning DrillPlanning) {
-	q.Playback = &GeneratedPlayback{TempoBPM: HearTempoBPM(planning.Level), BassLine: planning.BassLine, Bars: bars}
+	q.Playback = &GeneratedPlayback{TempoBPM: HearTempoBPM(planning.Level), BassInstrumentID: planning.BassInstrumentID, Bars: bars}
 	q.DrawnAs, q.Voicings = GeneratedChordSymbols, nil
 	if planning.Voicing == nil {
 		return

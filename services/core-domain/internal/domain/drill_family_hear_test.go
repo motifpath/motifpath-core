@@ -93,9 +93,14 @@ func TestHeardChordItem_AsADrillItem(t *testing.T) {
 		}, q.Voicings)
 	})
 
-	t.Run("on bass, a root line plays under the chords", func(t *testing.T) {
-		q, _ := plannedChoice(t, vi, "cadence_then_chord", domain.DrillPlanning{Pick: inG(), Reading: domain.GeneratedChordSymbols, BassLine: true})
-		assert.True(t, q.Playback.BassLine)
+	t.Run("on bass, a root line plays under the chords on the bass the session reads", func(t *testing.T) {
+		q, _ := plannedChoice(t, vi, "cadence_then_chord", domain.DrillPlanning{Pick: inG(), Reading: domain.GeneratedChordSymbols, BassInstrumentID: "the-bass"})
+		assert.Equal(t, "the-bass", q.Playback.BassInstrumentID)
+	})
+
+	t.Run("on guitar, no root line plays", func(t *testing.T) {
+		q, _ := plannedChoice(t, vi, "cadence_then_chord", domain.DrillPlanning{Pick: inG(), Reading: domain.GeneratedChordBoxes})
+		assert.Empty(t, q.Playback.BassInstrumentID)
 	})
 
 	t.Run("by sight, it names the key, draws the chord and plays nothing", func(t *testing.T) {
