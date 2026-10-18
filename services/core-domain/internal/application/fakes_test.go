@@ -2004,6 +2004,7 @@ type fakePracticeReferenceWriter struct {
 	exercises map[string]domain.ExerciseReference
 	instrs    map[string]domain.InstrumentReference
 	threshold []domain.DrillThreshold
+	targets   []domain.ChangeTarget
 	progs     []domain.Progression
 	writes    int
 	err       error
@@ -2043,6 +2044,26 @@ func (f *fakePracticeReferenceWriter) PutDrillThresholds(ctx context.Context, th
 	return nil
 }
 
+func (f *fakePracticeReferenceWriter) PutChangeTargets(ctx context.Context, targets []domain.ChangeTarget) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if f.err != nil {
+		return f.err
+	}
+	f.writes++
+	f.targets = append(f.targets, targets...)
+	return nil
+}
+
+func (f *fakePracticeReferenceWriter) changeTargets() []domain.ChangeTarget {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.targets
+}
+
 func (f *fakePracticeReferenceWriter) drillThresholds() []domain.DrillThreshold {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -2075,6 +2096,14 @@ type fakeProgressions []domain.Progression
 
 func (f fakeProgressions) List(context.Context) ([]domain.Progression, error) {
 	return f, nil
+}
+
+// fakeChordDrills is a ports.ChordDrillRepository holding the given installed
+// chord drill catalog.
+type fakeChordDrills domain.ChordDrillCatalog
+
+func (f fakeChordDrills) Catalog(context.Context) (domain.ChordDrillCatalog, error) {
+	return domain.ChordDrillCatalog(f), nil
 }
 
 // fakeDrillThresholds is a ports.DrillThresholdRepository holding the given

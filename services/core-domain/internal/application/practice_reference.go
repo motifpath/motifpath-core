@@ -57,11 +57,12 @@ type PracticeReferenceService struct {
 	instruments ports.InstrumentRepository
 	thresholds   ports.DrillThresholdRepository
 	progressions ports.ProgressionRepository
+	chordDrills  ports.ChordDrillRepository
 	references   ports.PracticeReferenceWriter
 }
 
-func NewPracticeReferenceService(diagrams ports.DiagramRepository, exercises ports.ExerciseRepository, instruments ports.InstrumentRepository, thresholds ports.DrillThresholdRepository, progressions ports.ProgressionRepository, references ports.PracticeReferenceWriter) *PracticeReferenceService {
-	return &PracticeReferenceService{diagrams: diagrams, exercises: exercises, instruments: instruments, thresholds: thresholds, progressions: progressions, references: references}
+func NewPracticeReferenceService(diagrams ports.DiagramRepository, exercises ports.ExerciseRepository, instruments ports.InstrumentRepository, thresholds ports.DrillThresholdRepository, progressions ports.ProgressionRepository, chordDrills ports.ChordDrillRepository, references ports.PracticeReferenceWriter) *PracticeReferenceService {
+	return &PracticeReferenceService{diagrams: diagrams, exercises: exercises, instruments: instruments, thresholds: thresholds, progressions: progressions, chordDrills: chordDrills, references: references}
 }
 
 // PracticeReferenceSynced counts the references a Sync wrote, by kind.
@@ -70,6 +71,7 @@ type PracticeReferenceSynced struct {
 	Exercises       int
 	Instruments     int
 	DrillThresholds int
+	ChangeTargets   int
 	Progressions    int
 }
 
@@ -79,12 +81,13 @@ type PracticeReferenceSynced struct {
 // part that failed.
 func (s *PracticeReferenceService) Sync(ctx context.Context) (PracticeReferenceSynced, error) {
 	var synced PracticeReferenceSynced
-	var errs [5]error
+	var errs [6]error
 	synced.DrillThresholds, errs[0] = s.SyncDrillThresholds(ctx)
-	synced.Instruments, errs[1] = s.SyncInstruments(ctx)
-	synced.Progressions, errs[2] = s.SyncProgressions(ctx)
-	synced.Diagrams, errs[3] = s.SyncDiagrams(ctx)
-	synced.Exercises, errs[4] = s.SyncExercises(ctx)
+	synced.ChangeTargets, errs[1] = s.SyncChangeTargets(ctx)
+	synced.Instruments, errs[2] = s.SyncInstruments(ctx)
+	synced.Progressions, errs[3] = s.SyncProgressions(ctx)
+	synced.Diagrams, errs[4] = s.SyncDiagrams(ctx)
+	synced.Exercises, errs[5] = s.SyncExercises(ctx)
 	return synced, errors.Join(errs[:]...)
 }
 
@@ -118,6 +121,20 @@ func (s *PracticeReferenceService) SyncDrillThresholds(ctx context.Context) (int
 		return 0, err
 	}
 	return len(thresholds), nil
+}
+
+// SyncChangeTargets writes every installed change target version, all in one
+// write, and returns how many it wrote. Versions come only from migrations, so
+// this sync is the only way they reach the snapshot.
+func (s *PracticeReferenceService) SyncChangeTargets(ctx context.Context) (int, error) {
+	catalog, err := s.chordDrills.Catalog(ctx)
+	if err != nil || len(catalog.Targets) == 0 {
+		return 0, err
+	}
+	if err := s.references.PutChangeTargets(ctx, catalog.Targets); err != nil {
+		return 0, err
+	}
+	return len(catalog.Targets), nil
 }
 
 // SyncProgressions writes every installed progression, all in one write, and

@@ -119,6 +119,20 @@ type drillThresholdDocument struct {
 	SnapshotVersion int       `bson:"snapshot_version"`
 }
 
+// changeTargetDocument is a `practice_reference` document of kind
+// "change_target": one version of the clean changes a minute that count as
+// fully fluent on a chord or root change.
+type changeTargetDocument struct {
+	Kind             string    `bson:"kind"`
+	ID               string    `bson:"id"`
+	Version          int       `bson:"version"`
+	EffectiveFrom    time.Time `bson:"effective_from"`
+	ChangesPerMinute int       `bson:"changes_per_minute"`
+	Source           string    `bson:"source"`
+	UpdatedAt        time.Time `bson:"updated_at"`
+	SnapshotVersion  int       `bson:"snapshot_version"`
+}
+
 // MongoPracticeReferenceWriter keeps the `practice_reference` collection
 // This service is its only writer; the Aggregation Worker reads
 // it. Documents are keyed by {kind, id}, replaced in place, never removed.
@@ -314,4 +328,23 @@ func nonNil(ids []string) []string {
 		return []string{}
 	}
 	return ids
+}
+
+// PutChangeTargets upserts every version in one unordered bulk write.
+func (w *MongoPracticeReferenceWriter) PutChangeTargets(ctx context.Context, targets []domain.ChangeTarget) error {
+	at := w.now()
+	docs := make([]changeTargetDocument, len(targets))
+	for i, t := range targets {
+		docs[i] = changeTargetDocument{
+			Kind:             "change_target",
+			ID:               t.ID,
+			Version:          t.Version,
+			EffectiveFrom:    t.EffectiveFrom,
+			ChangesPerMinute: t.ChangesPerMinute,
+			Source:           string(t.Source),
+			UpdatedAt:        at,
+			SnapshotVersion:  practiceReferenceSnapshotVersion,
+		}
+	}
+	return upsert(ctx, w.collection, docs, func(d changeTargetDocument) (string, string) { return d.Kind, d.ID })
 }

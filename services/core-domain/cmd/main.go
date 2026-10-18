@@ -200,7 +200,7 @@ func syncPracticeReference(ctx context.Context, logger *slog.Logger, entClient *
 		logger.Error("ensure the practice reference indexes", "error", err)
 		return
 	}
-	sync := application.NewPracticeReferenceService(repo.NewEntDiagramRepository(entClient), repo.NewEntExerciseRepository(entClient), repo.NewEntInstrumentRepository(entClient), repo.NewEntDrillThresholdRepository(entClient), repo.NewEntProgressionRepository(entClient), writer)
+	sync := application.NewPracticeReferenceService(repo.NewEntDiagramRepository(entClient), repo.NewEntExerciseRepository(entClient), repo.NewEntInstrumentRepository(entClient), repo.NewEntDrillThresholdRepository(entClient), repo.NewEntProgressionRepository(entClient), repo.NewEntChordDrillRepository(entClient), writer)
 	synced, err := sync.Sync(ctx)
 	if err != nil {
 		logger.Error("sync the practice reference snapshot", "diagrams", synced.Diagrams, "exercises", synced.Exercises,
