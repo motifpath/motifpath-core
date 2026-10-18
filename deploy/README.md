@@ -42,7 +42,8 @@ listening, so every migration runs against staging's data before production's.
 ## What the infrastructure has to provide
 
 None of this exists yet. Both workflows fail early with a pointer to this
-file until it does.
+file until it does. The Terraform that creates it, and the one-time setup
+steps, are in motifpath-infra.
 
 ### On the VM
 

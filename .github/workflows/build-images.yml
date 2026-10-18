@@ -5,30 +5,53 @@ name: Build images
 # into `main`. A normal stage → main promotion builds nothing; production
 # runs the image staging already ran (see deploy.yml). Feature merges to
 # `dev` never build.
+#
+# Both triggers are pushes, because AWS only trusts tokens issued for the
+# `stage` and `main` refs; a pull_request event's token would be refused.
 on:
   push:
-    branches: [stage]
-  pull_request:
-    types: [closed]
-    branches: [main]
+    branches: [stage, main]
   workflow_dispatch: {}
 
 permissions:
   contents: read
   id-token: write
+  pull-requests: read
 
 env:
   AWS_REGION: us-east-1
-  # A merged PR's github.sha is a synthetic merge ref, not the commit that
-  # landed on main.
-  IMAGE_TAG: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+  IMAGE_TAG: ${{ github.sha }}
 
 jobs:
+  # A push to main is either a stage promotion or a merged hotfix; only the
+  # hotfix needs an image. Decided by the branch of the PR that made the
+  # commit.
+  decide:
+    name: Decide whether to build
+    runs-on: ubuntu-latest
+    outputs:
+      build: ${{ steps.decide.outputs.build }}
+    steps:
+      - id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [[ "$GITHUB_REF" != refs/heads/main ]]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          head=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" --jq '.[0].head.ref // ""')
+          echo "main commit came from branch '${head:-unknown}'"
+          if [[ "$head" == hotfix/* ]]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "build=false" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
     name: Build ${{ matrix.service }} (arm64)
-    if: >-
-      github.event_name != 'pull_request' ||
-      (github.event.pull_request.merged && startsWith(github.event.pull_request.head.ref, 'hotfix/'))
+    needs: decide
+    if: needs.decide.outputs.build == 'true'
     # The VM is arm64; a native runner avoids building under emulation.
     runs-on: ubuntu-24.04-arm
     strategy:
