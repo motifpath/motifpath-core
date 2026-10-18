@@ -3514,6 +3514,27 @@ type Challenge struct {
 	TimeThresholdMs *int `json:"time_threshold_ms,omitempty"`
 }
 
+// ChangeMinute The tempo ladder and the student's record for a minute of changes between two chords (or
+// two roots), one change on every beat, so a tempo is also the number of changes the minute
+// asks for. The take sends the tempo played and the clean changes counted.
+type ChangeMinute struct {
+	// BestCleanChangesPerMinute The most clean changes the student counted in a clean minute since their latest teacher
+	// review. Null when they have no clean minute yet.
+	BestCleanChangesPerMinute *int `json:"best_clean_changes_per_minute"`
+
+	// LastChangesPerMinute The clean changes counted in the item's last minute, where the count starts. Null when
+	// the item was never played.
+	LastChangesPerMinute *int `json:"last_changes_per_minute"`
+
+	// StartTempoBpm The tempo to start the minute at, from the ladder: the tempo of the item's last minute,
+	// 5 higher after two clean minutes in a row and 5 lower after a struggled one, never below
+	// 20; 40 when the item was never played. The student may set another before starting.
+	StartTempoBpm int `json:"start_tempo_bpm"`
+
+	// TargetChangesPerMinute The clean changes a minute that count as fully fluent, the same for every pair.
+	TargetChangesPerMinute int `json:"target_changes_per_minute"`
+}
+
 // ChordDefinition A chord of the chord catalog: what it is musically, independent of
 // any fingering. A chord has many voicings, each one fingering of it.
 type ChordDefinition struct {
@@ -5623,6 +5644,15 @@ type ForbiddenError struct {
 	Message string `json:"message"`
 }
 
+// FretPlace One place on a fretboard layout.
+type FretPlace struct {
+	// Fret The fret; 0 is the open string.
+	Fret int `json:"fret"`
+
+	// String The string, 1 being the highest-pitched.
+	String int `json:"string"`
+}
+
 // FretWindow The frets a fretboard drill is asked within, so its board is drawn at full tap size without
 // scrolling sideways. Five frets, plus the open string when the window starts at the nut: a
 // from_fret of 0 covers the open string and frets 1 to 5; any other from_fret covers it and the
@@ -6668,6 +6698,77 @@ type PathDetailLevel string
 // where C4 is middle C (e.g. "E2", "F#3", "Bb4").
 type Pitch = string
 
+// PlannedChordChange A minute of changes between two chords, back and forth (kind chord_change). Both chords are
+// named and drawn as their chord boxes.
+type PlannedChordChange struct {
+	// FromChordSymbol The first chord's symbol.
+	FromChordSymbol string `json:"from_chord_symbol"`
+
+	// FromDiagramId The first chord's voicing diagram, the first of the item key.
+	FromDiagramId openapi_types.UUID `json:"from_diagram_id"`
+
+	// Minute The tempo ladder and the student's record for a minute of changes between two chords (or
+	// two roots), one change on every beat, so a tempo is also the number of changes the minute
+	// asks for. The take sends the tempo played and the clean changes counted.
+	Minute ChangeMinute `json:"minute"`
+
+	// ToChordSymbol The second chord's symbol.
+	ToChordSymbol string `json:"to_chord_symbol"`
+
+	// ToDiagramId The second chord's voicing diagram.
+	ToDiagramId openapi_types.UUID `json:"to_diagram_id"`
+}
+
+// PlannedChordVoicing A single chord to fret, strum once and rate (kind chord_voicing). The chord is named:
+// playing it is the skill. The take is rated by the student and has no measure.
+type PlannedChordVoicing struct {
+	// ChordSymbol The chord's symbol, such as Am, shown with the box.
+	ChordSymbol string `json:"chord_symbol"`
+
+	// DiagramId The chord catalog voicing diagram to play, drawn as its chord box.
+	DiagramId openapi_types.UUID `json:"diagram_id"`
+}
+
+// PlannedRootChange A minute of changes between two chords' roots on a bass layout (kind root_change). Both
+// roots are marked.
+type PlannedRootChange struct {
+	// FromChordSymbol The first chord's symbol, the first of the item key.
+	FromChordSymbol string `json:"from_chord_symbol"`
+
+	// FromRoot One place on a fretboard layout.
+	FromRoot FretPlace `json:"from_root"`
+
+	// LayoutInstrumentId The instrument whose fretboard layout and tuning the places belong to.
+	LayoutInstrumentId openapi_types.UUID `json:"layout_instrument_id"`
+
+	// Minute The tempo ladder and the student's record for a minute of changes between two chords (or
+	// two roots), one change on every beat, so a tempo is also the number of changes the minute
+	// asks for. The take sends the tempo played and the clean changes counted.
+	Minute ChangeMinute `json:"minute"`
+
+	// ToChordSymbol The second chord's symbol.
+	ToChordSymbol string `json:"to_chord_symbol"`
+
+	// ToRoot One place on a fretboard layout.
+	ToRoot FretPlace `json:"to_root"`
+}
+
+// PlannedRootFifth A chord's root and fifth to play on a bass layout and rate (kind root_fifth). Both places
+// are marked: playing them is the skill. The take is rated by the student and has no measure.
+type PlannedRootFifth struct {
+	// ChordSymbol The chord's symbol, such as Am.
+	ChordSymbol string `json:"chord_symbol"`
+
+	// Fifth One place on a fretboard layout.
+	Fifth FretPlace `json:"fifth"`
+
+	// LayoutInstrumentId The instrument whose fretboard layout and tuning the places belong to.
+	LayoutInstrumentId openapi_types.UUID `json:"layout_instrument_id"`
+
+	// Root One place on a fretboard layout.
+	Root FretPlace `json:"root"`
+}
+
 // PracticeDay One calendar day of an instrument's last 7, and whether the student practised it.
 type PracticeDay struct {
 	// Date The calendar day, in the time zone asked for.
@@ -6947,10 +7048,19 @@ type PracticePickReason string
 type PracticeRung string
 
 // PracticeSessionItem One item of a composed session, with what the client needs to present it. Exactly
-// one of fretboard_cell, exercise, play_along, diagram_shape and generated_choice is
-// present, matching kind: generated_choice for a diatonic chord, a chord function or a
-// chart progression.
+// one of fretboard_cell, exercise, play_along, diagram_shape, generated_choice,
+// chord_voicing, chord_change, root_fifth and root_change is present, matching kind:
+// generated_choice for a diatonic chord, a chord function, a chart progression, a heard
+// chord or a heard progression.
 type PracticeSessionItem struct {
+	// ChordChange A minute of changes between two chords, back and forth (kind chord_change). Both chords are
+	// named and drawn as their chord boxes.
+	ChordChange *PlannedChordChange `json:"chord_change,omitempty"`
+
+	// ChordVoicing A single chord to fret, strum once and rate (kind chord_voicing). The chord is named:
+	// playing it is the skill. The take is rated by the student and has no measure.
+	ChordVoicing *PlannedChordVoicing `json:"chord_voicing,omitempty"`
+
 	// DiagramShape Present when kind is diagram_shape. The client loads the diagram to draw it, with
 	// its labels hidden, and gives instant feedback from it and from shape, graded the
 	// way the server grades. The drill is the way of asking the shape has the fewer right
@@ -7146,6 +7256,14 @@ type PracticeSessionItem struct {
 	// node the student is ready to start, the skills of their paths first, when nothing else is due
 	// or past the new share.
 	Reason PracticePickReason `json:"reason"`
+
+	// RootChange A minute of changes between two chords' roots on a bass layout (kind root_change). Both
+	// roots are marked.
+	RootChange *PlannedRootChange `json:"root_change,omitempty"`
+
+	// RootFifth A chord's root and fifth to play on a bass layout and rate (kind root_fifth). Both places
+	// are marked: playing them is the skill. The take is rated by the student and has no measure.
+	RootFifth *PlannedRootFifth `json:"root_fifth,omitempty"`
 
 	// Rung The rung of the practice ladder an item trains, lowest first. know = recall a fact (a
 	// note, a numeral, a shape); hear = recognise it by ear; play_clean = play it cleanly, untimed;

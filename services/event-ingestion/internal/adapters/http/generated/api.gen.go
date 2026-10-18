@@ -1943,12 +1943,12 @@ type ResolvePublishOutboxEntryRequest struct {
 // SelfRatingResponse The student's own rating of a take they played: a play-along at a tempo, chord changes
 // counted over a minute, or one chord played cleanly. A play-along rating carries tempo_bpm
 // and no changes_per_minute, and may carry the note_value it was played at (quarters when
-// absent); a chord-change or root-change rating carries changes_per_minute
-// and no tempo_bpm; a single chord voicing or a chord's root and fifth (play clean) carries
-// neither.
+// absent); a chord-change or root-change take carries both tempo_bpm and changes_per_minute,
+// and its rating is derived from them (see rating); a single chord voicing or a chord's root
+// and fifth (play clean) carries neither.
 type SelfRatingResponse struct {
-	// ChangesPerMinute The number of chord changes made in one minute. Present for a chord change and a root
-	// change.
+	// ChangesPerMinute The number of chord changes in one minute that rang clean, counted by the student. Present
+	// for a chord change and a root change, and never more than tempo_bpm.
 	ChangesPerMinute *int `json:"changes_per_minute,omitempty"`
 
 	// NoteValue The note value a play-along take was played at: a speed factor on the music as written,
@@ -1960,19 +1960,28 @@ type SelfRatingResponse struct {
 	NoteValue *NoteValue `json:"note_value,omitempty"`
 
 	// Rating How the take went, in the student's judgement. struggled = fell apart or needed to
-	// stop; almost = got through with slips; clean = no slips at this measure.
+	// stop; almost = got through with slips; clean = no slips at this measure. For a chord
+	// change or a root change the rating is not the student's: it follows from the share of
+	// the minute's beats that changed cleanly (changes_per_minute / tempo_bpm), clean from
+	// 0.9, almost from 0.6, struggled below. The server derives it whatever is sent, and a
+	// client sends the same.
 	Rating SelfRatingResponseRating `json:"rating"`
 
 	// ResponseType Discriminator. The student rated a take of their own.
 	ResponseType SelfRatingResponseResponseType `json:"response_type"`
 
 	// TempoBpm The tempo of the take, in beats per minute, as played: the click's tempo. Present for a
-	// play-along.
+	// play-along, and for a chord change or a root change, where the student changes on every
+	// beat, so it is also the number of changes the minute asked for.
 	TempoBpm *int `json:"tempo_bpm,omitempty"`
 }
 
 // SelfRatingResponseRating How the take went, in the student's judgement. struggled = fell apart or needed to
-// stop; almost = got through with slips; clean = no slips at this measure.
+// stop; almost = got through with slips; clean = no slips at this measure. For a chord
+// change or a root change the rating is not the student's: it follows from the share of
+// the minute's beats that changed cleanly (changes_per_minute / tempo_bpm), clean from
+// 0.9, almost from 0.6, struggled below. The server derives it whatever is sent, and a
+// client sends the same.
 type SelfRatingResponseRating string
 
 // SelfRatingResponseResponseType Discriminator. The student rated a take of their own.
