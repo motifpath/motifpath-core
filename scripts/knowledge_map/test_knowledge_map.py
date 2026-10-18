@@ -124,9 +124,9 @@ class CatalogTests(unittest.TestCase):
     def test_the_reviewed_map_builds_with_its_counts(self):
         graph = km.load(MAP)
         kinds = [n.kind for n in graph.nodes]
-        self.assertEqual((216, 125), (kinds.count('skill'), kinds.count('concept')))
+        self.assertEqual((219, 125), (kinds.count('skill'), kinds.count('concept')))
         types = [e.type for e in graph.edges]
-        self.assertEqual((357, 140), (types.count('applies'), types.count('requires')))
+        self.assertEqual((366, 144), (types.count('applies'), types.count('requires')))
 
     def test_rendering_is_deterministic(self):
         self.assertEqual(km.render_sql(km.load(MAP)), km.render_sql(km.load(MAP)))
