@@ -367,5 +367,149 @@ class ShapeTests(unittest.TestCase):
                       f"'{pd.stable_id('diagram-shape-family/caged-grip')}', 'A')", sql)
 
 
+
+# Chord catalog voicings as the chord catalog generator gives them, by voicing key.
+VOICINGS = {
+    'a-minor-open': {'diagram_id': pd.stable_id('chord-voicing/a-minor-open'), 'chord': 'Am'},
+    'c-open': {'diagram_id': pd.stable_id('chord-voicing/c-open'), 'chord': 'C'},
+    'g-open': {'diagram_id': pd.stable_id('chord-voicing/g-open'), 'chord': 'G'},
+}
+
+
+def chord_drills(voicings=('a-minor-open', 'c-open', 'g-open'), changes=(('a-minor-open', 'c-open'),), **settings):
+    raw = {
+        'bass_layout': 'electric-bass',
+        'voicings': [{'voicing': v, 'chord': VOICINGS[v]['chord'] if v in VOICINGS else 'X',
+                      'id': pd.stable_id('chord-drill/' + v)} for v in voicings],
+        'changes': [{'from': a, 'to': b, 'id': pd.stable_id(f'chord-change/{a}/{b}')} for a, b in changes],
+        'max_voicings_per_session': 4, 'max_changes_per_session': 2, 'voicing_seconds': 20, 'change_seconds': 90,
+        'change_first_tempo_bpm': 40, 'change_tempo_step_bpm': 5, 'change_min_tempo_bpm': 20,
+        'change_rating_from': {'clean': 0.9, 'almost': 0.6},
+    }
+    raw.update(settings)
+    return raw
+
+
+def change_target(version=1, effective_from='2026-10-18', changes_per_minute=60, source='default'):
+    return {'version': version, 'effective_from': effective_from, 'changes_per_minute': changes_per_minute,
+            'source': source, 'id': pd.stable_id(f'change-target/v{version}')}
+
+
+class ChordDrillTests(unittest.TestCase):
+    def assertRejected(self, raw, *fragments):
+        with self.assertRaises(ValueError) as ctx:
+            pd.build_chord_drills(raw, VOICINGS)
+        for fragment in fragments:
+            self.assertIn(fragment, str(ctx.exception))
+
+    def test_each_chord_drill_names_its_voicing_diagram_and_chord_with_a_fixed_id(self):
+        built = pd.build_chord_drills(chord_drills(), VOICINGS)
+        first = built.voicings[0]
+        self.assertEqual((pd.stable_id('chord-drill/a-minor-open'), VOICINGS['a-minor-open']['diagram_id'], 'Am'),
+                         (first.id, first.diagram_id, first.chord))
+        self.assertEqual(['a-minor-open', 'c-open', 'g-open'], [v.voicing for v in built.voicings])
+
+    def test_each_change_pairs_two_chord_drills_in_the_order_listed(self):
+        change = pd.build_chord_drills(chord_drills(), VOICINGS).changes[0]
+        self.assertEqual((pd.stable_id('chord-change/a-minor-open/c-open'), 'a-minor-open', 'c-open'),
+                         (change.id, change.from_voicing, change.to_voicing))
+
+    def test_a_voicing_the_chord_catalog_doesnt_have_is_rejected(self):
+        self.assertRejected(chord_drills(voicings=('a-minor-open', 'c-open', 'h-open')), "'h-open'")
+
+    def test_a_chord_that_isnt_its_voicings_chord_is_rejected(self):
+        raw = chord_drills()
+        raw['voicings'][0]['chord'] = 'A'
+        self.assertRejected(raw, "'a-minor-open'", "'Am'")
+
+    def test_a_voicing_listed_twice_is_rejected(self):
+        self.assertRejected(chord_drills(voicings=('a-minor-open', 'c-open', 'a-minor-open')), "'a-minor-open'")
+
+    def test_a_change_of_a_chord_that_isnt_a_chord_drill_is_rejected(self):
+        self.assertRejected(chord_drills(voicings=('a-minor-open', 'c-open'), changes=(('c-open', 'g-open'),)), "'g-open'")
+
+    def test_a_change_of_a_chord_to_itself_is_rejected(self):
+        self.assertRejected(chord_drills(changes=(('c-open', 'c-open'),)), "'c-open'")
+
+    def test_a_change_listed_twice_in_either_order_is_rejected(self):
+        self.assertRejected(chord_drills(changes=(('a-minor-open', 'c-open'), ('c-open', 'a-minor-open'))),
+                            "'c-open'", "'a-minor-open'")
+
+    def test_a_wrong_fixed_id_is_rejected(self):
+        raw = chord_drills()
+        raw['changes'][0]['id'] = pd.stable_id('chord-change/c-open/a-minor-open')
+        self.assertRejected(raw, 'id')
+
+    def test_the_bass_layout_must_be_a_catalog_instrument(self):
+        self.assertRejected(chord_drills(bass_layout='tuba'), "'tuba'")
+
+    def test_every_session_setting_must_be_a_positive_whole_number(self):
+        self.assertRejected(chord_drills(change_min_tempo_bpm=0), 'change_min_tempo_bpm')
+
+    def test_the_first_tempo_may_not_be_below_the_floor(self):
+        self.assertRejected(chord_drills(change_first_tempo_bpm=15), 'change_first_tempo_bpm')
+
+    def test_the_rating_shares_must_fall_from_clean_to_almost(self):
+        self.assertRejected(chord_drills(change_rating_from={'clean': 0.6, 'almost': 0.9}), 'change_rating_from')
+
+    def test_the_sql_installs_every_chord_drill_and_change_with_fixed_ids(self):
+        sql = pd.render_chord_drills_sql(pd.build_chord_drills(chord_drills(), VOICINGS), [])
+        self.assertIn('INSERT INTO "chord_drills" ("id", "diagram_id", "chord", "ordinal") VALUES', sql)
+        self.assertIn(f"('{pd.stable_id('chord-drill/a-minor-open')}', '{VOICINGS['a-minor-open']['diagram_id']}', 'Am', 1)", sql)
+        self.assertIn('INSERT INTO "chord_change_pairs" ("id", "from_chord_drill_id", "to_chord_drill_id", "ordinal") VALUES', sql)
+        self.assertIn(f"('{pd.stable_id('chord-change/a-minor-open/c-open')}', '{pd.stable_id('chord-drill/a-minor-open')}', "
+                      f"'{pd.stable_id('chord-drill/c-open')}', 1)", sql)
+
+
+class ChangeTargetTests(unittest.TestCase):
+    def assertRejected(self, entries, fragment, installed=frozenset(), today=None):
+        with self.assertRaises(ValueError) as ctx:
+            pd.build_change_targets(entries, installed, today)
+        self.assertIn(fragment, str(ctx.exception))
+
+    def test_a_version_builds_with_a_fixed_id(self):
+        target = pd.build_change_targets([change_target()])[0]
+        self.assertEqual((pd.stable_id('change-target/v1'), 1, datetime.date(2026, 10, 18), 60, 'default'),
+                         (target.id, target.version, target.effective_from, target.changes_per_minute, target.source))
+
+    def test_versions_count_from_1_without_gaps(self):
+        self.assertRejected([change_target(), change_target(version=3, effective_from='2026-11-01')], 'versions')
+
+    def test_a_later_version_takes_effect_later(self):
+        self.assertRejected([change_target(), change_target(version=2, effective_from='2026-10-18')], 'effective_from')
+
+    def test_the_rate_must_be_a_positive_whole_number(self):
+        self.assertRejected([change_target(changes_per_minute=0)], 'changes_per_minute')
+
+    def test_a_source_must_be_known(self):
+        self.assertRejected([change_target(source='guess')], 'source')
+
+    def test_a_new_version_may_not_take_effect_in_the_past(self):
+        self.assertRejected([change_target(effective_from='2026-10-01')], 'effective_from',
+                            today=datetime.date(2026, 10, 18))
+
+    def test_an_installed_version_keeps_its_date(self):
+        targets = pd.build_change_targets([change_target(effective_from='2026-10-01')],
+                                          {pd.stable_id('change-target/v1')}, datetime.date(2026, 10, 18))
+        self.assertEqual(1, len(targets))
+
+    def test_the_sql_installs_every_version(self):
+        sql = pd.render_chord_drills_sql(pd.build_chord_drills(chord_drills(), VOICINGS),
+                                         pd.build_change_targets([change_target()]))
+        self.assertIn('INSERT INTO "change_targets" ("id", "version", "effective_from", "changes_per_minute", "source") VALUES', sql)
+        self.assertIn(f"('{pd.stable_id('change-target/v1')}', 1, '2026-10-18T00:00:00Z', 60, 'default')", sql)
+
+
+class ChordDrillCatalogTests(unittest.TestCase):
+    def test_the_specs_catalog_chord_drills_build_against_the_chord_catalog(self):
+        built = pd.load_chord_drills(CATALOG, SPECS_DIR / 'catalogs/chord-voicings.yaml')
+        self.assertGreaterEqual(len(built.voicings), 2)
+        self.assertGreaterEqual(len(built.changes), 1)
+
+    def test_the_specs_catalog_installs_a_first_change_target(self):
+        targets = pd.load_change_targets(CATALOG)
+        self.assertEqual(1, targets[0].version)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -421,6 +421,182 @@ def render_shapes_sql(built):
     return '\n'.join(out) + '\n'
 
 
+CHORD_DRILL_SETTINGS = ('max_voicings_per_session', 'max_changes_per_session', 'voicing_seconds', 'change_seconds',
+                        'change_first_tempo_bpm', 'change_tempo_step_bpm', 'change_min_tempo_bpm')
+
+
+@dataclass
+class ChordDrill:
+    voicing: str
+    diagram_id: str
+    chord: str
+
+    @property
+    def id(self):
+        return stable_id('chord-drill/' + self.voicing)
+
+
+@dataclass
+class ChordChangePair:
+    from_voicing: str
+    to_voicing: str
+
+    @property
+    def id(self):
+        return stable_id(f'chord-change/{self.from_voicing}/{self.to_voicing}')
+
+
+@dataclass
+class ChordDrills:
+    voicings: list
+    changes: list
+
+
+def build_chord_drills(raw, voicings):
+    """Validates the catalog's chord_drills section against voicings (the chord catalog's
+    voicings by key, each with its diagram_id and chord symbol) and returns the chord drills
+    and change pairs in catalog order. A chord drill names a voicing the chord catalog has,
+    by the chord it is; a change pairs two different chord drills, listed once in either
+    order. The session settings are positive whole numbers, and the rating shares fall from
+    clean to almost."""
+    raw = raw or {}
+    if raw.get('bass_layout') not in km.INSTRUMENTS:
+        raise ValueError(f'chord drills name bass layout {raw.get("bass_layout")!r}, which is not a catalog instrument')
+    for name in CHORD_DRILL_SETTINGS:
+        value = raw.get(name)
+        if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
+            raise ValueError(f'chord drills need a positive whole number for {name}')
+    if raw['change_first_tempo_bpm'] < raw['change_min_tempo_bpm']:
+        raise ValueError('chord drills need change_first_tempo_bpm at or above change_min_tempo_bpm')
+    shares = raw.get('change_rating_from') or {}
+    clean, almost = shares.get('clean'), shares.get('almost')
+    if not all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in (clean, almost)) or not 0 < almost < clean <= 1:
+        raise ValueError('chord drills need change_rating_from with 0 < almost < clean <= 1')
+
+    drills = []
+    for entry in raw.get('voicings') or []:
+        key = entry.get('voicing')
+        voicing = voicings.get(key)
+        if voicing is None:
+            raise ValueError(f'chord drill {key!r} names a voicing the chord catalog doesn\'t have')
+        if any(d.voicing == key for d in drills):
+            raise ValueError(f'chord drill {key!r} is listed more than once')
+        if entry.get('chord') != voicing['chord']:
+            raise ValueError(f'chord drill {key!r} is chord {voicing["chord"]!r}, not {entry.get("chord")!r}')
+        drill = ChordDrill(key, voicing['diagram_id'], voicing['chord'])
+        if entry.get('id') != drill.id:
+            raise ValueError(f'chord drill {key!r} has id {entry.get("id")!r}, not {drill.id!r}')
+        drills.append(drill)
+
+    known = {d.voicing for d in drills}
+    changes = []
+    for entry in raw.get('changes') or []:
+        a, b = entry.get('from'), entry.get('to')
+        for key in (a, b):
+            if key not in known:
+                raise ValueError(f'a chord change names {key!r}, which is not a chord drill')
+        if a == b:
+            raise ValueError(f'a chord change pairs {a!r} with itself')
+        if any({c.from_voicing, c.to_voicing} == {a, b} for c in changes):
+            raise ValueError(f'the chord change of {a!r} and {b!r} is listed more than once')
+        change = ChordChangePair(a, b)
+        if entry.get('id') != change.id:
+            raise ValueError(f'the chord change {a!r} to {b!r} has id {entry.get("id")!r}, not {change.id!r}')
+        changes.append(change)
+    return ChordDrills(drills, changes)
+
+
+@dataclass
+class ChangeTarget:
+    version: int
+    effective_from: datetime.date
+    changes_per_minute: int
+    source: str
+
+    @property
+    def id(self):
+        return stable_id(f'change-target/v{self.version}')
+
+
+def build_change_targets(entries, installed=frozenset(), today=None):
+    """Validates the catalog's change_targets: versions counting from 1, each later than the
+    one before, a positive rate and a known source. Like a fluent time, a version not yet
+    installed must take effect today or later."""
+    targets = []
+    for expected, entry in enumerate(sorted(entries or [], key=lambda e: e.get('version') or 0), start=1):
+        effective = entry.get('effective_from')
+        if isinstance(effective, str):
+            effective = datetime.date.fromisoformat(effective)
+        if not isinstance(effective, datetime.date):
+            raise ValueError(f'change target v{entry.get("version")} needs an effective_from date')
+        t = ChangeTarget(entry.get('version'), effective, entry.get('changes_per_minute'), entry.get('source'))
+        if t.version != expected:
+            raise ValueError('change target versions must count from 1 without gaps or repeats')
+        if expected > 1 and t.effective_from <= targets[-1].effective_from:
+            raise ValueError(f'change target v{t.version} effective_from must be later than v{expected - 1}\'s')
+        if not isinstance(t.changes_per_minute, int) or isinstance(t.changes_per_minute, bool) or t.changes_per_minute <= 0:
+            raise ValueError(f'change target v{t.version} needs a positive whole number of changes_per_minute')
+        if t.source not in SOURCES:
+            raise ValueError(f'change target v{t.version} has source {t.source!r}, not one of {SOURCES}')
+        if entry.get('id') != t.id:
+            raise ValueError(f'change target v{t.version} has id {entry.get("id")!r}, not {t.id!r}')
+        if today is not None and t.id not in installed and t.effective_from < today:
+            raise ValueError(f'change target v{t.version} is new, so its effective_from must be {today} or later')
+        targets.append(t)
+    return targets
+
+
+def chord_catalog_voicings(chord_path):
+    """The chord catalog's voicings by key, each with its diagram id and chord symbol."""
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'chord_catalog'))
+    import chord_catalog  # noqa: E402  (a sibling script, not a package)
+    generated = chord_catalog.generate(chord_catalog.load(chord_path))
+    symbols = {c['chord_definition_id']: c['canonical_symbol'] for c in generated['chords']}
+    return {v['key']: {'diagram_id': v['diagram_id'], 'chord': symbols[v['chord_definition_id']]}
+            for v in generated['voicings']}
+
+
+def load_chord_drills(path, chord_path):
+    with open(path, encoding='utf-8') as f:
+        raw = (yaml.safe_load(f) or {}).get('chord_drills')
+    return build_chord_drills(raw, chord_catalog_voicings(chord_path))
+
+
+def load_change_targets(path, installed=frozenset(), today=None):
+    with open(path, encoding='utf-8') as f:
+        return build_change_targets((yaml.safe_load(f) or {}).get('change_targets'), installed, today)
+
+
+def installed_change_target_ids(sql):
+    """The ids of the change target versions a rendered migration installs."""
+    rows = sql.split('INSERT INTO "change_targets"', 1)
+    if len(rows) < 2:
+        return set()
+    return set(re.findall(r"^\s*\('([0-9a-f-]{36})'", rows[1], re.MULTILINE))
+
+
+def render_chord_drills_sql(built, targets):
+    out = ['-- Frozen chord drills and change targets, compiled from motifpath-specs catalogs/practice-drills.yaml by',
+           '-- scripts/practice_drills. Each id is the UUID v5 of chord-drill/<voicing key>,',
+           '-- chord-change/<from voicing key>/<to voicing key> or change-target/v<version>.']
+    if built.voicings:
+        out.append('INSERT INTO "chord_drills" ("id", "diagram_id", "chord", "ordinal") VALUES')
+        out.append(',\n'.join(f"  ({sql_text(d.id)}, {sql_text(d.diagram_id)}, {sql_text(d.chord)}, {i})"
+                               for i, d in enumerate(built.voicings, start=1)) + ';')
+    if built.changes:
+        out.append('INSERT INTO "chord_change_pairs" ("id", "from_chord_drill_id", "to_chord_drill_id", "ordinal") VALUES')
+        out.append(',\n'.join(
+            f"  ({sql_text(c.id)}, {sql_text(stable_id('chord-drill/' + c.from_voicing))}, "
+            f"{sql_text(stable_id('chord-drill/' + c.to_voicing))}, {i})"
+            for i, c in enumerate(built.changes, start=1)) + ';')
+    if targets:
+        out.append('INSERT INTO "change_targets" ("id", "version", "effective_from", "changes_per_minute", "source") VALUES')
+        out.append(',\n'.join(
+            f"  ({sql_text(t.id)}, {t.version}, '{t.effective_from.isoformat()}T00:00:00Z', {t.changes_per_minute}, {sql_text(t.source)})"
+            for t in targets) + ';')
+    return '\n'.join(out) + '\n'
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--specs', type=Path, default=Path(__file__).resolve().parents[3] / 'motifpath-specs')

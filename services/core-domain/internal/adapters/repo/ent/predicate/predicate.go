@@ -15,8 +15,17 @@ type Challenge func(*sql.Selector)
 // ChallengeExercise is the predicate function for challengeexercise builders.
 type ChallengeExercise func(*sql.Selector)
 
+// ChangeTarget is the predicate function for changetarget builders.
+type ChangeTarget func(*sql.Selector)
+
+// ChordChangePair is the predicate function for chordchangepair builders.
+type ChordChangePair func(*sql.Selector)
+
 // ChordDefinition is the predicate function for chorddefinition builders.
 type ChordDefinition func(*sql.Selector)
+
+// ChordDrill is the predicate function for chorddrill builders.
+type ChordDrill func(*sql.Selector)
 
 // ChordVoicing is the predicate function for chordvoicing builders.
 type ChordVoicing func(*sql.Selector)

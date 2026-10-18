@@ -16,7 +16,10 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/appconfig"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challenge"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challengeexercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/changetarget"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/chordchangepair"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/chorddefinition"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/chorddrill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/chordvoicing"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeconcept"
@@ -81,7 +84,10 @@ const (
 	TypeAppConfig               = "AppConfig"
 	TypeChallenge               = "Challenge"
 	TypeChallengeExercise       = "ChallengeExercise"
+	TypeChangeTarget            = "ChangeTarget"
+	TypeChordChangePair         = "ChordChangePair"
 	TypeChordDefinition         = "ChordDefinition"
+	TypeChordDrill              = "ChordDrill"
 	TypeChordVoicing            = "ChordVoicing"
 	TypeContentNode             = "ContentNode"
 	TypeContentNodeConcept      = "ContentNodeConcept"
@@ -2138,6 +2144,1045 @@ func (m *ChallengeExerciseMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown ChallengeExercise edge %s", name)
 }
 
+// ChangeTargetMutation represents an operation that mutates the ChangeTarget nodes in the graph.
+type ChangeTargetMutation struct {
+	config
+	op                    Op
+	typ                   string
+	id                    *uuid.UUID
+	version               *int
+	addversion            *int
+	effective_from        *time.Time
+	changes_per_minute    *int
+	addchanges_per_minute *int
+	source                *changetarget.Source
+	clearedFields         map[string]struct{}
+	done                  bool
+	oldValue              func(context.Context) (*ChangeTarget, error)
+	predicates            []predicate.ChangeTarget
+}
+
+var _ ent.Mutation = (*ChangeTargetMutation)(nil)
+
+// changetargetOption allows management of the mutation configuration using functional options.
+type changetargetOption func(*ChangeTargetMutation)
+
+// newChangeTargetMutation creates new mutation for the ChangeTarget entity.
+func newChangeTargetMutation(c config, op Op, opts ...changetargetOption) *ChangeTargetMutation {
+	m := &ChangeTargetMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeChangeTarget,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withChangeTargetID sets the ID field of the mutation.
+func withChangeTargetID(id uuid.UUID) changetargetOption {
+	return func(m *ChangeTargetMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *ChangeTarget
+		)
+		m.oldValue = func(ctx context.Context) (*ChangeTarget, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().ChangeTarget.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withChangeTarget sets the old ChangeTarget of the mutation.
+func withChangeTarget(node *ChangeTarget) changetargetOption {
+	return func(m *ChangeTargetMutation) {
+		m.oldValue = func(context.Context) (*ChangeTarget, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m ChangeTargetMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m ChangeTargetMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of ChangeTarget entities.
+func (m *ChangeTargetMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *ChangeTargetMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *ChangeTargetMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().ChangeTarget.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetVersion sets the "version" field.
+func (m *ChangeTargetMutation) SetVersion(i int) {
+	m.version = &i
+	m.addversion = nil
+}
+
+// Version returns the value of the "version" field in the mutation.
+func (m *ChangeTargetMutation) Version() (r int, exists bool) {
+	v := m.version
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldVersion returns the old "version" field's value of the ChangeTarget entity.
+// If the ChangeTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChangeTargetMutation) OldVersion(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldVersion is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldVersion requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldVersion: %w", err)
+	}
+	return oldValue.Version, nil
+}
+
+// AddVersion adds i to the "version" field.
+func (m *ChangeTargetMutation) AddVersion(i int) {
+	if m.addversion != nil {
+		*m.addversion += i
+	} else {
+		m.addversion = &i
+	}
+}
+
+// AddedVersion returns the value that was added to the "version" field in this mutation.
+func (m *ChangeTargetMutation) AddedVersion() (r int, exists bool) {
+	v := m.addversion
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetVersion resets all changes to the "version" field.
+func (m *ChangeTargetMutation) ResetVersion() {
+	m.version = nil
+	m.addversion = nil
+}
+
+// SetEffectiveFrom sets the "effective_from" field.
+func (m *ChangeTargetMutation) SetEffectiveFrom(t time.Time) {
+	m.effective_from = &t
+}
+
+// EffectiveFrom returns the value of the "effective_from" field in the mutation.
+func (m *ChangeTargetMutation) EffectiveFrom() (r time.Time, exists bool) {
+	v := m.effective_from
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEffectiveFrom returns the old "effective_from" field's value of the ChangeTarget entity.
+// If the ChangeTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChangeTargetMutation) OldEffectiveFrom(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEffectiveFrom is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEffectiveFrom requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEffectiveFrom: %w", err)
+	}
+	return oldValue.EffectiveFrom, nil
+}
+
+// ResetEffectiveFrom resets all changes to the "effective_from" field.
+func (m *ChangeTargetMutation) ResetEffectiveFrom() {
+	m.effective_from = nil
+}
+
+// SetChangesPerMinute sets the "changes_per_minute" field.
+func (m *ChangeTargetMutation) SetChangesPerMinute(i int) {
+	m.changes_per_minute = &i
+	m.addchanges_per_minute = nil
+}
+
+// ChangesPerMinute returns the value of the "changes_per_minute" field in the mutation.
+func (m *ChangeTargetMutation) ChangesPerMinute() (r int, exists bool) {
+	v := m.changes_per_minute
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldChangesPerMinute returns the old "changes_per_minute" field's value of the ChangeTarget entity.
+// If the ChangeTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChangeTargetMutation) OldChangesPerMinute(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldChangesPerMinute is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldChangesPerMinute requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldChangesPerMinute: %w", err)
+	}
+	return oldValue.ChangesPerMinute, nil
+}
+
+// AddChangesPerMinute adds i to the "changes_per_minute" field.
+func (m *ChangeTargetMutation) AddChangesPerMinute(i int) {
+	if m.addchanges_per_minute != nil {
+		*m.addchanges_per_minute += i
+	} else {
+		m.addchanges_per_minute = &i
+	}
+}
+
+// AddedChangesPerMinute returns the value that was added to the "changes_per_minute" field in this mutation.
+func (m *ChangeTargetMutation) AddedChangesPerMinute() (r int, exists bool) {
+	v := m.addchanges_per_minute
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetChangesPerMinute resets all changes to the "changes_per_minute" field.
+func (m *ChangeTargetMutation) ResetChangesPerMinute() {
+	m.changes_per_minute = nil
+	m.addchanges_per_minute = nil
+}
+
+// SetSource sets the "source" field.
+func (m *ChangeTargetMutation) SetSource(c changetarget.Source) {
+	m.source = &c
+}
+
+// Source returns the value of the "source" field in the mutation.
+func (m *ChangeTargetMutation) Source() (r changetarget.Source, exists bool) {
+	v := m.source
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSource returns the old "source" field's value of the ChangeTarget entity.
+// If the ChangeTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChangeTargetMutation) OldSource(ctx context.Context) (v changetarget.Source, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSource is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSource requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSource: %w", err)
+	}
+	return oldValue.Source, nil
+}
+
+// ResetSource resets all changes to the "source" field.
+func (m *ChangeTargetMutation) ResetSource() {
+	m.source = nil
+}
+
+// Where appends a list predicates to the ChangeTargetMutation builder.
+func (m *ChangeTargetMutation) Where(ps ...predicate.ChangeTarget) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the ChangeTargetMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *ChangeTargetMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.ChangeTarget, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *ChangeTargetMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *ChangeTargetMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (ChangeTarget).
+func (m *ChangeTargetMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *ChangeTargetMutation) Fields() []string {
+	fields := make([]string, 0, 4)
+	if m.version != nil {
+		fields = append(fields, changetarget.FieldVersion)
+	}
+	if m.effective_from != nil {
+		fields = append(fields, changetarget.FieldEffectiveFrom)
+	}
+	if m.changes_per_minute != nil {
+		fields = append(fields, changetarget.FieldChangesPerMinute)
+	}
+	if m.source != nil {
+		fields = append(fields, changetarget.FieldSource)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *ChangeTargetMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case changetarget.FieldVersion:
+		return m.Version()
+	case changetarget.FieldEffectiveFrom:
+		return m.EffectiveFrom()
+	case changetarget.FieldChangesPerMinute:
+		return m.ChangesPerMinute()
+	case changetarget.FieldSource:
+		return m.Source()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *ChangeTargetMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case changetarget.FieldVersion:
+		return m.OldVersion(ctx)
+	case changetarget.FieldEffectiveFrom:
+		return m.OldEffectiveFrom(ctx)
+	case changetarget.FieldChangesPerMinute:
+		return m.OldChangesPerMinute(ctx)
+	case changetarget.FieldSource:
+		return m.OldSource(ctx)
+	}
+	return nil, fmt.Errorf("unknown ChangeTarget field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ChangeTargetMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case changetarget.FieldVersion:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetVersion(v)
+		return nil
+	case changetarget.FieldEffectiveFrom:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEffectiveFrom(v)
+		return nil
+	case changetarget.FieldChangesPerMinute:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetChangesPerMinute(v)
+		return nil
+	case changetarget.FieldSource:
+		v, ok := value.(changetarget.Source)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSource(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ChangeTarget field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *ChangeTargetMutation) AddedFields() []string {
+	var fields []string
+	if m.addversion != nil {
+		fields = append(fields, changetarget.FieldVersion)
+	}
+	if m.addchanges_per_minute != nil {
+		fields = append(fields, changetarget.FieldChangesPerMinute)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *ChangeTargetMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case changetarget.FieldVersion:
+		return m.AddedVersion()
+	case changetarget.FieldChangesPerMinute:
+		return m.AddedChangesPerMinute()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ChangeTargetMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case changetarget.FieldVersion:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddVersion(v)
+		return nil
+	case changetarget.FieldChangesPerMinute:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddChangesPerMinute(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ChangeTarget numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *ChangeTargetMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *ChangeTargetMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *ChangeTargetMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown ChangeTarget nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *ChangeTargetMutation) ResetField(name string) error {
+	switch name {
+	case changetarget.FieldVersion:
+		m.ResetVersion()
+		return nil
+	case changetarget.FieldEffectiveFrom:
+		m.ResetEffectiveFrom()
+		return nil
+	case changetarget.FieldChangesPerMinute:
+		m.ResetChangesPerMinute()
+		return nil
+	case changetarget.FieldSource:
+		m.ResetSource()
+		return nil
+	}
+	return fmt.Errorf("unknown ChangeTarget field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *ChangeTargetMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *ChangeTargetMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *ChangeTargetMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *ChangeTargetMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *ChangeTargetMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *ChangeTargetMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *ChangeTargetMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown ChangeTarget unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *ChangeTargetMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown ChangeTarget edge %s", name)
+}
+
+// ChordChangePairMutation represents an operation that mutates the ChordChangePair nodes in the graph.
+type ChordChangePairMutation struct {
+	config
+	op                  Op
+	typ                 string
+	id                  *uuid.UUID
+	from_chord_drill_id *uuid.UUID
+	to_chord_drill_id   *uuid.UUID
+	ordinal             *int
+	addordinal          *int
+	clearedFields       map[string]struct{}
+	done                bool
+	oldValue            func(context.Context) (*ChordChangePair, error)
+	predicates          []predicate.ChordChangePair
+}
+
+var _ ent.Mutation = (*ChordChangePairMutation)(nil)
+
+// chordchangepairOption allows management of the mutation configuration using functional options.
+type chordchangepairOption func(*ChordChangePairMutation)
+
+// newChordChangePairMutation creates new mutation for the ChordChangePair entity.
+func newChordChangePairMutation(c config, op Op, opts ...chordchangepairOption) *ChordChangePairMutation {
+	m := &ChordChangePairMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeChordChangePair,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withChordChangePairID sets the ID field of the mutation.
+func withChordChangePairID(id uuid.UUID) chordchangepairOption {
+	return func(m *ChordChangePairMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *ChordChangePair
+		)
+		m.oldValue = func(ctx context.Context) (*ChordChangePair, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().ChordChangePair.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withChordChangePair sets the old ChordChangePair of the mutation.
+func withChordChangePair(node *ChordChangePair) chordchangepairOption {
+	return func(m *ChordChangePairMutation) {
+		m.oldValue = func(context.Context) (*ChordChangePair, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m ChordChangePairMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m ChordChangePairMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of ChordChangePair entities.
+func (m *ChordChangePairMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *ChordChangePairMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *ChordChangePairMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().ChordChangePair.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetFromChordDrillID sets the "from_chord_drill_id" field.
+func (m *ChordChangePairMutation) SetFromChordDrillID(u uuid.UUID) {
+	m.from_chord_drill_id = &u
+}
+
+// FromChordDrillID returns the value of the "from_chord_drill_id" field in the mutation.
+func (m *ChordChangePairMutation) FromChordDrillID() (r uuid.UUID, exists bool) {
+	v := m.from_chord_drill_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFromChordDrillID returns the old "from_chord_drill_id" field's value of the ChordChangePair entity.
+// If the ChordChangePair object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChordChangePairMutation) OldFromChordDrillID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFromChordDrillID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFromChordDrillID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFromChordDrillID: %w", err)
+	}
+	return oldValue.FromChordDrillID, nil
+}
+
+// ResetFromChordDrillID resets all changes to the "from_chord_drill_id" field.
+func (m *ChordChangePairMutation) ResetFromChordDrillID() {
+	m.from_chord_drill_id = nil
+}
+
+// SetToChordDrillID sets the "to_chord_drill_id" field.
+func (m *ChordChangePairMutation) SetToChordDrillID(u uuid.UUID) {
+	m.to_chord_drill_id = &u
+}
+
+// ToChordDrillID returns the value of the "to_chord_drill_id" field in the mutation.
+func (m *ChordChangePairMutation) ToChordDrillID() (r uuid.UUID, exists bool) {
+	v := m.to_chord_drill_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldToChordDrillID returns the old "to_chord_drill_id" field's value of the ChordChangePair entity.
+// If the ChordChangePair object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChordChangePairMutation) OldToChordDrillID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldToChordDrillID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldToChordDrillID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldToChordDrillID: %w", err)
+	}
+	return oldValue.ToChordDrillID, nil
+}
+
+// ResetToChordDrillID resets all changes to the "to_chord_drill_id" field.
+func (m *ChordChangePairMutation) ResetToChordDrillID() {
+	m.to_chord_drill_id = nil
+}
+
+// SetOrdinal sets the "ordinal" field.
+func (m *ChordChangePairMutation) SetOrdinal(i int) {
+	m.ordinal = &i
+	m.addordinal = nil
+}
+
+// Ordinal returns the value of the "ordinal" field in the mutation.
+func (m *ChordChangePairMutation) Ordinal() (r int, exists bool) {
+	v := m.ordinal
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldOrdinal returns the old "ordinal" field's value of the ChordChangePair entity.
+// If the ChordChangePair object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChordChangePairMutation) OldOrdinal(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldOrdinal is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldOrdinal requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldOrdinal: %w", err)
+	}
+	return oldValue.Ordinal, nil
+}
+
+// AddOrdinal adds i to the "ordinal" field.
+func (m *ChordChangePairMutation) AddOrdinal(i int) {
+	if m.addordinal != nil {
+		*m.addordinal += i
+	} else {
+		m.addordinal = &i
+	}
+}
+
+// AddedOrdinal returns the value that was added to the "ordinal" field in this mutation.
+func (m *ChordChangePairMutation) AddedOrdinal() (r int, exists bool) {
+	v := m.addordinal
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetOrdinal resets all changes to the "ordinal" field.
+func (m *ChordChangePairMutation) ResetOrdinal() {
+	m.ordinal = nil
+	m.addordinal = nil
+}
+
+// Where appends a list predicates to the ChordChangePairMutation builder.
+func (m *ChordChangePairMutation) Where(ps ...predicate.ChordChangePair) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the ChordChangePairMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *ChordChangePairMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.ChordChangePair, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *ChordChangePairMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *ChordChangePairMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (ChordChangePair).
+func (m *ChordChangePairMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *ChordChangePairMutation) Fields() []string {
+	fields := make([]string, 0, 3)
+	if m.from_chord_drill_id != nil {
+		fields = append(fields, chordchangepair.FieldFromChordDrillID)
+	}
+	if m.to_chord_drill_id != nil {
+		fields = append(fields, chordchangepair.FieldToChordDrillID)
+	}
+	if m.ordinal != nil {
+		fields = append(fields, chordchangepair.FieldOrdinal)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *ChordChangePairMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case chordchangepair.FieldFromChordDrillID:
+		return m.FromChordDrillID()
+	case chordchangepair.FieldToChordDrillID:
+		return m.ToChordDrillID()
+	case chordchangepair.FieldOrdinal:
+		return m.Ordinal()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *ChordChangePairMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case chordchangepair.FieldFromChordDrillID:
+		return m.OldFromChordDrillID(ctx)
+	case chordchangepair.FieldToChordDrillID:
+		return m.OldToChordDrillID(ctx)
+	case chordchangepair.FieldOrdinal:
+		return m.OldOrdinal(ctx)
+	}
+	return nil, fmt.Errorf("unknown ChordChangePair field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ChordChangePairMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case chordchangepair.FieldFromChordDrillID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFromChordDrillID(v)
+		return nil
+	case chordchangepair.FieldToChordDrillID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetToChordDrillID(v)
+		return nil
+	case chordchangepair.FieldOrdinal:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetOrdinal(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ChordChangePair field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *ChordChangePairMutation) AddedFields() []string {
+	var fields []string
+	if m.addordinal != nil {
+		fields = append(fields, chordchangepair.FieldOrdinal)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *ChordChangePairMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case chordchangepair.FieldOrdinal:
+		return m.AddedOrdinal()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ChordChangePairMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case chordchangepair.FieldOrdinal:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddOrdinal(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ChordChangePair numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *ChordChangePairMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *ChordChangePairMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *ChordChangePairMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown ChordChangePair nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *ChordChangePairMutation) ResetField(name string) error {
+	switch name {
+	case chordchangepair.FieldFromChordDrillID:
+		m.ResetFromChordDrillID()
+		return nil
+	case chordchangepair.FieldToChordDrillID:
+		m.ResetToChordDrillID()
+		return nil
+	case chordchangepair.FieldOrdinal:
+		m.ResetOrdinal()
+		return nil
+	}
+	return fmt.Errorf("unknown ChordChangePair field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *ChordChangePairMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *ChordChangePairMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *ChordChangePairMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *ChordChangePairMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *ChordChangePairMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *ChordChangePairMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *ChordChangePairMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown ChordChangePair unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *ChordChangePairMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown ChordChangePair edge %s", name)
+}
+
 // ChordDefinitionMutation represents an operation that mutates the ChordDefinition nodes in the graph.
 type ChordDefinitionMutation struct {
 	config
@@ -3152,6 +4197,482 @@ func (m *ChordDefinitionMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown ChordDefinition edge %s", name)
+}
+
+// ChordDrillMutation represents an operation that mutates the ChordDrill nodes in the graph.
+type ChordDrillMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *uuid.UUID
+	diagram_id    *uuid.UUID
+	chord         *string
+	ordinal       *int
+	addordinal    *int
+	clearedFields map[string]struct{}
+	done          bool
+	oldValue      func(context.Context) (*ChordDrill, error)
+	predicates    []predicate.ChordDrill
+}
+
+var _ ent.Mutation = (*ChordDrillMutation)(nil)
+
+// chorddrillOption allows management of the mutation configuration using functional options.
+type chorddrillOption func(*ChordDrillMutation)
+
+// newChordDrillMutation creates new mutation for the ChordDrill entity.
+func newChordDrillMutation(c config, op Op, opts ...chorddrillOption) *ChordDrillMutation {
+	m := &ChordDrillMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeChordDrill,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withChordDrillID sets the ID field of the mutation.
+func withChordDrillID(id uuid.UUID) chorddrillOption {
+	return func(m *ChordDrillMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *ChordDrill
+		)
+		m.oldValue = func(ctx context.Context) (*ChordDrill, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().ChordDrill.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withChordDrill sets the old ChordDrill of the mutation.
+func withChordDrill(node *ChordDrill) chorddrillOption {
+	return func(m *ChordDrillMutation) {
+		m.oldValue = func(context.Context) (*ChordDrill, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m ChordDrillMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m ChordDrillMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of ChordDrill entities.
+func (m *ChordDrillMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *ChordDrillMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *ChordDrillMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().ChordDrill.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetDiagramID sets the "diagram_id" field.
+func (m *ChordDrillMutation) SetDiagramID(u uuid.UUID) {
+	m.diagram_id = &u
+}
+
+// DiagramID returns the value of the "diagram_id" field in the mutation.
+func (m *ChordDrillMutation) DiagramID() (r uuid.UUID, exists bool) {
+	v := m.diagram_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDiagramID returns the old "diagram_id" field's value of the ChordDrill entity.
+// If the ChordDrill object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChordDrillMutation) OldDiagramID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDiagramID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDiagramID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDiagramID: %w", err)
+	}
+	return oldValue.DiagramID, nil
+}
+
+// ResetDiagramID resets all changes to the "diagram_id" field.
+func (m *ChordDrillMutation) ResetDiagramID() {
+	m.diagram_id = nil
+}
+
+// SetChord sets the "chord" field.
+func (m *ChordDrillMutation) SetChord(s string) {
+	m.chord = &s
+}
+
+// Chord returns the value of the "chord" field in the mutation.
+func (m *ChordDrillMutation) Chord() (r string, exists bool) {
+	v := m.chord
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldChord returns the old "chord" field's value of the ChordDrill entity.
+// If the ChordDrill object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChordDrillMutation) OldChord(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldChord is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldChord requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldChord: %w", err)
+	}
+	return oldValue.Chord, nil
+}
+
+// ResetChord resets all changes to the "chord" field.
+func (m *ChordDrillMutation) ResetChord() {
+	m.chord = nil
+}
+
+// SetOrdinal sets the "ordinal" field.
+func (m *ChordDrillMutation) SetOrdinal(i int) {
+	m.ordinal = &i
+	m.addordinal = nil
+}
+
+// Ordinal returns the value of the "ordinal" field in the mutation.
+func (m *ChordDrillMutation) Ordinal() (r int, exists bool) {
+	v := m.ordinal
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldOrdinal returns the old "ordinal" field's value of the ChordDrill entity.
+// If the ChordDrill object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChordDrillMutation) OldOrdinal(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldOrdinal is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldOrdinal requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldOrdinal: %w", err)
+	}
+	return oldValue.Ordinal, nil
+}
+
+// AddOrdinal adds i to the "ordinal" field.
+func (m *ChordDrillMutation) AddOrdinal(i int) {
+	if m.addordinal != nil {
+		*m.addordinal += i
+	} else {
+		m.addordinal = &i
+	}
+}
+
+// AddedOrdinal returns the value that was added to the "ordinal" field in this mutation.
+func (m *ChordDrillMutation) AddedOrdinal() (r int, exists bool) {
+	v := m.addordinal
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetOrdinal resets all changes to the "ordinal" field.
+func (m *ChordDrillMutation) ResetOrdinal() {
+	m.ordinal = nil
+	m.addordinal = nil
+}
+
+// Where appends a list predicates to the ChordDrillMutation builder.
+func (m *ChordDrillMutation) Where(ps ...predicate.ChordDrill) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the ChordDrillMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *ChordDrillMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.ChordDrill, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *ChordDrillMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *ChordDrillMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (ChordDrill).
+func (m *ChordDrillMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *ChordDrillMutation) Fields() []string {
+	fields := make([]string, 0, 3)
+	if m.diagram_id != nil {
+		fields = append(fields, chorddrill.FieldDiagramID)
+	}
+	if m.chord != nil {
+		fields = append(fields, chorddrill.FieldChord)
+	}
+	if m.ordinal != nil {
+		fields = append(fields, chorddrill.FieldOrdinal)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *ChordDrillMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case chorddrill.FieldDiagramID:
+		return m.DiagramID()
+	case chorddrill.FieldChord:
+		return m.Chord()
+	case chorddrill.FieldOrdinal:
+		return m.Ordinal()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *ChordDrillMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case chorddrill.FieldDiagramID:
+		return m.OldDiagramID(ctx)
+	case chorddrill.FieldChord:
+		return m.OldChord(ctx)
+	case chorddrill.FieldOrdinal:
+		return m.OldOrdinal(ctx)
+	}
+	return nil, fmt.Errorf("unknown ChordDrill field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ChordDrillMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case chorddrill.FieldDiagramID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDiagramID(v)
+		return nil
+	case chorddrill.FieldChord:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetChord(v)
+		return nil
+	case chorddrill.FieldOrdinal:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetOrdinal(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ChordDrill field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *ChordDrillMutation) AddedFields() []string {
+	var fields []string
+	if m.addordinal != nil {
+		fields = append(fields, chorddrill.FieldOrdinal)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *ChordDrillMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case chorddrill.FieldOrdinal:
+		return m.AddedOrdinal()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ChordDrillMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case chorddrill.FieldOrdinal:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddOrdinal(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ChordDrill numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *ChordDrillMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *ChordDrillMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *ChordDrillMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown ChordDrill nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *ChordDrillMutation) ResetField(name string) error {
+	switch name {
+	case chorddrill.FieldDiagramID:
+		m.ResetDiagramID()
+		return nil
+	case chorddrill.FieldChord:
+		m.ResetChord()
+		return nil
+	case chorddrill.FieldOrdinal:
+		m.ResetOrdinal()
+		return nil
+	}
+	return fmt.Errorf("unknown ChordDrill field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *ChordDrillMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *ChordDrillMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *ChordDrillMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *ChordDrillMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *ChordDrillMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *ChordDrillMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *ChordDrillMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown ChordDrill unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *ChordDrillMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown ChordDrill edge %s", name)
 }
 
 // ChordVoicingMutation represents an operation that mutates the ChordVoicing nodes in the graph.
