@@ -14,6 +14,14 @@ directory covers what runs on the VM and how a release reaches it.
 | `edge/` | The Caddy reverse proxy, its own Compose project `edge`. Terminates TLS for both environments. |
 | `deploy.sh` | Runs on the VM. Renders secrets, pulls, recreates, reloads the edge, health-checks. |
 
+The deploy workflow never sends these files or any command to the VM. It
+sends the environment's SSM deploy document (`motifpath-<env>-deploy`, defined
+in motifpath-infra) and a commit SHA. The VM checks that the SHA is on the
+environment's release branches (`main` for production; `stage` or `main` for
+staging), downloads this directory from that commit on GitHub, and runs
+`deploy.sh`. Only code merged to those branches ever runs on the host that
+both environments share.
+
 ## Release flow
 
 ```
@@ -29,7 +37,9 @@ feat/…  →  dev  →  stage  →  main
 2. **Check staging** at `https://staging.motifpath.com`.
 3. **Merge `stage` into `main`**, then run `Deploy` by hand with
    `environment: production` and the **SHA staging ran**, not the merge
-   commit. The workflow refuses a SHA that is not on `main`.
+   commit. The workflow and the VM both refuse a SHA that is not on `main`.
+   The images also get a `production-<sha>` tag, which keeps them out of
+   ECR's expiry of older release candidates.
 4. **Hotfix:** merging a `hotfix/…` PR into `main` builds that merge commit.
    Deploy it to production by hand (staging first if it changes the schema).
 5. **Rollback:** run `Deploy` with the previous SHA. The VM records the last
@@ -49,14 +59,15 @@ steps, are in motifpath-infra.
 
 - Amazon Linux 2023 (arm64) with Docker, the Compose v2 plugin, the AWS CLI,
   `python3` and `curl`, and the SSM agent running.
-- **IMDSv2 hop limit of 2**, so the AWS SDK inside a container can reach the
-  instance role.
+- **IMDSv2 hop limit of 1**, so containers cannot reach the instance role;
+  only the host uses it. Services that need AWS get their own credentials
+  (core-domain's per-environment media key).
 - An instance role that can:
   - `ssm:GetParametersByPath` on `/motifpath/staging/*`, `/motifpath/production/*`
-    and `/motifpath/edge/*`, plus `kms:Decrypt` on their key
+    and `/motifpath/edge/*`
   - `ecr:GetAuthorizationToken`, plus pull on the three `motifpath/*` repositories
-  - read and write each environment's media bucket
   - `logs:CreateLogStream` and `logs:PutLogEvents` on the log groups below
+- An SSM document `motifpath-<env>-deploy` per environment, as described above.
 - Inbound 80 and 443 only. No SSH: shell access goes through Session Manager.
 
 ### CloudWatch log groups
@@ -67,7 +78,8 @@ logging driver does not create them.
 ### ECR
 
 Repositories `motifpath/core-domain`, `motifpath/event-ingestion` and
-`motifpath/aggregation-worker`, with immutable tags.
+`motifpath/aggregation-worker`, with immutable tags. Images tagged
+`production-*` expire only among themselves.
 
 ### SSM Parameter Store
 
@@ -82,6 +94,8 @@ secrets file, with its last path segment as the variable name. Use
 | `/motifpath/<env>/CLERK_SECRET_KEY` | `sk_live_…` (production), `sk_test_…` (staging) |
 | `/motifpath/<env>/ECR_REGISTRY` | `<account-id>.dkr.ecr.us-east-1.amazonaws.com` |
 | `/motifpath/<env>/MEDIA_S3_BUCKET` | that environment's media bucket name |
+| `/motifpath/<env>/MEDIA_AWS_ACCESS_KEY_ID` | access key of the IAM user limited to that bucket |
+| `/motifpath/<env>/MEDIA_AWS_SECRET_ACCESS_KEY` | its secret |
 | `/motifpath/edge/ACME_EMAIL` | the address Let's Encrypt sends expiry notices to |
 
 A value cannot contain a single quote or a newline; `deploy.sh` refuses it
@@ -92,9 +106,10 @@ rather than write a broken env file.
 - An IAM OIDC provider for `token.actions.githubusercontent.com` and two roles:
   - **ECR push**, trusted for this repo's `stage` and `main` refs. Set its ARN
     as the repository variable `AWS_ECR_PUSH_ROLE_ARN`.
-  - **Deploy**, trusted for the `staging` and `production` GitHub
-    environments, allowed `ssm:SendCommand` with `AWS-RunShellScript` on the
-    VM only, `ssm:GetCommandInvocation`, and `ecr:DescribeImages`.
+  - **Deploy**, one per environment, trusted for the matching GitHub
+    environment. It may send only that environment's deploy document to the
+    VM, read the result, and `ecr:DescribeImages`. Production's may also
+    `ecr:BatchGetImage` and `ecr:PutImage` to add the `production-` tag.
 - GitHub environments `staging` and `production`, each with the variables
   `AWS_DEPLOY_ROLE_ARN` and `VM_INSTANCE_ID`. Add required reviewers to
   `production` if a second pair of eyes should approve each release.
@@ -108,7 +123,7 @@ certificates once those resolve.
 
 ## Running it by hand
 
-Over Session Manager, as root, from an unpacked bundle:
+Over Session Manager, as root, re-running the last unpacked deploy:
 
 ```bash
 bash /opt/motifpath/staging/deploy.sh staging <commit-sha>

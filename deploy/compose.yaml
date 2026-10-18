@@ -76,8 +76,11 @@ services:
       MONGO_DATABASE: ${MONGO_DATABASE:?}
       CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:?}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?}
-      # No endpoint or static keys: the AWS SDK falls back to the instance
-      # role, which can reach only this environment's media bucket.
+      # Real S3 (no endpoint). Containers cannot reach the instance role, so
+      # the SDK reads this environment's media key from the standard
+      # variables; that key can touch only this environment's bucket.
+      AWS_ACCESS_KEY_ID: ${MEDIA_AWS_ACCESS_KEY_ID:?}
+      AWS_SECRET_ACCESS_KEY: ${MEDIA_AWS_SECRET_ACCESS_KEY:?}
       MEDIA_S3_BUCKET: ${MEDIA_S3_BUCKET:?}
       MEDIA_S3_REGION: ${AWS_REGION:?}
       MEDIA_PUBLIC_BASE_URL: ${MEDIA_PUBLIC_BASE_URL:?}

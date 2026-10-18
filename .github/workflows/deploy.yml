@@ -55,8 +55,9 @@ jobs:
           [[ "$IMAGE_TAG" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::image_tag must be a full 40-char commit SHA"; exit 1; }
           [[ -n "$ROLE" && -n "$INSTANCE" ]] || { echo "::error::environment '$DEPLOY_ENV' needs variables AWS_DEPLOY_ROLE_ARN and VM_INSTANCE_ID; see deploy/README.md"; exit 1; }
 
-      # The deploy bundle (compose files, env settings, deploy.sh) comes from
-      # the same commit as the images, so config and code always match.
+      # Only for the branch check below. The VM fetches the deploy files for
+      # this commit itself and repeats the check: this role cannot send it
+      # anything but the SHA.
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.image_tag }}
@@ -86,30 +87,37 @@ jobs:
               || { echo "::error::motifpath/$svc:$IMAGE_TAG is not in ECR; run Build images for this commit"; exit 1; }
           done
 
-      - name: Run deploy.sh on the VM
+      # Image expiry in ECR never removes images carrying this tag to make
+      # room for newer builds, so what production ran stays available for
+      # redeploys and rollbacks.
+      - name: Protect the images production runs
+        if: inputs.environment == 'production'
+        run: |
+          set -euo pipefail
+          for svc in core-domain event-ingestion aggregation-worker; do
+            image=$(aws ecr batch-get-image --repository-name "motifpath/$svc" \
+              --image-ids imageTag="$IMAGE_TAG" --query 'images[0]' --output json)
+            out=$(aws ecr put-image --repository-name "motifpath/$svc" \
+              --image-tag "production-$IMAGE_TAG" \
+              --image-manifest "$(jq -r .imageManifest <<<"$image")" \
+              --image-manifest-media-type "$(jq -r .imageManifestMediaType <<<"$image")" 2>&1) \
+              || grep -q ImageAlreadyExistsException <<<"$out" \
+              || { echo "$out"; exit 1; }
+          done
+
+      # The environment's deploy document is the only command this role may
+      # send: it takes the SHA, checks it is on this environment's release
+      # branches, and runs deploy/deploy.sh from that commit.
+      - name: Run the deploy on the VM
         env:
           INSTANCE: ${{ vars.VM_INSTANCE_ID }}
         run: |
           set -euo pipefail
-          bundle=$(tar -C deploy -czf - . | base64 -w0)
-          # Unpacks into a fresh directory first, so a failed transfer never
-          # leaves a half-written bundle where the live one was.
-          params=$(jq -n --arg env "$DEPLOY_ENV" --arg tag "$IMAGE_TAG" --arg b "$bundle" '{
-            commands: [
-              "set -eu",
-              "d=/opt/motifpath/\($env)",
-              "rm -rf \"$d.next\" && mkdir -p \"$d.next\"",
-              "echo \($b) | base64 -d | tar -xz -C \"$d.next\"",
-              "rm -rf \"$d\" && mv \"$d.next\" \"$d\"",
-              "bash \"$d/deploy.sh\" \($env) \($tag)"
-            ],
-            executionTimeout: ["1800"]
-          }')
           id=$(aws ssm send-command \
             --instance-ids "$INSTANCE" \
-            --document-name AWS-RunShellScript \
+            --document-name "motifpath-$DEPLOY_ENV-deploy" \
             --comment "deploy $DEPLOY_ENV ${IMAGE_TAG:0:12}" \
-            --parameters "$params" \
+            --parameters "imageTag=$IMAGE_TAG" \
             --query Command.CommandId --output text)
           echo "SSM command $id"
 

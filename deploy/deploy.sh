@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# deploy.sh — runs ON THE VM, as root, from the bundle the deploy workflow
-# unpacked into /opt/motifpath/<environment>/. Replaces one environment's
-# containers with the given image tag and leaves the other environment alone.
+# deploy.sh — runs ON THE VM, as root, from /opt/motifpath/<environment>/,
+# where the environment's deploy document unpacked this directory from the
+# commit being deployed. Replaces one environment's containers with the given
+# image tag and leaves the other environment alone.
 #
 #   deploy.sh <staging|production> <image-tag>
 #

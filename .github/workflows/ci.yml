@@ -270,7 +270,8 @@ jobs:
           set -euo pipefail
           printf '%s\n' "DATABASE_URL='postgres://u:p@db:5432/x'" "MONGO_URI='mongodb://m'" \
             "CLERK_SECRET_KEY='sk_test_x'" "ECR_REGISTRY='123456789012.dkr.ecr.us-east-1.amazonaws.com'" \
-            "MEDIA_S3_BUCKET='bucket'" > "$RUNNER_TEMP/secrets.env"
+            "MEDIA_S3_BUCKET='bucket'" "MEDIA_AWS_ACCESS_KEY_ID='AKIAEXAMPLE'" \
+            "MEDIA_AWS_SECRET_ACCESS_KEY='secret'" > "$RUNNER_TEMP/secrets.env"
           for env in staging production; do
             IMAGE_TAG=0000000000000000000000000000000000000000 docker compose -p "$env" \
               --env-file "deploy/env/$env.env" --env-file "$RUNNER_TEMP/secrets.env" \
