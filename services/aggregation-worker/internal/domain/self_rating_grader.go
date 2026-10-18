@@ -3,7 +3,8 @@ package domain
 // selfRatingV1 grades takes the student rates themselves: a play-along at a tempo,
 // chord or root changes counted over a minute, or a chord voicing or a chord's root
 // and fifth played cleanly, untimed. It checks the take fits the item and keeps the
-// rating and its measure as given (golden/practice-graders/self_rating.v1.json).
+// rating and its measure as given, except a minute of changes, whose rating follows
+// from its count (golden/practice-graders/self_rating.v1.json).
 type selfRatingV1 struct{}
 
 func (selfRatingV1) ID() string { return "self_rating.v1" }
@@ -14,13 +15,22 @@ type selfRatedMeasure int
 const (
 	measureNone selfRatedMeasure = iota
 	measureTempo
-	measureChangesPerMinute
+	// measureChangeMinute is a minute of changes at a tempo, one change on every
+	// beat: the tempo and the changes that rang clean.
+	measureChangeMinute
+)
+
+// A minute of changes is clean when at least cleanChangeShare of its beats
+// changed cleanly, and almost from almostChangeShare.
+const (
+	cleanChangeShare  = 0.9
+	almostChangeShare = 0.6
 )
 
 var measureOf = map[PracticeItemKind]selfRatedMeasure{
 	PracticeItemKindPlayAlong:    measureTempo,
-	PracticeItemKindChordChange:  measureChangesPerMinute,
-	PracticeItemKindRootChange:   measureChangesPerMinute,
+	PracticeItemKindChordChange:  measureChangeMinute,
+	PracticeItemKindRootChange:   measureChangeMinute,
 	PracticeItemKindChordVoicing: measureNone,
 	PracticeItemKindRootFifth:    measureNone,
 }
@@ -50,8 +60,15 @@ func checkMeasure(measure selfRatedMeasure, r PracticeResponse) GradeRejection {
 	own, other := r.TempoBPM, r.ChangesPerMinute
 	switch measure {
 	case measureTempo:
-	case measureChangesPerMinute:
-		own, other = r.ChangesPerMinute, r.TempoBPM
+	case measureChangeMinute:
+		if r.TempoBPM == nil || r.ChangesPerMinute == nil {
+			return GradeRejectionMeasureMissing
+		}
+		// One change on every beat: a minute can't hold more changes than beats.
+		if *r.ChangesPerMinute > *r.TempoBPM {
+			return GradeRejectionResponseDoesNotFitItem
+		}
+		return ""
 	case measureNone:
 		if own != nil || other != nil {
 			return GradeRejectionResponseDoesNotFitItem
@@ -79,11 +96,29 @@ func (selfRatingV1) Grade(key PracticeItemKey, r PracticeResponse, ref PracticeR
 	if rejection := checkMeasure(measure, r); rejection != "" {
 		return rejected(rejection)
 	}
+	rating := r.Rating
+	if measure == measureChangeMinute {
+		rating = changeMinuteRating(*r.ChangesPerMinute, *r.TempoBPM)
+	}
 	return GradeResult{Evidence: GradedEvidence{
 		Source:           EvidenceSourceSelfAssessed,
-		Rating:           r.Rating,
+		Rating:           rating,
 		TempoBPM:         r.TempoBPM,
 		NoteValue:        r.NoteValue,
 		ChangesPerMinute: r.ChangesPerMinute,
 	}}
+}
+
+// changeMinuteRating rates a minute of changes at tempoBPM by the share of its
+// beats that changed cleanly, whatever rating the student sent: the count and the
+// rating can never disagree.
+func changeMinuteRating(cleanChanges, tempoBPM int) SelfRating {
+	share := float64(cleanChanges) / float64(tempoBPM)
+	switch {
+	case share >= cleanChangeShare:
+		return SelfRatingClean
+	case share >= almostChangeShare:
+		return SelfRatingAlmost
+	}
+	return SelfRatingStruggled
 }
