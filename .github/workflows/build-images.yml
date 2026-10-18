@@ -1,0 +1,116 @@
+name: Build images
+
+# Release images are built only for commits meant to be deployed: every push
+# to the release-candidate branch `stage`, and hotfix PRs merged straight
+# into `main`. A normal stage → main promotion builds nothing; production
+# runs the image staging already ran (see deploy.yml). Feature merges to
+# `dev` never build.
+#
+# Both triggers are pushes, because AWS only trusts tokens issued for the
+# `stage` and `main` refs; a pull_request event's token would be refused.
+on:
+  push:
+    branches: [stage, main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: read
+
+env:
+  AWS_REGION: us-east-1
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  # A push to main is either a stage promotion or a merged hotfix; only the
+  # hotfix needs an image. Decided by the branch of the PR that made the
+  # commit.
+  decide:
+    name: Decide whether to build
+    runs-on: ubuntu-latest
+    outputs:
+      build: ${{ steps.decide.outputs.build }}
+    steps:
+      - id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [[ "$GITHUB_REF" != refs/heads/main ]]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          head=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" --jq '.[0].head.ref // ""')
+          echo "main commit came from branch '${head:-unknown}'"
+          if [[ "$head" == hotfix/* ]]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "build=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    name: Build ${{ matrix.service }} (arm64)
+    needs: decide
+    if: needs.decide.outputs.build == 'true'
+    # The VM is arm64; a native runner avoids building under emulation.
+    runs-on: ubuntu-24.04-arm
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [core-domain, event-ingestion, aggregation-worker]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.IMAGE_TAG }}
+
+      - name: Check AWS configuration
+        env:
+          ROLE: ${{ vars.AWS_ECR_PUSH_ROLE_ARN }}
+        run: |
+          [[ -n "$ROLE" ]] || { echo "::error::repository variable AWS_ECR_PUSH_ROLE_ARN is not set; see deploy/README.md"; exit 1; }
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ECR_PUSH_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # Tags are immutable in ECR: rebuilding a commit that already has an
+      # image would fail the push, and the existing image is the one to keep.
+      - name: Skip if this commit is already built
+        id: exists
+        env:
+          REPO: motifpath/${{ matrix.service }}
+        run: |
+          if aws ecr describe-images --repository-name "$REPO" --image-ids imageTag="$IMAGE_TAG" >/dev/null 2>&1; then
+            echo "$REPO:$IMAGE_TAG already exists"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: docker/setup-buildx-action@v3
+        if: steps.exists.outputs.skip != 'true'
+
+      - uses: docker/build-push-action@v6
+        if: steps.exists.outputs.skip != 'true'
+        with:
+          context: .
+          file: services/${{ matrix.service }}/Dockerfile
+          platforms: linux/arm64
+          push: true
+          # One plain image manifest per tag, which is all the VM pulls.
+          provenance: false
+          tags: ${{ steps.ecr.outputs.registry }}/motifpath/${{ matrix.service }}:${{ env.IMAGE_TAG }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+  deploy-staging:
+    name: Deploy to staging
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/stage'
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: staging
+      image_tag: ${{ github.sha }}
+    secrets: inherit
