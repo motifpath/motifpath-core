@@ -92,7 +92,7 @@ secrets file, with its last path segment as the variable name. Use
 | `/motifpath/<env>/DATABASE_URL` | `postgres://motifpath_<env>:…@<rds-host>:5432/motifpath_<env>?sslmode=require` |
 | `/motifpath/<env>/MONGO_URI` | the Atlas connection string for that environment's cluster |
 | `/motifpath/<env>/CLERK_SECRET_KEY` | `sk_live_…` (production), `sk_test_…` (staging) |
-| `/motifpath/<env>/ECR_REGISTRY` | `<account-id>.dkr.ecr.us-east-1.amazonaws.com` |
+| `/motifpath/<env>/ECR_REGISTRY` | `<account-id>.dkr.ecr.us-east-2.amazonaws.com` |
 | `/motifpath/<env>/MEDIA_S3_BUCKET` | that environment's media bucket name |
 | `/motifpath/<env>/MEDIA_AWS_ACCESS_KEY_ID` | access key of the IAM user limited to that bucket |
 | `/motifpath/<env>/MEDIA_AWS_SECRET_ACCESS_KEY` | its secret |

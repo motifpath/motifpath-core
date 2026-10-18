@@ -19,7 +19,7 @@ permissions:
   pull-requests: read
 
 env:
-  AWS_REGION: us-east-1
+  AWS_REGION: us-east-2
   IMAGE_TAG: ${{ github.sha }}
 
 jobs:

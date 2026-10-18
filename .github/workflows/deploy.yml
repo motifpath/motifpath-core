@@ -36,7 +36,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  AWS_REGION: us-east-1
+  AWS_REGION: us-east-2
   DEPLOY_ENV: ${{ inputs.environment }}
   IMAGE_TAG: ${{ inputs.image_tag }}
 
