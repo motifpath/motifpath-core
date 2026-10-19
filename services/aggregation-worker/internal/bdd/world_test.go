@@ -22,6 +22,13 @@ type fakeReference struct {
 	exercises   map[string]domain.ExerciseReference
 	instruments map[string]domain.InstrumentReference
 	fluentTimes map[string][]domain.FluentTime
+	targets     []domain.ChangeTarget
+}
+
+// ChangeTargets is the catalog's first change target, in force before any
+// scenario's first answer.
+func (f *fakeReference) ChangeTargets(_ context.Context) ([]domain.ChangeTarget, error) {
+	return f.targets, nil
 }
 
 func (f *fakeReference) Instruments(_ context.Context, ids []string) (map[string]domain.InstrumentReference, error) {
@@ -319,6 +326,13 @@ type world struct {
 	lastExercise   string
 	lastExerciseID string
 	cells          cellWorld
+	chords         chordWorld
+}
+
+// chordWorld is the chord change and the single chord a scenario practises.
+type chordWorld struct {
+	changeKey  string
+	voicingKey string
 }
 
 func newWorld() *world {
@@ -328,6 +342,7 @@ func newWorld() *world {
 			exercises:   map[string]domain.ExerciseReference{},
 			instruments: map[string]domain.InstrumentReference{},
 			fluentTimes: map[string][]domain.FluentTime{},
+			targets:     []domain.ChangeTarget{{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), ChangesPerMinute: 60}},
 		},
 		evidence: &fakeEvidence{},
 		states:   &fakeStates{folds: map[string]domain.ItemFold{}},

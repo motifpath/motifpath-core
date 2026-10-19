@@ -2186,6 +2186,10 @@ func (discardPracticeReferences) PutDrillThresholds(context.Context, []domain.Dr
 	return nil
 }
 
+func (discardPracticeReferences) PutChangeTargets(context.Context, []domain.ChangeTarget) error {
+	return nil
+}
+
 func (discardPracticeReferences) PutInstruments(context.Context, []domain.InstrumentReference) error {
 	return nil
 }

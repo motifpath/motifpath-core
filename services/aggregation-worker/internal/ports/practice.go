@@ -26,6 +26,10 @@ type PracticeReferenceReader interface {
 	// FluentTimes returns every version of a drill template's fluent time, none
 	// when the template has none yet.
 	FluentTimes(ctx context.Context, templateKey string) ([]domain.FluentTime, error)
+
+	// ChangeTargets returns every version of the clean changes a minute that count
+	// as fully fluent on a chord or root change, none when none is installed.
+	ChangeTargets(ctx context.Context) ([]domain.ChangeTarget, error)
 }
 
 // PracticeEvidenceRepository stores evidence, once per evidence id. Evidence is

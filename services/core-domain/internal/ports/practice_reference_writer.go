@@ -22,6 +22,9 @@ type PracticeReferenceWriter interface {
 	// PutDrillThresholds creates or replaces each fluent time version, in one
 	// round trip to the store.
 	PutDrillThresholds(ctx context.Context, thresholds []domain.DrillThreshold) error
+	// PutChangeTargets creates or replaces each change target version, in one
+	// write.
+	PutChangeTargets(ctx context.Context, targets []domain.ChangeTarget) error
 
 	// PutInstruments creates or replaces each instrument's reference, in one
 	// round trip to the store.

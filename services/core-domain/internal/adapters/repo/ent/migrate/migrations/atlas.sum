@@ -1,4 +1,4 @@
-h1:WBfc1IVqLtl3PWr5hE5cvGXHx2pfHAdXe+X+EMDm8Vs=
+h1:Yg/OEJpaoXdXiDjx0WE4zPYyzQHkmwKvD0OkIhD43AA=
 20261006144122_baseline_schema.up.sql h1:Mz7yS3khUoGF+JqUcqUl3UJhpxM3snY9i31Og9IRxs4=
 20261006144123_baseline_reference_data.up.sql h1:vd6h7t7ldITFFgH5BW/UfN4tDq6Dk+Q2JsD9JvZpccg=
 20261006223929_diagram_purpose.up.sql h1:9ZXjjkdDMhIbUdDHtw6edIVjiW1XiIbV67aqpLVZhLw=
@@ -12,3 +12,5 @@ h1:WBfc1IVqLtl3PWr5hE5cvGXHx2pfHAdXe+X+EMDm8Vs=
 20261011195320_authoring_list_updated_at.up.sql h1:5iB96WAv8ZLy2SQl5TvWaIdprjVMeOWJyaeORbbanNo=
 20261014180802_progressions.up.sql h1:awBhJ0TQbAIuzr04M5kRHnvq+Ko/18kawDw/prSaptA=
 20261014180803_progressions_reference_data.up.sql h1:OBXusJhkE6I+7QB+QoUWaoSRKrkMyHn42QEW0EFhdzk=
+20261018235356_chord_drills.up.sql h1:eX7b1CiAehmN26Zp4mT44436wFFzNLwFXuHO14LdIq4=
+20261018235357_chord_drills_reference_data.up.sql h1:zInMUpSf8eZTjDpp21jCpbs8j/cNKAJgbSk8p+e74aA=

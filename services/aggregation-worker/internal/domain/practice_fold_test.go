@@ -233,15 +233,43 @@ func TestFoldEvidence_Levels(t *testing.T) {
 	})
 }
 
-func TestFoldEvidence_ChordChangesMeasureChangesPerMinute(t *testing.T) {
-	e := PracticeEvidence{
+// minute is a clean minute of chord changes at, with cleanChanges at tempo
+// cleanChanges BPM.
+func minute(at time.Time, cleanChanges int) PracticeEvidence {
+	return PracticeEvidence{
 		ItemKey: "chord_change:" + diagramA + ":" + diagramB, Source: EvidenceSourceSelfAssessed,
-		OccurredAt: onDay(0), GraderID: "self_rating.v1", Rating: SelfRatingClean, ChangesPerMinute: ptr(30),
+		OccurredAt: at, GraderID: "self_rating.v1", Rating: SelfRatingClean, TempoBPM: ptr(cleanChanges), ChangesPerMinute: ptr(cleanChanges),
 	}
-	f := foldAll(t, ItemGoal{TargetChangesPerMinute: ptr(60)}, e)
-	assert.InDelta(t, 0.5, f.Fluency, 1e-9)
-	assert.Equal(t, 30, *f.BestChangesPerMinute)
-	assert.Nil(t, f.BestCleanBPM)
+}
+
+func TestFoldEvidence_ChordChangesMeasureChangesPerMinute(t *testing.T) {
+	sixty := ItemGoal{ChangeTargets: []ChangeTarget{{Version: 1, EffectiveFrom: onDay(0), ChangesPerMinute: 60}}}
+
+	t.Run("a minute's fluency is its clean count over the target", func(t *testing.T) {
+		f := foldAll(t, sixty, minute(onDay(0), 30))
+		assert.InDelta(t, 0.5, f.Fluency, 1e-9)
+		assert.Equal(t, 30, *f.BestChangesPerMinute)
+		assert.Nil(t, f.BestCleanBPM)
+	})
+	t.Run("each minute is judged by the target in force when it was played", func(t *testing.T) {
+		goal := ItemGoal{ChangeTargets: []ChangeTarget{
+			{Version: 2, EffectiveFrom: onDay(1), ChangesPerMinute: 30},
+			{Version: 1, EffectiveFrom: onDay(0), ChangesPerMinute: 60},
+		}}
+		f := foldAll(t, goal, minute(onDay(1), 30))
+		assert.InDelta(t, 1.0, f.Fluency, 1e-9)
+		f = foldAll(t, goal, minute(onDay(0), 30))
+		assert.InDelta(t, 0.5, f.Fluency, 1e-9)
+	})
+	t.Run("five clean minutes near the target are fluent, far below it only accurate", func(t *testing.T) {
+		near := make([]PracticeEvidence, 5)
+		far := make([]PracticeEvidence, 5)
+		for i := range near {
+			near[i], far[i] = minute(onDay(i), 54), minute(onDay(i), 30)
+		}
+		assert.Equal(t, KnowledgeLevelFluent, foldAll(t, sixty, near...).Level())
+		assert.Equal(t, KnowledgeLevelAccurate, foldAll(t, sixty, far...).Level())
+	})
 }
 
 func TestFoldEvidence_RejectsSourcesWithoutRulesYet(t *testing.T) {

@@ -81,6 +81,40 @@ var (
 			},
 		},
 	}
+	// ChangeTargetsColumns holds the columns for the "change_targets" table.
+	ChangeTargetsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "version", Type: field.TypeInt, Unique: true},
+		{Name: "effective_from", Type: field.TypeTime},
+		{Name: "changes_per_minute", Type: field.TypeInt},
+		{Name: "source", Type: field.TypeEnum, Enums: []string{"default", "benchmark", "calibrated"}},
+	}
+	// ChangeTargetsTable holds the schema information for the "change_targets" table.
+	ChangeTargetsTable = &schema.Table{
+		Name:       "change_targets",
+		Columns:    ChangeTargetsColumns,
+		PrimaryKey: []*schema.Column{ChangeTargetsColumns[0]},
+	}
+	// ChordChangePairsColumns holds the columns for the "chord_change_pairs" table.
+	ChordChangePairsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "from_chord_drill_id", Type: field.TypeUUID},
+		{Name: "to_chord_drill_id", Type: field.TypeUUID},
+		{Name: "ordinal", Type: field.TypeInt, Unique: true},
+	}
+	// ChordChangePairsTable holds the schema information for the "chord_change_pairs" table.
+	ChordChangePairsTable = &schema.Table{
+		Name:       "chord_change_pairs",
+		Columns:    ChordChangePairsColumns,
+		PrimaryKey: []*schema.Column{ChordChangePairsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "chordchangepair_from_chord_drill_id_to_chord_drill_id",
+				Unique:  true,
+				Columns: []*schema.Column{ChordChangePairsColumns[1], ChordChangePairsColumns[2]},
+			},
+		},
+	}
 	// ChordDefinitionsColumns holds the columns for the "chord_definitions" table.
 	ChordDefinitionsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -106,6 +140,19 @@ var (
 				Columns: []*schema.Column{ChordDefinitionsColumns[3], ChordDefinitionsColumns[4], ChordDefinitionsColumns[8]},
 			},
 		},
+	}
+	// ChordDrillsColumns holds the columns for the "chord_drills" table.
+	ChordDrillsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "diagram_id", Type: field.TypeUUID, Unique: true},
+		{Name: "chord", Type: field.TypeString, Size: 16},
+		{Name: "ordinal", Type: field.TypeInt, Unique: true},
+	}
+	// ChordDrillsTable holds the schema information for the "chord_drills" table.
+	ChordDrillsTable = &schema.Table{
+		Name:       "chord_drills",
+		Columns:    ChordDrillsColumns,
+		PrimaryKey: []*schema.Column{ChordDrillsColumns[0]},
 	}
 	// ChordVoicingsColumns holds the columns for the "chord_voicings" table.
 	ChordVoicingsColumns = []*schema.Column{
@@ -1496,7 +1543,10 @@ var (
 		AppConfigsTable,
 		ChallengesTable,
 		ChallengeExercisesTable,
+		ChangeTargetsTable,
+		ChordChangePairsTable,
 		ChordDefinitionsTable,
+		ChordDrillsTable,
 		ChordVoicingsTable,
 		ContentNodesTable,
 		ContentNodeConceptsTable,

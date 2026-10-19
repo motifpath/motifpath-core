@@ -190,6 +190,37 @@ func TestMongoPracticeReferenceWriter_DrillThresholdShape(t *testing.T) {
 	})
 }
 
+func TestMongoPracticeReferenceWriter_ChangeTargetShape(t *testing.T) {
+	ctx := context.Background()
+	db := mongoDatabase(t)
+	at := time.Date(2026, 10, 18, 12, 0, 0, 0, time.UTC)
+	writer := NewMongoPracticeReferenceWriter(db, func() time.Time { return at })
+	require.NoError(t, writer.EnsureIndexes(ctx))
+	from := time.Date(2026, 10, 18, 0, 0, 0, 0, time.UTC)
+
+	require.NoError(t, writer.PutChangeTargets(ctx, []domain.ChangeTarget{
+		{ID: "ct-1", Version: 1, EffectiveFrom: from, ChangesPerMinute: 60, Source: domain.DrillThresholdSourceDefault},
+	}))
+
+	var doc bson.M
+	require.NoError(t, db.Collection("practice_reference").FindOne(ctx, bson.D{{Key: "kind", Value: "change_target"}, {Key: "id", Value: "ct-1"}}).Decode(&doc))
+	delete(doc, "_id")
+	assert.Equal(t, bson.M{
+		"kind":               "change_target",
+		"id":                 "ct-1",
+		"version":            int32(1),
+		"effective_from":     bson.NewDateTimeFromTime(from),
+		"changes_per_minute": int32(60),
+		"source":             "default",
+		"updated_at":         bson.NewDateTimeFromTime(at),
+		"snapshot_version":   int32(4),
+	}, doc)
+
+	t.Run("an empty write stores nothing and succeeds", func(t *testing.T) {
+		require.NoError(t, writer.PutChangeTargets(ctx, nil))
+	})
+}
+
 // TestMongoPracticeReferenceWriter_ExerciseOptions pins how an exercise's
 // options are kept: each in the shape the API shows it, so a grader can copy
 // what the student saw into the evidence as it is.

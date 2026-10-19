@@ -15,7 +15,10 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/appconfig"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challenge"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challengeexercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/changetarget"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/chordchangepair"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/chorddefinition"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/chorddrill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/chordvoicing"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeconcept"
@@ -127,7 +130,10 @@ func checkColumn(t, c string) error {
 			appconfig.Table:               appconfig.ValidColumn,
 			challenge.Table:               challenge.ValidColumn,
 			challengeexercise.Table:       challengeexercise.ValidColumn,
+			changetarget.Table:            changetarget.ValidColumn,
+			chordchangepair.Table:         chordchangepair.ValidColumn,
 			chorddefinition.Table:         chorddefinition.ValidColumn,
+			chorddrill.Table:              chorddrill.ValidColumn,
 			chordvoicing.Table:            chordvoicing.ValidColumn,
 			contentnode.Table:             contentnode.ValidColumn,
 			contentnodeconcept.Table:      contentnodeconcept.ValidColumn,

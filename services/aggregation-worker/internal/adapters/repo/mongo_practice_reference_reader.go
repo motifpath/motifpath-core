@@ -213,3 +213,28 @@ func (r *MongoPracticeReferenceReader) FluentTimes(ctx context.Context, template
 	slices.SortFunc(times, func(a, b domain.FluentTime) int { return a.Version - b.Version })
 	return times, nil
 }
+
+// changeTargetDocument is a `practice_reference` document of kind
+// "change_target", as core writes it.
+type changeTargetDocument struct {
+	Version          int       `bson:"version"`
+	EffectiveFrom    time.Time `bson:"effective_from"`
+	ChangesPerMinute int       `bson:"changes_per_minute"`
+}
+
+func (r *MongoPracticeReferenceReader) ChangeTargets(ctx context.Context) ([]domain.ChangeTarget, error) {
+	cursor, err := r.collection.Find(ctx, bson.D{{Key: "kind", Value: "change_target"}})
+	if err != nil {
+		return nil, err
+	}
+	var docs []changeTargetDocument
+	if err := cursor.All(ctx, &docs); err != nil {
+		return nil, err
+	}
+	targets := make([]domain.ChangeTarget, len(docs))
+	for i, d := range docs {
+		targets[i] = domain.ChangeTarget{Version: d.Version, EffectiveFrom: d.EffectiveFrom.UTC(), ChangesPerMinute: d.ChangesPerMinute}
+	}
+	slices.SortFunc(targets, func(a, b domain.ChangeTarget) int { return a.Version - b.Version })
+	return targets, nil
+}

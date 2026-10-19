@@ -209,6 +209,37 @@ func TestMongoPracticeReferenceReader_FluentTimes(t *testing.T) {
 	})
 }
 
+func TestMongoPracticeReferenceReader_ChangeTargets(t *testing.T) {
+	ctx := context.Background()
+	db := mongoDatabase(t)
+	reader := NewMongoPracticeReferenceReader(db)
+
+	t.Run("none installed is none", func(t *testing.T) {
+		got, err := reader.ChangeTargets(ctx)
+		require.NoError(t, err)
+		assert.Empty(t, got)
+	})
+
+	october := time.Date(2026, 10, 18, 0, 0, 0, 0, time.UTC)
+	november := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
+	_, err := db.Collection("practice_reference").InsertMany(ctx, []bson.D{
+		{{Key: "kind", Value: "change_target"}, {Key: "id", Value: "ct-2"}, {Key: "version", Value: 2},
+			{Key: "effective_from", Value: november}, {Key: "changes_per_minute", Value: 70}, {Key: "source", Value: "benchmark"}},
+		{{Key: "kind", Value: "change_target"}, {Key: "id", Value: "ct-1"}, {Key: "version", Value: 1},
+			{Key: "effective_from", Value: october}, {Key: "changes_per_minute", Value: 60}, {Key: "source", Value: "default"}},
+	})
+	require.NoError(t, err)
+
+	t.Run("lists every version, oldest first", func(t *testing.T) {
+		got, err := reader.ChangeTargets(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, []domain.ChangeTarget{
+			{Version: 1, EffectiveFrom: october, ChangesPerMinute: 60},
+			{Version: 2, EffectiveFrom: november, ChangesPerMinute: 70},
+		}, got)
+	})
+}
+
 func takeEvidence(id, student string, at time.Time, rating domain.SelfRating) domain.PracticeEvidence {
 	return domain.PracticeEvidence{
 		EvidenceID:        id,

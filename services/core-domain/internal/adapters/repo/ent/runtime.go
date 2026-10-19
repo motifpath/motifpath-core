@@ -9,7 +9,10 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/appconfig"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challenge"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challengeexercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/changetarget"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/chordchangepair"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/chorddefinition"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/chorddrill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/chordvoicing"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeconcept"
@@ -94,6 +97,22 @@ func init() {
 	challengeexerciseDescLinkedAt := challengeexerciseFields[2].Descriptor()
 	// challengeexercise.DefaultLinkedAt holds the default value on creation for the linked_at field.
 	challengeexercise.DefaultLinkedAt = challengeexerciseDescLinkedAt.Default.(func() time.Time)
+	changetargetFields := schema.ChangeTarget{}.Fields()
+	_ = changetargetFields
+	// changetargetDescVersion is the schema descriptor for version field.
+	changetargetDescVersion := changetargetFields[1].Descriptor()
+	// changetarget.VersionValidator is a validator for the "version" field. It is called by the builders before save.
+	changetarget.VersionValidator = changetargetDescVersion.Validators[0].(func(int) error)
+	// changetargetDescChangesPerMinute is the schema descriptor for changes_per_minute field.
+	changetargetDescChangesPerMinute := changetargetFields[3].Descriptor()
+	// changetarget.ChangesPerMinuteValidator is a validator for the "changes_per_minute" field. It is called by the builders before save.
+	changetarget.ChangesPerMinuteValidator = changetargetDescChangesPerMinute.Validators[0].(func(int) error)
+	chordchangepairFields := schema.ChordChangePair{}.Fields()
+	_ = chordchangepairFields
+	// chordchangepairDescOrdinal is the schema descriptor for ordinal field.
+	chordchangepairDescOrdinal := chordchangepairFields[3].Descriptor()
+	// chordchangepair.OrdinalValidator is a validator for the "ordinal" field. It is called by the builders before save.
+	chordchangepair.OrdinalValidator = chordchangepairDescOrdinal.Validators[0].(func(int) error)
 	chorddefinitionFields := schema.ChordDefinition{}.Fields()
 	_ = chorddefinitionFields
 	// chorddefinitionDescCanonicalSymbol is the schema descriptor for canonical_symbol field.
@@ -162,6 +181,30 @@ func init() {
 	chorddefinitionDescBassPitchClass := chorddefinitionFields[8].Descriptor()
 	// chorddefinition.BassPitchClassValidator is a validator for the "bass_pitch_class" field. It is called by the builders before save.
 	chorddefinition.BassPitchClassValidator = chorddefinitionDescBassPitchClass.Validators[0].(func(int) error)
+	chorddrillFields := schema.ChordDrill{}.Fields()
+	_ = chorddrillFields
+	// chorddrillDescChord is the schema descriptor for chord field.
+	chorddrillDescChord := chorddrillFields[2].Descriptor()
+	// chorddrill.ChordValidator is a validator for the "chord" field. It is called by the builders before save.
+	chorddrill.ChordValidator = func() func(string) error {
+		validators := chorddrillDescChord.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(chord string) error {
+			for _, fn := range fns {
+				if err := fn(chord); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// chorddrillDescOrdinal is the schema descriptor for ordinal field.
+	chorddrillDescOrdinal := chorddrillFields[3].Descriptor()
+	// chorddrill.OrdinalValidator is a validator for the "ordinal" field. It is called by the builders before save.
+	chorddrill.OrdinalValidator = chorddrillDescOrdinal.Validators[0].(func(int) error)
 	chordvoicingFields := schema.ChordVoicing{}.Fields()
 	_ = chordvoicingFields
 	// chordvoicingDescTuningFingerprint is the schema descriptor for tuning_fingerprint field.

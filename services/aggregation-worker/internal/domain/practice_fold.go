@@ -45,11 +45,14 @@ type PracticeEvidence struct {
 }
 
 // ItemGoal is what fluency is measured against: the tempo a play-along is played
-// at in the music, a chord change's target rate, or a timed item's fluent times. A
-// nil target counts any clean take as fully fluent.
+// at in the music, a chord or root change's target rate, or a timed item's fluent
+// times. A missing target counts any clean take as fully fluent.
 type ItemGoal struct {
-	TargetTempoBPM         *int
-	TargetChangesPerMinute *int
+	TargetTempoBPM *int
+	// ChangeTargets are every version of the clean changes a minute that count
+	// as fully fluent on a chord or root change; a minute is judged by the
+	// version in force when it was played.
+	ChangeTargets []ChangeTarget
 	// FluentTimes are every version of the item's drill template fluent time.
 	FluentTimes []FluentTime
 	// FluentTimesByWay, when set, holds the fluent times of an item asked more than
@@ -65,6 +68,30 @@ type FluentTime struct {
 	Version       int
 	EffectiveFrom time.Time
 	FluentNetMs   int
+}
+
+// ChangeTarget is one version of the clean changes a minute that count as fully
+// fluent on a chord or root change, in force from EffectiveFrom until a later
+// version starts.
+type ChangeTarget struct {
+	Version          int
+	EffectiveFrom    time.Time
+	ChangesPerMinute int
+}
+
+// changeTargetAt is the target rate in force at t, nil before the first version.
+func (g ItemGoal) changeTargetAt(t time.Time) *int {
+	var inForce *ChangeTarget
+	for i, v := range g.ChangeTargets {
+		if !v.EffectiveFrom.After(t) && (inForce == nil || v.EffectiveFrom.After(inForce.EffectiveFrom)) {
+			inForce = &g.ChangeTargets[i]
+		}
+	}
+	if inForce == nil {
+		return nil
+	}
+	rate := inForce.ChangesPerMinute
+	return &rate
 }
 
 // FluentTimeAt is the version in force at t, and false when t is before the first.
@@ -264,7 +291,7 @@ func foldTake(f ItemFold, e PracticeEvidence, goal ItemGoal) ItemFold {
 
 	measure, best, target := effectiveTempo(e.TempoBPM, e.NoteValue), effectiveTempo(f.BestCleanBPM, f.BestCleanNoteValue), goal.TargetTempoBPM
 	if e.ChangesPerMinute != nil {
-		measure, best, target = asSpeed(e.ChangesPerMinute), asSpeed(f.BestChangesPerMinute), goal.TargetChangesPerMinute
+		measure, best, target = asSpeed(e.ChangesPerMinute), asSpeed(f.BestChangesPerMinute), goal.changeTargetAt(e.OccurredAt)
 	}
 	if exploresAboveTheEdge(e.Rating, measure, best) {
 		return f

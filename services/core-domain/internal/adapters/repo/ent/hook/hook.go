@@ -45,6 +45,30 @@ func (f ChallengeExerciseFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ChallengeExerciseMutation", m)
 }
 
+// The ChangeTargetFunc type is an adapter to allow the use of ordinary
+// function as ChangeTarget mutator.
+type ChangeTargetFunc func(context.Context, *ent.ChangeTargetMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ChangeTargetFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ChangeTargetMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ChangeTargetMutation", m)
+}
+
+// The ChordChangePairFunc type is an adapter to allow the use of ordinary
+// function as ChordChangePair mutator.
+type ChordChangePairFunc func(context.Context, *ent.ChordChangePairMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ChordChangePairFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ChordChangePairMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ChordChangePairMutation", m)
+}
+
 // The ChordDefinitionFunc type is an adapter to allow the use of ordinary
 // function as ChordDefinition mutator.
 type ChordDefinitionFunc func(context.Context, *ent.ChordDefinitionMutation) (ent.Value, error)
@@ -55,6 +79,18 @@ func (f ChordDefinitionFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Va
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ChordDefinitionMutation", m)
+}
+
+// The ChordDrillFunc type is an adapter to allow the use of ordinary
+// function as ChordDrill mutator.
+type ChordDrillFunc func(context.Context, *ent.ChordDrillMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ChordDrillFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ChordDrillMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ChordDrillMutation", m)
 }
 
 // The ChordVoicingFunc type is an adapter to allow the use of ordinary

@@ -18,8 +18,14 @@ type Tx struct {
 	Challenge *ChallengeClient
 	// ChallengeExercise is the client for interacting with the ChallengeExercise builders.
 	ChallengeExercise *ChallengeExerciseClient
+	// ChangeTarget is the client for interacting with the ChangeTarget builders.
+	ChangeTarget *ChangeTargetClient
+	// ChordChangePair is the client for interacting with the ChordChangePair builders.
+	ChordChangePair *ChordChangePairClient
 	// ChordDefinition is the client for interacting with the ChordDefinition builders.
 	ChordDefinition *ChordDefinitionClient
+	// ChordDrill is the client for interacting with the ChordDrill builders.
+	ChordDrill *ChordDrillClient
 	// ChordVoicing is the client for interacting with the ChordVoicing builders.
 	ChordVoicing *ChordVoicingClient
 	// ContentNode is the client for interacting with the ContentNode builders.
@@ -250,7 +256,10 @@ func (tx *Tx) init() {
 	tx.AppConfig = NewAppConfigClient(tx.config)
 	tx.Challenge = NewChallengeClient(tx.config)
 	tx.ChallengeExercise = NewChallengeExerciseClient(tx.config)
+	tx.ChangeTarget = NewChangeTargetClient(tx.config)
+	tx.ChordChangePair = NewChordChangePairClient(tx.config)
 	tx.ChordDefinition = NewChordDefinitionClient(tx.config)
+	tx.ChordDrill = NewChordDrillClient(tx.config)
 	tx.ChordVoicing = NewChordVoicingClient(tx.config)
 	tx.ContentNode = NewContentNodeClient(tx.config)
 	tx.ContentNodeConcept = NewContentNodeConceptClient(tx.config)

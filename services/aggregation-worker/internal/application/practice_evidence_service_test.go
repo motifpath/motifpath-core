@@ -22,6 +22,8 @@ const (
 	pentatonic  = "00000000-0000-4000-8000-0000000000f1"
 	missingDiag = "00000000-0000-4000-8000-0000000000ff"
 	minorThird  = "00000000-0000-4000-8000-0000000000e1"
+	aMinorChord = "00000000-0000-4000-8000-0000000000c1"
+	cMajorChord = "00000000-0000-4000-8000-0000000000c2"
 	rightOption = "00000000-0000-4000-8000-0000000000b1"
 	wrongOption = "00000000-0000-4000-8000-0000000000a1"
 )
@@ -34,7 +36,15 @@ type fakeReference struct {
 	instruments  map[string]domain.InstrumentReference
 	progressions map[string]domain.ProgressionReference
 	fluentTimes  map[string][]domain.FluentTime
+	targets      []domain.ChangeTarget
 	err          error
+}
+
+func (f *fakeReference) ChangeTargets(_ context.Context) ([]domain.ChangeTarget, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	return f.targets, nil
 }
 
 func (f *fakeReference) Progressions(_ context.Context) (map[string]domain.ProgressionReference, error) {
@@ -174,7 +184,9 @@ func newPracticeFixture() *practiceFixture {
 	f := &practiceFixture{
 		reference: &fakeReference{
 			diagrams: map[string]domain.DiagramReference{
-				pentatonic: {ID: pentatonic, TempoBPM: &tempo},
+				pentatonic:  {ID: pentatonic, TempoBPM: &tempo},
+				aMinorChord: {ID: aMinorChord},
+				cMajorChord: {ID: cMajorChord},
 				cagedA: {
 					ID: cagedA, LayoutInstrumentID: guitarLayout,
 					ShapeFamily: "caged-grip", Shape: "A", FamilyMembers: []string{"C", "A", "G", "E", "D"},
@@ -195,6 +207,7 @@ func newPracticeFixture() *practiceFixture {
 				"diagram_shape:find_the_degree":           {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 2000}},
 				"heard_progression:progression_by_number": {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 4000}},
 			},
+			targets: []domain.ChangeTarget{{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), ChangesPerMinute: 60}},
 			progressions: map[string]domain.ProgressionReference{
 				"I-V-vi-IV": {Key: "I-V-vi-IV", Bars: []string{"I", "V", "vi", "IV"}},
 				"I-vi-IV-V": {Key: "I-vi-IV-V", Bars: []string{"I", "vi", "IV", "V"}},
@@ -267,6 +280,26 @@ func TestPracticeEvidenceService_GradesAndFoldsATake(t *testing.T) {
 	assert.Equal(t, 1, fold.Box)
 	// Fluency is measured against the diagram's own tempo: 50 of 100 BPM.
 	assert.InDelta(t, 0.5, fold.Fluency, 1e-9)
+}
+
+func TestPracticeEvidenceService_GradesAndFoldsAMinuteOfChordChanges(t *testing.T) {
+	f := newPracticeFixture()
+	key := "chord_change:" + aMinorChord + ":" + cMajorChord
+	tempo, count := 40, 30
+	answer := domain.PracticeAnswer{
+		EventID: "e0000000-0000-4000-8000-000000000031", StudentID: alice, OccurredAt: monday, ItemKey: key,
+		Response: domain.PracticeResponse{Type: domain.PracticeResponseSelfRating, Rating: domain.SelfRatingClean, TempoBPM: &tempo, ChangesPerMinute: &count},
+	}
+
+	require.NoError(t, f.service.Process(context.Background(), answer))
+
+	require.Len(t, f.evidence.stored, 1)
+	// 30 clean changes of 40 beats is 75%: almost, whatever was sent.
+	assert.Equal(t, domain.SelfRatingAlmost, f.evidence.stored[0].Rating)
+	fold, ok := f.fold(t, key)
+	require.True(t, ok)
+	// Fluency is measured against the change target in force: 30 of 60, halved for almost.
+	assert.InDelta(t, 0.25, fold.Fluency, 1e-9)
 }
 
 func challengeAnswer(eventID string, at time.Time, optionID string, latency int) domain.PracticeAnswer {
