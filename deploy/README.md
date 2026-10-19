@@ -92,7 +92,7 @@ secrets file, with its last path segment as the variable name. Use
 | `/motifpath/<env>/DATABASE_URL` | `postgres://motifpath_<env>:…@<rds-host>:5432/motifpath_<env>?sslmode=require` |
 | `/motifpath/<env>/MONGO_URI` | the Atlas connection string for that environment's cluster |
 | `/motifpath/<env>/CLERK_SECRET_KEY` | `sk_live_…` (production), `sk_test_…` (staging) |
-| `/motifpath/<env>/ECR_REGISTRY` | `<account-id>.dkr.ecr.us-east-1.amazonaws.com` |
+| `/motifpath/<env>/ECR_REGISTRY` | `<account-id>.dkr.ecr.us-east-2.amazonaws.com` |
 | `/motifpath/<env>/MEDIA_S3_BUCKET` | that environment's media bucket name |
 | `/motifpath/<env>/MEDIA_AWS_ACCESS_KEY_ID` | access key of the IAM user limited to that bucket |
 | `/motifpath/<env>/MEDIA_AWS_SECRET_ACCESS_KEY` | its secret |
@@ -103,16 +103,21 @@ rather than write a broken env file.
 
 ### GitHub
 
-- An IAM OIDC provider for `token.actions.githubusercontent.com` and two roles:
-  - **ECR push**, trusted for this repo's `stage` and `main` refs. Set its ARN
-    as the repository variable `AWS_ECR_PUSH_ROLE_ARN`.
-  - **Deploy**, one per environment, trusted for the matching GitHub
-    environment. It may send only that environment's deploy document to the
-    VM, read the result, and `ecr:DescribeImages`. Production's may also
-    `ecr:BatchGetImage` and `ecr:PutImage` to add the `production-` tag.
-- GitHub environments `staging` and `production`, each with the variables
-  `AWS_DEPLOY_ROLE_ARN` and `VM_INSTANCE_ID`. Add required reviewers to
-  `production` if a second pair of eyes should approve each release.
+The AWS project does not allow GitHub's OIDC identity provider, so CI signs
+in with IAM-user access keys kept as GitHub **environment** secrets
+(`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`). Each key belongs to a user
+scoped to one job, and each environment is limited under **Deployment
+branches** so other branches cannot read its secrets:
+
+| Environment | Deployment branches | Key can | Also |
+|---|---|---|---|
+| `images` | `stage`, `main` | push to the three `motifpath/*` repositories | — |
+| `staging` | `stage`, `main` | send only staging's deploy document; `ecr:DescribeImages` | variable `VM_INSTANCE_ID` |
+| `production` | `main` | send only production's deploy document; `ecr:DescribeImages`; add the `production-` tag (`ecr:BatchGetImage`, `ecr:PutImage`) | variable `VM_INSTANCE_ID`; required reviewers recommended |
+
+A build refuses to push over an existing tag, so an image published early
+with a leaked push key fails the build instead of being deployed.
+
 - A protected `stage` branch.
 
 ### DNS

@@ -6,8 +6,9 @@ name: Build images
 # runs the image staging already ran (see deploy.yml). Feature merges to
 # `dev` never build.
 #
-# Both triggers are pushes, because AWS only trusts tokens issued for the
-# `stage` and `main` refs; a pull_request event's token would be refused.
+# Pushing needs the ECR key in the GitHub environment `images`, which is
+# limited to the `stage` and `main` branches; no other branch can publish an
+# image.
 on:
   push:
     branches: [stage, main]
@@ -15,11 +16,10 @@ on:
 
 permissions:
   contents: read
-  id-token: write
   pull-requests: read
 
 env:
-  AWS_REGION: us-east-1
+  AWS_REGION: us-east-2
   IMAGE_TAG: ${{ github.sha }}
 
 jobs:
@@ -54,6 +54,7 @@ jobs:
     if: needs.decide.outputs.build == 'true'
     # The VM is arm64; a native runner avoids building under emulation.
     runs-on: ubuntu-24.04-arm
+    environment: images
     strategy:
       fail-fast: false
       matrix:
@@ -65,35 +66,36 @@ jobs:
 
       - name: Check AWS configuration
         env:
-          ROLE: ${{ vars.AWS_ECR_PUSH_ROLE_ARN }}
+          KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         run: |
-          [[ -n "$ROLE" ]] || { echo "::error::repository variable AWS_ECR_PUSH_ROLE_ARN is not set; see deploy/README.md"; exit 1; }
+          [[ -n "$KEY_ID" ]] || { echo "::error::GitHub environment 'images' has no AWS_ACCESS_KEY_ID secret; see deploy/README.md"; exit 1; }
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ vars.AWS_ECR_PUSH_ROLE_ARN }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
       - id: ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # Tags are immutable in ECR: rebuilding a commit that already has an
-      # image would fail the push, and the existing image is the one to keep.
-      - name: Skip if this commit is already built
-        id: exists
+      # An image already tagged with this commit was not built by this run,
+      # and nothing proves who pushed it: someone holding the push key could
+      # have published one ahead of the build. Fail loudly instead of
+      # trusting it. To rebuild on purpose, delete the tag first
+      # (aws ecr batch-delete-image) and re-run.
+      - name: Refuse an existing tag
         env:
           REPO: motifpath/${{ matrix.service }}
         run: |
           if aws ecr describe-images --repository-name "$REPO" --image-ids imageTag="$IMAGE_TAG" >/dev/null 2>&1; then
-            echo "$REPO:$IMAGE_TAG already exists"
-            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::error::$REPO:$IMAGE_TAG already exists and was not pushed by this run; delete it to rebuild"
+            exit 1
           fi
 
       - uses: docker/setup-buildx-action@v3
-        if: steps.exists.outputs.skip != 'true'
 
       - uses: docker/build-push-action@v6
-        if: steps.exists.outputs.skip != 'true'
         with:
           context: .
           file: services/${{ matrix.service }}/Dockerfile

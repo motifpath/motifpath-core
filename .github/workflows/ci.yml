@@ -269,7 +269,7 @@ jobs:
         run: |
           set -euo pipefail
           printf '%s\n' "DATABASE_URL='postgres://u:p@db:5432/x'" "MONGO_URI='mongodb://m'" \
-            "CLERK_SECRET_KEY='sk_test_x'" "ECR_REGISTRY='123456789012.dkr.ecr.us-east-1.amazonaws.com'" \
+            "CLERK_SECRET_KEY='sk_test_x'" "ECR_REGISTRY='123456789012.dkr.ecr.us-east-2.amazonaws.com'" \
             "MEDIA_S3_BUCKET='bucket'" "MEDIA_AWS_ACCESS_KEY_ID='AKIAEXAMPLE'" \
             "MEDIA_AWS_SECRET_ACCESS_KEY='secret'" > "$RUNNER_TEMP/secrets.env"
           for env in staging production; do
@@ -278,7 +278,7 @@ jobs:
               -f deploy/compose.yaml config --quiet
             echo "$env: compose config OK"
           done
-          ACME_EMAIL=ci@example.com AWS_REGION=us-east-1 docker compose -f deploy/edge/compose.yaml config --quiet
+          ACME_EMAIL=ci@example.com AWS_REGION=us-east-2 docker compose -f deploy/edge/compose.yaml config --quiet
 
       - name: Validate the Caddyfile
         run: |
