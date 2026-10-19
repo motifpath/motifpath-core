@@ -198,6 +198,15 @@ type ItemFold struct {
 	BestCleanBPM         *int
 	BestCleanNoteValue   *NoteValue
 	BestChangesPerMinute *int
+	// LastChangeTempoBPM, LastChangesPerMinute and LastRating are a chord or
+	// root change's last minute, explored or not: the tempo the next minute
+	// starts from and the count it starts at. CleanMinutesInARow counts the
+	// clean minutes since the last one that wasn't, which raises the next
+	// minute's tempo. All are unset for any other item.
+	LastChangeTempoBPM   *int
+	LastChangesPerMinute *int
+	LastRating           SelfRating
+	CleanMinutesInARow   int
 	// RightByResponse counts the right answers by the way the item was asked
 	// (WayAsked), so an item asked more than one way can next be asked the way it
 	// knows least. Both ways of a generated question share one response type, so
@@ -292,6 +301,7 @@ func foldTake(f ItemFold, e PracticeEvidence, goal ItemGoal) ItemFold {
 	measure, best, target := effectiveTempo(e.TempoBPM, e.NoteValue), effectiveTempo(f.BestCleanBPM, f.BestCleanNoteValue), goal.TargetTempoBPM
 	if e.ChangesPerMinute != nil {
 		measure, best, target = asSpeed(e.ChangesPerMinute), asSpeed(f.BestChangesPerMinute), goal.changeTargetAt(e.OccurredAt)
+		f.keepLastMinute(e)
 	}
 	if exploresAboveTheEdge(e.Rating, measure, best) {
 		return f
@@ -304,6 +314,25 @@ func foldTake(f ItemFold, e PracticeEvidence, goal ItemGoal) ItemFold {
 	f.count(r, sourceWeight[e.Source])
 	f.schedule(at, r.outcome)
 	return f
+}
+
+// keepLastMinute makes e the change's last minute, whether or not it counts.
+func (f *ItemFold) keepLastMinute(e PracticeEvidence) {
+	f.LastChangeTempoBPM, f.LastChangesPerMinute = copyOf(e.TempoBPM), copyOf(e.ChangesPerMinute)
+	f.LastRating = e.Rating
+	if e.Rating == SelfRatingClean {
+		f.CleanMinutesInARow++
+	} else {
+		f.CleanMinutesInARow = 0
+	}
+}
+
+func copyOf(v *int) *int {
+	if v == nil {
+		return nil
+	}
+	c := *v
+	return &c
 }
 
 // keepBestClean makes the clean take e the best one, kept as played.

@@ -372,6 +372,11 @@ type practiceItemStateDocument struct {
 	BestCleanBPM         *int       `bson:"best_clean_bpm"`
 	BestCleanNoteValue   *string    `bson:"best_clean_note_value"`
 	BestChangesPerMinute *int       `bson:"best_changes_per_minute"`
+	// A chord or root change's last minute, which the next one starts from.
+	LastChangeTempoBPM   *int   `bson:"last_change_tempo_bpm,omitempty"`
+	LastChangesPerMinute *int   `bson:"last_changes_per_minute,omitempty"`
+	LastRating           string `bson:"last_rating,omitempty"`
+	CleanMinutesInARow   int    `bson:"clean_minutes_in_a_row,omitempty"`
 	// RightByResponse counts right answers by the way the item was asked.
 	RightByResponse map[string]int `bson:"right_by_response,omitempty"`
 	UpdatedAt       time.Time      `bson:"updated_at"`
@@ -389,6 +394,10 @@ func (d practiceItemStateDocument) toDomain() domain.ItemFold {
 		BestCleanBPM:         d.BestCleanBPM,
 		BestCleanNoteValue:   domainNoteValue(d.BestCleanNoteValue),
 		BestChangesPerMinute: d.BestChangesPerMinute,
+		LastChangeTempoBPM:   d.LastChangeTempoBPM,
+		LastChangesPerMinute: d.LastChangesPerMinute,
+		LastRating:           domain.SelfRating(d.LastRating),
+		CleanMinutesInARow:   d.CleanMinutesInARow,
 		RightByResponse:      d.RightByResponse,
 	}
 }
