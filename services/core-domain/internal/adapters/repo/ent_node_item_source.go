@@ -84,7 +84,142 @@ func (s *EntNodeItemSource) ClassifiedItems(ctx context.Context, instrumentID st
 	if err != nil {
 		return nil, err
 	}
-	return slices.Concat(items, cells, shapes, harmony), nil
+	chords, err := s.chordItems(ctx, parsed)
+	if err != nil {
+		return nil, err
+	}
+	return slices.Concat(items, cells, shapes, harmony, chords), nil
+}
+
+// The chord drills' skills: single chords and changes on guitar, a chord's
+// root and fifth and root changes on bass.
+const (
+	chordVoicingSkill = "play-open-chords"
+	chordChangeSkill  = "change-chords"
+	rootFifthSkill    = "play-root-fifth-lines"
+	rootChangeSkill   = "play-root-notes"
+)
+
+// chordItems generates the chord drills' items that suit instrumentID. On an
+// instrument their voicing diagrams are linked to, each chord drill is a
+// single chord under play-open-chords and each pair a change under
+// change-chords. On an instrument the root and fifth skill is for, each chord
+// is a root and fifth under it and each pair a root change under
+// play-root-notes, keyed by the bass layout the instrument shares, so
+// instruments of one fretboard share them. A skill missing from the knowledge
+// map leaves its items out.
+func (s *EntNodeItemSource) chordItems(ctx context.Context, instrumentID uuid.UUID) ([]domain.ClassifiedItem, error) {
+	catalog, err := NewEntChordDrillRepository(s.client).Catalog(ctx)
+	if err != nil || len(catalog.Drills) == 0 {
+		return nil, err
+	}
+	nodes, err := s.client.KnowledgeNode.Query().
+		Where(knowledgenode.KeyIn(chordVoicingSkill, chordChangeSkill, rootFifthSkill, rootChangeSkill)).
+		WithInstruments().
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	skills := map[string]domain.KnowledgeNode{}
+	for _, row := range nodes {
+		skills[row.Key] = toDomainKnowledgeNode(row)
+	}
+	chords := map[string]domain.ChordDrill{}
+	for _, d := range catalog.Drills {
+		chords[d.ID] = d
+	}
+
+	items, err := s.guitarChordItems(ctx, catalog, chords, skills, instrumentID)
+	if err != nil {
+		return nil, err
+	}
+	layout, ok, err := s.bassLayout(ctx, instrumentID, skills[rootFifthSkill])
+	if err != nil || !ok {
+		return items, err
+	}
+	return append(items, bassChordItems(catalog, chords, skills, layout)...), nil
+}
+
+// guitarChordItems are the single chords and changes whose voicings are
+// linked to instrumentID.
+func (s *EntNodeItemSource) guitarChordItems(ctx context.Context, catalog domain.ChordDrillCatalog, chords map[string]domain.ChordDrill, skills map[string]domain.KnowledgeNode, instrumentID uuid.UUID) ([]domain.ClassifiedItem, error) {
+	playable, err := s.voicingsPlayableOn(ctx, catalog, instrumentID)
+	if err != nil {
+		return nil, err
+	}
+	var items []domain.ClassifiedItem
+	if skill, ok := skills[chordVoicingSkill]; ok {
+		for _, d := range catalog.Drills {
+			if playable[d.DiagramID] {
+				items = append(items, domain.ClassifiedItem{ItemKey: domain.ChordVoicingItem{Drill: d}.ItemKey(), NodeIDs: []string{skill.ID}})
+			}
+		}
+	}
+	if skill, ok := skills[chordChangeSkill]; ok {
+		for _, p := range catalog.Changes {
+			from, to := chords[p.FromChordDrillID], chords[p.ToChordDrillID]
+			if playable[from.DiagramID] && playable[to.DiagramID] {
+				items = append(items, domain.ClassifiedItem{ItemKey: domain.ChordChangeItem{From: from, To: to}.ItemKey(), NodeIDs: []string{skill.ID}})
+			}
+		}
+	}
+	return items, nil
+}
+
+// bassChordItems are every chord's root and fifth and every pair's root
+// change on the bass layout.
+func bassChordItems(catalog domain.ChordDrillCatalog, chords map[string]domain.ChordDrill, skills map[string]domain.KnowledgeNode, layout string) []domain.ClassifiedItem {
+	var items []domain.ClassifiedItem
+	if skill, ok := skills[rootFifthSkill]; ok {
+		for _, d := range catalog.Drills {
+			items = append(items, domain.ClassifiedItem{ItemKey: domain.RootFifthItemKey(layout, d.Chord), NodeIDs: []string{skill.ID}})
+		}
+	}
+	if skill, ok := skills[rootChangeSkill]; ok {
+		for _, p := range catalog.Changes {
+			items = append(items, domain.ClassifiedItem{
+				ItemKey: domain.RootChangeItemKey(layout, chords[p.FromChordDrillID].Chord, chords[p.ToChordDrillID].Chord),
+				NodeIDs: []string{skill.ID},
+			})
+		}
+	}
+	return items
+}
+
+// voicingsPlayableOn lists the chord drills' voicing diagrams linked to
+// instrumentID.
+func (s *EntNodeItemSource) voicingsPlayableOn(ctx context.Context, catalog domain.ChordDrillCatalog, instrumentID uuid.UUID) (map[string]bool, error) {
+	ids := make([]uuid.UUID, 0, len(catalog.Drills))
+	for _, d := range catalog.Drills {
+		if id, err := uuid.Parse(d.DiagramID); err == nil {
+			ids = append(ids, id)
+		}
+	}
+	rows, err := s.client.Diagram.Query().
+		Where(diagram.IDIn(ids...), diagram.HasCompatibleInstrumentsWith(instrument.ID(instrumentID))).
+		IDs(ctx)
+	if err != nil {
+		return nil, err
+	}
+	playable := make(map[string]bool, len(rows))
+	for _, id := range rows {
+		playable[id.String()] = true
+	}
+	return playable, nil
+}
+
+// bassLayout is the layout instrument the bass chord drills of instrumentID
+// are keyed by: the fretboard layout it shares, when the root and fifth
+// skill is for it. False when it is not, or it shares no layout.
+func (s *EntNodeItemSource) bassLayout(ctx context.Context, instrumentID uuid.UUID, rootFifth domain.KnowledgeNode) (string, bool, error) {
+	if rootFifth.ID == "" || !slices.Contains(rootFifth.InstrumentIDs, instrumentID.String()) {
+		return "", false, nil
+	}
+	layouts, err := s.FretboardLayouts(ctx, instrumentID.String())
+	if err != nil || len(layouts) == 0 {
+		return "", false, err
+	}
+	return layouts[0].ID, true, nil
 }
 
 // harmonyItems generates the harmony and ear drills' items, which suit
