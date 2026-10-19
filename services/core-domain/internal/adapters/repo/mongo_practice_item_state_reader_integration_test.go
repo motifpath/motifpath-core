@@ -51,6 +51,12 @@ func TestMongoPracticeItemStateReader_ReadsAggregationWorkerShape(t *testing.T) 
 			{Key: "due_at", Value: dueAt}, {Key: "last_at", Value: lastAt},
 			{Key: "right_by_response", Value: bson.D{{Key: "name_the_note", Value: 4}, {Key: "find_the_note", Value: 1}}},
 		}),
+		stateDoc("alice", "chord_change:c1:c2", bson.D{
+			{Key: "level", Value: "learning"}, {Key: "counted", Value: 2}, {Key: "box", Value: 1},
+			{Key: "due_at", Value: dueAt}, {Key: "last_at", Value: lastAt},
+			{Key: "best_changes_per_minute", Value: 38}, {Key: "last_change_tempo_bpm", Value: 45},
+			{Key: "last_changes_per_minute", Value: 20}, {Key: "last_rating", Value: "struggled"},
+		}),
 		// Different student — must never leak into alice's result.
 		stateDoc("bob", "play_along:d1", bson.D{
 			{Key: "level", Value: "fluent"}, {Key: "counted", Value: 6}, {Key: "box", Value: 4},
@@ -61,7 +67,7 @@ func TestMongoPracticeItemStateReader_ReadsAggregationWorkerShape(t *testing.T) 
 
 	reader := NewMongoPracticeItemStateReader(db)
 
-	states, err := reader.GetStates(ctx, "alice", []string{"play_along:d1", "play_along:d2", "play_along:d3", "fretboard_cell:g:6:3"})
+	states, err := reader.GetStates(ctx, "alice", []string{"play_along:d1", "play_along:d2", "play_along:d3", "fretboard_cell:g:6:3", "chord_change:c1:c2"})
 	require.NoError(t, err)
 	bpm, eighths := 90, domain.TempoNoteValueEighths
 	assert.Equal(t, map[string]domain.PracticeItemState{
@@ -72,6 +78,12 @@ func TestMongoPracticeItemStateReader_ReadsAggregationWorkerShape(t *testing.T) 
 			ItemKey: "fretboard_cell:g:6:3", RulesVersion: 1, Level: domain.KnowledgeLevelLearning, Counted: 5, Box: 2,
 			DueAt: &dueAt, LastAt: &lastAt, Accuracy: 0.7, Fluency: 0.5,
 			RightByResponse: map[string]int{"name_the_note": 4, "find_the_note": 1},
+		},
+		"chord_change:c1:c2": {
+			ItemKey: "chord_change:c1:c2", RulesVersion: 1, Level: domain.KnowledgeLevelLearning, Counted: 2, Box: 1,
+			DueAt: &dueAt, LastAt: &lastAt, Accuracy: 0.7, Fluency: 0.5,
+			BestChangesPerMinute: intPtr(38),
+			LastChangeMinute:     &domain.ChangeMinuteState{TempoBPM: 45, ChangesPerMinute: 20, Struggled: true},
 		},
 	}, states)
 
