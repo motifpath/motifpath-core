@@ -261,6 +261,31 @@ func TestFoldEvidence_ChordChangesMeasureChangesPerMinute(t *testing.T) {
 		f = foldAll(t, goal, minute(onDay(0), 30))
 		assert.InDelta(t, 0.5, f.Fluency, 1e-9)
 	})
+	t.Run("keeps the last minute's tempo and count, and the clean minutes in a row", func(t *testing.T) {
+		struggled := minute(onDay(2), 20)
+		struggled.Rating, struggled.TempoBPM = SelfRatingStruggled, ptr(50)
+		f := foldAll(t, sixty, minute(onDay(0), 40), minute(onDay(1), 45))
+		assert.Equal(t, 45, *f.LastChangeTempoBPM)
+		assert.Equal(t, 45, *f.LastChangesPerMinute)
+		assert.Equal(t, 2, f.CleanMinutesInARow)
+
+		f = foldAll(t, sixty, minute(onDay(0), 40), minute(onDay(1), 45), struggled)
+		assert.Equal(t, 50, *f.LastChangeTempoBPM)
+		assert.Equal(t, 20, *f.LastChangesPerMinute)
+		assert.Equal(t, 0, f.CleanMinutesInARow)
+		assert.Equal(t, SelfRatingStruggled, f.LastRating)
+	})
+	t.Run("a minute exploring above the best clean count is still the last minute", func(t *testing.T) {
+		exploring := minute(onDay(1), 45)
+		exploring.Rating, exploring.TempoBPM = SelfRatingStruggled, ptr(90)
+		f := foldAll(t, sixty, minute(onDay(0), 40), exploring)
+		assert.Equal(t, 90, *f.LastChangeTempoBPM)
+		assert.Equal(t, 1, f.Counted, "the exploring minute doesn't count")
+	})
+	t.Run("a play-along take keeps no change minute", func(t *testing.T) {
+		f := foldAll(t, target100, take(onDay(0), SelfRatingClean, 80))
+		assert.Nil(t, f.LastChangeTempoBPM)
+	})
 	t.Run("five clean minutes near the target are fluent, far below it only accurate", func(t *testing.T) {
 		near := make([]PracticeEvidence, 5)
 		far := make([]PracticeEvidence, 5)

@@ -134,6 +134,7 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	registerDrillChallengeSteps(sc, w)
 	registerHarmonyDrillSteps(sc, w)
 	registerHearDrillSteps(sc, w)
+	registerChordDrillSteps(sc, w)
 	registerProgressionCatalogSteps(sc, w)
 	registerDiagramShapeSteps(sc, w)
 	registerFretboardMapSteps(sc, w)

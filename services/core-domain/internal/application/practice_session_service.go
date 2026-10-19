@@ -1189,7 +1189,7 @@ func (c *composer) take(candidates []practiceCandidate, reason domain.PracticePi
 			continue
 		}
 		item := c.pick(cand, reason)
-		if item.IsGeneratedDrill() && c.drills[item.DrillTemplateKey()] >= domain.MaxGeneratedDrillItems {
+		if drill, most, capped := item.SessionCap(); capped && c.drills[drill] >= most {
 			continue
 		}
 		if c.used+c.cost(item) > limit {
@@ -1217,8 +1217,8 @@ func (c *composer) neverEmpty() {
 func (c *composer) reserve(item domain.PracticeSessionItem) {
 	c.picked[item.ItemKey] = true
 	c.used += c.cost(item)
-	if item.IsGeneratedDrill() {
-		c.drills[item.DrillTemplateKey()]++
+	if drill, _, capped := item.SessionCap(); capped {
+		c.drills[drill]++
 	}
 }
 
@@ -1236,7 +1236,7 @@ func (c *composer) plan() []domain.PracticeSessionItem {
 	slices.SortStableFunc(picks, func(a, b domain.PracticeSessionItem) int {
 		return cmp.Compare(slices.Index(reasonOrder, a.Reason), slices.Index(reasonOrder, b.Reason))
 	})
-	items = append(items, c.confusablesTogether(takeTurns(picks))...)
+	items = append(items, chordsBeforeChanges(c.confusablesTogether(takeTurns(picks)))...)
 	items = withComebacks(items, c.comebacks, c.confusable)
 	if c.ending != nil {
 		items = append(items, *c.ending)
@@ -1274,7 +1274,7 @@ func (c *composer) item(cand practiceCandidate, reason domain.PracticePickReason
 		c.confusable[item.ItemKey] = confusable.ConfusableWith()
 	}
 	if cand.drill != nil {
-		planning := domain.DrillPlanning{Pick: rand.IntN, Level: level, Reading: c.reading, Voicing: c.voicing, BassInstrumentID: c.bassInstrumentID}
+		planning := domain.DrillPlanning{Pick: rand.IntN, Level: level, Reading: c.reading, Voicing: c.voicing, BassInstrumentID: c.bassInstrumentID, State: cand.state}
 		if k, ok := windowKey(cand); ok {
 			window := c.windows[k]
 			planning.Window = &window
@@ -1303,6 +1303,29 @@ func (c *composer) item(cand practiceCandidate, reason domain.PracticePickReason
 		}
 	}
 	return item
+}
+
+// chordsBeforeChanges moves each single chord that a later chord change uses
+// to just before that change, so a chord is played clean before it is changed
+// to in time. Everything else keeps its order.
+func chordsBeforeChanges(items []domain.PracticeSessionItem) []domain.PracticeSessionItem {
+	ordered := slices.Clone(items)
+	for i := 0; i < len(ordered); i++ {
+		change := ordered[i].ChordChange
+		if change == nil {
+			continue
+		}
+		for j := i + 1; j < len(ordered); j++ {
+			chord := ordered[j].ChordVoicing
+			if chord == nil || chord.DiagramID != change.FromDiagramID && chord.DiagramID != change.ToDiagramID {
+				continue
+			}
+			moved := ordered[j]
+			ordered = slices.Insert(slices.Delete(ordered, j, j+1), i, moved)
+			i++
+		}
+	}
+	return ordered
 }
 
 // takeTurns orders picks so their drills take turns: each next pick comes

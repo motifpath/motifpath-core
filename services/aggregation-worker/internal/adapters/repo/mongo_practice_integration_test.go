@@ -413,8 +413,9 @@ func TestMongoPracticeItemStateRepository(t *testing.T) {
 
 	due := time.Date(2026, 10, 7, 9, 0, 0, 0, time.UTC)
 	last := time.Date(2026, 10, 5, 9, 0, 0, 0, time.UTC)
-	first := domain.ItemFold{Attempts: 1, Counted: 1, Accuracy: 1, Fluency: 0.9, Box: 1, DueAt: &due, LastAt: &last, BestCleanBPM: intPtr(90), BestCleanNoteValue: &eighths,
-		RightByResponse: map[string]int{"name_the_note": 2, "find_the_note": 1}}
+	first := domain.ItemFold{Attempts: 1, Counted: 1, Accuracy: 1, Fluency: 0.9, Box: 1, DueAt: &due, LastAt: &last, BestCleanBPM: intPtr(90), BestCleanNoteValue: &eighths, BestChangesPerMinute: intPtr(48),
+		RightByResponse: map[string]int{"name_the_note": 2, "find_the_note": 1},
+		LastChangeTempoBPM: intPtr(55), LastChangesPerMinute: intPtr(48), LastRating: domain.SelfRatingAlmost, CleanMinutesInARow: 2}
 	require.NoError(t, repo.Put(ctx, studentA, itemKey, first))
 	replaced := first
 	replaced.Attempts, replaced.Counted, replaced.Box = 6, 5, 3
@@ -434,6 +435,12 @@ func TestMongoPracticeItemStateRepository(t *testing.T) {
 		assert.EqualValues(t, domain.PracticeRulesVersion, doc["rules_version"])
 		assert.Equal(t, "eighths", doc["best_clean_note_value"], "core-domain reads the best clean take's note value by this name")
 		assert.Equal(t, string(replaced.Level()), doc["level"])
+		// core-domain reads a change's last minute by these names, to start the next one.
+		assert.EqualValues(t, 55, doc["last_change_tempo_bpm"])
+		assert.EqualValues(t, 48, doc["last_changes_per_minute"])
+		assert.Equal(t, "almost", doc["last_rating"])
+		assert.EqualValues(t, 2, doc["clean_minutes_in_a_row"])
+		assert.EqualValues(t, 48, doc["best_changes_per_minute"], "and the best clean count by this one")
 		count, err := db.Collection("practice_item_state").CountDocuments(ctx, bson.D{})
 		require.NoError(t, err)
 		assert.EqualValues(t, 1, count)

@@ -28,6 +28,24 @@ type practiceItemStateDocument struct {
 	BestCleanNoteValue *string `bson:"best_clean_note_value"`
 	// RightByResponse is absent until the item has a right answer.
 	RightByResponse map[string]int `bson:"right_by_response"`
+	// A chord or root change's best clean count and last minute; absent for
+	// any other item.
+	BestChangesPerMinute *int   `bson:"best_changes_per_minute"`
+	LastChangeTempoBPM   *int   `bson:"last_change_tempo_bpm"`
+	LastChangesPerMinute *int   `bson:"last_changes_per_minute"`
+	LastRating           string `bson:"last_rating"`
+	CleanMinutesInARow   int    `bson:"clean_minutes_in_a_row"`
+}
+
+// lastChangeMinute is the document's last change minute; nil without one.
+func (d practiceItemStateDocument) lastChangeMinute() *domain.ChangeMinuteState {
+	if d.LastChangeTempoBPM == nil || d.LastChangesPerMinute == nil {
+		return nil
+	}
+	return &domain.ChangeMinuteState{
+		TempoBPM: *d.LastChangeTempoBPM, ChangesPerMinute: *d.LastChangesPerMinute,
+		Struggled: d.LastRating == "struggled", CleanInARow: d.CleanMinutesInARow,
+	}
 }
 
 // MongoPracticeItemStateReader reads the `practice_item_state` collection
@@ -61,18 +79,20 @@ func (r *MongoPracticeItemStateReader) GetStates(ctx context.Context, studentID 
 			return nil, err
 		}
 		result[doc.ItemKey] = domain.PracticeItemState{
-			ItemKey:            doc.ItemKey,
-			RulesVersion:       doc.RulesVersion,
-			Level:              domain.KnowledgeLevel(doc.Level),
-			Counted:            doc.Counted,
-			Box:                doc.Box,
-			DueAt:              utcTime(doc.DueAt),
-			LastAt:             utcTime(doc.LastAt),
-			Accuracy:           doc.Accuracy,
-			Fluency:            doc.Fluency,
-			BestCleanBPM:       doc.BestCleanBPM,
-			BestCleanNoteValue: tempoNoteValue(doc.BestCleanNoteValue),
-			RightByResponse:    doc.RightByResponse,
+			ItemKey:              doc.ItemKey,
+			RulesVersion:         doc.RulesVersion,
+			Level:                domain.KnowledgeLevel(doc.Level),
+			Counted:              doc.Counted,
+			Box:                  doc.Box,
+			DueAt:                utcTime(doc.DueAt),
+			LastAt:               utcTime(doc.LastAt),
+			Accuracy:             doc.Accuracy,
+			Fluency:              doc.Fluency,
+			BestCleanBPM:         doc.BestCleanBPM,
+			BestCleanNoteValue:   tempoNoteValue(doc.BestCleanNoteValue),
+			RightByResponse:      doc.RightByResponse,
+			BestChangesPerMinute: doc.BestChangesPerMinute,
+			LastChangeMinute:     doc.lastChangeMinute(),
 		}
 	}
 	if err := cursor.Err(); err != nil {

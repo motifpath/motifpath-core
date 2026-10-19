@@ -61,6 +61,10 @@ func (r *MongoPracticeItemStateRepository) Put(ctx context.Context, studentID, i
 		BestCleanBPM:         f.BestCleanBPM,
 		BestCleanNoteValue:   noteValueString(f.BestCleanNoteValue),
 		BestChangesPerMinute: f.BestChangesPerMinute,
+		LastChangeTempoBPM:   f.LastChangeTempoBPM,
+		LastChangesPerMinute: f.LastChangesPerMinute,
+		LastRating:           string(f.LastRating),
+		CleanMinutesInARow:   f.CleanMinutesInARow,
 		RightByResponse:      f.RightByResponse,
 		UpdatedAt:            r.now().UTC(),
 	}

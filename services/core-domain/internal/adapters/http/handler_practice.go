@@ -351,7 +351,39 @@ func toGeneratedPracticeSessionItem(item domain.PracticeSessionItem, names userN
 	if q := item.GeneratedChoice; q != nil {
 		out.GeneratedChoice = toGeneratedChoiceQuestion(*q, locale)
 	}
+	if v := item.ChordVoicing; v != nil {
+		out.ChordVoicing = &generated.PlannedChordVoicing{DiagramId: mustUUID(v.DiagramID), ChordSymbol: v.ChordSymbol}
+	}
+	if c := item.ChordChange; c != nil {
+		out.ChordChange = &generated.PlannedChordChange{
+			FromDiagramId: mustUUID(c.FromDiagramID), ToDiagramId: mustUUID(c.ToDiagramID),
+			FromChordSymbol: c.FromChordSymbol, ToChordSymbol: c.ToChordSymbol, Minute: toGeneratedChangeMinute(c.Minute),
+		}
+	}
+	if r := item.RootFifth; r != nil {
+		out.RootFifth = &generated.PlannedRootFifth{
+			LayoutInstrumentId: mustUUID(r.LayoutInstrumentID), ChordSymbol: r.ChordSymbol,
+			Root: toGeneratedFretPlace(r.Root), Fifth: toGeneratedFretPlace(r.Fifth),
+		}
+	}
+	if r := item.RootChange; r != nil {
+		out.RootChange = &generated.PlannedRootChange{
+			LayoutInstrumentId: mustUUID(r.LayoutInstrumentID), FromChordSymbol: r.FromChordSymbol, ToChordSymbol: r.ToChordSymbol,
+			FromRoot: toGeneratedFretPlace(r.FromRoot), ToRoot: toGeneratedFretPlace(r.ToRoot), Minute: toGeneratedChangeMinute(r.Minute),
+		}
+	}
 	return out
+}
+
+func toGeneratedChangeMinute(m domain.PlannedChangeMinute) generated.ChangeMinute {
+	return generated.ChangeMinute{
+		StartTempoBpm: m.StartTempoBPM, TargetChangesPerMinute: m.TargetChangesPerMinute,
+		BestCleanChangesPerMinute: m.BestCleanChangesPerMinute, LastChangesPerMinute: m.LastChangesPerMinute,
+	}
+}
+
+func toGeneratedFretPlace(p domain.Place) generated.FretPlace {
+	return generated.FretPlace{String: p.String, Fret: p.Fret}
 }
 
 // toGeneratedChoiceQuestion maps a planned harmony or ear question, its names in

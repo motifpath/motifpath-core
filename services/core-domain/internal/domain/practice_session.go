@@ -73,6 +73,22 @@ type PracticeItemState struct {
 	// RightByResponse counts the right answers by the way the item was
 	// asked, such as name_the_note; nil before any.
 	RightByResponse map[string]int
+	// BestChangesPerMinute is a chord or root change's best clean count since
+	// the latest teacher review; nil with no clean minute.
+	BestChangesPerMinute *int
+	// LastChangeMinute is a chord or root change's last minute, which the next
+	// one starts from; nil for an item never played that way.
+	LastChangeMinute *ChangeMinuteState
+}
+
+// ChangeMinuteState is a chord or root change's last minute: the tempo it was
+// played at, the clean changes counted, whether it was struggled, and the
+// clean minutes in a row it ended.
+type ChangeMinuteState struct {
+	TempoBPM         int
+	ChangesPerMinute int
+	Struggled        bool
+	CleanInARow      int
 }
 
 // BestCleanTempo is the best clean take's tempo as played, nil with no clean
@@ -220,20 +236,28 @@ type PracticeSessionItem struct {
 	NodeID           *string
 	Level            KnowledgeLevel
 	EstimatedSeconds int
-	// Exactly one of PlayAlong, Exercise, FretboardCell, DiagramShape and
-	// GeneratedChoice is set, matching Kind.
+	// Exactly one of PlayAlong, Exercise, FretboardCell, DiagramShape,
+	// GeneratedChoice, ChordVoicing, ChordChange, RootFifth and RootChange is
+	// set, matching Kind.
 	PlayAlong       *PlannedPlayAlong
 	Exercise        *Exercise
 	FretboardCell   *PlannedFretboardCell
 	DiagramShape    *PlannedDiagramShape
 	GeneratedChoice *PlannedGeneratedChoice
+	ChordVoicing    *PlannedChordVoicing
+	ChordChange     *PlannedChordChange
+	RootFifth       *PlannedRootFifth
+	RootChange      *PlannedRootChange
 }
 
 // DrillTemplateKey is the timed drill template answering the item
 // practises: a generated drill item's kind and the way it is asked, or an
 // exercise's type.
-// A play-along is rated, not timed, so it practises none ("").
+// A play-along or a chord item is rated, not timed, so it practises none ("").
 func (i PracticeSessionItem) DrillTemplateKey() string {
+	if _, rated := selfRatedChordKinds[i.Kind]; rated {
+		return ""
+	}
 	switch {
 	case i.Way != "":
 		return string(i.Kind) + ":" + i.Way
@@ -270,6 +294,20 @@ const MaxGeneratedDrillItems = 10
 // such as a fretboard cell or a diagram shape.
 func (i PracticeSessionItem) IsGeneratedDrill() bool {
 	return i.Way != "" || i.FretboardCell != nil || i.DiagramShape != nil
+}
+
+// SessionCap is the drill the item counts toward in a session and the most
+// items of it a session takes: single chords and chord changes each by their
+// kind, any other generated drill by its template. False for an item no cap
+// applies to, such as a play-along or an exercise.
+func (i PracticeSessionItem) SessionCap() (string, int, bool) {
+	if most, ok := chordSessionCaps[i.Kind]; ok {
+		return string(i.Kind), most, true
+	}
+	if i.IsGeneratedDrill() {
+		return i.DrillTemplateKey(), MaxGeneratedDrillItems, true
+	}
+	return "", 0, false
 }
 
 // Ask makes the item ask p: p's planned question on it, and the way it is
