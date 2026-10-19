@@ -26,10 +26,13 @@ type fakeNodeItemSource struct {
 	// harmony lists the harmony drills' items, which suit every
 	// instrument; nil until a scenario learns them.
 	harmony func() []domain.ClassifiedItem
+	// chords holds the chord drills' items per instrument, which a scenario
+	// declares.
+	chords map[string][]domain.ClassifiedItem
 }
 
 func newFakeNodeItemSource(diagrams *fakeDiagramRepo, exercises *fakeExerciseRepo) *fakeNodeItemSource {
-	return &fakeNodeItemSource{diagrams: diagrams, exercises: exercises, layouts: map[string]string{}, cells: map[string][]domain.ClassifiedItem{}}
+	return &fakeNodeItemSource{diagrams: diagrams, exercises: exercises, layouts: map[string]string{}, cells: map[string][]domain.ClassifiedItem{}, chords: map[string][]domain.ClassifiedItem{}}
 }
 
 func (f *fakeNodeItemSource) ClassifiedItems(_ context.Context, instrumentID string) ([]domain.ClassifiedItem, error) {
@@ -57,6 +60,7 @@ func (f *fakeNodeItemSource) ClassifiedItems(_ context.Context, instrumentID str
 	if f.harmony != nil {
 		items = append(items, f.harmony()...)
 	}
+	items = append(items, f.chords[instrumentID]...)
 	return items, nil
 }
 

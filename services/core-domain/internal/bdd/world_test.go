@@ -53,6 +53,7 @@ type world struct {
 	drillChallenges   *drillChallengeWorld
 	harmonyDrills     *harmonyWorld
 	hearDrills        *hearWorld
+	chordDrills       *chordDrillWorld
 	shapeWorld        *diagramShapeWorld
 	songCharts        *songChartWorld
 	// dueDays holds the cells a scenario made due on two days.
@@ -337,7 +338,8 @@ func newWorld() *world {
 	w.feltRatings = newFakeFeltRatings()
 	w.practiceActivity = newFakePracticeActivity()
 	practiceSession := application.NewPracticeSessionService(w.instruments, w.studentPaths, w.courseEnrollments, w.paths, w.courseVersions, w.nodes, w.diagrams, w.exercises, w.rollup, catalogDrillTemplates{}, w.tapChecks, w.feltRatings, w.practiceActivity, newID, now).
-		WithHarmonyDrills(catalogProgressions{}, &catalogChordRepository{newFakeChordCatalog()}, harmonyLayouts{})
+		WithHarmonyDrills(catalogProgressions{}, &catalogChordRepository{newFakeChordCatalog()}, harmonyLayouts{}).
+		WithChordDrills(chordDrillCatalog{}, w.instruments)
 	w.summaryNow = fixedNow
 	summaryNow := func() time.Time { return w.summaryNow }
 	summaryRollup := application.NewKnowledgeRollupService(w.knowledge, w.knowledgeEdges, w.practiceItems, w.practiceStates, summaryNow)
