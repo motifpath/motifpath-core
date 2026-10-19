@@ -64,6 +64,9 @@ type DrillPlanning struct {
 	// plays each chord's root under a question asked by ear; empty when it
 	// reads them on guitar, so no root line plays.
 	BassInstrumentID string
+	// State is the student's state on the item, which a chord change's tempo
+	// ladder starts from; nil for an item never practised.
+	State *PracticeItemState
 }
 
 // PlannedDrill is a drill item as a session asks it.
