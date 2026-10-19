@@ -195,9 +195,9 @@ func toEvidence(answer domain.PracticeAnswer, graderID string, graded domain.Gra
 
 // goalOf is what the item's fluency is measured against. A play-along is measured
 // against its diagram's tempo, an exercise against its type's fluent times, and a
-// generated drill against the fluent times of each way it is asked. Chord and root
-// changes have no source for a target rate yet, so any clean minute counts as fully
-// fluent, and a chord played clean has no measure at all.
+// generated drill against the fluent times of each way it is asked, and a chord or
+// root change against the change target in force when it was played. A chord played
+// clean has no measure at all.
 func (s *PracticeEvidenceService) goalOf(ctx context.Context, key domain.PracticeItemKey, ref domain.PracticeReference) (domain.ItemGoal, error) {
 	switch key.Kind {
 	case domain.PracticeItemKindPlayAlong:
@@ -216,8 +216,10 @@ func (s *PracticeEvidenceService) goalOf(ctx context.Context, key domain.Practic
 		return s.goalByWayAsked(ctx, key.Kind, domain.WayAsked(key.Kind, domain.PracticeResponse{Type: domain.PracticeResponseTimedTaps}))
 	case domain.PracticeItemKindFretboardNote:
 		return s.goalByWayAsked(ctx, key.Kind, domain.WayAsked(key.Kind, domain.PracticeResponse{Type: domain.PracticeResponseMultiTap}))
-	case domain.PracticeItemKindChordChange, domain.PracticeItemKindRootChange, domain.PracticeItemKindChordVoicing,
-		domain.PracticeItemKindRootFifth:
+	case domain.PracticeItemKindChordChange, domain.PracticeItemKindRootChange:
+		targets, err := s.reference.ChangeTargets(ctx)
+		return domain.ItemGoal{ChangeTargets: targets}, err
+	case domain.PracticeItemKindChordVoicing, domain.PracticeItemKindRootFifth:
 	}
 	return domain.ItemGoal{}, nil
 }
