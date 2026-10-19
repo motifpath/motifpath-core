@@ -1,0 +1,2255 @@
+//go:build integration
+
+package bdd
+
+import (
+	"context"
+	"errors"
+	"iter"
+	"maps"
+	"slices"
+	"sort"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/motifpath/core-domain/internal/domain"
+	"github.com/motifpath/core-domain/internal/ports"
+)
+
+// The fakes below are minimal in-memory ports implementations local to the
+// bdd package (they can't reuse internal/application's unexported fakes —
+// different package, different test binary). Unlike those, these have no
+// error-injection knobs: BDD exercises business behavior end-to-end through
+// the real Handler and application services, not repository failure modes,
+// which the internal/application unit tests already cover.
+
+type fakeUserRepo struct {
+	mu        sync.Mutex
+	byClerkID map[string]domain.User
+	byID      map[string]domain.User
+}
+
+func newFakeUserRepo() *fakeUserRepo {
+	return &fakeUserRepo{byClerkID: map[string]domain.User{}, byID: map[string]domain.User{}}
+}
+
+func (f *fakeUserRepo) Create(_ context.Context, u domain.User) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, exists := f.byClerkID[u.ClerkUserID]; exists {
+		return domain.ErrAlreadyExists
+	}
+	f.byClerkID[u.ClerkUserID] = u
+	f.byID[u.ID] = u
+	return nil
+}
+
+func (f *fakeUserRepo) UpdateDisplayName(_ context.Context, id, displayName string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	u, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	u.DisplayName = displayName
+	f.byID[id] = u
+	f.byClerkID[u.ClerkUserID] = u
+	return nil
+}
+
+func (f *fakeUserRepo) GetDisplayNames(_ context.Context, ids []string) (map[string]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	names := make(map[string]string, len(ids))
+	for _, id := range ids {
+		if u, ok := f.byID[id]; ok {
+			names[id] = u.DisplayName
+		}
+	}
+	return names, nil
+}
+
+func (f *fakeUserRepo) GetByClerkUserID(_ context.Context, clerkUserID string) (domain.User, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	u, ok := f.byClerkID[clerkUserID]
+	if !ok {
+		return domain.User{}, domain.ErrNotFound
+	}
+	return u, nil
+}
+
+func (f *fakeUserRepo) GetByID(_ context.Context, id string) (domain.User, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	u, ok := f.byID[id]
+	if !ok {
+		return domain.User{}, domain.ErrNotFound
+	}
+	return u, nil
+}
+
+func (f *fakeUserRepo) ListByRole(_ context.Context, role domain.Role) ([]domain.User, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var users []domain.User
+	for _, u := range f.byID {
+		if u.Role == role {
+			users = append(users, u)
+		}
+	}
+	return users, nil
+}
+
+func (f *fakeUserRepo) put(u domain.User) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byClerkID[u.ClerkUserID] = u
+	f.byID[u.ID] = u
+}
+
+func (f *fakeUserRepo) UpdateLocale(_ context.Context, id, locale string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	u, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	u.Locale = domain.Language{Code: locale}
+	f.byID[id] = u
+	f.byClerkID[u.ClerkUserID] = u
+	return nil
+}
+
+// fakeLanguageRepo is pre-seeded with the system rows the Atlas migration
+// seeds in production: en, pt_BR, any.
+type fakeLanguageRepo struct {
+	mu     sync.Mutex
+	byCode map[string]domain.Language
+}
+
+func newFakeLanguageRepo() *fakeLanguageRepo {
+	return &fakeLanguageRepo{byCode: map[string]domain.Language{
+		"en":                   {Code: "en", Name: "English"},
+		"pt_BR":                {Code: "pt_BR", Name: "Portuguese (Brazil)"},
+		domain.LanguageCodeAny: {Code: domain.LanguageCodeAny, Name: "Language-agnostic"},
+	}}
+}
+
+func (f *fakeLanguageRepo) List(_ context.Context) ([]domain.Language, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := make([]domain.Language, 0, len(f.byCode))
+	for _, lang := range f.byCode {
+		result = append(result, lang)
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i].Code < result[j].Code })
+	return result, nil
+}
+
+func (f *fakeLanguageRepo) GetByCode(_ context.Context, code string) (domain.Language, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	lang, ok := f.byCode[code]
+	if !ok {
+		return domain.Language{}, domain.ErrNotFound
+	}
+	return lang, nil
+}
+
+type fakeContentNodeRepo struct {
+	mu        sync.Mutex
+	byID      map[string]domain.ContentNode
+	knowledge *fakeKnowledgeNodeRepo
+	// exercises and challenges are read by LinkedExerciseInstrumentSets,
+	// the way the real adapter queries the link tables.
+	exercises  *fakeExerciseRepo
+	challenges *fakeChallengeRepo
+}
+
+func (f *fakeContentNodeRepo) LinkedExerciseInstrumentSets(_ context.Context, id string) ([][]string, error) {
+	var challengeIDs []string
+	f.challenges.mu.Lock()
+	for _, c := range f.challenges.byID {
+		if c.ContentNodeID == id {
+			challengeIDs = append(challengeIDs, c.ID)
+		}
+	}
+	f.challenges.mu.Unlock()
+	f.exercises.mu.Lock()
+	defer f.exercises.mu.Unlock()
+	linked := map[string]bool{}
+	for _, exerciseID := range f.exercises.byNodeOrder[id] {
+		linked[exerciseID] = true
+	}
+	for _, challengeID := range challengeIDs {
+		for _, exerciseID := range f.exercises.byChallengeOrder[challengeID] {
+			linked[exerciseID] = true
+		}
+	}
+	var sets [][]string
+	for exerciseID := range linked {
+		sets = append(sets, f.exercises.byID[exerciseID].InstrumentIDs)
+	}
+	return sets, nil
+}
+
+func newFakeContentNodeRepo(knowledge *fakeKnowledgeNodeRepo) *fakeContentNodeRepo {
+	return &fakeContentNodeRepo{byID: map[string]domain.ContentNode{}, knowledge: knowledge}
+}
+
+// resolveClassification replaces n.Classification.Skills/Concepts (which
+// may carry only IDs, as domain.NewContentNode's placeholders do) with the
+// full records from f.knowledge — mirroring the real
+// ent adapter's WithSkills()/WithConcepts() join on read.
+func (f *fakeContentNodeRepo) resolveClassification(n domain.ContentNode) domain.ContentNode {
+	n.Classification.Skills = f.knowledge.resolve(n.Classification.Skills)
+	n.Classification.Concepts = f.knowledge.resolve(n.Classification.Concepts)
+	return n
+}
+
+func (f *fakeContentNodeRepo) Create(_ context.Context, n domain.ContentNode) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[n.ID] = f.resolveClassification(n)
+	return nil
+}
+
+func (f *fakeContentNodeRepo) GetByID(_ context.Context, id string) (domain.ContentNode, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	n, ok := f.byID[id]
+	if !ok {
+		return domain.ContentNode{}, domain.ErrNotFound
+	}
+	return n, nil
+}
+
+func (f *fakeContentNodeRepo) GetByIDs(_ context.Context, ids []string) (map[string]domain.ContentNode, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := map[string]domain.ContentNode{}
+	for _, id := range ids {
+		if n, ok := f.byID[id]; ok {
+			result[id] = n
+		}
+	}
+	return result, nil
+}
+
+func (f *fakeContentNodeRepo) put(n domain.ContentNode) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[n.ID] = n
+}
+
+func (f *fakeContentNodeRepo) List(_ context.Context, filter domain.ContentNodeFilter, page domain.PageRequest) (domain.Page[domain.ContentNode], error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var result []domain.ContentNode
+	for _, n := range f.byID {
+		if filter.ContentType != "" && n.ContentType != filter.ContentType {
+			continue
+		}
+		if !domain.ContainsAny(n.Classification.SkillIDs(), filter.SkillIDs) || !domain.ContainsAny(n.Classification.ConceptIDs(), filter.ConceptIDs) {
+			continue
+		}
+		if !forInstrument(n.InstrumentIDs, filter.InstrumentID) {
+			continue
+		}
+		if filter.Difficulty != "" && n.Classification.DifficultyLevel != filter.Difficulty {
+			continue
+		}
+		if !containsFold(n.Title, filter.Query) {
+			continue
+		}
+		if filter.CreatedBy != "" && n.TeacherID != filter.CreatedBy {
+			continue
+		}
+		if filter.Language != "" && !slices.ContainsFunc(n.Languages, func(l domain.Language) bool { return l.Code == filter.Language }) {
+			continue
+		}
+		if !filter.Status.Matches(n) {
+			continue
+		}
+		result = append(result, n)
+	}
+	sortListed(result, filter.Sort, func(n domain.ContentNode) (string, time.Time, string) { return n.Title, n.UpdatedAt, n.ID })
+	return paginate(result, page), nil
+}
+
+func (f *fakeContentNodeRepo) ListCreatorCounts(_ context.Context) ([]domain.CreatorCount, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return countCreators(maps.Values(f.byID), func(n domain.ContentNode) string { return n.TeacherID }), nil
+}
+
+func (f *fakeContentNodeRepo) MarkPublished(_ context.Context, id string, version int) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	n, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	n.LatestPublishedVersion = &version
+	n.HasUnpublishedChanges = false
+	f.byID[id] = n
+	return nil
+}
+
+// containsFold reports whether s contains substr, ignoring case; an empty
+// substr always matches.
+func containsFold(s, substr string) bool {
+	return strings.Contains(strings.ToLower(s), strings.ToLower(substr))
+}
+
+// paginate windows items (already filtered and ordered) per page and
+// reports the size of the whole set as Total.
+func paginate[T any](items []T, page domain.PageRequest) domain.Page[T] {
+	total := len(items)
+	start := page.Offset
+	if start > total {
+		start = total
+	}
+	end := start + page.Limit
+	if end > total {
+		end = total
+	}
+	window := make([]T, end-start)
+	copy(window, items[start:end])
+	return domain.Page[T]{Items: window, Total: total}
+}
+
+func containsID(ids []string, id string) bool {
+	for _, existing := range ids {
+		if existing == id {
+			return true
+		}
+	}
+	return false
+}
+
+func (f *fakeContentNodeRepo) Update(_ context.Context, n domain.ContentNode) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.byID[n.ID]; !ok {
+		return domain.ErrNotFound
+	}
+	f.byID[n.ID] = f.resolveClassification(n)
+	return nil
+}
+
+type fakeChallengeRepo struct {
+	mu   sync.Mutex
+	byID map[string]domain.Challenge
+}
+
+func newFakeChallengeRepo() *fakeChallengeRepo {
+	return &fakeChallengeRepo{byID: map[string]domain.Challenge{}}
+}
+
+func (f *fakeChallengeRepo) Create(_ context.Context, c domain.Challenge) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[c.ID] = c
+	return nil
+}
+
+func (f *fakeChallengeRepo) GetByID(_ context.Context, id string) (domain.Challenge, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	c, ok := f.byID[id]
+	if !ok {
+		return domain.Challenge{}, domain.ErrNotFound
+	}
+	return c, nil
+}
+
+func (f *fakeChallengeRepo) put(c domain.Challenge) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[c.ID] = c
+}
+
+func (f *fakeChallengeRepo) ListByContentNodeID(_ context.Context, contentNodeID string) ([]domain.Challenge, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var result []domain.Challenge
+	for _, c := range f.byID {
+		if c.ContentNodeID == contentNodeID {
+			result = append(result, c)
+		}
+	}
+	return result, nil
+}
+
+func (f *fakeChallengeRepo) Update(_ context.Context, c domain.Challenge) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.byID[c.ID]; !ok {
+		return domain.ErrNotFound
+	}
+	f.byID[c.ID] = c
+	return nil
+}
+
+// fakeExerciseRepo tracks link order per challenge/node separately from
+// each exercise's own ChallengeIDs/ContentNodeIDs slice, since two
+// different challenges/nodes can share exercises linked in different
+// orders — needed for scenarios asserting stable or shuffled order.
+type fakeExerciseRepo struct {
+	mu               sync.Mutex
+	byID             map[string]domain.Exercise
+	byChallengeOrder map[string][]string
+	byNodeOrder      map[string][]string
+	knowledge        *fakeKnowledgeNodeRepo
+}
+
+func newFakeExerciseRepo(knowledge *fakeKnowledgeNodeRepo) *fakeExerciseRepo {
+	return &fakeExerciseRepo{
+		byID:             map[string]domain.Exercise{},
+		byChallengeOrder: map[string][]string{},
+		byNodeOrder:      map[string][]string{},
+		knowledge:        knowledge,
+	}
+}
+
+// resolveClassification is fakeContentNodeRepo.resolveClassification's
+// counterpart for Exercise.
+func (f *fakeExerciseRepo) resolveClassification(e domain.Exercise) domain.Exercise {
+	e.Skills = f.knowledge.resolve(e.Skills)
+	e.Concepts = f.knowledge.resolve(e.Concepts)
+	return e
+}
+
+func (f *fakeExerciseRepo) Create(_ context.Context, e domain.Exercise) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[e.ID] = f.resolveClassification(e)
+	return nil
+}
+
+func (f *fakeExerciseRepo) GetByID(_ context.Context, id string) (domain.Exercise, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	e, ok := f.byID[id]
+	if !ok {
+		return domain.Exercise{}, domain.ErrNotFound
+	}
+	return e, nil
+}
+
+func (f *fakeExerciseRepo) LinkChallenge(_ context.Context, exerciseID, challengeID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	e, ok := f.byID[exerciseID]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	e.ChallengeIDs = append(e.ChallengeIDs, challengeID)
+	f.byID[exerciseID] = e
+	f.byChallengeOrder[challengeID] = append(f.byChallengeOrder[challengeID], exerciseID)
+	return nil
+}
+
+func (f *fakeExerciseRepo) UnlinkChallenge(_ context.Context, exerciseID, challengeID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	e, ok := f.byID[exerciseID]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	remaining := make([]string, 0, len(e.ChallengeIDs))
+	for _, id := range e.ChallengeIDs {
+		if id != challengeID {
+			remaining = append(remaining, id)
+		}
+	}
+	e.ChallengeIDs = remaining
+	f.byID[exerciseID] = e
+
+	remainingOrder := make([]string, 0, len(f.byChallengeOrder[challengeID]))
+	for _, id := range f.byChallengeOrder[challengeID] {
+		if id != exerciseID {
+			remainingOrder = append(remainingOrder, id)
+		}
+	}
+	f.byChallengeOrder[challengeID] = remainingOrder
+	return nil
+}
+
+func (f *fakeExerciseRepo) ListByChallengeID(_ context.Context, challengeID string) ([]domain.Exercise, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := make([]domain.Exercise, 0, len(f.byChallengeOrder[challengeID]))
+	for _, id := range f.byChallengeOrder[challengeID] {
+		result = append(result, f.byID[id])
+	}
+	return result, nil
+}
+
+func (f *fakeExerciseRepo) ListByChallengeIDs(_ context.Context, challengeIDs []string) (map[string][]domain.Exercise, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := map[string][]domain.Exercise{}
+	for _, challengeID := range challengeIDs {
+		ids := f.byChallengeOrder[challengeID]
+		if len(ids) == 0 {
+			continue
+		}
+		exercises := make([]domain.Exercise, 0, len(ids))
+		for _, id := range ids {
+			exercises = append(exercises, f.byID[id])
+		}
+		result[challengeID] = exercises
+	}
+	return result, nil
+}
+
+func (f *fakeExerciseRepo) LinkContentNode(_ context.Context, exerciseID, contentNodeID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	e, ok := f.byID[exerciseID]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	e.ContentNodeIDs = append(e.ContentNodeIDs, contentNodeID)
+	f.byID[exerciseID] = e
+	f.byNodeOrder[contentNodeID] = append(f.byNodeOrder[contentNodeID], exerciseID)
+	return nil
+}
+
+func (f *fakeExerciseRepo) UnlinkContentNode(_ context.Context, exerciseID, contentNodeID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	e, ok := f.byID[exerciseID]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	remaining := make([]string, 0, len(e.ContentNodeIDs))
+	for _, id := range e.ContentNodeIDs {
+		if id != contentNodeID {
+			remaining = append(remaining, id)
+		}
+	}
+	e.ContentNodeIDs = remaining
+	f.byID[exerciseID] = e
+
+	remainingOrder := make([]string, 0, len(f.byNodeOrder[contentNodeID]))
+	for _, id := range f.byNodeOrder[contentNodeID] {
+		if id != exerciseID {
+			remainingOrder = append(remainingOrder, id)
+		}
+	}
+	f.byNodeOrder[contentNodeID] = remainingOrder
+	return nil
+}
+
+func (f *fakeExerciseRepo) ListByContentNodeID(_ context.Context, contentNodeID string) ([]domain.Exercise, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := make([]domain.Exercise, 0, len(f.byNodeOrder[contentNodeID]))
+	for _, id := range f.byNodeOrder[contentNodeID] {
+		result = append(result, f.byID[id])
+	}
+	return result, nil
+}
+
+func (f *fakeExerciseRepo) List(_ context.Context, filter domain.ExerciseFilter, page domain.PageRequest) (domain.Page[domain.Exercise], error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var result []domain.Exercise
+	for _, e := range f.byID {
+		if filter.ExerciseType != "" && e.ExerciseType != filter.ExerciseType {
+			continue
+		}
+		if !domain.ContainsAny(exerciseSkillIDs(e), filter.SkillIDs) || !domain.ContainsAny(knowledgeIDs(e.Concepts), filter.ConceptIDs) {
+			continue
+		}
+		if filter.Language != "" && !slices.ContainsFunc(e.Languages, func(l domain.Language) bool { return l.Code == filter.Language }) {
+			continue
+		}
+		if filter.CreatedBy != "" && e.CreatedBy != filter.CreatedBy {
+			continue
+		}
+		if filter.Query != "" && !strings.Contains(strings.ToLower(e.Title), strings.ToLower(filter.Query)) {
+			continue
+		}
+		if len(filter.InstrumentIDs) > 0 && len(e.InstrumentIDs) > 0 && !slices.ContainsFunc(filter.InstrumentIDs, func(id string) bool { return slices.Contains(e.InstrumentIDs, id) }) {
+			continue
+		}
+		result = append(result, e)
+	}
+	sortListed(result, filter.Sort, func(e domain.Exercise) (string, time.Time, string) { return e.Title, e.UpdatedAt, e.ID })
+	return paginate(result, page), nil
+}
+
+func (f *fakeExerciseRepo) ListCreatorCounts(_ context.Context) ([]domain.CreatorCount, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return countCreators(maps.Values(f.byID), func(e domain.Exercise) string { return e.CreatedBy }), nil
+}
+
+func exerciseSkillIDs(e domain.Exercise) []string {
+	ids := make([]string, len(e.Skills))
+	for i, s := range e.Skills {
+		ids[i] = s.ID
+	}
+	return ids
+}
+
+func (f *fakeExerciseRepo) Update(_ context.Context, e domain.Exercise) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.byID[e.ID]; !ok {
+		return domain.ErrNotFound
+	}
+	f.byID[e.ID] = f.resolveClassification(e)
+	return nil
+}
+
+// put seeds e directly, also indexing it under its pre-set
+// ChallengeIDs/ContentNodeIDs so steps that construct an already-linked
+// domain.Exercise literal work with ListByChallengeID/ListByContentNodeID
+// without going through LinkChallenge/LinkContentNode first.
+func (f *fakeExerciseRepo) put(e domain.Exercise) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[e.ID] = e
+	for _, challengeID := range e.ChallengeIDs {
+		f.byChallengeOrder[challengeID] = append(f.byChallengeOrder[challengeID], e.ID)
+	}
+	for _, nodeID := range e.ContentNodeIDs {
+		f.byNodeOrder[nodeID] = append(f.byNodeOrder[nodeID], e.ID)
+	}
+}
+
+func (f *fakeExerciseRepo) count() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return len(f.byID)
+}
+
+type fakeExpandedContentRepo struct {
+	mu     sync.Mutex
+	byID   map[string]domain.ExpandedContent
+	byNode map[string][]domain.ExpandedContent
+}
+
+func newFakeExpandedContentRepo() *fakeExpandedContentRepo {
+	return &fakeExpandedContentRepo{byID: map[string]domain.ExpandedContent{}, byNode: map[string][]domain.ExpandedContent{}}
+}
+
+func (f *fakeExpandedContentRepo) Create(_ context.Context, item domain.ExpandedContent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[item.ID] = item
+	f.byNode[item.ContentNodeID] = append(f.byNode[item.ContentNodeID], item)
+	return nil
+}
+
+func (f *fakeExpandedContentRepo) GetByID(_ context.Context, id string) (domain.ExpandedContent, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	item, ok := f.byID[id]
+	if !ok {
+		return domain.ExpandedContent{}, domain.ErrNotFound
+	}
+	return item, nil
+}
+
+func (f *fakeExpandedContentRepo) put(item domain.ExpandedContent) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[item.ID] = item
+	f.byNode[item.ContentNodeID] = append(f.byNode[item.ContentNodeID], item)
+}
+
+func (f *fakeExpandedContentRepo) ListByContentNode(_ context.Context, contentNodeID string) ([]domain.ExpandedContent, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	items := append([]domain.ExpandedContent(nil), f.byNode[contentNodeID]...)
+	// Mirror the ent adapter's ordering contract for scenarios that assert it.
+	sortExpandedContent(items)
+	return items, nil
+}
+
+func (f *fakeExpandedContentRepo) Update(_ context.Context, item domain.ExpandedContent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.byID[item.ID]; !ok {
+		return domain.ErrNotFound
+	}
+	f.byID[item.ID] = item
+	nodeItems := f.byNode[item.ContentNodeID]
+	for i, existing := range nodeItems {
+		if existing.ID == item.ID {
+			nodeItems[i] = item
+			break
+		}
+	}
+	return nil
+}
+
+func (f *fakeExpandedContentRepo) Delete(_ context.Context, id string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	item, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	delete(f.byID, id)
+	nodeItems := f.byNode[item.ContentNodeID]
+	remaining := make([]domain.ExpandedContent, 0, len(nodeItems))
+	for _, existing := range nodeItems {
+		if existing.ID != id {
+			remaining = append(remaining, existing)
+		}
+	}
+	f.byNode[item.ContentNodeID] = remaining
+	return nil
+}
+
+func sortExpandedContent(items []domain.ExpandedContent) {
+	less := func(i, j int) bool {
+		key := func(item domain.ExpandedContent) int {
+			if item.TriggerAtSeconds != nil {
+				return *item.TriggerAtSeconds
+			}
+			if item.TriggerAtParagraph != nil {
+				return *item.TriggerAtParagraph
+			}
+			return 0
+		}
+		return key(items[i]) < key(items[j])
+	}
+	for i := 1; i < len(items); i++ {
+		for j := i; j > 0 && less(j, j-1); j-- {
+			items[j], items[j-1] = items[j-1], items[j]
+		}
+	}
+}
+
+type fakeLearningPathRepo struct {
+	mu   sync.Mutex
+	byID map[string]domain.LearningPath
+	// nodes resolves items' classifications for the skill and concept
+	// filters; nil when a test never filters on them.
+	nodes *fakeContentNodeRepo
+}
+
+func newFakeLearningPathRepo() *fakeLearningPathRepo {
+	return &fakeLearningPathRepo{byID: map[string]domain.LearningPath{}}
+}
+
+func (f *fakeLearningPathRepo) Create(_ context.Context, p domain.LearningPath) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[p.ID] = p
+	return nil
+}
+
+func (f *fakeLearningPathRepo) GetByID(_ context.Context, id string) (domain.LearningPath, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	p, ok := f.byID[id]
+	if !ok {
+		return domain.LearningPath{}, domain.ErrNotFound
+	}
+	return p, nil
+}
+
+func (f *fakeLearningPathRepo) CountItems(_ context.Context, ids []string) (map[string]int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	counts := map[string]int{}
+	for _, id := range ids {
+		if p, ok := f.byID[id]; ok {
+			counts[id] = len(p.Items)
+		}
+	}
+	return counts, nil
+}
+
+// put seeds p directly. A seeded path with no status is published: a step
+// that says a path exists means one ready to be assigned, enrolled in or
+// used by a published course, just as its items' content nodes are seeded
+// already published. Steps that need a draft set it explicitly; paths created
+// through the API are drafts like any other.
+func (f *fakeLearningPathRepo) put(p domain.LearningPath) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if p.Status == "" {
+		p.Status = domain.LearningPathStatusPublished
+	}
+	f.byID[p.ID] = p
+}
+
+func (f *fakeLearningPathRepo) List(_ context.Context, filter domain.LearningPathFilter, page domain.PageRequest) (domain.Page[domain.LearningPath], error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := make([]domain.LearningPath, 0, len(f.byID))
+	for _, p := range f.byID {
+		if f.matches(p, filter) {
+			result = append(result, p)
+		}
+	}
+	sort.Slice(result, func(i, j int) bool {
+		if filter.Sort == domain.ListSortUpdated && !result[i].UpdatedAt.Equal(result[j].UpdatedAt) {
+			return result[i].UpdatedAt.After(result[j].UpdatedAt)
+		}
+		if filter.Sort != domain.ListSortUpdated && result[i].Title != result[j].Title {
+			return result[i].Title < result[j].Title
+		}
+		return result[i].ID < result[j].ID
+	})
+	return paginate(result, page), nil
+}
+
+// matches states the repository's learning path filter rules in memory.
+func (f *fakeLearningPathRepo) matches(p domain.LearningPath, filter domain.LearningPathFilter) bool {
+	if !containsFold(p.Title, filter.Query) && (p.Summary == nil || !containsFold(*p.Summary, filter.Query)) {
+		return false
+	}
+	if filter.Status != "" && p.Status != filter.Status {
+		return false
+	}
+	if filter.Language != "" && (p.Language == nil || *p.Language != filter.Language) {
+		return false
+	}
+	if filter.CreatedBy != "" && p.TeacherID != filter.CreatedBy {
+		return false
+	}
+	if len(filter.Levels) > 0 && (p.Level == nil || !containsLevel(filter.Levels, *p.Level)) {
+		return false
+	}
+	if !forInstrument(p.InstrumentIDs, filter.InstrumentID) {
+		return false
+	}
+	if len(filter.SkillIDs) == 0 && len(filter.ConceptIDs) == 0 {
+		return true
+	}
+	for _, item := range p.Items {
+		node, ok := f.nodes.byID[item.ContentNodeID]
+		if !ok {
+			continue
+		}
+		if len(filter.SkillIDs) > 0 && !overlaps(node.Classification.SkillIDs(), filter.SkillIDs) {
+			continue
+		}
+		if len(filter.ConceptIDs) > 0 && !overlaps(node.Classification.ConceptIDs(), filter.ConceptIDs) {
+			continue
+		}
+		return true
+	}
+	return false
+}
+
+func (f *fakeLearningPathRepo) Replace(_ context.Context, p domain.LearningPath) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.byID[p.ID]; !ok {
+		return domain.ErrNotFound
+	}
+	f.byID[p.ID] = p
+	return nil
+}
+
+func (f *fakeLearningPathRepo) ListCreatorCounts(_ context.Context, filter domain.LearningPathFilter) ([]domain.CreatorCount, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	matched := []domain.LearningPath{}
+	for _, p := range f.byID {
+		if f.matches(p, filter) {
+			matched = append(matched, p)
+		}
+	}
+	return countCreators(slices.Values(matched), func(p domain.LearningPath) string { return p.TeacherID }), nil
+}
+
+func (f *fakeLearningPathRepo) UpdateStatus(_ context.Context, id string, status domain.LearningPathStatus) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	p, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	p.Status = status
+	f.byID[id] = p
+	return nil
+}
+
+func (f *fakeLearningPathRepo) Delete(_ context.Context, id string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.byID[id]; !ok {
+		return domain.ErrNotFound
+	}
+	delete(f.byID, id)
+	return nil
+}
+
+type fakeCourseRepo struct {
+	mu   sync.Mutex
+	byID map[string]domain.Course
+
+	// paths, nodes and versions let List resolve the transitive
+	// checkpoint -> learning path -> content node classification join and
+	// the latest published version, as the real repository does in SQL.
+	paths    *fakeLearningPathRepo
+	nodes    *fakeContentNodeRepo
+	versions *fakeCourseVersionRepo
+}
+
+func newFakeCourseRepo(paths *fakeLearningPathRepo, nodes *fakeContentNodeRepo, versions *fakeCourseVersionRepo) *fakeCourseRepo {
+	return &fakeCourseRepo{byID: map[string]domain.Course{}, paths: paths, nodes: nodes, versions: versions}
+}
+
+func (f *fakeCourseRepo) Create(_ context.Context, c domain.Course) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[c.ID] = c
+	return nil
+}
+
+func (f *fakeCourseRepo) GetCreatorIDs(_ context.Context, ids []string) (map[string]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	creators := map[string]string{}
+	for _, id := range ids {
+		if c, ok := f.byID[id]; ok {
+			creators[id] = c.CreatedBy
+		}
+	}
+	return creators, nil
+}
+
+func (f *fakeCourseRepo) GetByID(_ context.Context, id string) (domain.Course, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	c, ok := f.byID[id]
+	if !ok {
+		return domain.Course{}, domain.ErrNotFound
+	}
+	return c, nil
+}
+
+func (f *fakeCourseRepo) List(_ context.Context, filter domain.CourseListFilter, page domain.PageRequest) (domain.Page[domain.Course], error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	type candidate struct {
+		course domain.Course
+		title  string
+	}
+	var matches []candidate
+	for _, c := range f.byID {
+		view := courseView{title: c.Title, summary: c.Summary, level: c.Level, language: c.Language, instrumentIDs: c.InstrumentIDs}
+		checkpointPaths := make([]string, len(c.Checkpoints))
+		for i, cp := range c.Checkpoints {
+			checkpointPaths[i] = cp.LearningPathID
+		}
+		if filter.PublishedView {
+			latest, ok := f.versions.latest(c.ID)
+			if !ok {
+				continue
+			}
+			view = courseView{title: latest.TitleSnapshot, summary: latest.SummarySnapshot, level: latest.LevelSnapshot, language: latest.LanguageSnapshot, instrumentIDs: latest.InstrumentIDsSnapshot}
+			checkpointPaths = checkpointPaths[:0]
+			for _, cp := range latest.Checkpoints {
+				checkpointPaths = append(checkpointPaths, cp.LearningPathID)
+			}
+		}
+
+		if filter.Status != nil && c.Status != *filter.Status {
+			continue
+		}
+		if filter.CreatedBy != "" && c.CreatedBy != filter.CreatedBy {
+			continue
+		}
+		if len(filter.Levels) > 0 && !containsLevel(filter.Levels, view.level) {
+			continue
+		}
+		if filter.Language != "" && view.language != filter.Language {
+			continue
+		}
+		if !forInstrument(view.instrumentIDs, filter.InstrumentID) {
+			continue
+		}
+		if !containsFold(view.title, filter.Query) && !containsFold(view.summary, filter.Query) {
+			continue
+		}
+		if !f.classified(checkpointPaths, filter.SkillIDs, filter.ConceptIDs) {
+			continue
+		}
+		matches = append(matches, candidate{course: c, title: view.title})
+	}
+	sortListed(matches, filter.Sort, func(m candidate) (string, time.Time, string) { return m.title, m.course.UpdatedAt, m.course.ID })
+	courses := make([]domain.Course, len(matches))
+	for i, m := range matches {
+		courses[i] = m.course
+	}
+	return paginate(courses, page), nil
+}
+
+// courseView is the text and level a course's filters and ordering read —
+// the live draft's, or the latest published version's snapshot.
+type courseView struct {
+	title, summary, language string
+	level                    domain.DifficultyLevel
+	instrumentIDs            []string
+}
+
+// forInstrument states the instrument filter rule in memory: no filter
+// matches everything, and an item with no instruments suits every
+// instrument.
+func forInstrument(instrumentIDs []string, instrumentID string) bool {
+	return instrumentID == "" || len(instrumentIDs) == 0 || slices.Contains(instrumentIDs, instrumentID)
+}
+
+func containsLevel(levels []domain.DifficultyLevel, level domain.DifficultyLevel) bool {
+	for _, l := range levels {
+		if l == level {
+			return true
+		}
+	}
+	return false
+}
+
+// classified reports whether some content node in one of pathIDs' learning
+// paths is linked to any of skillIDs and — when both are given — any of
+// conceptIDs. True when neither is given.
+func (f *fakeCourseRepo) classified(pathIDs, skillIDs, conceptIDs []string) bool {
+	if len(skillIDs) == 0 && len(conceptIDs) == 0 {
+		return true
+	}
+	for _, pathID := range pathIDs {
+		path, ok := f.paths.byID[pathID]
+		if !ok {
+			continue
+		}
+		for _, item := range path.Items {
+			node, ok := f.nodes.byID[item.ContentNodeID]
+			if !ok {
+				continue
+			}
+			if len(skillIDs) > 0 && !overlaps(node.Classification.SkillIDs(), skillIDs) {
+				continue
+			}
+			if len(conceptIDs) > 0 && !overlaps(node.Classification.ConceptIDs(), conceptIDs) {
+				continue
+			}
+			return true
+		}
+	}
+	return false
+}
+
+func overlaps(have, want []string) bool {
+	for _, id := range want {
+		if containsID(have, id) {
+			return true
+		}
+	}
+	return false
+}
+
+// ListCreatorCounts applies the same filters as List, over every matching
+// course.
+func (f *fakeCourseRepo) ListCreatorCounts(ctx context.Context, filter domain.CourseListFilter) ([]domain.CreatorCount, error) {
+	f.mu.Lock()
+	all := len(f.byID)
+	f.mu.Unlock()
+	matches, err := f.List(ctx, filter, domain.PageRequest{Limit: all + 1})
+	if err != nil {
+		return nil, err
+	}
+	return countCreators(slices.Values(matches.Items), func(c domain.Course) string { return c.CreatedBy }), nil
+}
+
+func (f *fakeCourseRepo) Replace(_ context.Context, c domain.Course) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.byID[c.ID]; !ok {
+		return domain.ErrNotFound
+	}
+	f.byID[c.ID] = c
+	return nil
+}
+
+func (f *fakeCourseRepo) put(c domain.Course) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[c.ID] = c
+}
+
+func (f *fakeCourseRepo) UpdateStatus(_ context.Context, id string, status domain.CourseStatus, updatedAt time.Time) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	c, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	c.Status = status
+	c.UpdatedAt = updatedAt
+	f.byID[id] = c
+	return nil
+}
+
+type fakeCourseVersionRepo struct {
+	mu       sync.Mutex
+	byCourse map[string][]domain.CourseVersion
+}
+
+func newFakeCourseVersionRepo() *fakeCourseVersionRepo {
+	return &fakeCourseVersionRepo{byCourse: map[string][]domain.CourseVersion{}}
+}
+
+func (f *fakeCourseVersionRepo) Create(_ context.Context, v domain.CourseVersion) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byCourse[v.CourseID] = append(f.byCourse[v.CourseID], v)
+	return nil
+}
+
+// latest returns courseID's highest-numbered version, and false if it has
+// never been published.
+func (f *fakeCourseVersionRepo) latest(courseID string) (domain.CourseVersion, bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	versions := f.byCourse[courseID]
+	if len(versions) == 0 {
+		return domain.CourseVersion{}, false
+	}
+	latest := versions[0]
+	for _, v := range versions[1:] {
+		if v.VersionNumber > latest.VersionNumber {
+			latest = v
+		}
+	}
+	return latest, true
+}
+
+func (f *fakeCourseVersionRepo) GetLatestByCourseID(_ context.Context, courseID string) (domain.CourseVersion, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	versions := f.byCourse[courseID]
+	if len(versions) == 0 {
+		return domain.CourseVersion{}, domain.ErrNotFound
+	}
+	latest := versions[0]
+	for _, v := range versions[1:] {
+		if v.VersionNumber > latest.VersionNumber {
+			latest = v
+		}
+	}
+	return latest, nil
+}
+
+func (f *fakeCourseVersionRepo) GetByCourseIDAndVersionNumber(_ context.Context, courseID string, versionNumber int) (domain.CourseVersion, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, version := range f.byCourse[courseID] {
+		if version.VersionNumber == versionNumber {
+			return version, nil
+		}
+	}
+	return domain.CourseVersion{}, domain.ErrNotFound
+}
+
+func (f *fakeCourseVersionRepo) GetLatestByCourseIDs(_ context.Context, courseIDs []string) (map[string]domain.CourseVersion, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := make(map[string]domain.CourseVersion, len(courseIDs))
+	for _, courseID := range courseIDs {
+		versions := f.byCourse[courseID]
+		if len(versions) == 0 {
+			continue
+		}
+		latest := versions[0]
+		for _, v := range versions[1:] {
+			if v.VersionNumber > latest.VersionNumber {
+				latest = v
+			}
+		}
+		result[courseID] = latest
+	}
+	return result, nil
+}
+
+func (f *fakeCourseVersionRepo) IsLearningPathReferenced(_ context.Context, learningPathID string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, versions := range f.byCourse {
+		for _, v := range versions {
+			for _, cp := range v.Checkpoints {
+				if cp.LearningPathID == learningPathID {
+					return true, nil
+				}
+			}
+		}
+	}
+	return false, nil
+}
+
+type fakeStudentPathRepo struct {
+	mu   sync.Mutex
+	byID map[string]domain.StudentPath
+}
+
+func newFakeStudentPathRepo() *fakeStudentPathRepo {
+	return &fakeStudentPathRepo{byID: map[string]domain.StudentPath{}}
+}
+
+// Create refuses a second active standalone copy of a template for the same
+// student, the way the store's unique index does.
+func (f *fakeStudentPathRepo) Create(_ context.Context, p domain.StudentPath) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if p.SourceCourseEnrollmentID == nil && p.ArchivedAt == nil {
+		if _, ok := f.activeStandaloneLocked(p.StudentID, p.SourceTemplateID); ok {
+			return domain.ErrAlreadyExists
+		}
+	}
+	f.byID[p.ID] = p
+	return nil
+}
+
+// put overwrites an existing copy in place, the way an edit to a student's
+// own copy would.
+func (f *fakeStudentPathRepo) FirstGivenByStudentIDs(_ context.Context, studentIDs []string) (map[string]domain.StudentPath, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	first := map[string]domain.StudentPath{}
+	for _, p := range f.byID {
+		if !slices.Contains(studentIDs, p.StudentID) {
+			continue
+		}
+		current, ok := first[p.StudentID]
+		if !ok || p.AssignedAt.Before(current.AssignedAt) || (p.AssignedAt.Equal(current.AssignedAt) && p.ID < current.ID) {
+			first[p.StudentID] = p
+		}
+	}
+	return first, nil
+}
+
+func (f *fakeStudentPathRepo) put(p domain.StudentPath) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[p.ID] = p
+}
+
+func (f *fakeStudentPathRepo) FindActiveStandalone(_ context.Context, studentID, templateID string) (domain.StudentPath, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if p, ok := f.activeStandaloneLocked(studentID, templateID); ok {
+		return p, nil
+	}
+	return domain.StudentPath{}, domain.ErrNotFound
+}
+
+func (f *fakeStudentPathRepo) activeStandaloneLocked(studentID, templateID string) (domain.StudentPath, bool) {
+	for _, p := range f.byID {
+		if p.StudentID == studentID && p.SourceTemplateID == templateID && p.ArchivedAt == nil && p.SourceCourseEnrollmentID == nil {
+			return p, true
+		}
+	}
+	return domain.StudentPath{}, false
+}
+
+func (f *fakeStudentPathRepo) GetByID(_ context.Context, id string) (domain.StudentPath, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	p, ok := f.byID[id]
+	if !ok {
+		return domain.StudentPath{}, domain.ErrNotFound
+	}
+	return p, nil
+}
+
+func (f *fakeStudentPathRepo) ListActiveStandaloneByStudentID(_ context.Context, studentID string) ([]domain.StudentPath, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var result []domain.StudentPath
+	for _, p := range f.byID {
+		if p.StudentID == studentID && p.ArchivedAt == nil && p.SourceCourseEnrollmentID == nil {
+			result = append(result, p)
+		}
+	}
+	return result, nil
+}
+
+func (f *fakeStudentPathRepo) ListStandaloneByStudentID(_ context.Context, studentID string) ([]domain.StudentPath, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := []domain.StudentPath{}
+	for _, p := range f.byID {
+		if p.StudentID == studentID && p.SourceCourseEnrollmentID == nil {
+			result = append(result, p)
+		}
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i].AssignedAt.After(result[j].AssignedAt) })
+	return result, nil
+}
+
+func (f *fakeStudentPathRepo) ListByCourseEnrollmentID(_ context.Context, courseEnrollmentID string) ([]domain.StudentPath, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := []domain.StudentPath{}
+	for _, p := range f.byID {
+		if p.SourceCourseEnrollmentID != nil && *p.SourceCourseEnrollmentID == courseEnrollmentID && p.ArchivedAt == nil {
+			result = append(result, p)
+		}
+	}
+	sort.Slice(result, func(i, j int) bool { return *result[i].CourseCheckpointPosition < *result[j].CourseCheckpointPosition })
+	return result, nil
+}
+
+func (f *fakeStudentPathRepo) ReplaceContent(_ context.Context, path domain.StudentPath) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	stored, ok := f.byID[path.ID]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	stored.Title = path.Title
+	stored.SummarySnapshot = path.SummarySnapshot
+	stored.LevelSnapshot = path.LevelSnapshot
+	stored.ThumbnailURLSnapshot = path.ThumbnailURLSnapshot
+	stored.CreatedBySnapshot = path.CreatedBySnapshot
+	stored.CourseCheckpointPosition = path.CourseCheckpointPosition
+	stored.Items = append([]domain.StudentPathItemRecord(nil), path.Items...)
+	f.byID[path.ID] = stored
+	return nil
+}
+
+func (f *fakeStudentPathRepo) Archive(_ context.Context, id string, archivedAt time.Time) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	p, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	p.ArchivedAt = &archivedAt
+	f.byID[id] = p
+	return nil
+}
+
+type fakeContentNodeVersionRepo struct {
+	mu     sync.Mutex
+	byNode map[string][]domain.ContentNodeVersion
+}
+
+func newFakeContentNodeVersionRepo() *fakeContentNodeVersionRepo {
+	return &fakeContentNodeVersionRepo{byNode: map[string][]domain.ContentNodeVersion{}}
+}
+
+func (f *fakeContentNodeVersionRepo) Create(_ context.Context, v domain.ContentNodeVersion) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byNode[v.ContentNodeID] = append(f.byNode[v.ContentNodeID], v)
+	return nil
+}
+
+func (f *fakeContentNodeVersionRepo) ListByContentNodeID(_ context.Context, contentNodeID string) ([]domain.ContentNodeVersion, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := append([]domain.ContentNodeVersion{}, f.byNode[contentNodeID]...)
+	sort.Slice(result, func(i, j int) bool { return result[i].VersionNumber > result[j].VersionNumber })
+	return result, nil
+}
+
+func (f *fakeContentNodeVersionRepo) GetLatestByContentNodeID(_ context.Context, contentNodeID string) (domain.ContentNodeVersion, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	versions := f.byNode[contentNodeID]
+	if len(versions) == 0 {
+		return domain.ContentNodeVersion{}, domain.ErrNotFound
+	}
+	latest := versions[0]
+	for _, v := range versions[1:] {
+		if v.VersionNumber > latest.VersionNumber {
+			latest = v
+		}
+	}
+	return latest, nil
+}
+
+type fakeStudentLearningStateRepo struct {
+	mu        sync.Mutex
+	byStudent map[string]domain.StudentLearningState
+}
+
+func newFakeStudentLearningStateRepo() *fakeStudentLearningStateRepo {
+	return &fakeStudentLearningStateRepo{byStudent: map[string]domain.StudentLearningState{}}
+}
+
+func (f *fakeStudentLearningStateRepo) GetByStudentID(_ context.Context, studentID string) (domain.StudentLearningState, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	s, ok := f.byStudent[studentID]
+	if !ok {
+		return domain.StudentLearningState{}, domain.ErrNotFound
+	}
+	return s, nil
+}
+
+func (f *fakeStudentLearningStateRepo) Upsert(_ context.Context, s domain.StudentLearningState) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byStudent[s.StudentID] = s
+	return nil
+}
+
+type fakeCourseEnrollmentRepo struct {
+	mu   sync.Mutex
+	byID map[string]domain.CourseEnrollment
+}
+
+func newFakeCourseEnrollmentRepo() *fakeCourseEnrollmentRepo {
+	return &fakeCourseEnrollmentRepo{byID: map[string]domain.CourseEnrollment{}}
+}
+
+func (f *fakeCourseEnrollmentRepo) Create(_ context.Context, e domain.CourseEnrollment) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[e.ID] = e
+	return nil
+}
+
+func (f *fakeCourseEnrollmentRepo) GetByID(_ context.Context, id string) (domain.CourseEnrollment, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	e, ok := f.byID[id]
+	if !ok {
+		return domain.CourseEnrollment{}, domain.ErrNotFound
+	}
+	return e, nil
+}
+
+func (f *fakeCourseEnrollmentRepo) GetActiveByCourseID(_ context.Context, studentID, courseID string) (domain.CourseEnrollment, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, e := range f.byID {
+		if e.StudentID == studentID && e.CourseID == courseID && e.IsActive() {
+			return e, nil
+		}
+	}
+	return domain.CourseEnrollment{}, domain.ErrNotFound
+}
+
+func (f *fakeCourseEnrollmentRepo) ListByStudentID(_ context.Context, studentID string) ([]domain.CourseEnrollment, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var result []domain.CourseEnrollment
+	for _, e := range f.byID {
+		if e.StudentID == studentID {
+			result = append(result, e)
+		}
+	}
+	return result, nil
+}
+
+func (f *fakeCourseEnrollmentRepo) ListActiveByStudentID(_ context.Context, studentID string) ([]domain.CourseEnrollment, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var result []domain.CourseEnrollment
+	for _, e := range f.byID {
+		if e.StudentID == studentID && e.IsActive() {
+			result = append(result, e)
+		}
+	}
+	return result, nil
+}
+
+func (f *fakeCourseEnrollmentRepo) Abandon(_ context.Context, id string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	e, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	e.Status = domain.CourseEnrollmentStatusAbandoned
+	e.ActiveCheckpointStudentPathID = nil
+	e.ActiveCheckpointPosition = nil
+	f.byID[id] = e
+	return nil
+}
+
+func (f *fakeCourseEnrollmentRepo) AdvanceCheckpoint(_ context.Context, id, studentPathID string, position int) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	e, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	e.ActiveCheckpointStudentPathID = &studentPathID
+	e.ActiveCheckpointPosition = &position
+	f.byID[id] = e
+	return nil
+}
+
+func (f *fakeCourseEnrollmentRepo) Repin(_ context.Context, id string, versionNumber int, title string, thumbnailURL *string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	e, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	e.CourseVersionNumber = versionNumber
+	e.CourseTitle = title
+	e.CourseThumbnailURL = thumbnailURL
+	f.byID[id] = e
+	return nil
+}
+
+func (f *fakeCourseEnrollmentRepo) Complete(_ context.Context, id string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	e, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	e.Status = domain.CourseEnrollmentStatusCompleted
+	e.ActiveCheckpointStudentPathID = nil
+	e.ActiveCheckpointPosition = nil
+	f.byID[id] = e
+	return nil
+}
+
+// fakePracticeItemStateReader is an in-memory ports.PracticeItemStateReader
+// standing in for the Aggregation Worker's practice item states.
+type fakePracticeItemStateReader struct {
+	mu     sync.Mutex
+	states map[string]map[string]domain.PracticeItemState
+}
+
+func newFakePracticeItemStateReader() *fakePracticeItemStateReader {
+	return &fakePracticeItemStateReader{states: map[string]map[string]domain.PracticeItemState{}}
+}
+
+func (f *fakePracticeItemStateReader) GetStates(_ context.Context, studentID string, itemKeys []string) (map[string]domain.PracticeItemState, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := map[string]domain.PracticeItemState{}
+	for _, key := range itemKeys {
+		if s, ok := f.states[studentID][key]; ok {
+			result[key] = s
+		}
+	}
+	return result, nil
+}
+
+func (f *fakePracticeItemStateReader) put(studentID string, s domain.PracticeItemState) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.states[studentID] == nil {
+		f.states[studentID] = map[string]domain.PracticeItemState{}
+	}
+	f.states[studentID][s.ItemKey] = s
+}
+
+type fakeCompletionReader struct {
+	mu       sync.Mutex
+	statuses map[string]map[string]domain.CompletionStatus
+}
+
+func newFakeCompletionReader() *fakeCompletionReader {
+	return &fakeCompletionReader{statuses: map[string]map[string]domain.CompletionStatus{}}
+}
+
+func (f *fakeCompletionReader) GetStatuses(_ context.Context, studentID string, contentNodeIDs []string) (map[string]domain.CompletionStatus, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := map[string]domain.CompletionStatus{}
+	for _, id := range contentNodeIDs {
+		if status, ok := f.statuses[studentID][id]; ok {
+			result[id] = status
+		}
+	}
+	return result, nil
+}
+
+func (f *fakeCompletionReader) GetStatusesForStudents(ctx context.Context, idsByStudent map[string][]string) (map[string]map[string]domain.CompletionStatus, error) {
+	result := map[string]map[string]domain.CompletionStatus{}
+	for studentID, ids := range idsByStudent {
+		statuses, err := f.GetStatuses(ctx, studentID, ids)
+		if err != nil {
+			return nil, err
+		}
+		if len(statuses) > 0 {
+			result[studentID] = statuses
+		}
+	}
+	return result, nil
+}
+
+func (f *fakeCompletionReader) set(studentID, contentNodeID string, status domain.CompletionStatus) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.statuses[studentID] == nil {
+		f.statuses[studentID] = map[string]domain.CompletionStatus{}
+	}
+	f.statuses[studentID][contentNodeID] = status
+}
+
+// fakePinger backs the readiness probe. It is the one fake here with an
+// error knob — the service-health feature is entirely about how the probe
+// reports a dependency being reachable or not, so the down state has to be
+// injectable. Zero value = reachable.
+type fakePinger struct {
+	mu  sync.Mutex
+	err error
+}
+
+func (f *fakePinger) setReachable(reachable bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if reachable {
+		f.err = nil
+		return
+	}
+	f.err = errStoreUnreachable
+}
+
+func (f *fakePinger) Ping(context.Context) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.err
+}
+
+var errStoreUnreachable = errors.New("store unreachable")
+
+// fakeMediaStorage backs ports.MediaStorage. Presigning always succeeds —
+// the media-upload feature is about request validation and authorization,
+// not storage-provider failure modes. It remembers the size the last URL
+// was bound to.
+type fakeMediaStorage struct {
+	lastContentLength *int64
+}
+
+func (f *fakeMediaStorage) PresignUpload(_ context.Context, objectKey string, _ domain.MediaContentType, contentLength *int64) (domain.MediaUploadURL, error) {
+	f.lastContentLength = contentLength
+	return domain.MediaUploadURL{
+		UploadURL: "https://storage.example.com/" + objectKey + "?presigned=1",
+		ObjectURL: "https://cdn.example.com/" + objectKey,
+		ExpiresAt: fixedNow.Add(15 * time.Minute),
+	}, nil
+}
+
+// fakeKnowledgeNodeRepo is an in-memory ports.KnowledgeNodeRepository.
+// Usage and ClassifiedInstrumentSets read the other fakes the world wires
+// in, the way the real adapter queries the link tables.
+type fakeKnowledgeNodeRepo struct {
+	mu         sync.Mutex
+	byID       map[string]domain.KnowledgeNode
+	edges      *fakeKnowledgeEdgeRepo
+	nodes      *fakeContentNodeRepo
+	exercises  *fakeExerciseRepo
+	diagrams   *fakeDiagramRepo
+	challenges *fakeChallengeRepo
+}
+
+func newFakeKnowledgeNodeRepo() *fakeKnowledgeNodeRepo {
+	return &fakeKnowledgeNodeRepo{byID: map[string]domain.KnowledgeNode{}}
+}
+
+func (f *fakeKnowledgeNodeRepo) Create(_ context.Context, n domain.KnowledgeNode) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, existing := range f.byID {
+		if existing.Key == n.Key {
+			return domain.ErrAlreadyExists
+		}
+	}
+	f.byID[n.ID] = n
+	return nil
+}
+
+func (f *fakeKnowledgeNodeRepo) GetByID(_ context.Context, id string) (domain.KnowledgeNode, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	n, ok := f.byID[id]
+	if !ok {
+		return domain.KnowledgeNode{}, domain.ErrNotFound
+	}
+	return n, nil
+}
+
+func (f *fakeKnowledgeNodeRepo) GetByIDs(_ context.Context, ids []string) (map[string]domain.KnowledgeNode, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := map[string]domain.KnowledgeNode{}
+	for _, id := range ids {
+		if n, ok := f.byID[id]; ok {
+			result[id] = n
+		}
+	}
+	return result, nil
+}
+
+func (f *fakeKnowledgeNodeRepo) GetByKeys(_ context.Context, keys []string) (map[string]domain.KnowledgeNode, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := map[string]domain.KnowledgeNode{}
+	for _, n := range f.byID {
+		if slices.Contains(keys, n.Key) {
+			result[n.Key] = n
+		}
+	}
+	return result, nil
+}
+
+func (f *fakeKnowledgeNodeRepo) List(_ context.Context, filter ports.KnowledgeNodeFilter) ([]domain.KnowledgeNode, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := []domain.KnowledgeNode{}
+	for _, n := range f.byID {
+		if filter.Kind != nil && n.Kind != *filter.Kind {
+			continue
+		}
+		if len(filter.InstrumentIDs) > 0 && !n.Suits(filter.InstrumentIDs) {
+			continue
+		}
+		result = append(result, n)
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i].Key < result[j].Key })
+	return result, nil
+}
+
+func (f *fakeKnowledgeNodeRepo) Update(_ context.Context, n domain.KnowledgeNode) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.byID[n.ID]; !ok {
+		return domain.ErrNotFound
+	}
+	f.byID[n.ID] = n
+	return nil
+}
+
+func (f *fakeKnowledgeNodeRepo) Delete(_ context.Context, id string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.byID[id]; !ok {
+		return domain.ErrNotFound
+	}
+	delete(f.byID, id)
+	return nil
+}
+
+func (f *fakeKnowledgeNodeRepo) Children(_ context.Context, id string) ([]domain.KnowledgeNode, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var children []domain.KnowledgeNode
+	for _, n := range f.byID {
+		if n.ParentID != nil && *n.ParentID == id {
+			children = append(children, n)
+		}
+	}
+	return children, nil
+}
+
+func (f *fakeKnowledgeNodeRepo) SubtreeIDs(_ context.Context, rootIDs []string) ([]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	below := []string{}
+	frontier := slices.Clone(rootIDs)
+	for len(frontier) > 0 {
+		var next []string
+		for _, n := range f.byID {
+			if n.ParentID != nil && slices.Contains(frontier, *n.ParentID) {
+				below = append(below, n.ID)
+				next = append(next, n.ID)
+			}
+		}
+		frontier = next
+	}
+	return below, nil
+}
+
+func (f *fakeKnowledgeNodeRepo) InSubtree(_ context.Context, rootID, candidateID string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for id := candidateID; ; {
+		if id == rootID {
+			return true, nil
+		}
+		n, ok := f.byID[id]
+		if !ok || n.ParentID == nil {
+			return false, nil
+		}
+		id = *n.ParentID
+	}
+}
+
+func (f *fakeKnowledgeNodeRepo) Usage(_ context.Context, id string) (ports.KnowledgeNodeUsage, error) {
+	var usage ports.KnowledgeNodeUsage
+	f.mu.Lock()
+	for _, n := range f.byID {
+		if n.ParentID != nil && *n.ParentID == id {
+			usage.Children++
+		}
+	}
+	f.mu.Unlock()
+
+	f.edges.mu.Lock()
+	for _, e := range f.edges.byID {
+		if e.FromID == id || e.ToID == id {
+			usage.Edges++
+		}
+	}
+	f.edges.mu.Unlock()
+
+	f.nodes.mu.Lock()
+	for _, n := range f.nodes.byID {
+		if classifiedBy(id, n.Classification.Skills, n.Classification.Concepts) {
+			usage.ContentNodes++
+		}
+	}
+	f.nodes.mu.Unlock()
+
+	f.exercises.mu.Lock()
+	for _, e := range f.exercises.byID {
+		if classifiedBy(id, e.Skills, e.Concepts) {
+			usage.Exercises++
+		}
+	}
+	f.exercises.mu.Unlock()
+
+	f.diagrams.mu.Lock()
+	for _, d := range f.diagrams.byID {
+		if classifiedBy(id, d.Skills, d.Concepts) {
+			usage.Diagrams++
+		}
+	}
+	f.diagrams.mu.Unlock()
+
+	f.challenges.mu.Lock()
+	for _, c := range f.challenges.byID {
+		if c.SubjectSkillID != nil && *c.SubjectSkillID == id || c.SubjectConceptID != nil && *c.SubjectConceptID == id {
+			usage.Challenges++
+		}
+	}
+	f.challenges.mu.Unlock()
+	return usage, nil
+}
+
+func (f *fakeKnowledgeNodeRepo) ClassifiedInstrumentSets(_ context.Context, id string) ([][]string, error) {
+	var sets [][]string
+	f.nodes.mu.Lock()
+	for _, n := range f.nodes.byID {
+		if classifiedBy(id, n.Classification.Skills, n.Classification.Concepts) {
+			sets = append(sets, n.InstrumentIDs)
+		}
+	}
+	f.nodes.mu.Unlock()
+	f.diagrams.mu.Lock()
+	for _, d := range f.diagrams.byID {
+		if classifiedBy(id, d.Skills, d.Concepts) {
+			sets = append(sets, d.InstrumentIDs)
+		}
+	}
+	f.diagrams.mu.Unlock()
+	f.exercises.mu.Lock()
+	for _, e := range f.exercises.byID {
+		if classifiedBy(id, e.Skills, e.Concepts) {
+			sets = append(sets, e.InstrumentIDs)
+		}
+	}
+	f.exercises.mu.Unlock()
+	return sets, nil
+}
+
+func (f *fakeKnowledgeNodeRepo) put(n domain.KnowledgeNode) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[n.ID] = n
+}
+
+// resolve replaces each of nodes (which may carry only an id, as the domain
+// constructors' placeholders do) with its full record — mirroring the real
+// adapter's join on read.
+func (f *fakeKnowledgeNodeRepo) resolve(nodes []domain.KnowledgeNode) []domain.KnowledgeNode {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	resolved := make([]domain.KnowledgeNode, len(nodes))
+	for i, n := range nodes {
+		if full, ok := f.byID[n.ID]; ok {
+			resolved[i] = full
+		} else {
+			resolved[i] = n
+		}
+	}
+	return resolved
+}
+
+// classifiedBy reports whether id is among skills or concepts.
+func classifiedBy(id string, skills, concepts []domain.KnowledgeNode) bool {
+	has := func(n domain.KnowledgeNode) bool { return n.ID == id }
+	return slices.ContainsFunc(skills, has) || slices.ContainsFunc(concepts, has)
+}
+
+// fakeKnowledgeEdgeRepo is an in-memory ports.KnowledgeEdgeRepository.
+type fakeKnowledgeEdgeRepo struct {
+	mu   sync.Mutex
+	byID map[string]domain.KnowledgeEdge
+}
+
+func newFakeKnowledgeEdgeRepo() *fakeKnowledgeEdgeRepo {
+	return &fakeKnowledgeEdgeRepo{byID: map[string]domain.KnowledgeEdge{}}
+}
+
+func (f *fakeKnowledgeEdgeRepo) Create(_ context.Context, e domain.KnowledgeEdge) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, existing := range f.byID {
+		if existing.FromID == e.FromID && existing.ToID == e.ToID && existing.Type == e.Type {
+			return domain.ErrAlreadyExists
+		}
+	}
+	f.byID[e.ID] = e
+	return nil
+}
+
+func (f *fakeKnowledgeEdgeRepo) GetByID(_ context.Context, id string) (domain.KnowledgeEdge, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	e, ok := f.byID[id]
+	if !ok {
+		return domain.KnowledgeEdge{}, domain.ErrNotFound
+	}
+	return e, nil
+}
+
+func (f *fakeKnowledgeEdgeRepo) List(_ context.Context, filter ports.KnowledgeEdgeFilter) ([]domain.KnowledgeEdge, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := []domain.KnowledgeEdge{}
+	for _, e := range f.byID {
+		if filter.Type != nil && e.Type != *filter.Type ||
+			filter.FromID != nil && e.FromID != *filter.FromID ||
+			filter.ToID != nil && e.ToID != *filter.ToID {
+			continue
+		}
+		result = append(result, e)
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i].ID < result[j].ID })
+	return result, nil
+}
+
+func (f *fakeKnowledgeEdgeRepo) UpdateLevel(_ context.Context, e domain.KnowledgeEdge) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.byID[e.ID]; !ok {
+		return domain.ErrNotFound
+	}
+	f.byID[e.ID] = e
+	return nil
+}
+
+func (f *fakeKnowledgeEdgeRepo) Delete(_ context.Context, id string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.byID[id]; !ok {
+		return domain.ErrNotFound
+	}
+	delete(f.byID, id)
+	return nil
+}
+
+func (f *fakeKnowledgeEdgeRepo) RequiresPathExists(_ context.Context, fromID, toID string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	seen := map[string]bool{}
+	frontier := []string{fromID}
+	for len(frontier) > 0 {
+		id := frontier[0]
+		frontier = frontier[1:]
+		if id == toID {
+			return true, nil
+		}
+		if seen[id] {
+			continue
+		}
+		seen[id] = true
+		for _, e := range f.byID {
+			if e.Type == domain.KnowledgeEdgeTypeRequires && e.FromID == id {
+				frontier = append(frontier, e.ToID)
+			}
+		}
+	}
+	return false, nil
+}
+
+type fakeInstrumentRepo struct {
+	mu   sync.Mutex
+	byID map[string]domain.Instrument
+}
+
+func newFakeInstrumentRepo() *fakeInstrumentRepo {
+	return &fakeInstrumentRepo{byID: map[string]domain.Instrument{}}
+}
+
+func (f *fakeInstrumentRepo) Create(_ context.Context, i domain.Instrument) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[i.ID] = i
+	return nil
+}
+
+func (f *fakeInstrumentRepo) GetByID(_ context.Context, id string) (domain.Instrument, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	i, ok := f.byID[id]
+	if !ok {
+		return domain.Instrument{}, domain.ErrNotFound
+	}
+	return i, nil
+}
+
+func (f *fakeInstrumentRepo) List(_ context.Context) ([]domain.Instrument, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := make([]domain.Instrument, 0, len(f.byID))
+	for _, i := range f.byID {
+		result = append(result, i)
+	}
+	sort.Slice(result, func(a, b int) bool { return result[a].ID < result[b].ID })
+	return result, nil
+}
+
+func (f *fakeInstrumentRepo) Update(_ context.Context, i domain.Instrument) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	instrument, ok := f.byID[i.ID]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	instrument.Names, instrument.DefaultVoiceID, instrument.Icon = i.Names, i.DefaultVoiceID, i.Icon
+	f.byID[i.ID] = instrument
+	return nil
+}
+
+// fakeVoiceRepo is an in-memory ports.VoiceRepository, starting with the
+// voices the platform's migrations provide.
+type fakeVoiceRepo struct {
+	mu   sync.Mutex
+	byID map[string]domain.Voice
+}
+
+func newFakeVoiceRepo() *fakeVoiceRepo {
+	f := &fakeVoiceRepo{byID: map[string]domain.Voice{}}
+	f.put(domain.Voice{ID: "acoustic-guitar", Names: domain.LocalizedText{"en": "Acoustic guitar", "pt_BR": "Violão"}, Family: domain.InstrumentFamilyFretted,
+		Pitches: []int{46, 40, 43}, Attribution: "Acoustic guitar samples from tonejs-instruments, CC BY 3.0"})
+	f.put(domain.Voice{ID: "electric-bass", Names: domain.LocalizedText{"en": "Electric bass", "pt_BR": "Contrabaixo elétrico"}, Family: domain.InstrumentFamilyFretted,
+		Pitches: []int{28, 31, 34, 37}, Attribution: "Electric bass samples from tonejs-instruments by Nicholaus Brosowsky, CC BY 3.0"})
+	f.put(domain.Voice{ID: "piano", Names: domain.LocalizedText{"en": "Piano", "pt_BR": "Piano"}, Family: domain.InstrumentFamilyKeyboard,
+		Pitches: []int{21, 24, 27}, Attribution: "Piano samples from tonejs-instruments, CC BY 3.0"})
+	return f
+}
+
+func (f *fakeVoiceRepo) GetByID(_ context.Context, id string) (domain.Voice, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	v, ok := f.byID[id]
+	if !ok {
+		return domain.Voice{}, domain.ErrNotFound
+	}
+	return v, nil
+}
+
+func (f *fakeVoiceRepo) List(_ context.Context) ([]domain.Voice, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := make([]domain.Voice, 0, len(f.byID))
+	for _, v := range f.byID {
+		result = append(result, v)
+	}
+	sort.Slice(result, func(a, b int) bool { return result[a].ID < result[b].ID })
+	return result, nil
+}
+
+func (f *fakeVoiceRepo) put(v domain.Voice) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[v.ID] = v
+}
+
+func (f *fakeInstrumentRepo) put(i domain.Instrument) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[i.ID] = i
+}
+
+type fakeDiagramRepo struct {
+	mu        sync.Mutex
+	byID      map[string]domain.Diagram
+	knowledge *fakeKnowledgeNodeRepo
+}
+
+func newFakeDiagramRepo(knowledge *fakeKnowledgeNodeRepo) *fakeDiagramRepo {
+	return &fakeDiagramRepo{byID: map[string]domain.Diagram{}, knowledge: knowledge}
+}
+
+// resolveClassification replaces d.Skills/Concepts (id-only until read
+// back) with the full records from f.knowledge — mirroring the real
+// ent adapter's WithSkills()/WithConcepts() join on read.
+func (f *fakeDiagramRepo) resolveClassification(d domain.Diagram) domain.Diagram {
+	d.Skills, d.Concepts = f.knowledge.resolve(d.Skills), f.knowledge.resolve(d.Concepts)
+	return d
+}
+
+func (f *fakeDiagramRepo) Create(_ context.Context, d domain.Diagram) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[d.ID] = d
+	return nil
+}
+
+func (f *fakeDiagramRepo) GetByID(_ context.Context, id string) (domain.Diagram, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	d, ok := f.byID[id]
+	if !ok {
+		return domain.Diagram{}, domain.ErrNotFound
+	}
+	return f.resolveClassification(d), nil
+}
+
+func (f *fakeDiagramRepo) GetByIDs(ctx context.Context, ids []string) (map[string]domain.Diagram, error) {
+	found := map[string]domain.Diagram{}
+	for _, id := range ids {
+		if d, err := f.GetByID(ctx, id); err == nil {
+			found[id] = d
+		}
+	}
+	return found, nil
+}
+
+func (f *fakeDiagramRepo) List(_ context.Context, filter domain.DiagramListFilter, page domain.PageRequest) (domain.Page[domain.Diagram], error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	matched := []domain.Diagram{}
+	for _, d := range f.byID {
+		if filter.Matches(d) {
+			matched = append(matched, f.resolveClassification(d))
+		}
+	}
+	sortListed(matched, filter.Sort, func(d domain.Diagram) (string, time.Time, string) {
+		return d.Names.Resolve(filter.Locale), d.UpdatedAt, d.ID
+	})
+	return paginate(matched, page), nil
+}
+
+func (f *fakeDiagramRepo) ListCreatorCounts(_ context.Context, filter domain.DiagramListFilter) ([]domain.CreatorCount, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	matched := []domain.Diagram{}
+	for _, d := range f.byID {
+		if filter.Matches(d) {
+			matched = append(matched, d)
+		}
+	}
+	return countCreators(slices.Values(matched), func(d domain.Diagram) string { return d.CreatedBy }), nil
+}
+
+func (f *fakeDiagramRepo) Update(_ context.Context, d domain.Diagram) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.byID[d.ID]; !ok {
+		return domain.ErrNotFound
+	}
+	f.byID[d.ID] = d
+	return nil
+}
+
+func (f *fakeDiagramRepo) put(d domain.Diagram) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[d.ID] = d
+}
+
+// discardPracticeReferences is a ports.PracticeReferenceWriter that keeps
+// nothing: no feature reads the practice reference snapshot through core.
+type discardPracticeReferences struct{}
+
+func (discardPracticeReferences) PutDiagrams(context.Context, []domain.DiagramReference) error {
+	return nil
+}
+
+func (discardPracticeReferences) PutExercises(context.Context, []domain.ExerciseReference) error {
+	return nil
+}
+
+func (discardPracticeReferences) PutDrillThresholds(context.Context, []domain.DrillThreshold) error {
+	return nil
+}
+
+func (discardPracticeReferences) PutChangeTargets(context.Context, []domain.ChangeTarget) error {
+	return nil
+}
+
+func (discardPracticeReferences) PutInstruments(context.Context, []domain.InstrumentReference) error {
+	return nil
+}
+
+func (discardPracticeReferences) PutProgressions(context.Context, []domain.Progression) error {
+	return nil
+}
+
+// sortListed orders items the way the repositories order a list: by sort's
+// key — title or most recent change first — then by id.
+func sortListed[T any](items []T, order domain.ListSort, key func(T) (title string, updatedAt time.Time, id string)) {
+	sort.Slice(items, func(i, j int) bool {
+		ti, ui, ii := key(items[i])
+		tj, uj, ij := key(items[j])
+		if order == domain.ListSortUpdated && !ui.Equal(uj) {
+			return ui.After(uj)
+		}
+		if order != domain.ListSortUpdated && ti != tj {
+			return ti < tj
+		}
+		return ii < ij
+	})
+}
+
+// countCreators counts items per non-empty creator, the shape every
+// ListCreatorCounts returns.
+func countCreators[T any](items iter.Seq[T], creator func(T) string) []domain.CreatorCount {
+	byCreator := map[string]int{}
+	order := []string{}
+	for item := range items {
+		id := creator(item)
+		if id == "" {
+			continue
+		}
+		if byCreator[id] == 0 {
+			order = append(order, id)
+		}
+		byCreator[id]++
+	}
+	counts := make([]domain.CreatorCount, 0, len(order))
+	for _, id := range order {
+		counts = append(counts, domain.CreatorCount{UserID: id, Count: byCreator[id]})
+	}
+	return counts
+}
+
+func knowledgeIDs(nodes []domain.KnowledgeNode) []string {
+	ids := make([]string, len(nodes))
+	for i, n := range nodes {
+		ids[i] = n.ID
+	}
+	return ids
+}
+
+func (f *fakeExerciseRepo) ListSoundUses(_ context.Context, diagramID string) ([]domain.ExerciseSoundUse, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var uses []domain.ExerciseSoundUse
+	for _, e := range f.byID {
+		uses = append(uses, e.SoundUses(diagramID)...)
+	}
+	return uses, nil
+}

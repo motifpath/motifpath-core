@@ -5,7 +5,7 @@ Go monorepo containing two backend services:
 - `services/core-domain/` — Learning graph, student paths, threshold logic (Postgres via ent ORM)
 - `services/event-ingestion/` — Domain event collection and storage (MongoDB Atlas)
 
-Shared tooling at monorepo root: Makefile, devbox.json, .golangci.yml, docker-compose.yml
+Shared tooling at monorepo root: Makefile, mise.toml, .golangci.yml, docker-compose.yml
 
 ## Hexagonal Architecture (both services)
 ```
@@ -31,9 +31,19 @@ Core entities:
 - **StudentPath** — tracks node states (locked / unlocked / in_progress) per student
 - **ThresholdOverride** — a teacher-set custom threshold for a specific student on a specific node
 
-Seven tracking events (client-emitted; defined in openapi/components/schemas/events.yaml):
+Tracking events (client-emitted; defined in openapi/components/schemas/events.yaml):
   lesson.started, lesson.resumed, lesson.completed
-  exercise.started, exercise.progress, exercise.answer_sent, exercise.ended
+  exercise.started, exercise.progress, exercise.ended (an exercise's answers are
+  practice.item_answered, wherever it is answered)
+  practice.session_started, practice.item_answered, practice.session_ended,
+  practice.tap_check_completed — event-ingestion stamps the student's latest tap time
+  (tap_ms) on timed practice.item_answered events; a client-sent tap_ms is ignored
+  song_chart.opened, song_chart.chord_viewed, song_chart.completed — what students do in
+  a song chart's reader; stored and published. The aggregation worker keeps every
+  song_chart.completed raw (song_chart_completions), from which core-domain counts songs
+  played; the other two only move last activity (below)
+  Every event, of any type, moves the student's last activity (`student_activity`, latest
+  occurred_at); lesson.* events also keep a node's first start (`aggregates.started_at`)
 
 Threshold logic: if a ThresholdOverride exists for a student+node pair, it takes
 precedence over the Node's default threshold. ALWAYS apply this rule in the application layer.
@@ -51,6 +61,12 @@ NEVER bypass with `//nolint` without an inline comment explaining the specific r
 Run `make lint` before committing — do not wait for CI to catch lint errors.
 ALWAYS handle errors explicitly — NEVER use blank identifier `_` on error returns.
 NEVER use `interface{}` or `any` — define explicit types.
+NEVER reference an ADR, backlog item (PB-NNN), ticket, or spec file by name/number in a code
+comment — state the invariant, constraint, or reason in the comment's own words instead. A doc
+reference goes stale the moment that document is archived or renumbered, and forces every future
+reader (human or AI) into an external lookup to understand code sitting in front of them. Doc
+references belong in commit messages and PR descriptions, which are allowed to age — never in
+the comment itself.
 
 ## Layering Rules
 NEVER put business logic in HTTP handlers — handlers call application services only.
@@ -66,6 +82,57 @@ NEVER access the database directly from the domain layer.
 - `make test:int`      → run integration tests via testcontainers
 - `make lint`          → run golangci-lint
 - `make dev`           → start local dependencies via docker-compose (Redpanda, Postgres, MongoDB)
+- `make db:reset`      → wipe the local dev Postgres, re-migrate from scratch, and repopulate via
+  `cmd/seed-full` (every `CourseStatus`, every `CourseEnrollmentStatus`, standalone paths current
+  and archived, every `ExerciseType`, a diagram library of demo basic templates and two
+  teachers' custom diagrams, lessons with cues, pop-ups and a version history, a bootstrapped admin's path that walks
+  through every article-lesson state (review, paragraph cues, diagram-first, Practise this, language-locked), and three public-domain song charts: published
+  with a corrected draft, withdrawn, and a draft whose chords don't all resolve; their preview links are logged). Reference
+  data — languages, voices, the catalog instruments, the knowledge map, the basic guitar
+  diagram catalog, the practice drill catalog, the chord catalog and the progression catalog — comes only from migrations, with fixed IDs; seeds look it up (knowledge
+  nodes by key) and never create it. Hard-refuses to run unless `DATABASE_URL`/`MONGO_URI`
+  resolve to `localhost`/`127.0.0.1` — no override exists; see `scripts/db-reset.sh`. **Never run
+  against anything but a local dev database.** Back up any real (Clerk-linked) user rows first —
+  `pg_dump -t users --data-only --inserts` — since reset wipes them; restore by re-inserting with
+  `locale_id` resolved by language `code` (fresh rows get new random UUIDs). `display_name` is
+  required: a dump taken before that column existed has `INSERT`s without it, which are refused —
+  add a `display_name` to each restored row (any non-blank value; the user's real name replaces it
+  on their next sign-in), or skip restoring your own admin and let `ADMIN_CLERK_USER_ID` recreate it
+  with its real Clerk name. Pass
+  `ADMIN_CLERK_USER_ID=<your clerk user id>` to also bootstrap your own real identity as admin —
+  self-registration can never create an admin role (`domain.NewUser` refuses it), so this goes
+  through the user repository directly, the same way a hand-run SQL insert would.
+  It finishes by uploading the voice samples diagrams play with (`scripts/voice-samples.sh`).
+  Rendering them needs ffmpeg and Bash 4+, which mise doesn't provide: without them (and no
+  `.voice-samples/` cache) the reset still succeeds but warns, and diagrams stay silent;
+  see README → Voice samples.
+- `go run ./cmd/seed-dev-data` → seeds one realistic path for whichever student already exists
+  (sign in once through the SPA first). Lighter than `db:reset` + `seed-full`; doesn't touch
+  courses.
+- `go run ./cmd/seed-full`     → the comprehensive seeder `db:reset` runs; safe to run standalone
+  against an already-fresh, fully migrated database, but not idempotent against one with prior
+  seed data (its synthetic users collide on a second run).
+- `go run ./cmd/sync-practice-reference` → rebuilds MongoDB's `practice_reference` snapshot the
+  worker's practice graders read (ADR-047). The service runs it on every start and `db:reset` after seeding; diagram
+  create/update keep it current. Every new write path for a snapshotted kind must call the writer.
+- Reference data is one generated migration, `baseline_reference_data`, never hand-edited:
+  `scripts/reference_data/build.py` writes it right after `baseline_schema`, in dependency order,
+  from the generators that own each part — `scripts/knowledge_map` compiles motifpath-specs
+  `catalogs/knowledge-map.yaml` (catalog instruments, their icons + knowledge map),
+  `scripts/diagram_catalog` the basic guitar catalog and `scripts/practice_drills`
+  `catalogs/practice-drills.yaml` (drill templates, versioned fluent times and the fretboard cell
+  ranges, checked against the knowledge map). Languages and voices have no generator and are
+  carried in `scripts/reference_data/languages_and_voices.sql`. The chord catalog
+  (`scripts/chord_catalog`, from motifpath-specs `catalogs/chord-voicings.yaml`) needs tables
+  added after the baseline, so the same build writes it as a second generated migration,
+  `chord_catalog_reference_data`, one second after the `chord_catalog` migration; every voicing
+  passes the musical validator first. The drill catalog's diagram shapes (each `diagram_shapes`
+  family takes the basic-guitar diagrams whose key matches its pattern) are a third,
+  `diagram_shapes_reference_data`, one second after the `diagram_shapes` migration, for the same
+  reason. The progression catalog (`scripts/progressions`, from motifpath-specs
+  `catalogs/progressions.yaml`, its nodes checked against the knowledge map) is a fourth,
+  `progressions_reference_data`, one second after the `progressions` migration. Run
+  `atlas migrate hash` afterwards.
 
 ## Auth
 JWT validation uses `clerk-sdk-go/v2` (ADR-009). Each service instantiates one `clerk.Client`

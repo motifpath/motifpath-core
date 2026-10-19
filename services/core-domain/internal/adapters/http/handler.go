@@ -1,0 +1,2256 @@
+package http
+
+import (
+	"context"
+	"errors"
+
+	openapi_types "github.com/oapi-codegen/runtime/types"
+
+	"github.com/motifpath/core-domain/internal/adapters/http/generated"
+	"github.com/motifpath/core-domain/internal/application"
+	"github.com/motifpath/core-domain/internal/domain"
+	"github.com/motifpath/core-domain/internal/ports"
+)
+
+// uuidsToStrings converts a slice of parsed request UUIDs to the plain
+// string ids the application layer works in.
+func uuidsToStrings(ids []openapi_types.UUID) []string {
+	result := make([]string, len(ids))
+	for i, id := range ids {
+		result[i] = id.String()
+	}
+	return result
+}
+
+// uuidPtrToStringPtr converts an optional request UUID to an optional
+// string id, preserving nil.
+// optionalInstrumentIDs is an instrument_ids field that may be left out:
+// nil when it was, the ids otherwise.
+func optionalInstrumentIDs(ids *generated.InstrumentIds) *[]string {
+	if ids == nil {
+		return nil
+	}
+	strs := uuidsToStrings(*ids)
+	return &strs
+}
+
+func uuidPtrToStringPtr(id *openapi_types.UUID) *string {
+	if id == nil {
+		return nil
+	}
+	s := id.String()
+	return &s
+}
+
+// Handler implements generated.StrictServerInterface — one method per
+// OpenAPI operation, each translating between generated wire types and the
+// application layer.
+type Handler struct {
+	identity           *application.IdentityService
+	content            *application.ContentService
+	challenge          *application.ChallengeService
+	exercise           *application.ExerciseService
+	knowledgeNode      *application.KnowledgeNodeService
+	knowledgeEdge      *application.KnowledgeEdgeService
+	media              *application.MediaService
+	path               *application.LearningPathService
+	pathCatalog        *application.PathCatalogService
+	studentPath        *application.StudentPathService
+	course             *application.CourseService
+	courseEnrollment   *application.CourseEnrollmentService
+	instrument         *application.InstrumentService
+	voice              *application.VoiceService
+	diagram            *application.DiagramService
+	practiceSession    *application.PracticeSessionService
+	practiceSummary    *application.PracticeSummaryService
+	chordCatalog       *application.ChordCatalogService
+	progressionCatalog *application.ProgressionCatalogService
+	songChart          *application.SongChartService
+	appConfig          *application.AppConfigService
+	startingPoints     *application.StartingPointsService
+	alphaObservation   *application.AlphaObservationService
+
+	// pingers back the readiness probe only; the health probes never touch
+	// the application services above.
+	learningGraphPinger   ports.Pinger
+	completionStatePinger ports.Pinger
+}
+
+var _ generated.StrictServerInterface = (*Handler)(nil)
+
+func NewHandler(
+	identity *application.IdentityService,
+	content *application.ContentService,
+	challenge *application.ChallengeService,
+	exercise *application.ExerciseService,
+	knowledgeNode *application.KnowledgeNodeService,
+	knowledgeEdge *application.KnowledgeEdgeService,
+	media *application.MediaService,
+	path *application.LearningPathService,
+	pathCatalog *application.PathCatalogService,
+	studentPath *application.StudentPathService,
+	course *application.CourseService,
+	courseEnrollment *application.CourseEnrollmentService,
+	instrument *application.InstrumentService,
+	voice *application.VoiceService,
+	diagram *application.DiagramService,
+	practiceSession *application.PracticeSessionService,
+	practiceSummary *application.PracticeSummaryService,
+	chordCatalog *application.ChordCatalogService,
+	progressionCatalog *application.ProgressionCatalogService,
+	songChart *application.SongChartService,
+	appConfig *application.AppConfigService,
+	startingPoints *application.StartingPointsService,
+	alphaObservation *application.AlphaObservationService,
+	learningGraphPinger ports.Pinger,
+	completionStatePinger ports.Pinger,
+) *Handler {
+	return &Handler{
+		identity:              identity,
+		content:               content,
+		challenge:             challenge,
+		exercise:              exercise,
+		knowledgeNode:         knowledgeNode,
+		knowledgeEdge:         knowledgeEdge,
+		media:                 media,
+		path:                  path,
+		pathCatalog:           pathCatalog,
+		studentPath:           studentPath,
+		course:                course,
+		courseEnrollment:      courseEnrollment,
+		instrument:            instrument,
+		voice:                 voice,
+		diagram:               diagram,
+		practiceSession:       practiceSession,
+		practiceSummary:       practiceSummary,
+		chordCatalog:          chordCatalog,
+		progressionCatalog:    progressionCatalog,
+		songChart:             songChart,
+		appConfig:             appConfig,
+		startingPoints:        startingPoints,
+		alphaObservation:      alphaObservation,
+		learningGraphPinger:   learningGraphPinger,
+		completionStatePinger: completionStatePinger,
+	}
+}
+
+// resolveCaller returns the authenticated caller's User record, or ok=false
+// if the request must be rejected with 401 — either because no Clerk
+// identity is present in the context (missing/invalid bearer token) or
+// because that identity has never registered via POST /users. The two
+// cases are deliberately indistinguishable to the client: a valid-but-
+// unregistered Clerk session isn't a recognised MotifPath caller for any
+// endpoint except registration and profile retrieval, which resolve the
+// identity themselves and report 404 instead (see RegisterUser,
+// GetMyProfile below).
+func (h *Handler) resolveCaller(ctx context.Context) (domain.User, bool) {
+	clerkUserID, ok := ClerkUserIDFromContext(ctx)
+	if !ok {
+		return domain.User{}, false
+	}
+	user, err := h.identity.ResolveCaller(ctx, clerkUserID, NameClaimFromContext(ctx))
+	if err != nil {
+		return domain.User{}, false
+	}
+	return user, true
+}
+
+func (h *Handler) RegisterUser(ctx context.Context, request generated.RegisterUserRequestObject) (generated.RegisterUserResponseObject, error) {
+	clerkUserID, ok := ClerkUserIDFromContext(ctx)
+	if !ok {
+		return generated.RegisterUser401JSONResponse(unauthorizedError()), nil
+	}
+
+	acceptLanguageCandidate := AcceptLanguageCandidateFromContext(ctx)
+	user, err := h.identity.RegisterUser(ctx, clerkUserID, domain.Role(request.Body.Role), acceptLanguageCandidate, NameClaimFromContext(ctx))
+	if err != nil {
+		kind, valErr := classify(err)
+		switch {
+		case kind == errKindValidation:
+			return generated.RegisterUser400JSONResponse(validationErrorResponse(valErr)), nil
+		case errors.Is(err, domain.ErrAlreadyExists):
+			return generated.RegisterUser409JSONResponse(conflictError("a user record already exists for this Clerk identity")), nil
+		default:
+			return nil, err
+		}
+	}
+
+	return generated.RegisterUser201JSONResponse(toUserProfile(user)), nil
+}
+
+func (h *Handler) GetMyProfile(ctx context.Context, _ generated.GetMyProfileRequestObject) (generated.GetMyProfileResponseObject, error) {
+	clerkUserID, ok := ClerkUserIDFromContext(ctx)
+	if !ok {
+		return generated.GetMyProfile401JSONResponse(unauthorizedError()), nil
+	}
+
+	user, err := h.identity.ResolveCaller(ctx, clerkUserID, NameClaimFromContext(ctx))
+	if err != nil {
+		if kind, _ := classify(err); kind == errKindNotFound {
+			return generated.GetMyProfile404JSONResponse(notFoundError("no user record exists for this Clerk identity")), nil
+		}
+		return nil, err
+	}
+
+	return generated.GetMyProfile200JSONResponse(toUserProfile(user)), nil
+}
+
+func (h *Handler) UpdateMyLocale(ctx context.Context, request generated.UpdateMyLocaleRequestObject) (generated.UpdateMyLocaleResponseObject, error) {
+	clerkUserID, ok := ClerkUserIDFromContext(ctx)
+	if !ok {
+		return generated.UpdateMyLocale401JSONResponse(unauthorizedError()), nil
+	}
+
+	user, err := h.identity.UpdateLocale(ctx, clerkUserID, request.Body.Locale)
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.UpdateMyLocale400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindNotFound:
+			return generated.UpdateMyLocale404JSONResponse(notFoundError("no user record exists for this Clerk identity")), nil
+		case errKindForbidden, errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.UpdateMyLocale200JSONResponse(toUserProfile(user)), nil
+}
+
+func (h *Handler) CreateContentNode(ctx context.Context, request generated.CreateContentNodeRequestObject) (generated.CreateContentNodeResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.CreateContentNode401JSONResponse(unauthorizedError()), nil
+	}
+
+	body := request.Body
+	node, err := h.content.CreateContentNode(ctx, caller, application.ContentNodeInput{Title: body.Title, ContentType: domain.ContentType(body.ContentType), SkillIDs: uuidsToStrings(body.Classification.SkillIds), ConceptIDs: uuidsToStrings(body.Classification.ConceptIds), Difficulty: domain.DifficultyLevel(body.Classification.DifficultyLevel), Languages: body.LanguageCodes, MediaURL: body.MediaUrl, RichContent: toDomainPromptDocumentPtr(body.RichContent), InstrumentIDs: uuidsToStrings(body.InstrumentIds), ThumbnailURL: body.ThumbnailUrl})
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.CreateContentNode400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.CreateContentNode403JSONResponse(forbiddenError("only teachers and admins may create content nodes")), nil
+		case errKindNotFound, errKindOther:
+			return nil, err
+		}
+	}
+
+	names, err := h.loadUserNames(ctx, contentNodeUserIDs(node))
+	if err != nil {
+		return nil, err
+	}
+	return generated.CreateContentNode201JSONResponse(toContentNode(node, names)), nil
+}
+
+func (h *Handler) GetContentNode(ctx context.Context, request generated.GetContentNodeRequestObject) (generated.GetContentNodeResponseObject, error) {
+	if _, ok := h.resolveCaller(ctx); !ok {
+		return generated.GetContentNode401JSONResponse(unauthorizedError()), nil
+	}
+
+	node, err := h.content.GetContentNode(ctx, request.ContentNodeId.String())
+	if err != nil {
+		if kind, _ := classify(err); kind == errKindNotFound {
+			return generated.GetContentNode404JSONResponse(notFoundError("no content node exists with the given content_node_id")), nil
+		}
+		return nil, err
+	}
+
+	names, err := h.loadUserNames(ctx, contentNodeUserIDs(node))
+	if err != nil {
+		return nil, err
+	}
+	return generated.GetContentNode200JSONResponse(toContentNode(node, names)), nil
+}
+
+func (h *Handler) ListContentNodes(ctx context.Context, request generated.ListContentNodesRequestObject) (generated.ListContentNodesResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ListContentNodes401JSONResponse(unauthorizedError()), nil
+	}
+
+	var contentType domain.ContentType
+	if request.Params.ContentType != nil {
+		contentType = domain.ContentType(*request.Params.ContentType)
+	}
+	var difficulty domain.DifficultyLevel
+	if request.Params.DifficultyLevel != nil {
+		difficulty = domain.DifficultyLevel(*request.Params.DifficultyLevel)
+	}
+
+	page, err := domain.NewPageRequest(request.Params.Limit, request.Params.Offset)
+	if err != nil {
+		return listValidationFailure[generated.ListContentNodesResponseObject](err, func(e generated.ValidationError) generated.ListContentNodesResponseObject {
+			return generated.ListContentNodes400JSONResponse(e)
+		})
+	}
+	filter := domain.ContentNodeFilter{
+		ContentType:  contentType,
+		SkillIDs:     optionalUUIDStrings(request.Params.SkillIds),
+		ConceptIDs:   optionalUUIDStrings(request.Params.ConceptIds),
+		Difficulty:   difficulty,
+		Query:        searchQuery(request.Params.Q),
+		InstrumentID: uuidPtrToString(request.Params.InstrumentId),
+		CreatedBy:    uuidPtrToString(request.Params.CreatedBy),
+	}
+	if request.Params.Language != nil {
+		filter.Language = *request.Params.Language
+	}
+	if request.Params.Status != nil {
+		filter.Status = domain.ContentNodeStatus(*request.Params.Status)
+	}
+	if request.Params.Sort != nil {
+		filter.Sort = domain.ListSort(*request.Params.Sort)
+	}
+
+	result, err := h.content.ListContentNodes(ctx, caller, filter, page)
+	if err != nil {
+		switch kind, valErr := classify(err); kind {
+		case errKindForbidden:
+			return generated.ListContentNodes403JSONResponse(forbiddenError("only teachers and admins may list content nodes")), nil
+		case errKindValidation:
+			return generated.ListContentNodes400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindNotFound, errKindOther:
+		}
+		return nil, err
+	}
+
+	names, err := h.loadUserNames(ctx, contentNodeUserIDs(result.Items...))
+	if err != nil {
+		return nil, err
+	}
+	return generated.ListContentNodes200JSONResponse{
+		Items: toContentNodes(result.Items, names), Total: result.Total, Limit: page.Limit, Offset: page.Offset,
+	}, nil
+}
+
+func (h *Handler) UpdateContentNode(ctx context.Context, request generated.UpdateContentNodeRequestObject) (generated.UpdateContentNodeResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.UpdateContentNode401JSONResponse(unauthorizedError()), nil
+	}
+
+	body := request.Body
+	node, err := h.content.UpdateContentNode(ctx, caller, request.ContentNodeId.String(), application.ContentNodeInput{Title: body.Title, SkillIDs: uuidsToStrings(body.Classification.SkillIds), ConceptIDs: uuidsToStrings(body.Classification.ConceptIds), Difficulty: domain.DifficultyLevel(body.Classification.DifficultyLevel), Languages: body.LanguageCodes, MediaURL: body.MediaUrl, RichContent: toDomainPromptDocumentPtr(body.RichContent), InstrumentIDs: uuidsToStrings(body.InstrumentIds), ThumbnailURL: body.ThumbnailUrl})
+	if err != nil {
+		if errors.Is(err, domain.ErrConflict) {
+			return generated.UpdateContentNode409JSONResponse(conflictError(conflictMessage(err))), nil
+		}
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.UpdateContentNode400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.UpdateContentNode403JSONResponse(forbiddenError("only the creating teacher or an admin may update this content node")), nil
+		case errKindNotFound:
+			return generated.UpdateContentNode404JSONResponse(notFoundError("no content node exists with the given content_node_id")), nil
+		case errKindOther:
+			return nil, err
+		}
+	}
+
+	names, err := h.loadUserNames(ctx, contentNodeUserIDs(node))
+	if err != nil {
+		return nil, err
+	}
+	return generated.UpdateContentNode200JSONResponse(toContentNode(node, names)), nil
+}
+
+func (h *Handler) CreateChallenge(ctx context.Context, request generated.CreateChallengeRequestObject) (generated.CreateChallengeResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.CreateChallenge401JSONResponse(unauthorizedError()), nil
+	}
+
+	var shuffleExercises, shuffleOptions bool
+	if request.Body.ShuffleExercises != nil {
+		shuffleExercises = *request.Body.ShuffleExercises
+	}
+	if request.Body.ShuffleOptions != nil {
+		shuffleOptions = *request.Body.ShuffleOptions
+	}
+
+	challenge, err := h.challenge.CreateChallenge(ctx, caller, request.ContentNodeId.String(),
+		uuidPtrToStringPtr(request.Body.SubjectSkillId), uuidPtrToStringPtr(request.Body.SubjectConceptId),
+		request.Body.PassThreshold, request.Body.TimeThresholdMs, shuffleExercises, shuffleOptions)
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.CreateChallenge400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.CreateChallenge403JSONResponse(forbiddenError("only teachers and admins may create challenges")), nil
+		case errKindNotFound:
+			return generated.CreateChallenge404JSONResponse(notFoundError("no content node exists with the given content_node_id")), nil
+		case errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.CreateChallenge201JSONResponse(toChallenge(challenge)), nil
+}
+
+func (h *Handler) UpdateChallenge(ctx context.Context, request generated.UpdateChallengeRequestObject) (generated.UpdateChallengeResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.UpdateChallenge401JSONResponse(unauthorizedError()), nil
+	}
+
+	var shuffleExercises, shuffleOptions bool
+	if request.Body.ShuffleExercises != nil {
+		shuffleExercises = *request.Body.ShuffleExercises
+	}
+	if request.Body.ShuffleOptions != nil {
+		shuffleOptions = *request.Body.ShuffleOptions
+	}
+
+	challenge, err := h.challenge.UpdateChallenge(ctx, caller, request.ChallengeId.String(),
+		uuidPtrToStringPtr(request.Body.SubjectSkillId), uuidPtrToStringPtr(request.Body.SubjectConceptId),
+		request.Body.PassThreshold, request.Body.TimeThresholdMs, shuffleExercises, shuffleOptions)
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.UpdateChallenge400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.UpdateChallenge403JSONResponse(forbiddenError("only the creating teacher or an admin may update this challenge")), nil
+		case errKindNotFound:
+			return generated.UpdateChallenge404JSONResponse(notFoundError("no challenge exists with the given challenge_id")), nil
+		case errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.UpdateChallenge200JSONResponse(toChallenge(challenge)), nil
+}
+
+func (h *Handler) GetChallenge(ctx context.Context, request generated.GetChallengeRequestObject) (generated.GetChallengeResponseObject, error) {
+	if _, ok := h.resolveCaller(ctx); !ok {
+		return generated.GetChallenge401JSONResponse(unauthorizedError()), nil
+	}
+
+	challenge, err := h.challenge.GetChallenge(ctx, request.ChallengeId.String())
+	if err != nil {
+		if kind, _ := classify(err); kind == errKindNotFound {
+			return generated.GetChallenge404JSONResponse(notFoundError("no challenge exists with the given id")), nil
+		}
+		return nil, err
+	}
+
+	return generated.GetChallenge200JSONResponse(toChallenge(challenge)), nil
+}
+
+func (h *Handler) CreateExercise(ctx context.Context, request generated.CreateExerciseRequestObject) (generated.CreateExerciseResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.CreateExercise401JSONResponse(unauthorizedError()), nil
+	}
+
+	body := request.Body
+	var remediationTargets []generated.RemediationTarget
+	if body.RemediationTargets != nil {
+		remediationTargets = *body.RemediationTargets
+	}
+	exercise, err := h.exercise.CreateExercise(ctx, caller, body.Title, toDomainPromptDocument(body.Prompt),
+		domain.ExerciseType(body.ExerciseType), uuidsToStrings(body.SkillIds), uuidsToStrings(body.ConceptIds),
+		body.ImageUrl, body.AudioUrl, toDomainDiagramRefPtr(body.DiagramRef), toDomainDiagramStackRefPtr(body.DiagramStackRef),
+		toDomainOptions(derefOptions(body.Options)), body.EstimatedDurationSeconds,
+		toDomainRemediationTargets(remediationTargets), body.LanguageCodes, optionalInstrumentIDs(body.InstrumentIds))
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.CreateExercise400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.CreateExercise403JSONResponse(forbiddenError("only teachers and admins may create exercises")), nil
+		case errKindNotFound, errKindOther:
+			return nil, err
+		}
+	}
+
+	names, err := h.loadUserNames(ctx, exerciseUserIDs(exercise))
+	if err != nil {
+		return nil, err
+	}
+	return generated.CreateExercise201JSONResponse(toExercise(exercise, names)), nil
+}
+
+func (h *Handler) GetExercise(ctx context.Context, request generated.GetExerciseRequestObject) (generated.GetExerciseResponseObject, error) {
+	if _, ok := h.resolveCaller(ctx); !ok {
+		return generated.GetExercise401JSONResponse(unauthorizedError()), nil
+	}
+
+	exercise, err := h.exercise.GetExercise(ctx, request.ExerciseId.String())
+	if err != nil {
+		if kind, _ := classify(err); kind == errKindNotFound {
+			return generated.GetExercise404JSONResponse(notFoundError("no exercise exists with the given id")), nil
+		}
+		return nil, err
+	}
+
+	names, err := h.loadUserNames(ctx, exerciseUserIDs(exercise))
+	if err != nil {
+		return nil, err
+	}
+	return generated.GetExercise200JSONResponse(toExercise(exercise, names)), nil
+}
+
+func (h *Handler) ListExercises(ctx context.Context, request generated.ListExercisesRequestObject) (generated.ListExercisesResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ListExercises401JSONResponse(unauthorizedError()), nil
+	}
+
+	page, err := domain.NewPageRequest(request.Params.Limit, request.Params.Offset)
+	if err != nil {
+		return listValidationFailure[generated.ListExercisesResponseObject](err, func(e generated.ValidationError) generated.ListExercisesResponseObject {
+			return generated.ListExercises400JSONResponse(e)
+		})
+	}
+
+	result, err := h.exercise.ListExercises(ctx, caller, exerciseListFilter(request.Params), page)
+	if err != nil {
+		switch kind, valErr := classify(err); kind {
+		case errKindForbidden:
+			return generated.ListExercises403JSONResponse(forbiddenError("only teachers and admins may list exercises")), nil
+		case errKindValidation:
+			return generated.ListExercises400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindNotFound, errKindOther:
+		}
+		return nil, err
+	}
+	names, err := h.loadUserNames(ctx, exerciseUserIDs(result.Items...))
+	if err != nil {
+		return nil, err
+	}
+
+	return generated.ListExercises200JSONResponse{
+		Items: toExercises(result.Items, names), Total: result.Total, Limit: page.Limit, Offset: page.Offset,
+	}, nil
+}
+
+// ListExerciseCreators returns the creators of the exercises in the pool,
+// optionally narrowed by name, in name order.
+func (h *Handler) ListExerciseCreators(ctx context.Context, request generated.ListExerciseCreatorsRequestObject) (generated.ListExerciseCreatorsResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ListExerciseCreators401JSONResponse(unauthorizedError()), nil
+	}
+
+	query := ""
+	if request.Params.Q != nil {
+		query = *request.Params.Q
+	}
+	creators, err := h.exercise.ListExerciseCreators(ctx, caller, query)
+	if err != nil {
+		if kind, _ := classify(err); kind == errKindForbidden {
+			return generated.ListExerciseCreators403JSONResponse(forbiddenError("students may not list exercise creators")), nil
+		}
+		return nil, err
+	}
+	return generated.ListExerciseCreators200JSONResponse(toCreatorRefs(creators)), nil
+}
+
+func (h *Handler) ListContentNodeCreators(ctx context.Context, request generated.ListContentNodeCreatorsRequestObject) (generated.ListContentNodeCreatorsResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ListContentNodeCreators401JSONResponse(unauthorizedError()), nil
+	}
+
+	query := ""
+	if request.Params.Q != nil {
+		query = *request.Params.Q
+	}
+	creators, err := h.content.ListContentNodeCreators(ctx, caller, query)
+	if err != nil {
+		if kind, _ := classify(err); kind == errKindForbidden {
+			return generated.ListContentNodeCreators403JSONResponse(forbiddenError("students may not list content node creators")), nil
+		}
+		return nil, err
+	}
+	return generated.ListContentNodeCreators200JSONResponse(toCreatorRefs(creators)), nil
+}
+
+func (h *Handler) UpdateExercise(ctx context.Context, request generated.UpdateExerciseRequestObject) (generated.UpdateExerciseResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.UpdateExercise401JSONResponse(unauthorizedError()), nil
+	}
+
+	body := request.Body
+	var remediationTargets []generated.RemediationTarget
+	if body.RemediationTargets != nil {
+		remediationTargets = *body.RemediationTargets
+	}
+	exercise, err := h.exercise.UpdateExercise(ctx, caller, request.ExerciseId.String(), body.Title, toDomainPromptDocument(body.Prompt),
+		uuidsToStrings(body.SkillIds), uuidsToStrings(body.ConceptIds),
+		body.ImageUrl, body.AudioUrl, toDomainDiagramRefPtr(body.DiagramRef), toDomainDiagramStackRefPtr(body.DiagramStackRef),
+		toDomainOptions(derefOptions(body.Options)), body.EstimatedDurationSeconds,
+		toDomainRemediationTargets(remediationTargets), body.LanguageCodes, optionalInstrumentIDs(body.InstrumentIds))
+	if err != nil {
+		if errors.Is(err, domain.ErrConflict) {
+			return generated.UpdateExercise409JSONResponse(conflictError(conflictMessage(err))), nil
+		}
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.UpdateExercise400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.UpdateExercise403JSONResponse(forbiddenError("only teachers and admins may update exercises")), nil
+		case errKindNotFound:
+			return generated.UpdateExercise404JSONResponse(notFoundError("no exercise exists with the given exercise_id")), nil
+		case errKindOther:
+			return nil, err
+		}
+	}
+
+	names, err := h.loadUserNames(ctx, exerciseUserIDs(exercise))
+	if err != nil {
+		return nil, err
+	}
+	return generated.UpdateExercise200JSONResponse(toExercise(exercise, names)), nil
+}
+
+func (h *Handler) LinkExerciseToChallenge(ctx context.Context, request generated.LinkExerciseToChallengeRequestObject) (generated.LinkExerciseToChallengeResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.LinkExerciseToChallenge401JSONResponse(unauthorizedError()), nil
+	}
+
+	exercise, err := h.exercise.LinkExerciseToChallenge(ctx, caller, request.ChallengeId.String(), request.ExerciseId.String())
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrForbidden):
+			return generated.LinkExerciseToChallenge403JSONResponse(forbiddenError("only teachers and admins may link exercises to challenges")), nil
+		case errors.Is(err, domain.ErrNotFound):
+			return generated.LinkExerciseToChallenge404JSONResponse(notFoundError("no challenge exists with challenge_id, or no exercise exists with exercise_id")), nil
+		case errors.Is(err, domain.ErrAlreadyExists):
+			return generated.LinkExerciseToChallenge409JSONResponse(conflictError("the exercise is already linked to this challenge")), nil
+		case errors.Is(err, domain.ErrConflict):
+			return generated.LinkExerciseToChallenge409JSONResponse(conflictError(conflictMessage(err))), nil
+		default:
+			return nil, err
+		}
+	}
+
+	names, err := h.loadUserNames(ctx, exerciseUserIDs(exercise))
+	if err != nil {
+		return nil, err
+	}
+	return generated.LinkExerciseToChallenge201JSONResponse(toExercise(exercise, names)), nil
+}
+
+func (h *Handler) UnlinkExerciseFromChallenge(ctx context.Context, request generated.UnlinkExerciseFromChallengeRequestObject) (generated.UnlinkExerciseFromChallengeResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.UnlinkExerciseFromChallenge401JSONResponse(unauthorizedError()), nil
+	}
+
+	err := h.exercise.UnlinkExerciseFromChallenge(ctx, caller, request.ChallengeId.String(), request.ExerciseId.String())
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrForbidden):
+			return generated.UnlinkExerciseFromChallenge403JSONResponse(forbiddenError("only teachers and admins may unlink exercises from challenges")), nil
+		case errors.Is(err, domain.ErrNotFound):
+			return generated.UnlinkExerciseFromChallenge404JSONResponse(notFoundError("no challenge exists with challenge_id, no exercise exists with exercise_id, or the exercise is not currently linked to this challenge")), nil
+		default:
+			return nil, err
+		}
+	}
+
+	return generated.UnlinkExerciseFromChallenge204Response{}, nil
+}
+
+func (h *Handler) CreateMediaUploadUrl(ctx context.Context, request generated.CreateMediaUploadUrlRequestObject) (generated.CreateMediaUploadUrlResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.CreateMediaUploadUrl401JSONResponse(unauthorizedError()), nil
+	}
+
+	body := request.Body
+	var exerciseID *string
+	if body.ExerciseId != nil {
+		s := body.ExerciseId.String()
+		exerciseID = &s
+	}
+	url, err := h.media.CreateUploadURL(ctx, caller, domain.MediaUploadPurpose(body.Purpose), exerciseID,
+		domain.MediaContentType(body.ContentType), body.FileName, body.FileSize)
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.CreateMediaUploadUrl400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.CreateMediaUploadUrl403JSONResponse(forbiddenError("only teachers and admins may request an upload URL")), nil
+		case errKindNotFound:
+			return generated.CreateMediaUploadUrl404JSONResponse(notFoundError("purpose is exercise_asset but no exercise exists with the given exercise_id")), nil
+		case errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.CreateMediaUploadUrl201JSONResponse(toMediaUploadURL(url)), nil
+}
+
+func (h *Handler) CreateExpandedContent(ctx context.Context, request generated.CreateExpandedContentRequestObject) (generated.CreateExpandedContentResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.CreateExpandedContent401JSONResponse(unauthorizedError()), nil
+	}
+
+	body := request.Body
+	item, err := h.content.CreateExpandedContent(ctx, caller, request.ContentNodeId.String(),
+		domain.ExpandedContentType(body.ContentType), body.MediaUrl, toDomainPromptDocumentPtr(body.RichContent),
+		toDomainDiagramRefPtr(body.DiagramRef), toDomainDiagramStackRefPtr(body.DiagramStackRef),
+		body.TriggerAtSeconds, body.HideAtSeconds, body.TriggerAtParagraph, body.DurationMs, body.Caption)
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.CreateExpandedContent400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.CreateExpandedContent403JSONResponse(forbiddenError("only teachers and admins may add expanded content")), nil
+		case errKindNotFound:
+			return generated.CreateExpandedContent404JSONResponse(notFoundError("no content node exists with the given content_node_id")), nil
+		case errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.CreateExpandedContent201JSONResponse(toExpandedContent(item)), nil
+}
+
+func (h *Handler) UpdateExpandedContent(ctx context.Context, request generated.UpdateExpandedContentRequestObject) (generated.UpdateExpandedContentResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.UpdateExpandedContent401JSONResponse(unauthorizedError()), nil
+	}
+
+	body := request.Body
+	item, err := h.content.UpdateExpandedContent(ctx, caller, request.ExpandedContentId.String(),
+		domain.ExpandedContentType(body.ContentType), body.MediaUrl, toDomainPromptDocumentPtr(body.RichContent),
+		toDomainDiagramRefPtr(body.DiagramRef), toDomainDiagramStackRefPtr(body.DiagramStackRef),
+		body.TriggerAtSeconds, body.HideAtSeconds, body.TriggerAtParagraph, body.DurationMs, body.Caption)
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.UpdateExpandedContent400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.UpdateExpandedContent403JSONResponse(forbiddenError("only the creating teacher or an admin may update this expanded content item")), nil
+		case errKindNotFound:
+			return generated.UpdateExpandedContent404JSONResponse(notFoundError("no expanded content item exists with the given id")), nil
+		case errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.UpdateExpandedContent200JSONResponse(toExpandedContent(item)), nil
+}
+
+func (h *Handler) DeleteExpandedContent(ctx context.Context, request generated.DeleteExpandedContentRequestObject) (generated.DeleteExpandedContentResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.DeleteExpandedContent401JSONResponse(unauthorizedError()), nil
+	}
+
+	err := h.content.DeleteExpandedContent(ctx, caller, request.ExpandedContentId.String())
+	if err != nil {
+		kind, _ := classify(err)
+		switch kind {
+		case errKindForbidden:
+			return generated.DeleteExpandedContent403JSONResponse(forbiddenError("only the creating teacher or an admin may delete this expanded content item")), nil
+		case errKindNotFound:
+			return generated.DeleteExpandedContent404JSONResponse(notFoundError("no expanded content item exists with the given id")), nil
+		case errKindValidation, errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.DeleteExpandedContent204Response{}, nil
+}
+
+func (h *Handler) ListExpandedContent(ctx context.Context, request generated.ListExpandedContentRequestObject) (generated.ListExpandedContentResponseObject, error) {
+	if _, ok := h.resolveCaller(ctx); !ok {
+		return generated.ListExpandedContent401JSONResponse(unauthorizedError()), nil
+	}
+
+	items, err := h.content.ListExpandedContent(ctx, request.ContentNodeId.String())
+	if err != nil {
+		if kind, _ := classify(err); kind == errKindNotFound {
+			return generated.ListExpandedContent404JSONResponse(notFoundError("no content node exists with the given content_node_id")), nil
+		}
+		return nil, err
+	}
+
+	generatedItems := make([]generated.ExpandedContent, len(items))
+	for i, item := range items {
+		generatedItems[i] = toExpandedContent(item)
+	}
+	return generated.ListExpandedContent200JSONResponse{Items: generatedItems, Total: len(generatedItems)}, nil
+}
+
+func (h *Handler) GetExpandedContent(ctx context.Context, request generated.GetExpandedContentRequestObject) (generated.GetExpandedContentResponseObject, error) {
+	if _, ok := h.resolveCaller(ctx); !ok {
+		return generated.GetExpandedContent401JSONResponse(unauthorizedError()), nil
+	}
+
+	item, err := h.content.GetExpandedContent(ctx, request.ExpandedContentId.String())
+	if err != nil {
+		if kind, _ := classify(err); kind == errKindNotFound {
+			return generated.GetExpandedContent404JSONResponse(notFoundError("no expanded content item exists with the given id")), nil
+		}
+		return nil, err
+	}
+
+	return generated.GetExpandedContent200JSONResponse(toExpandedContent(item)), nil
+}
+
+func (h *Handler) CreateLearningPath(ctx context.Context, request generated.CreateLearningPathRequestObject) (generated.CreateLearningPathResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.CreateLearningPath401JSONResponse(unauthorizedError()), nil
+	}
+
+	pathItems := make([]application.PathItemInput, len(request.Body.Items))
+	for i, item := range request.Body.Items {
+		pathItems[i] = application.PathItemInput{
+			ContentNodeID: item.ContentNodeId.String(),
+			SectionLabel:  item.SectionLabel,
+		}
+	}
+
+	path, err := h.path.CreateLearningPath(ctx, caller, application.LearningPathInput{Title: request.Body.Title, Summary: request.Body.Summary, Language: request.Body.Language, Level: domain.DifficultyLevel(request.Body.Level), InstrumentIDs: uuidsToStrings(request.Body.InstrumentIds), ThumbnailURL: request.Body.ThumbnailUrl, Items: pathItems})
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.CreateLearningPath400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.CreateLearningPath403JSONResponse(forbiddenError("only teachers and admins may create learning paths")), nil
+		case errKindNotFound, errKindOther:
+			return nil, err
+		}
+	}
+
+	names, err := h.loadUserNames(ctx, learningPathUserIDs(path))
+	if err != nil {
+		return nil, err
+	}
+	return generated.CreateLearningPath201JSONResponse(toLearningPath(path, names)), nil
+}
+
+func (h *Handler) GetLearningPath(ctx context.Context, request generated.GetLearningPathRequestObject) (generated.GetLearningPathResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.GetLearningPath401JSONResponse(unauthorizedError()), nil
+	}
+
+	path, err := h.path.GetLearningPath(ctx, caller, request.LearningPathId.String())
+	if err != nil {
+		kind, _ := classify(err)
+		switch kind {
+		case errKindForbidden:
+			return generated.GetLearningPath403JSONResponse(forbiddenError("students may not retrieve learning paths directly")), nil
+		case errKindNotFound:
+			return generated.GetLearningPath404JSONResponse(notFoundError("no learning path exists with the given id")), nil
+		case errKindValidation, errKindOther:
+			return nil, err
+		}
+	}
+
+	names, err := h.loadUserNames(ctx, learningPathUserIDs(path))
+	if err != nil {
+		return nil, err
+	}
+	return generated.GetLearningPath200JSONResponse(toLearningPath(path, names)), nil
+}
+
+func (h *Handler) ListLearningPaths(ctx context.Context, request generated.ListLearningPathsRequestObject) (generated.ListLearningPathsResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ListLearningPaths401JSONResponse(unauthorizedError()), nil
+	}
+
+	page, err := domain.NewPageRequest(request.Params.Limit, request.Params.Offset)
+	if err != nil {
+		return listValidationFailure[generated.ListLearningPathsResponseObject](err, func(e generated.ValidationError) generated.ListLearningPathsResponseObject {
+			return generated.ListLearningPaths400JSONResponse(e)
+		})
+	}
+
+	result, err := h.path.ListLearningPaths(ctx, caller, learningPathListFilter(request.Params), page)
+	if err != nil {
+		switch kind, valErr := classify(err); kind {
+		case errKindForbidden:
+			return generated.ListLearningPaths403JSONResponse(forbiddenError("students may not list learning paths directly")), nil
+		case errKindValidation:
+			return generated.ListLearningPaths400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindNotFound, errKindOther:
+		}
+		return nil, err
+	}
+
+	names, err := h.loadUserNames(ctx, learningPathUserIDs(result.Items...))
+	if err != nil {
+		return nil, err
+	}
+	return generated.ListLearningPaths200JSONResponse{
+		Items: toLearningPaths(result.Items, names), Total: result.Total, Limit: page.Limit, Offset: page.Offset,
+	}, nil
+}
+
+func (h *Handler) ReplaceLearningPath(ctx context.Context, request generated.ReplaceLearningPathRequestObject) (generated.ReplaceLearningPathResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ReplaceLearningPath401JSONResponse(unauthorizedError()), nil
+	}
+
+	pathItems := make([]application.PathItemInput, len(request.Body.Items))
+	for i, item := range request.Body.Items {
+		pathItems[i] = application.PathItemInput{
+			ContentNodeID: item.ContentNodeId.String(),
+			SectionLabel:  item.SectionLabel,
+		}
+	}
+
+	path, err := h.path.ReplaceLearningPath(ctx, caller, request.LearningPathId.String(), application.LearningPathInput{Title: request.Body.Title, Summary: request.Body.Summary, Language: request.Body.Language, Level: domain.DifficultyLevel(request.Body.Level), InstrumentIDs: uuidsToStrings(request.Body.InstrumentIds), ThumbnailURL: request.Body.ThumbnailUrl, Items: pathItems})
+	if refusal := (*domain.LearningPathNotPublishableError)(nil); errors.As(err, &refusal) {
+		return generated.ReplaceLearningPath409JSONResponse(toNotPublishableError(refusal, "the path is published and this change would leave it unpublishable")), nil
+	}
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.ReplaceLearningPath400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.ReplaceLearningPath403JSONResponse(forbiddenError("only the creating teacher or an admin may replace this learning path")), nil
+		case errKindNotFound:
+			return generated.ReplaceLearningPath404JSONResponse(notFoundError("no learning path exists with the given id")), nil
+		case errKindOther:
+			return nil, err
+		}
+	}
+
+	names, err := h.loadUserNames(ctx, learningPathUserIDs(path))
+	if err != nil {
+		return nil, err
+	}
+	return generated.ReplaceLearningPath200JSONResponse(toLearningPath(path, names)), nil
+}
+
+func (h *Handler) DeleteLearningPath(ctx context.Context, request generated.DeleteLearningPathRequestObject) (generated.DeleteLearningPathResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.DeleteLearningPath401JSONResponse(unauthorizedError()), nil
+	}
+
+	err := h.path.DeleteLearningPath(ctx, caller, request.LearningPathId.String())
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrForbidden):
+			return generated.DeleteLearningPath403JSONResponse(forbiddenError("only the creating teacher or an admin may delete this learning path")), nil
+		case errors.Is(err, domain.ErrNotFound):
+			return generated.DeleteLearningPath404JSONResponse(notFoundError("no learning path exists with the given id")), nil
+		case errors.Is(err, domain.ErrConflict):
+			return generated.DeleteLearningPath409JSONResponse(conflictError("this learning path is published, or is referenced by a checkpoint of at least one published course version")), nil
+		default:
+			return nil, err
+		}
+	}
+
+	return generated.DeleteLearningPath204Response{}, nil
+}
+
+func (h *Handler) PublishLearningPath(ctx context.Context, request generated.PublishLearningPathRequestObject) (generated.PublishLearningPathResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.PublishLearningPath401JSONResponse(unauthorizedError()), nil
+	}
+
+	path, err := h.path.PublishLearningPath(ctx, caller, request.LearningPathId.String())
+	if refusal := (*domain.LearningPathNotPublishableError)(nil); errors.As(err, &refusal) {
+		return generated.PublishLearningPath409JSONResponse(toNotPublishableError(refusal, "the path is not complete enough to publish")), nil
+	}
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrForbidden):
+			return generated.PublishLearningPath403JSONResponse(forbiddenError("only admins may publish a learning path")), nil
+		case errors.Is(err, domain.ErrNotFound):
+			return generated.PublishLearningPath404JSONResponse(notFoundError("no learning path exists with the given id")), nil
+		default:
+			return nil, err
+		}
+	}
+
+	names, err := h.loadUserNames(ctx, learningPathUserIDs(path))
+	if err != nil {
+		return nil, err
+	}
+	return generated.PublishLearningPath200JSONResponse(toLearningPath(path, names)), nil
+}
+
+func (h *Handler) UnpublishLearningPath(ctx context.Context, request generated.UnpublishLearningPathRequestObject) (generated.UnpublishLearningPathResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.UnpublishLearningPath401JSONResponse(unauthorizedError()), nil
+	}
+
+	path, err := h.path.UnpublishLearningPath(ctx, caller, request.LearningPathId.String())
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrForbidden):
+			return generated.UnpublishLearningPath403JSONResponse(forbiddenError("only admins may unpublish a learning path")), nil
+		case errors.Is(err, domain.ErrNotFound):
+			return generated.UnpublishLearningPath404JSONResponse(notFoundError("no learning path exists with the given id")), nil
+		case errors.Is(err, domain.ErrConflict):
+			return generated.UnpublishLearningPath409JSONResponse(conflictError("a checkpoint of at least one published course version uses this path")), nil
+		default:
+			return nil, err
+		}
+	}
+
+	names, err := h.loadUserNames(ctx, learningPathUserIDs(path))
+	if err != nil {
+		return nil, err
+	}
+	return generated.UnpublishLearningPath200JSONResponse(toLearningPath(path, names)), nil
+}
+
+func (h *Handler) AssignLearningPath(ctx context.Context, request generated.AssignLearningPathRequestObject) (generated.AssignLearningPathResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.AssignLearningPath401JSONResponse(unauthorizedError()), nil
+	}
+
+	sp, created, err := h.studentPath.AssignLearningPath(ctx, caller, request.StudentId.String(), request.Body.LearningPathId.String())
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.AssignLearningPath400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.AssignLearningPath403JSONResponse(forbiddenError("only teachers and admins may assign learning paths")), nil
+		case errKindNotFound:
+			return generated.AssignLearningPath404JSONResponse(notFoundError("the student_id or learning_path_id does not exist, the student's role is not student, or one of the path's content nodes has never been published")), nil
+		case errKindOther:
+			if errors.Is(err, domain.ErrConflict) {
+				return generated.AssignLearningPath409JSONResponse(conflictError("the learning path is a draft; only published paths can be assigned")), nil
+			}
+			return nil, err
+		}
+	}
+
+	cards, err := h.studentPathCards(ctx, sp.StudentID, sp)
+	if err != nil {
+		return nil, err
+	}
+	if !created {
+		return generated.AssignLearningPath200JSONResponse(cards[0]), nil
+	}
+	return generated.AssignLearningPath201JSONResponse(cards[0]), nil
+}
+
+func (h *Handler) GetMyPath(ctx context.Context, _ generated.GetMyPathRequestObject) (generated.GetMyPathResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.GetMyPath401JSONResponse(unauthorizedError()), nil
+	}
+
+	view, err := h.studentPath.GetMyPath(ctx, caller)
+	if err != nil {
+		kind, _ := classify(err)
+		switch kind {
+		case errKindNotFound:
+			return generated.GetMyPath404JSONResponse(notFoundError("the authenticated caller has no current path set")), nil
+		case errKindForbidden, errKindValidation, errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.GetMyPath200JSONResponse(toStudentPathView(view)), nil
+}
+
+func (h *Handler) ArchiveStandaloneStudentPath(ctx context.Context, request generated.ArchiveStandaloneStudentPathRequestObject) (generated.ArchiveStandaloneStudentPathResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ArchiveStandaloneStudentPath401JSONResponse(unauthorizedError()), nil
+	}
+
+	sp, err := h.studentPath.ArchiveStandaloneStudentPath(ctx, caller, request.StudentPathId.String())
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrNotFound):
+			return generated.ArchiveStandaloneStudentPath404JSONResponse(notFoundError("no non-archived standalone student path exists with this id for the caller")), nil
+		case errors.Is(err, domain.ErrConflict):
+			return generated.ArchiveStandaloneStudentPath409JSONResponse(conflictError("this is the caller's only current course or path; switch to another one first")), nil
+		default:
+			return nil, err
+		}
+	}
+
+	cards, err := h.studentPathCards(ctx, sp.StudentID, sp)
+	if err != nil {
+		return nil, err
+	}
+	return generated.ArchiveStandaloneStudentPath200JSONResponse(cards[0]), nil
+}
+
+func (h *Handler) PublishContentNode(ctx context.Context, request generated.PublishContentNodeRequestObject) (generated.PublishContentNodeResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.PublishContentNode401JSONResponse(unauthorizedError()), nil
+	}
+
+	version, err := h.content.PublishContentNode(ctx, caller, request.ContentNodeId.String())
+	if err != nil {
+		kind, _ := classify(err)
+		switch kind {
+		case errKindForbidden:
+			return generated.PublishContentNode403JSONResponse(forbiddenError("only the creating teacher or an admin may publish this content node")), nil
+		case errKindNotFound:
+			return generated.PublishContentNode404JSONResponse(notFoundError("no content node exists with the given id")), nil
+		case errKindValidation, errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.PublishContentNode201JSONResponse(toContentNodeVersion(version)), nil
+}
+
+func (h *Handler) ListContentNodeVersions(ctx context.Context, request generated.ListContentNodeVersionsRequestObject) (generated.ListContentNodeVersionsResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ListContentNodeVersions401JSONResponse(unauthorizedError()), nil
+	}
+
+	versions, err := h.content.ListContentNodeVersions(ctx, caller, request.ContentNodeId.String())
+	if err != nil {
+		kind, _ := classify(err)
+		switch kind {
+		case errKindForbidden:
+			return generated.ListContentNodeVersions403JSONResponse(forbiddenError("only the creating teacher or an admin may view this content node's version history")), nil
+		case errKindNotFound:
+			return generated.ListContentNodeVersions404JSONResponse(notFoundError("no content node exists with the given id")), nil
+		case errKindValidation, errKindOther:
+			return nil, err
+		}
+	}
+
+	items := make([]generated.ContentNodeVersion, len(versions))
+	for i, v := range versions {
+		items[i] = toContentNodeVersion(v)
+	}
+	return generated.ListContentNodeVersions200JSONResponse(items), nil
+}
+
+func (h *Handler) ListMyStandalonePaths(ctx context.Context, _ generated.ListMyStandalonePathsRequestObject) (generated.ListMyStandalonePathsResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ListMyStandalonePaths401JSONResponse(unauthorizedError()), nil
+	}
+
+	paths, err := h.studentPath.ListMyStandalonePaths(ctx, caller)
+	if err != nil {
+		return nil, err
+	}
+
+	cards, err := h.studentPathCards(ctx, caller.ID, paths...)
+	if err != nil {
+		return nil, err
+	}
+	return generated.ListMyStandalonePaths200JSONResponse(cards), nil
+}
+
+func (h *Handler) ListCourses(ctx context.Context, request generated.ListCoursesRequestObject) (generated.ListCoursesResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ListCourses401JSONResponse(unauthorizedError()), nil
+	}
+
+	page, err := domain.NewPageRequest(request.Params.Limit, request.Params.Offset)
+	if err != nil {
+		return listValidationFailure[generated.ListCoursesResponseObject](err, func(e generated.ValidationError) generated.ListCoursesResponseObject {
+			return generated.ListCourses400JSONResponse(e)
+		})
+	}
+
+	result, err := h.course.ListCourses(ctx, caller, courseListFilter(request.Params), page)
+	if err != nil {
+		switch kind, valErr := classify(err); kind {
+		case errKindForbidden:
+			return generated.ListCourses403JSONResponse(forbiddenError("the authoring course list is for teachers and admins, and a teacher may only list courses they created")), nil
+		case errKindValidation:
+			return generated.ListCourses400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindNotFound, errKindOther:
+		}
+		return nil, err
+	}
+
+	entries, err := h.catalogEntries(ctx, result.Items, authoringListView)
+	if err != nil {
+		return nil, err
+	}
+
+	return generated.ListCourses200JSONResponse{
+		Items: entries, Total: result.Total, Limit: page.Limit, Offset: page.Offset,
+	}, nil
+}
+
+// ListCatalogCourses returns one page of the published learner catalog, the
+// same for every authenticated caller whatever their role.
+func (h *Handler) ListCatalogCourses(ctx context.Context, request generated.ListCatalogCoursesRequestObject) (generated.ListCatalogCoursesResponseObject, error) {
+	if _, ok := h.resolveCaller(ctx); !ok {
+		return generated.ListCatalogCourses401JSONResponse(unauthorizedError()), nil
+	}
+
+	page, err := domain.NewPageRequest(request.Params.Limit, request.Params.Offset)
+	if err != nil {
+		return listValidationFailure[generated.ListCatalogCoursesResponseObject](err, func(e generated.ValidationError) generated.ListCatalogCoursesResponseObject {
+			return generated.ListCatalogCourses400JSONResponse(e)
+		})
+	}
+
+	result, err := h.course.ListCatalogCourses(ctx, catalogCourseListFilter(request.Params), page)
+	if err != nil {
+		return nil, err
+	}
+	entries, err := h.catalogEntries(ctx, result.Items, learnerCatalogView)
+	if err != nil {
+		return nil, err
+	}
+	return generated.ListCatalogCourses200JSONResponse{
+		Items: entries, Total: result.Total, Limit: page.Limit, Offset: page.Offset,
+	}, nil
+}
+
+// catalogEntries renders courses as catalog entries for view, resolving
+// every course's latest published version and every creator's name in one
+// lookup each.
+func (h *Handler) catalogEntries(ctx context.Context, courses []domain.Course, view catalogEntryView) ([]generated.CourseCatalogEntry, error) {
+	courseIDs := make([]string, len(courses))
+	for i, c := range courses {
+		courseIDs[i] = c.ID
+	}
+	latestByCourse, err := h.course.LatestVersions(ctx, courseIDs)
+	if err != nil {
+		return nil, err
+	}
+	names, err := h.loadUserNames(ctx, courseUserIDs(courses...))
+	if err != nil {
+		return nil, err
+	}
+	entries, err := toCourseCatalogEntries(courses, view, func(courseID string) (*domain.CourseVersion, error) {
+		if v, ok := latestByCourse[courseID]; ok {
+			return &v, nil
+		}
+		return nil, nil
+	}, names)
+	if err != nil {
+		return nil, err
+	}
+
+	learningPathIDs := make(map[string][]string, len(courses))
+	for _, course := range courses {
+		learningPathIDs[course.ID] = courseLearningPathIDs(course.Checkpoints)
+		if view == learnerCatalogView {
+			latest, ok := latestByCourse[course.ID]
+			if !ok {
+				return nil, domain.ErrNotFound
+			}
+			learningPathIDs[course.ID] = courseVersionLearningPathIDs(latest.Checkpoints)
+		}
+	}
+	lessonCounts, err := h.course.CountLessons(ctx, learningPathIDs)
+	if err != nil {
+		return nil, err
+	}
+	for i, course := range courses {
+		entries[i].LessonCount = lessonCounts[course.ID]
+	}
+
+	return entries, nil
+}
+
+// ListCourseCreators returns the creators of the courses visible to the
+// caller, optionally narrowed by name, in name order.
+func (h *Handler) ListCourseCreators(ctx context.Context, request generated.ListCourseCreatorsRequestObject) (generated.ListCourseCreatorsResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ListCourseCreators401JSONResponse(unauthorizedError()), nil
+	}
+
+	creators, err := h.course.ListCourseCreators(ctx, caller, searchQuery(request.Params.Q))
+	if err != nil {
+		if kind, _ := classify(err); kind == errKindForbidden {
+			return generated.ListCourseCreators403JSONResponse(forbiddenError("the authoring creator list is for teachers and admins")), nil
+		}
+		return nil, err
+	}
+	return generated.ListCourseCreators200JSONResponse(toCreatorRefs(creators)), nil
+}
+
+// ListLearningPathCreators returns the creators of the paths in the
+// caller's library (only themselves, for a teacher), optionally narrowed by
+// name, in name order.
+func (h *Handler) ListLearningPathCreators(ctx context.Context, request generated.ListLearningPathCreatorsRequestObject) (generated.ListLearningPathCreatorsResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ListLearningPathCreators401JSONResponse(unauthorizedError()), nil
+	}
+
+	creators, err := h.path.ListLearningPathCreators(ctx, caller, searchQuery(request.Params.Q))
+	if err != nil {
+		if kind, _ := classify(err); kind == errKindForbidden {
+			return generated.ListLearningPathCreators403JSONResponse(forbiddenError("the authoring creator list is for teachers and admins")), nil
+		}
+		return nil, err
+	}
+	return generated.ListLearningPathCreators200JSONResponse(toCreatorRefs(creators)), nil
+}
+
+// ListCatalogCreators returns the creators of the published courses, the
+// same for every caller, optionally narrowed by name, in name order.
+func (h *Handler) ListCatalogCreators(ctx context.Context, request generated.ListCatalogCreatorsRequestObject) (generated.ListCatalogCreatorsResponseObject, error) {
+	if _, ok := h.resolveCaller(ctx); !ok {
+		return generated.ListCatalogCreators401JSONResponse(unauthorizedError()), nil
+	}
+
+	creators, err := h.course.ListCatalogCreators(ctx, searchQuery(request.Params.Q))
+	if err != nil {
+		return nil, err
+	}
+	return generated.ListCatalogCreators200JSONResponse(toCreatorRefs(creators)), nil
+}
+
+func toCreatorRefs(creators []application.Creator) []generated.CreatorRef {
+	refs := make([]generated.CreatorRef, len(creators))
+	for i, c := range creators {
+		refs[i] = generated.CreatorRef{UserId: mustUUID(c.UserID), DisplayName: c.DisplayName, ItemCount: c.ItemCount}
+	}
+	return refs
+}
+
+// latestCourseVersion returns course's latest published CourseVersion, or
+// nil if it has never been published — the courseVersionLookup shape
+// toCourseCatalogEntries and the toCourse/toCourseCatalogEntry mappers
+// need to compute has_unpublished_changes and latest_published_version.
+func (h *Handler) latestCourseVersion(ctx context.Context, courseID string) (*domain.CourseVersion, error) {
+	version, err := h.course.LatestVersion(ctx, courseID)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &version, nil
+}
+
+func (h *Handler) CreateCourse(ctx context.Context, request generated.CreateCourseRequestObject) (generated.CreateCourseResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.CreateCourse401JSONResponse(unauthorizedError()), nil
+	}
+
+	checkpoints := make([]application.CheckpointInput, len(request.Body.Checkpoints))
+	for i, cp := range request.Body.Checkpoints {
+		checkpoints[i] = application.CheckpointInput{
+			LearningPathID: cp.LearningPathId.String(),
+			Title:          cp.Title,
+		}
+	}
+
+	course, err := h.course.CreateCourse(ctx, caller, application.CourseInput{Title: request.Body.Title, Summary: request.Body.Summary, Level: domain.DifficultyLevel(request.Body.Level), Language: request.Body.Language, InstrumentIDs: uuidsToStrings(request.Body.InstrumentIds), ThumbnailURL: request.Body.ThumbnailUrl, Checkpoints: checkpoints})
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.CreateCourse400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			if errors.Is(err, domain.ErrCheckpointPathNotOwned) {
+				return generated.CreateCourse403JSONResponse(forbiddenError(checkpointPathNotOwnedMessage)), nil
+			}
+			return generated.CreateCourse403JSONResponse(forbiddenError("only teachers and admins may create courses")), nil
+		case errKindNotFound, errKindOther:
+			return nil, err
+		}
+	}
+
+	names, err := h.loadUserNames(ctx, courseUserIDs(course))
+	if err != nil {
+		return nil, err
+	}
+	return generated.CreateCourse201JSONResponse(toCourse(course, nil, names)), nil
+}
+
+func (h *Handler) GetCourse(ctx context.Context, request generated.GetCourseRequestObject) (generated.GetCourseResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.GetCourse401JSONResponse(unauthorizedError()), nil
+	}
+
+	course, err := h.course.GetCourse(ctx, caller, request.CourseId.String())
+	if err != nil {
+		kind, _ := classify(err)
+		switch kind {
+		case errKindForbidden:
+			return generated.GetCourse403JSONResponse(forbiddenError("only teachers and admins may view a course's live state")), nil
+		case errKindNotFound:
+			return generated.GetCourse404JSONResponse(notFoundError("no course exists with the given id")), nil
+		case errKindValidation, errKindOther:
+			return nil, err
+		}
+	}
+
+	latest, err := h.latestCourseVersion(ctx, course.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	names, err := h.loadUserNames(ctx, courseUserIDs(course))
+	if err != nil {
+		return nil, err
+	}
+	return generated.GetCourse200JSONResponse(toCourse(course, latest, names)), nil
+}
+
+func (h *Handler) ReplaceCourse(ctx context.Context, request generated.ReplaceCourseRequestObject) (generated.ReplaceCourseResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ReplaceCourse401JSONResponse(unauthorizedError()), nil
+	}
+
+	checkpoints := make([]application.CheckpointInput, len(request.Body.Checkpoints))
+	for i, cp := range request.Body.Checkpoints {
+		checkpoints[i] = application.CheckpointInput{
+			LearningPathID: cp.LearningPathId.String(),
+			Title:          cp.Title,
+		}
+	}
+
+	course, err := h.course.ReplaceCourse(ctx, caller, request.CourseId.String(), application.CourseInput{Title: request.Body.Title, Summary: request.Body.Summary, Level: domain.DifficultyLevel(request.Body.Level), Language: request.Body.Language, InstrumentIDs: uuidsToStrings(request.Body.InstrumentIds), ThumbnailURL: request.Body.ThumbnailUrl, Checkpoints: checkpoints})
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.ReplaceCourse400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			if errors.Is(err, domain.ErrCheckpointPathNotOwned) {
+				return generated.ReplaceCourse403JSONResponse(forbiddenError(checkpointPathNotOwnedMessage)), nil
+			}
+			return generated.ReplaceCourse403JSONResponse(forbiddenError("only the creating teacher or an admin may replace this course")), nil
+		case errKindNotFound:
+			return generated.ReplaceCourse404JSONResponse(notFoundError("no course exists with the given id")), nil
+		case errKindOther:
+			return nil, err
+		}
+	}
+
+	latest, err := h.latestCourseVersion(ctx, course.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	names, err := h.loadUserNames(ctx, courseUserIDs(course))
+	if err != nil {
+		return nil, err
+	}
+	return generated.ReplaceCourse200JSONResponse(toCourse(course, latest, names)), nil
+}
+
+func (h *Handler) PublishCourse(ctx context.Context, request generated.PublishCourseRequestObject) (generated.PublishCourseResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.PublishCourse401JSONResponse(unauthorizedError()), nil
+	}
+
+	version, err := h.course.PublishCourse(ctx, caller, request.CourseId.String())
+	if refusal := (*domain.CourseNotPublishableError)(nil); errors.As(err, &refusal) {
+		return generated.PublishCourse409JSONResponse(generated.CourseNotPublishableError{
+			Message:              "at least one checkpoint's learning path is a draft",
+			DraftLearningPathIds: toUUIDs(refusal.DraftLearningPathIDs),
+		}), nil
+	}
+	if err != nil {
+		kind, _ := classify(err)
+		switch kind {
+		case errKindForbidden:
+			return generated.PublishCourse403JSONResponse(forbiddenError("only admins may publish a course")), nil
+		case errKindNotFound:
+			return generated.PublishCourse404JSONResponse(notFoundError("no course exists with the given id")), nil
+		case errKindValidation, errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.PublishCourse201JSONResponse(toGeneratedCourseVersion(version)), nil
+}
+
+func (h *Handler) GetPublishedCourse(ctx context.Context, request generated.GetPublishedCourseRequestObject) (generated.GetPublishedCourseResponseObject, error) {
+	if _, ok := h.resolveCaller(ctx); !ok {
+		return generated.GetPublishedCourse401JSONResponse(unauthorizedError()), nil
+	}
+
+	courseID := request.CourseId.String()
+	view, err := h.course.GetPublishedCourse(ctx, courseID)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return generated.GetPublishedCourse404JSONResponse(notFoundError("no course exists with the given id, or it has never been published")), nil
+		}
+		return nil, err
+	}
+
+	names, err := h.loadUserNames(ctx, []string{view.CreatedBy})
+	if err != nil {
+		return nil, err
+	}
+	return generated.GetPublishedCourse200JSONResponse(toCourseDetail(courseID, view, names)), nil
+}
+
+func (h *Handler) RetireCourse(ctx context.Context, request generated.RetireCourseRequestObject) (generated.RetireCourseResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.RetireCourse401JSONResponse(unauthorizedError()), nil
+	}
+
+	course, err := h.course.RetireCourse(ctx, caller, request.CourseId.String())
+	if err != nil {
+		kind, _ := classify(err)
+		switch kind {
+		case errKindForbidden:
+			return generated.RetireCourse403JSONResponse(forbiddenError("only admins may retire a course")), nil
+		case errKindNotFound:
+			return generated.RetireCourse404JSONResponse(notFoundError("no course exists with the given id")), nil
+		case errKindValidation, errKindOther:
+			return nil, err
+		}
+	}
+
+	latest, err := h.latestCourseVersion(ctx, course.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	names, err := h.loadUserNames(ctx, courseUserIDs(course))
+	if err != nil {
+		return nil, err
+	}
+	return generated.RetireCourse200JSONResponse(toCourse(course, latest, names)), nil
+}
+
+func (h *Handler) ReactivateCourse(ctx context.Context, request generated.ReactivateCourseRequestObject) (generated.ReactivateCourseResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ReactivateCourse401JSONResponse(unauthorizedError()), nil
+	}
+
+	course, err := h.course.ReactivateCourse(ctx, caller, request.CourseId.String())
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindForbidden:
+			return generated.ReactivateCourse403JSONResponse(forbiddenError("only admins may reactivate a course")), nil
+		case errKindNotFound:
+			return generated.ReactivateCourse404JSONResponse(notFoundError("no course exists with the given id")), nil
+		case errKindValidation:
+			return generated.ReactivateCourse400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindOther:
+			return nil, err
+		}
+	}
+
+	latest, err := h.latestCourseVersion(ctx, course.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	names, err := h.loadUserNames(ctx, courseUserIDs(course))
+	if err != nil {
+		return nil, err
+	}
+	return generated.ReactivateCourse200JSONResponse(toCourse(course, latest, names)), nil
+}
+
+func (h *Handler) ListMyCourseEnrollments(ctx context.Context, _ generated.ListMyCourseEnrollmentsRequestObject) (generated.ListMyCourseEnrollmentsResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ListMyCourseEnrollments401JSONResponse(unauthorizedError()), nil
+	}
+
+	enrollments, err := h.courseEnrollment.ListMyCourseEnrollments(ctx, caller)
+	if err != nil {
+		return nil, err
+	}
+
+	presentations, err := h.courseEnrollmentPresentations(ctx, enrollments)
+	if err != nil {
+		return nil, err
+	}
+	return generated.ListMyCourseEnrollments200JSONResponse(presentations), nil
+}
+
+func (h *Handler) CreateCourseEnrollment(ctx context.Context, request generated.CreateCourseEnrollmentRequestObject) (generated.CreateCourseEnrollmentResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.CreateCourseEnrollment401JSONResponse(unauthorizedError()), nil
+	}
+
+	enrollment, err := h.courseEnrollment.CreateCourseEnrollment(ctx, caller, request.Body.CourseId.String())
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrNotFound):
+			return generated.CreateCourseEnrollment404JSONResponse(notFoundError("the course_id does not exist, the course is draft or retired, or its latest published version is not currently available for new enrollments")), nil
+		case errors.Is(err, domain.ErrConflict):
+			return generated.CreateCourseEnrollment409JSONResponse(conflictError("the student already has an active course enrollment for this course")), nil
+		default:
+			var valErr *domain.ValidationError
+			if errors.As(err, &valErr) {
+				return generated.CreateCourseEnrollment400JSONResponse(validationErrorResponse(valErr)), nil
+			}
+			return nil, err
+		}
+	}
+
+	presentations, err := h.courseEnrollmentPresentations(ctx, []domain.CourseEnrollment{enrollment})
+	if err != nil {
+		return nil, err
+	}
+	return generated.CreateCourseEnrollment201JSONResponse(presentations[0]), nil
+}
+
+func (h *Handler) AbandonCourseEnrollment(ctx context.Context, request generated.AbandonCourseEnrollmentRequestObject) (generated.AbandonCourseEnrollmentResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.AbandonCourseEnrollment401JSONResponse(unauthorizedError()), nil
+	}
+
+	enrollment, err := h.courseEnrollment.AbandonCourseEnrollment(ctx, caller, request.CourseEnrollmentId.String())
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrNotFound):
+			return generated.AbandonCourseEnrollment404JSONResponse(notFoundError("no active enrollment with this id exists for the caller")), nil
+		case errors.Is(err, domain.ErrConflict):
+			return generated.AbandonCourseEnrollment409JSONResponse(conflictError("this is the caller's only current course or path with something else eligible to become current; switch to it first")), nil
+		default:
+			return nil, err
+		}
+	}
+
+	presentations, err := h.courseEnrollmentPresentations(ctx, []domain.CourseEnrollment{enrollment})
+	if err != nil {
+		return nil, err
+	}
+	return generated.AbandonCourseEnrollment200JSONResponse(presentations[0]), nil
+}
+
+// courseEnrollmentPresentations resolves each enrollment's pinned course
+// version before rendering it, then loads both the student and course
+// creator display names in one identity lookup, and whether each enrollment
+// can be updated to its course's latest content.
+func (h *Handler) courseEnrollmentPresentations(ctx context.Context, enrollments []domain.CourseEnrollment) ([]generated.CourseEnrollment, error) {
+	presentations, err := h.courseEnrollment.PresentationsFor(ctx, enrollments)
+	if err != nil {
+		return nil, err
+	}
+	userIDs := make([]string, 0, 2*len(enrollments))
+	for i, enrollment := range enrollments {
+		userIDs = append(userIDs, enrollment.StudentID, presentations[i].CourseCreatedBy)
+	}
+	names, err := h.loadUserNames(ctx, userIDs)
+	if err != nil {
+		return nil, err
+	}
+	updateAvailable, err := h.courseEnrollment.UpdateAvailable(ctx, enrollments)
+	if err != nil {
+		return nil, err
+	}
+	return toCourseEnrollments(enrollments, presentations, names, updateAvailable), nil
+}
+
+func (h *Handler) SetCurrentPath(ctx context.Context, request generated.SetCurrentPathRequestObject) (generated.SetCurrentPathResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.SetCurrentPath401JSONResponse(unauthorizedError()), nil
+	}
+
+	view, err := h.studentPath.SetCurrentPath(ctx, caller, application.SetCurrentPathInput{
+		CourseEnrollmentID: uuidPtrToStringPtr(request.Body.CourseEnrollmentId),
+		StudentPathID:      uuidPtrToStringPtr(request.Body.StudentPathId),
+	})
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.SetCurrentPath400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindNotFound:
+			return generated.SetCurrentPath404JSONResponse(notFoundError("the referenced course enrollment or student path does not exist or does not belong to the caller")), nil
+		case errKindForbidden, errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.SetCurrentPath200JSONResponse(toStudentPathView(view)), nil
+}
+
+func (h *Handler) ListContentNodeChallenges(ctx context.Context, request generated.ListContentNodeChallengesRequestObject) (generated.ListContentNodeChallengesResponseObject, error) {
+	if _, ok := h.resolveCaller(ctx); !ok {
+		return generated.ListContentNodeChallenges401JSONResponse(unauthorizedError()), nil
+	}
+
+	challenges, err := h.challenge.ListChallengesForContentNode(ctx, request.ContentNodeId.String())
+	if err != nil {
+		if kind, _ := classify(err); kind == errKindNotFound {
+			return generated.ListContentNodeChallenges404JSONResponse(notFoundError("no content node exists with the given content_node_id")), nil
+		}
+		return nil, err
+	}
+
+	return generated.ListContentNodeChallenges200JSONResponse(toChallenges(challenges)), nil
+}
+
+func (h *Handler) ListChallengeExercises(ctx context.Context, request generated.ListChallengeExercisesRequestObject) (generated.ListChallengeExercisesResponseObject, error) {
+	if _, ok := h.resolveCaller(ctx); !ok {
+		return generated.ListChallengeExercises401JSONResponse(unauthorizedError()), nil
+	}
+
+	exercises, err := h.exercise.ListExercisesForChallenge(ctx, request.ChallengeId.String())
+	if err != nil {
+		if kind, _ := classify(err); kind == errKindNotFound {
+			return generated.ListChallengeExercises404JSONResponse(notFoundError("no challenge exists with the given challenge_id")), nil
+		}
+		return nil, err
+	}
+
+	names, err := h.loadUserNames(ctx, exerciseUserIDs(exercises...))
+	if err != nil {
+		return nil, err
+	}
+	return generated.ListChallengeExercises200JSONResponse(toExercises(exercises, names)), nil
+}
+
+func (h *Handler) ListContentNodePathExercises(ctx context.Context, request generated.ListContentNodePathExercisesRequestObject) (generated.ListContentNodePathExercisesResponseObject, error) {
+	if _, ok := h.resolveCaller(ctx); !ok {
+		return generated.ListContentNodePathExercises401JSONResponse(unauthorizedError()), nil
+	}
+
+	exercises, err := h.exercise.ListPathExercisesForContentNode(ctx, request.ContentNodeId.String())
+	if err != nil {
+		if kind, _ := classify(err); kind == errKindNotFound {
+			return generated.ListContentNodePathExercises404JSONResponse(notFoundError("no content node exists with the given content_node_id")), nil
+		}
+		return nil, err
+	}
+
+	names, err := h.loadUserNames(ctx, exerciseUserIDs(exercises...))
+	if err != nil {
+		return nil, err
+	}
+	return generated.ListContentNodePathExercises200JSONResponse(toExercises(exercises, names)), nil
+}
+
+func (h *Handler) LinkExerciseToContentNode(ctx context.Context, request generated.LinkExerciseToContentNodeRequestObject) (generated.LinkExerciseToContentNodeResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.LinkExerciseToContentNode401JSONResponse(unauthorizedError()), nil
+	}
+
+	exercise, err := h.exercise.LinkExerciseToContentNode(ctx, caller, request.ContentNodeId.String(), request.ExerciseId.String())
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrForbidden):
+			return generated.LinkExerciseToContentNode403JSONResponse(forbiddenError("only teachers and admins may link exercises to content nodes")), nil
+		case errors.Is(err, domain.ErrNotFound):
+			return generated.LinkExerciseToContentNode404JSONResponse(notFoundError("no content node exists with content_node_id, or no exercise exists with exercise_id")), nil
+		case errors.Is(err, domain.ErrAlreadyExists):
+			return generated.LinkExerciseToContentNode409JSONResponse(conflictError("the exercise is already linked to this content node")), nil
+		case errors.Is(err, domain.ErrConflict):
+			return generated.LinkExerciseToContentNode409JSONResponse(conflictError(conflictMessage(err))), nil
+		default:
+			return nil, err
+		}
+	}
+
+	names, err := h.loadUserNames(ctx, exerciseUserIDs(exercise))
+	if err != nil {
+		return nil, err
+	}
+	return generated.LinkExerciseToContentNode201JSONResponse(toExercise(exercise, names)), nil
+}
+
+func (h *Handler) UnlinkExerciseFromContentNode(ctx context.Context, request generated.UnlinkExerciseFromContentNodeRequestObject) (generated.UnlinkExerciseFromContentNodeResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.UnlinkExerciseFromContentNode401JSONResponse(unauthorizedError()), nil
+	}
+
+	err := h.exercise.UnlinkExerciseFromContentNode(ctx, caller, request.ContentNodeId.String(), request.ExerciseId.String())
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrForbidden):
+			return generated.UnlinkExerciseFromContentNode403JSONResponse(forbiddenError("only teachers and admins may unlink exercises from content nodes")), nil
+		case errors.Is(err, domain.ErrNotFound):
+			return generated.UnlinkExerciseFromContentNode404JSONResponse(notFoundError("no content node exists with content_node_id, no exercise exists with exercise_id, or the exercise is not currently linked to this content node")), nil
+		default:
+			return nil, err
+		}
+	}
+
+	return generated.UnlinkExerciseFromContentNode204Response{}, nil
+}
+
+func (h *Handler) ListKnowledgeNodes(ctx context.Context, request generated.ListKnowledgeNodesRequestObject) (generated.ListKnowledgeNodesResponseObject, error) {
+	if _, ok := h.resolveCaller(ctx); !ok {
+		return generated.ListKnowledgeNodes401JSONResponse(unauthorizedError()), nil
+	}
+
+	var filter ports.KnowledgeNodeFilter
+	if request.Params.Kind != nil {
+		kind := domain.KnowledgeNodeKind(*request.Params.Kind)
+		filter.Kind = &kind
+	}
+	if request.Params.InstrumentId != nil {
+		filter.InstrumentIDs = uuidsToStrings(*request.Params.InstrumentId)
+	}
+	nodes, err := h.knowledgeNode.List(ctx, filter)
+	if err != nil {
+		return listValidationFailure[generated.ListKnowledgeNodesResponseObject](err, func(e generated.ValidationError) generated.ListKnowledgeNodesResponseObject {
+			return generated.ListKnowledgeNodes400JSONResponse(e)
+		})
+	}
+
+	return generated.ListKnowledgeNodes200JSONResponse(toGeneratedKnowledgeNodes(nodes)), nil
+}
+
+func (h *Handler) CreateKnowledgeNode(ctx context.Context, request generated.CreateKnowledgeNodeRequestObject) (generated.CreateKnowledgeNodeResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.CreateKnowledgeNode401JSONResponse(unauthorizedError()), nil
+	}
+
+	body := request.Body
+	input := application.CreateKnowledgeNodeInput{
+		Kind:     domain.KnowledgeNodeKind(body.Kind),
+		Key:      body.Key,
+		Names:    body.Names,
+		ParentID: uuidPtrToStringPtr(body.ParentId),
+	}
+	if body.Descriptions != nil {
+		input.Descriptions = *body.Descriptions
+	}
+	if body.InstrumentIds != nil {
+		input.InstrumentIDs = uuidsToStrings(*body.InstrumentIds)
+	}
+	node, err := h.knowledgeNode.Create(ctx, caller, input)
+	if err != nil {
+		switch kind, valErr := classify(err); {
+		case kind == errKindValidation:
+			return generated.CreateKnowledgeNode400JSONResponse(validationErrorResponse(valErr)), nil
+		case kind == errKindForbidden:
+			return generated.CreateKnowledgeNode403JSONResponse(forbiddenError("only admins may create a knowledge node")), nil
+		case errors.Is(err, domain.ErrConflict):
+			return generated.CreateKnowledgeNode409JSONResponse(conflictError(conflictMessage(err))), nil
+		default:
+			return nil, err
+		}
+	}
+
+	return generated.CreateKnowledgeNode201JSONResponse(toGeneratedKnowledgeNode(node)), nil
+}
+
+func (h *Handler) GetKnowledgeNode(ctx context.Context, request generated.GetKnowledgeNodeRequestObject) (generated.GetKnowledgeNodeResponseObject, error) {
+	if _, ok := h.resolveCaller(ctx); !ok {
+		return generated.GetKnowledgeNode401JSONResponse(unauthorizedError()), nil
+	}
+
+	node, err := h.knowledgeNode.Get(ctx, request.NodeId.String())
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return generated.GetKnowledgeNode404JSONResponse(notFoundError("no knowledge node exists with the given id")), nil
+		}
+		return nil, err
+	}
+
+	return generated.GetKnowledgeNode200JSONResponse(toGeneratedKnowledgeNode(node)), nil
+}
+
+func (h *Handler) UpdateKnowledgeNode(ctx context.Context, request generated.UpdateKnowledgeNodeRequestObject) (generated.UpdateKnowledgeNodeResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.UpdateKnowledgeNode401JSONResponse(unauthorizedError()), nil
+	}
+
+	node, err := h.knowledgeNode.Update(ctx, caller, request.NodeId.String(), toUpdateKnowledgeNodeInput(*request.Body))
+	if err != nil {
+		switch kind, valErr := classify(err); {
+		case kind == errKindValidation:
+			return generated.UpdateKnowledgeNode400JSONResponse(validationErrorResponse(valErr)), nil
+		case kind == errKindForbidden:
+			return generated.UpdateKnowledgeNode403JSONResponse(forbiddenError("only admins may update a knowledge node")), nil
+		case kind == errKindNotFound:
+			return generated.UpdateKnowledgeNode404JSONResponse(notFoundError("no knowledge node exists with the given id")), nil
+		case errors.Is(err, domain.ErrConflict):
+			return generated.UpdateKnowledgeNode409JSONResponse(conflictError(conflictMessage(err))), nil
+		default:
+			return nil, err
+		}
+	}
+
+	return generated.UpdateKnowledgeNode200JSONResponse(toGeneratedKnowledgeNode(node)), nil
+}
+
+func (h *Handler) DeleteKnowledgeNode(ctx context.Context, request generated.DeleteKnowledgeNodeRequestObject) (generated.DeleteKnowledgeNodeResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.DeleteKnowledgeNode401JSONResponse(unauthorizedError()), nil
+	}
+
+	if err := h.knowledgeNode.Delete(ctx, caller, request.NodeId.String()); err != nil {
+		switch kind, _ := classify(err); {
+		case kind == errKindForbidden:
+			return generated.DeleteKnowledgeNode403JSONResponse(forbiddenError("only admins may delete a knowledge node")), nil
+		case kind == errKindNotFound:
+			return generated.DeleteKnowledgeNode404JSONResponse(notFoundError("no knowledge node exists with the given id")), nil
+		case errors.Is(err, domain.ErrConflict):
+			return generated.DeleteKnowledgeNode409JSONResponse(conflictError(conflictMessage(err))), nil
+		default:
+			return nil, err
+		}
+	}
+
+	return generated.DeleteKnowledgeNode204Response{}, nil
+}
+
+func (h *Handler) ListKnowledgeEdges(ctx context.Context, request generated.ListKnowledgeEdgesRequestObject) (generated.ListKnowledgeEdgesResponseObject, error) {
+	if _, ok := h.resolveCaller(ctx); !ok {
+		return generated.ListKnowledgeEdges401JSONResponse(unauthorizedError()), nil
+	}
+
+	filter := ports.KnowledgeEdgeFilter{
+		FromID: uuidPtrToStringPtr(request.Params.FromId),
+		ToID:   uuidPtrToStringPtr(request.Params.ToId),
+	}
+	if request.Params.Type != nil {
+		edgeType := domain.KnowledgeEdgeType(*request.Params.Type)
+		filter.Type = &edgeType
+	}
+	edges, err := h.knowledgeEdge.List(ctx, filter)
+	if err != nil {
+		return listValidationFailure[generated.ListKnowledgeEdgesResponseObject](err, func(e generated.ValidationError) generated.ListKnowledgeEdgesResponseObject {
+			return generated.ListKnowledgeEdges400JSONResponse(e)
+		})
+	}
+
+	return generated.ListKnowledgeEdges200JSONResponse(toGeneratedKnowledgeEdges(edges)), nil
+}
+
+func (h *Handler) CreateKnowledgeEdge(ctx context.Context, request generated.CreateKnowledgeEdgeRequestObject) (generated.CreateKnowledgeEdgeResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.CreateKnowledgeEdge401JSONResponse(unauthorizedError()), nil
+	}
+
+	body := request.Body
+	input := application.CreateKnowledgeEdgeInput{
+		FromID: body.FromId.String(),
+		ToID:   body.ToId.String(),
+		Type:   domain.KnowledgeEdgeType(body.Type),
+	}
+	if body.Level != nil {
+		level := domain.MasteryLevel(*body.Level)
+		input.Level = &level
+	}
+	edge, err := h.knowledgeEdge.Create(ctx, caller, input)
+	if err != nil {
+		switch kind, valErr := classify(err); {
+		case kind == errKindValidation:
+			return generated.CreateKnowledgeEdge400JSONResponse(validationErrorResponse(valErr)), nil
+		case kind == errKindForbidden:
+			return generated.CreateKnowledgeEdge403JSONResponse(forbiddenError("only admins may create a knowledge edge")), nil
+		case errors.Is(err, domain.ErrConflict):
+			return generated.CreateKnowledgeEdge409JSONResponse(conflictError(conflictMessage(err))), nil
+		default:
+			return nil, err
+		}
+	}
+
+	return generated.CreateKnowledgeEdge201JSONResponse(toGeneratedKnowledgeEdge(edge)), nil
+}
+
+func (h *Handler) UpdateKnowledgeEdge(ctx context.Context, request generated.UpdateKnowledgeEdgeRequestObject) (generated.UpdateKnowledgeEdgeResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.UpdateKnowledgeEdge401JSONResponse(unauthorizedError()), nil
+	}
+
+	edge, err := h.knowledgeEdge.UpdateLevel(ctx, caller, request.EdgeId.String(), domain.MasteryLevel(request.Body.Level))
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.UpdateKnowledgeEdge400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.UpdateKnowledgeEdge403JSONResponse(forbiddenError("only admins may update a knowledge edge")), nil
+		case errKindNotFound:
+			return generated.UpdateKnowledgeEdge404JSONResponse(notFoundError("no knowledge edge exists with the given id")), nil
+		case errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.UpdateKnowledgeEdge200JSONResponse(toGeneratedKnowledgeEdge(edge)), nil
+}
+
+func (h *Handler) DeleteKnowledgeEdge(ctx context.Context, request generated.DeleteKnowledgeEdgeRequestObject) (generated.DeleteKnowledgeEdgeResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.DeleteKnowledgeEdge401JSONResponse(unauthorizedError()), nil
+	}
+
+	if err := h.knowledgeEdge.Delete(ctx, caller, request.EdgeId.String()); err != nil {
+		kind, _ := classify(err)
+		switch kind {
+		case errKindForbidden:
+			return generated.DeleteKnowledgeEdge403JSONResponse(forbiddenError("only admins may delete a knowledge edge")), nil
+		case errKindNotFound:
+			return generated.DeleteKnowledgeEdge404JSONResponse(notFoundError("no knowledge edge exists with the given id")), nil
+		case errKindValidation, errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.DeleteKnowledgeEdge204Response{}, nil
+}
+
+func (h *Handler) ListInstruments(ctx context.Context, _ generated.ListInstrumentsRequestObject) (generated.ListInstrumentsResponseObject, error) {
+	if _, ok := h.resolveCaller(ctx); !ok {
+		return generated.ListInstruments401JSONResponse(unauthorizedError()), nil
+	}
+
+	instruments, err := h.instrument.ListInstruments(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return generated.ListInstruments200JSONResponse(toGeneratedInstruments(instruments)), nil
+}
+
+func (h *Handler) CreateInstrument(ctx context.Context, request generated.CreateInstrumentRequestObject) (generated.CreateInstrumentResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.CreateInstrument401JSONResponse(unauthorizedError()), nil
+	}
+
+	body := request.Body
+	var tuning []string
+	if body.Tuning != nil {
+		tuning = *body.Tuning
+	}
+	var keyRange *domain.KeyRange
+	if body.KeyRange != nil {
+		keyRange = &domain.KeyRange{Lowest: body.KeyRange.Lowest, Highest: body.KeyRange.Highest}
+	}
+	instrument, err := h.instrument.CreateInstrument(ctx, caller, body.Names, domain.InstrumentFamily(body.Family), body.StringCount, tuning, keyRange, body.DefaultVoiceId, body.Icon)
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.CreateInstrument400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.CreateInstrument403JSONResponse(forbiddenError("only teachers and admins may create an instrument")), nil
+		case errKindNotFound, errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.CreateInstrument201JSONResponse(toGeneratedInstrument(instrument)), nil
+}
+
+func (h *Handler) UpdateInstrument(ctx context.Context, request generated.UpdateInstrumentRequestObject) (generated.UpdateInstrumentResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.UpdateInstrument401JSONResponse(unauthorizedError()), nil
+	}
+
+	instrument, err := h.instrument.UpdateInstrument(ctx, caller, request.InstrumentId.String(), request.Body.Names, request.Body.DefaultVoiceId, request.Body.Icon)
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.UpdateInstrument400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.UpdateInstrument403JSONResponse(forbiddenError("only admins may update an instrument")), nil
+		case errKindNotFound:
+			return generated.UpdateInstrument404JSONResponse(notFoundError("no instrument exists with the given instrument_id")), nil
+		case errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.UpdateInstrument200JSONResponse(toGeneratedInstrument(instrument)), nil
+}
+
+func (h *Handler) ListVoices(ctx context.Context, _ generated.ListVoicesRequestObject) (generated.ListVoicesResponseObject, error) {
+	if _, ok := h.resolveCaller(ctx); !ok {
+		return generated.ListVoices401JSONResponse(unauthorizedError()), nil
+	}
+
+	voices, err := h.voice.ListVoices(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return generated.ListVoices200JSONResponse(toGeneratedVoices(voices)), nil
+}
+
+func (h *Handler) ListDiagrams(ctx context.Context, request generated.ListDiagramsRequestObject) (generated.ListDiagramsResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ListDiagrams401JSONResponse(unauthorizedError()), nil
+	}
+
+	page, err := domain.NewPageRequest(request.Params.Limit, request.Params.Offset)
+	if err != nil {
+		return listValidationFailure[generated.ListDiagramsResponseObject](err, func(e generated.ValidationError) generated.ListDiagramsResponseObject {
+			return generated.ListDiagrams400JSONResponse(e)
+		})
+	}
+
+	filter, err := diagramListFilter(request.Params)
+	if err != nil {
+		return listDiagramsFailure(err)
+	}
+	result, err := h.diagram.ListDiagrams(ctx, caller, filter, page)
+	if err != nil {
+		return listDiagramsFailure(err)
+	}
+
+	names, err := h.loadUserNames(ctx, diagramUserIDs(result.Items...))
+	if err != nil {
+		return nil, err
+	}
+	return generated.ListDiagrams200JSONResponse{
+		Items: toGeneratedDiagrams(result.Items, names), Total: result.Total, Limit: page.Limit, Offset: page.Offset,
+	}, nil
+}
+
+// listDiagramsFailure turns a ListDiagrams failure into its response: 400
+// for a validation error, 403 for a caller who may not browse the library.
+func listDiagramsFailure(err error) (generated.ListDiagramsResponseObject, error) {
+	kind, valErr := classify(err)
+	switch kind {
+	case errKindValidation:
+		return generated.ListDiagrams400JSONResponse(validationErrorResponse(valErr)), nil
+	case errKindForbidden:
+		return generated.ListDiagrams403JSONResponse(forbiddenError("students may not list diagrams")), nil
+	case errKindNotFound, errKindOther:
+		return nil, err
+	}
+	return nil, err
+}
+
+// ListDiagramCreators returns the creators of the diagrams the caller can
+// see, optionally narrowed by name, in name order.
+func (h *Handler) ListDiagramCreators(ctx context.Context, request generated.ListDiagramCreatorsRequestObject) (generated.ListDiagramCreatorsResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ListDiagramCreators401JSONResponse(unauthorizedError()), nil
+	}
+
+	query := ""
+	if request.Params.Q != nil {
+		query = *request.Params.Q
+	}
+	creators, err := h.diagram.ListDiagramCreators(ctx, caller, query)
+	if err != nil {
+		if kind, _ := classify(err); kind == errKindForbidden {
+			return generated.ListDiagramCreators403JSONResponse(forbiddenError("students may not list diagram creators")), nil
+		}
+		return nil, err
+	}
+	return generated.ListDiagramCreators200JSONResponse(toCreatorRefs(creators)), nil
+}
+
+func (h *Handler) CreateDiagram(ctx context.Context, request generated.CreateDiagramRequestObject) (generated.CreateDiagramResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.CreateDiagram401JSONResponse(unauthorizedError()), nil
+	}
+
+	body := request.Body
+	diagram, err := h.diagram.CreateDiagramWithInstruments(ctx, caller, uuidsToStrings(body.InstrumentIds), body.Names, toDomainPositions(body.Positions),
+		uuidsToStrings(body.Classification.SkillIds), uuidsToStrings(body.Classification.ConceptIds),
+		domain.DiagramOptions{
+			RootNote: body.RootNote, LabelDisplay: toDomainLabelDisplay(body.LabelDisplay), Color: body.Color, Kind: toDomainDiagramKind(body.Kind), Regions: toDomainRegions(body.Regions),
+			Mode: toDomainMode(body.Mode), Playbacks: toDomainPlaybacks(body.Playbacks), DefaultPlaybackID: uuidPtrToStringPtr(body.DefaultPlaybackId),
+		})
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.CreateDiagram400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.CreateDiagram403JSONResponse(forbiddenError("only teachers and admins may create a diagram, and only admins may create a basic one")), nil
+		case errKindNotFound, errKindOther:
+			return nil, err
+		}
+	}
+
+	names, err := h.loadUserNames(ctx, diagramUserIDs(diagram))
+	if err != nil {
+		return nil, err
+	}
+	return generated.CreateDiagram201JSONResponse(toGeneratedDiagram(diagram, names)), nil
+}
+
+func (h *Handler) GetDiagram(ctx context.Context, request generated.GetDiagramRequestObject) (generated.GetDiagramResponseObject, error) {
+	if _, ok := h.resolveCaller(ctx); !ok {
+		return generated.GetDiagram401JSONResponse(unauthorizedError()), nil
+	}
+
+	diagram, err := h.diagram.GetDiagram(ctx, request.DiagramId.String())
+	if err != nil {
+		if kind, _ := classify(err); kind == errKindNotFound {
+			return generated.GetDiagram404JSONResponse(notFoundError("no diagram exists with the given diagram_id")), nil
+		}
+		return nil, err
+	}
+
+	names, err := h.loadUserNames(ctx, diagramUserIDs(diagram))
+	if err != nil {
+		return nil, err
+	}
+	return generated.GetDiagram200JSONResponse(toGeneratedDiagram(diagram, names)), nil
+}
+
+func (h *Handler) UpdateDiagram(ctx context.Context, request generated.UpdateDiagramRequestObject) (generated.UpdateDiagramResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.UpdateDiagram401JSONResponse(unauthorizedError()), nil
+	}
+
+	update := toDiagramUpdate(request.Body)
+	diagram, err := h.diagram.UpdateDiagram(ctx, caller, request.DiagramId.String(), update)
+	if err != nil {
+		if errors.Is(err, domain.ErrConflict) {
+			return generated.UpdateDiagram409JSONResponse(conflictError(conflictMessage(err))), nil
+		}
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.UpdateDiagram400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.UpdateDiagram403JSONResponse(forbiddenError("only admins may update a basic diagram, and only its creator or an admin may update a custom one")), nil
+		case errKindNotFound:
+			return generated.UpdateDiagram404JSONResponse(notFoundError("no diagram exists with the given diagram_id")), nil
+		case errKindOther:
+			return nil, err
+		}
+	}
+
+	names, err := h.loadUserNames(ctx, diagramUserIDs(diagram))
+	if err != nil {
+		return nil, err
+	}
+	return generated.UpdateDiagram200JSONResponse(toGeneratedDiagram(diagram, names)), nil
+}

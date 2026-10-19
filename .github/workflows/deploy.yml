@@ -1,0 +1,141 @@
+name: Deploy
+
+# Replaces one environment's containers on the VM with images already in ECR.
+# Nothing is built here: production deploys the exact tag staging ran, and a
+# rollback is this workflow run again with the previous tag.
+#
+# Staging deploys automatically after build-images.yml builds a `stage`
+# commit. Production is always started by hand.
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to deploy
+        type: choice
+        options: [staging, production]
+        required: true
+      image_tag:
+        description: Full commit SHA of the images to deploy
+        type: string
+        required: true
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+      image_tag:
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-2
+  DEPLOY_ENV: ${{ inputs.environment }}
+  IMAGE_TAG: ${{ inputs.image_tag }}
+
+jobs:
+  deploy:
+    name: Deploy ${{ inputs.image_tag }} to ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Validate inputs
+        env:
+          KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          INSTANCE: ${{ vars.VM_INSTANCE_ID }}
+        run: |
+          [[ "$DEPLOY_ENV" =~ ^(staging|production)$ ]] || { echo "::error::unknown environment '$DEPLOY_ENV'"; exit 1; }
+          [[ "$IMAGE_TAG" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::image_tag must be a full 40-char commit SHA"; exit 1; }
+          [[ -n "$KEY_ID" && -n "$INSTANCE" ]] || { echo "::error::GitHub environment '$DEPLOY_ENV' needs the AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY secrets and the VM_INSTANCE_ID variable; see deploy/README.md"; exit 1; }
+
+      # Only for the branch check below. The VM fetches the deploy files for
+      # this commit itself and repeats the check: this key cannot send it
+      # anything but the SHA.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.image_tag }}
+          fetch-depth: 0
+
+      # Production only runs what has been promoted to main. Staging runs
+      # release candidates from stage, or a hotfix already on main.
+      - name: Check the commit is on a release branch
+        run: |
+          git fetch --quiet origin main stage 2>/dev/null || git fetch --quiet origin main
+          on() { git rev-parse --verify --quiet "origin/$1" >/dev/null && git merge-base --is-ancestor "$IMAGE_TAG" "origin/$1"; }
+          if [[ "$DEPLOY_ENV" == production ]]; then
+            on main || { echo "::error::$IMAGE_TAG is not on main; promote stage to main first"; exit 1; }
+          else
+            on stage || on main || { echo "::error::$IMAGE_TAG is on neither stage nor main"; exit 1; }
+          fi
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Check every image exists
+        run: |
+          for svc in core-domain event-ingestion aggregation-worker; do
+            aws ecr describe-images --repository-name "motifpath/$svc" --image-ids imageTag="$IMAGE_TAG" >/dev/null \
+              || { echo "::error::motifpath/$svc:$IMAGE_TAG is not in ECR; run Build images for this commit"; exit 1; }
+          done
+
+      # Image expiry in ECR never removes images carrying this tag to make
+      # room for newer builds, so what production ran stays available for
+      # redeploys and rollbacks.
+      - name: Protect the images production runs
+        if: inputs.environment == 'production'
+        run: |
+          set -euo pipefail
+          for svc in core-domain event-ingestion aggregation-worker; do
+            image=$(aws ecr batch-get-image --repository-name "motifpath/$svc" \
+              --image-ids imageTag="$IMAGE_TAG" --query 'images[0]' --output json)
+            out=$(aws ecr put-image --repository-name "motifpath/$svc" \
+              --image-tag "production-$IMAGE_TAG" \
+              --image-manifest "$(jq -r .imageManifest <<<"$image")" \
+              --image-manifest-media-type "$(jq -r .imageManifestMediaType <<<"$image")" 2>&1) \
+              || grep -q ImageAlreadyExistsException <<<"$out" \
+              || { echo "$out"; exit 1; }
+          done
+
+      # The environment's deploy document is the only command this key may
+      # send: it takes the SHA, checks it is on this environment's release
+      # branches, and runs deploy/deploy.sh from that commit.
+      - name: Run the deploy on the VM
+        env:
+          INSTANCE: ${{ vars.VM_INSTANCE_ID }}
+        run: |
+          set -euo pipefail
+          id=$(aws ssm send-command \
+            --instance-ids "$INSTANCE" \
+            --document-name "motifpath-$DEPLOY_ENV-deploy" \
+            --comment "deploy $DEPLOY_ENV ${IMAGE_TAG:0:12}" \
+            --parameters "imageTag=$IMAGE_TAG" \
+            --query Command.CommandId --output text)
+          echo "SSM command $id"
+
+          while :; do
+            sleep 10
+            status=$(aws ssm get-command-invocation --command-id "$id" --instance-id "$INSTANCE" \
+              --query Status --output text 2>/dev/null || echo Pending)
+            case "$status" in
+              Pending|InProgress|Delayed) continue ;;
+              *) break ;;
+            esac
+          done
+
+          aws ssm get-command-invocation --command-id "$id" --instance-id "$INSTANCE" \
+            --query StandardOutputContent --output text
+          err=$(aws ssm get-command-invocation --command-id "$id" --instance-id "$INSTANCE" \
+            --query StandardErrorContent --output text)
+          [[ -z "$err" || "$err" == None ]] || { echo "--- stderr ---"; echo "$err"; }
+
+          [[ "$status" == Success ]] || { echo "::error::deploy finished with status $status"; exit 1; }
+          echo "### Deployed \`$IMAGE_TAG\` to $DEPLOY_ENV" >> "$GITHUB_STEP_SUMMARY"

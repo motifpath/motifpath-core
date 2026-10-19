@@ -1,0 +1,10 @@
+-- create "chord_definitions" table
+CREATE TABLE "chord_definitions" ("id" uuid NOT NULL, "canonical_symbol" character varying NOT NULL, "root" character varying NOT NULL, "root_pitch_class" bigint NOT NULL, "quality" character varying NOT NULL, "formula" jsonb NOT NULL, "omittable" jsonb NOT NULL, "bass" character varying NULL, "bass_pitch_class" bigint NULL, "aliases" jsonb NOT NULL, PRIMARY KEY ("id"));
+-- create index "chord_definitions_canonical_symbol_key" to table: "chord_definitions"
+CREATE UNIQUE INDEX "chord_definitions_canonical_symbol_key" ON "chord_definitions" ("canonical_symbol");
+-- create index "chorddefinition_root_pitch_class_quality_bass_pitch_class" to table: "chord_definitions"
+CREATE UNIQUE INDEX "chorddefinition_root_pitch_class_quality_bass_pitch_class" ON "chord_definitions" ("root_pitch_class", "quality", "bass_pitch_class");
+-- create "chord_voicings" table
+CREATE TABLE "chord_voicings" ("id" uuid NOT NULL, "tuning_fingerprint" character varying NOT NULL, "lowest_fret" bigint NOT NULL, "highest_fret" bigint NOT NULL, "fingering" jsonb NOT NULL, "muted_strings" jsonb NOT NULL, "omitted_intervals" jsonb NOT NULL, "difficulty" character varying NOT NULL, "technique_tags" jsonb NOT NULL, "shape_family" character varying NULL, "is_movable" boolean NOT NULL, "recommended_rank" bigint NOT NULL, "status" character varying NOT NULL DEFAULT 'active', "template_key" character varying NULL, "chord_definition_id" uuid NOT NULL, "diagram_id" uuid NOT NULL, "instrument_id" uuid NOT NULL, PRIMARY KEY ("id"), CONSTRAINT "chord_voicings_chord_definitions_chord_definition" FOREIGN KEY ("chord_definition_id") REFERENCES "chord_definitions" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION, CONSTRAINT "chord_voicings_diagrams_diagram" FOREIGN KEY ("diagram_id") REFERENCES "diagrams" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION, CONSTRAINT "chord_voicings_instruments_instrument" FOREIGN KEY ("instrument_id") REFERENCES "instruments" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION);
+-- create index "chordvoicing_diagram_id" to table: "chord_voicings"
+CREATE UNIQUE INDEX "chordvoicing_diagram_id" ON "chord_voicings" ("diagram_id");

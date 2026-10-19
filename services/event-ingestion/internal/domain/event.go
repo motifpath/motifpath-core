@@ -1,0 +1,93 @@
+package domain
+
+import "time"
+
+// EventType identifies which tracking event a payload represents.
+// The set is closed — adding a value requires a spec change and a new ADR if it
+// introduces a new consumer concern.
+type EventType string
+
+const (
+	EventTypeLessonStarted    EventType = "lesson.started"
+	EventTypeLessonResumed    EventType = "lesson.resumed"
+	EventTypeLessonCompleted  EventType = "lesson.completed"
+	EventTypeExerciseStarted  EventType = "exercise.started"
+	EventTypeExerciseProgress EventType = "exercise.progress"
+	EventTypeExerciseEnded    EventType = "exercise.ended"
+
+	EventTypePracticeSessionStarted    EventType = "practice.session_started"
+	EventTypePracticeItemAnswered      EventType = "practice.item_answered"
+	EventTypePracticeSessionEnded      EventType = "practice.session_ended"
+	EventTypePracticeTapCheckCompleted EventType = "practice.tap_check_completed"
+
+	EventTypeSongChartOpened      EventType = "song_chart.opened"
+	EventTypeSongChartChordViewed EventType = "song_chart.chord_viewed"
+	EventTypeSongChartCompleted   EventType = "song_chart.completed"
+)
+
+// TrackingEventBase is the common envelope carried by every student tracking event.
+// EventID enables idempotent processing under at-least-once Kafka delivery; StudentID
+// is used as the Kafka partition key.
+type TrackingEventBase struct {
+	EventID    string
+	EventType  EventType
+	StudentID  string
+	SessionID  string
+	OccurredAt time.Time
+}
+
+// TrackingEvent is implemented by every event-specific struct. It stands in for a
+// discriminated union: Go has no native sum type, and interface{}/any would erase
+// the compile-time guarantee that only the known event shapes satisfy it.
+type TrackingEvent interface {
+	Base() TrackingEventBase
+}
+
+// ContentType is the media format of a ContentNode, mirrored onto lesson events.
+type ContentType string
+
+const (
+	ContentTypeVideo   ContentType = "video"
+	ContentTypeArticle ContentType = "article"
+)
+
+// ContentContext describes the ContentNode a student is engaging with. Required on
+// every lesson event.
+type ContentContext struct {
+	ContentNodeID string
+	ContentType   ContentType
+	TeacherID     string
+	// Review is true when the student opened the node from a course or path
+	// they had already finished. It marks access after completion for
+	// analytics only and never changes how the event affects progress.
+	Review bool
+}
+
+// TriggerSource describes what initiated an exercise attempt.
+type TriggerSource string
+
+const (
+	TriggerSourceChallengeSequence TriggerSource = "challenge_sequence"
+	TriggerSourceFreePractice      TriggerSource = "free_practice"
+	TriggerSourceRemediation       TriggerSource = "remediation"
+)
+
+// TriggerContext describes the context in which an exercise was initiated. Required
+// on every exercise event. ContentNodeID and ChallengeID are populated only when
+// Source is ChallengeSequence or Remediation, per the spec.
+type TriggerContext struct {
+	Source        TriggerSource
+	ContentNodeID string
+	ChallengeID   string
+	// Review is true when the exercise was started from a course or path the
+	// student had already finished. Analytics only, like ContentContext.Review.
+	Review bool
+}
+
+// ExerciseOutcome describes how an exercise attempt concluded.
+type ExerciseOutcome string
+
+const (
+	ExerciseOutcomeCompleted ExerciseOutcome = "completed"
+	ExerciseOutcomeAbandoned ExerciseOutcome = "abandoned"
+)

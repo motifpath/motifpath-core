@@ -1,0 +1,580 @@
+package application
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"slices"
+	"strconv"
+	"strings"
+	"time"
+	"unicode/utf8"
+
+	"github.com/motifpath/core-domain/internal/domain"
+	"github.com/motifpath/core-domain/internal/ports"
+)
+
+// DiagramService manages Diagram — a prebuilt, reusable set of positions on
+// one instrument, classified against the shared knowledge graph.
+type DiagramService struct {
+	diagrams    ports.DiagramRepository
+	instruments ports.InstrumentRepository
+	knowledge   ports.KnowledgeNodeRepository
+	languages   ports.LanguageRepository
+	users       ports.UserRepository
+	references  ports.PracticeReferenceWriter
+	chords      ports.ChordCatalogRepository
+	sounds      ports.SoundUseFinder
+	newID       func() string
+	now         func() time.Time
+}
+
+func NewDiagramService(diagrams ports.DiagramRepository, instruments ports.InstrumentRepository, knowledge ports.KnowledgeNodeRepository, languages ports.LanguageRepository, users ports.UserRepository, references ports.PracticeReferenceWriter, chords ports.ChordCatalogRepository, sounds ports.SoundUseFinder, newID func() string, now func() time.Time) *DiagramService {
+	return &DiagramService{diagrams: diagrams, instruments: instruments, knowledge: knowledge, languages: languages, users: users, references: references, chords: chords, sounds: sounds, newID: newID, now: now}
+}
+
+const (
+	// maxDiagramNameSearchLength bounds a diagram list's name search.
+	maxDiagramNameSearchLength = 200
+	// maxRootNoteFilterLength fits the longest note spelling, e.g. "C#" or "Bb", with room for a double accidental.
+	maxRootNoteFilterLength = 3
+)
+
+// DiagramUpdate carries the fields UpdateDiagram may replace. A nil field
+// leaves the current value untouched. Classification is replaced as a unit:
+// supplying either SkillIDs or ConceptIDs replaces both, so a caller
+// changing one must resend the other. There is no way to clear an
+// already-set RootNote back to nil through an update — only to replace it
+// with another value or leave it as-is; Color behaves the same way.
+// Per-position colors, custom labels and notes travel with Positions and so
+// can be cleared by resending Positions without them.
+type DiagramUpdate struct {
+	InstrumentIDs []string
+	// Names replaces every name when non-nil; nil keeps the current ones.
+	Names     map[string]string
+	Positions []domain.Position
+	// Regions replaces every region when non-nil — an empty, non-nil slice
+	// removes them all; nil keeps the current ones.
+	Regions      []domain.Region
+	SkillIDs     []string
+	ConceptIDs   []string
+	RootNote     *string
+	LabelDisplay *domain.LabelDisplay
+	Color        *string
+	// Mode replaces the mode when Set; a nil Value clears it.
+	Mode Nullable[domain.DiagramMode]
+	// Playbacks replaces every playback when non-nil — an empty, non-nil
+	// slice removes them all; nil keeps the current ones. A playback without
+	// an id is assigned one; one resent with its id keeps it.
+	Playbacks []domain.DiagramPlayback
+	// DefaultPlaybackID replaces the default when Set; a nil Value is only
+	// valid when the resulting playbacks are empty. Left out, the current
+	// default is kept while it is still one of the playbacks, and otherwise
+	// the first playback becomes the default.
+	DefaultPlaybackID Nullable[string]
+}
+
+// Nullable is an update field with three states: left out (Set false)
+// keeps the current value, Set with a nil Value clears it, and Set with a
+// Value replaces it.
+type Nullable[T any] struct {
+	Set   bool
+	Value *T
+}
+
+// CreateDiagram creates a diagram against an existing instrument, owned by
+// caller. Only teachers and admins may create one, and only an admin may
+// create a basic one; opts.Kind defaults to custom. Positions and regions
+// without an id are assigned one; a client-supplied id is kept. See
+// domain.DiagramOptions for the other optional settings.
+func (s *DiagramService) CreateDiagram(ctx context.Context, caller domain.User, instrumentID string, names map[string]string, positions []domain.Position, skillIDs, conceptIDs []string, opts domain.DiagramOptions) (domain.Diagram, error) {
+	return s.CreateDiagramWithInstruments(ctx, caller, []string{instrumentID}, names, positions, skillIDs, conceptIDs, opts)
+}
+
+// CreateDiagramWithInstruments creates one diagram available through every
+// listed instrument. The first id supplies its immutable coordinate layout.
+func (s *DiagramService) CreateDiagramWithInstruments(ctx context.Context, caller domain.User, instrumentIDs []string, names map[string]string, positions []domain.Position, skillIDs, conceptIDs []string, opts domain.DiagramOptions) (domain.Diagram, error) {
+	if !canManageContent(caller.Role) {
+		return domain.Diagram{}, domain.ErrForbidden
+	}
+	if opts.Kind == domain.DiagramKindBasic && caller.Role != domain.RoleAdmin {
+		return domain.Diagram{}, domain.ErrForbidden
+	}
+
+	if len(instrumentIDs) == 0 {
+		return domain.Diagram{}, domain.NewValidationError("instrument_ids", "must contain at least one instrument")
+	}
+	instrument, err := s.instruments.GetByID(ctx, instrumentIDs[0])
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return domain.Diagram{}, domain.NewValidationError("instrument_ids", "does not reference an existing instrument")
+		}
+		return domain.Diagram{}, err
+	}
+	if err := s.validateCompatibleInstruments(ctx, instrument, instrumentIDs); err != nil {
+		return domain.Diagram{}, err
+	}
+
+	offered, err := offeredLanguages(ctx, s.languages)
+	if err != nil {
+		return domain.Diagram{}, err
+	}
+	opts.Regions = s.withRegionIDs(opts.Regions)
+	opts.Playbacks = s.withPlaybackIDs(opts.Playbacks)
+	diagram, err := domain.NewDiagram(s.newID(), caller.ID, instrument, names, offered, s.withPositionIDs(positions), skillIDs, conceptIDs, opts, s.now())
+	if err != nil {
+		return domain.Diagram{}, err
+	}
+	diagram.InstrumentIDs = domain.LayoutFirst(instrument.ID, instrumentIDs)
+	if err := checkClassificationSuits(ctx, s.knowledge, skillIDs, conceptIDs, diagram.InstrumentIDs); err != nil {
+		return domain.Diagram{}, err
+	}
+
+	if err := s.diagrams.Create(ctx, diagram); err != nil {
+		return domain.Diagram{}, err
+	}
+	return s.savedDiagram(ctx, diagram.ID)
+}
+
+// savedDiagram reads back a diagram just created or updated and refreshes
+// its practice reference.
+func (s *DiagramService) savedDiagram(ctx context.Context, id string) (domain.Diagram, error) {
+	saved, err := s.diagrams.GetByID(ctx, id)
+	if err != nil {
+		return domain.Diagram{}, err
+	}
+	putDiagramReference(ctx, s.references, saved)
+	return saved, nil
+}
+
+// recheckClassification checks updated's skills and concepts against its
+// instruments when an update changed either of them.
+func (s *DiagramService) recheckClassification(ctx context.Context, changed bool, updated domain.Diagram) error {
+	if !changed {
+		return nil
+	}
+	return checkClassificationSuits(ctx, s.knowledge, updated.SkillIDs(), updated.ConceptIDs(), updated.InstrumentIDs)
+}
+
+// updatedInstrumentIDs returns update's compatible instruments once they pass
+// validation, or current's when update leaves them out.
+func (s *DiagramService) updatedInstrumentIDs(ctx context.Context, layout domain.Instrument, current domain.Diagram, update DiagramUpdate) ([]string, error) {
+	if update.InstrumentIDs == nil {
+		return domain.LayoutFirst(layout.ID, current.InstrumentIDs), nil
+	}
+	if err := s.validateCompatibleInstruments(ctx, layout, update.InstrumentIDs); err != nil {
+		return nil, err
+	}
+	return domain.LayoutFirst(layout.ID, update.InstrumentIDs), nil
+}
+
+// validateCompatibleInstruments checks that ids lists the layout instrument,
+// once, alongside instruments that share its coordinate geometry, so every
+// position stays valid on each of them. The order is free: callers store the
+// result through domain.LayoutFirst.
+func (s *DiagramService) validateCompatibleInstruments(ctx context.Context, layout domain.Instrument, ids []string) error {
+	seen := map[string]struct{}{}
+	for _, id := range ids {
+		seen[id] = struct{}{}
+	}
+	if _, ok := seen[layout.ID]; !ok || len(seen) != len(ids) {
+		return domain.NewValidationError("instrument_ids", "must include the layout instrument and contain no duplicates")
+	}
+	for _, id := range ids {
+		if id == layout.ID {
+			continue
+		}
+		instrument, err := s.instruments.GetByID(ctx, id)
+		if err != nil {
+			if errors.Is(err, domain.ErrNotFound) {
+				return domain.NewValidationError("instrument_ids", "does not reference an existing instrument")
+			}
+			return err
+		}
+		if !instrument.SameGeometry(layout) {
+			return domain.NewValidationError("instrument_ids", "must have the same coordinate geometry as the layout instrument")
+		}
+	}
+	return nil
+}
+
+// GetDiagram returns the diagram with the given id, or domain.ErrNotFound.
+// Any authenticated user may call it for a specific known id, whatever the
+// diagram's kind or creator: students render the diagrams embedded in their
+// content. ListDiagrams' role scoping governs discovery only. A chord voicing
+// diagram comes with the voicing it is the fingering of, so it can be drawn
+// as a chord box.
+func (s *DiagramService) GetDiagram(ctx context.Context, id string) (domain.Diagram, error) {
+	diagram, err := s.diagrams.GetByID(ctx, id)
+	if err != nil || diagram.Purpose != domain.DiagramPurposeChordVoicing {
+		return diagram, err
+	}
+	voicing, err := s.chords.GetVoicingByDiagramID(ctx, id)
+	if errors.Is(err, domain.ErrNotFound) {
+		// The catalog installs a voicing's diagram with its voicing; a lone one still draws.
+		return diagram, nil
+	}
+	if err != nil {
+		return domain.Diagram{}, err
+	}
+	diagram.ChordVoicing = &voicing
+	return diagram, nil
+}
+
+// ListDiagrams returns one page of the diagrams matching filter that caller
+// may discover, ordered by the name caller reads (their locale, then English,
+// then the first language a diagram is named in). Students may not list
+// diagrams at all. A teacher sees every basic diagram plus their own custom
+// ones, and an admin every diagram; the other filters, filter.CreatedBy
+// included, only narrow that. filter.VisibleTo is set here from caller's
+// role; any value the caller supplied is overwritten. An empty
+// filter.Purpose lists general diagrams only, so chord voicings appear only
+// when asked for.
+func (s *DiagramService) ListDiagrams(ctx context.Context, caller domain.User, filter domain.DiagramListFilter, page domain.PageRequest) (domain.Page[domain.Diagram], error) {
+	if filter.Kind != "" && !filter.Kind.Valid() {
+		return domain.Page[domain.Diagram]{}, domain.NewValidationError("kind", "must be one of: basic, custom")
+	}
+	if !filter.Sort.Valid() {
+		return domain.Page[domain.Diagram]{}, domain.SortValidationError()
+	}
+	if !filter.Purpose.Valid() {
+		return domain.Page[domain.Diagram]{}, domain.NewValidationError("purpose", "must be one of: general, chord_voicing, any")
+	}
+	if filter.Purpose == "" {
+		filter.Purpose = domain.DiagramPurposeFilterGeneral
+	}
+	if utf8.RuneCountInString(filter.Name) > maxDiagramNameSearchLength {
+		return domain.Page[domain.Diagram]{}, domain.NewValidationError("name", "must be at most 200 characters")
+	}
+	if utf8.RuneCountInString(filter.RootNote) > maxRootNoteFilterLength {
+		return domain.Page[domain.Diagram]{}, domain.NewValidationError("root_note", "must be at most 3 characters")
+	}
+	if filter.Language != "" {
+		offered, err := offeredLanguages(ctx, s.languages)
+		if err != nil {
+			return domain.Page[domain.Diagram]{}, err
+		}
+		if !slices.Contains(offered, filter.Language) {
+			return domain.Page[domain.Diagram]{}, domain.NewValidationError("language", "must be one of the languages MotifPath offers")
+		}
+	}
+	filter.Locale = caller.Locale.Code
+	visibleTo, err := diagramVisibility(caller)
+	if err != nil {
+		return domain.Page[domain.Diagram]{}, err
+	}
+	filter.VisibleTo = visibleTo
+	filter.SkillIDs, filter.ConceptIDs, err = withClassificationSubtrees(ctx, s.knowledge, filter.SkillIDs, filter.ConceptIDs)
+	if err != nil {
+		return domain.Page[domain.Diagram]{}, err
+	}
+	return s.diagrams.List(ctx, filter, page)
+}
+
+// ListDiagramCreators returns the distinct creators of the diagrams caller
+// may discover in ListDiagrams with its default purpose, so a picker can offer a complete creator
+// filter without paging: a teacher gets the creators of basic diagrams plus
+// themselves once they have a custom diagram, an admin every creator.
+// Students are refused. A non-empty nameQuery keeps only the creators whose
+// display name contains it; see namedCreators for matching and ordering.
+func (s *DiagramService) ListDiagramCreators(ctx context.Context, caller domain.User, nameQuery string) ([]Creator, error) {
+	visibleTo, err := diagramVisibility(caller)
+	if err != nil {
+		return nil, err
+	}
+	ids, err := s.diagrams.ListCreatorCounts(ctx, domain.DiagramListFilter{VisibleTo: visibleTo, Purpose: domain.DiagramPurposeFilterGeneral})
+	if err != nil {
+		return nil, err
+	}
+	return namedCreators(ctx, s.users, ids, nameQuery)
+}
+
+// diagramVisibility returns the DiagramListFilter.VisibleTo scoping caller's
+// role gets in the library: their own id for a teacher, none for an admin.
+// Students never browse the library — they read embedded diagrams by id —
+// and any role this doesn't know is refused the same way.
+func diagramVisibility(caller domain.User) (string, error) {
+	switch caller.Role {
+	case domain.RoleTeacher:
+		return caller.ID, nil
+	case domain.RoleAdmin:
+		return "", nil
+	case domain.RoleStudent:
+		return "", domain.ErrForbidden
+	default:
+		return "", domain.ErrForbidden
+	}
+}
+
+// UpdateDiagram applies update to an existing diagram. Only an admin may
+// update a basic diagram; a custom one may be updated by its creator or an
+// admin. Kind, Purpose and CreatedBy are never changed, and a chord voicing
+// diagram is refused with domain.ErrConflict, since only the chord catalog
+// may change it. The result is re-validated
+// as a whole, so replaced positions and regions are checked against the
+// diagram's own instrument, and every custom label, note and region
+// description against the languages of the names as updated — a rename that
+// drops a language the existing notes still use is refused. The instrument
+// itself can't change.
+func (s *DiagramService) UpdateDiagram(ctx context.Context, caller domain.User, id string, update DiagramUpdate) (domain.Diagram, error) {
+	if !canManageContent(caller.Role) {
+		return domain.Diagram{}, domain.ErrForbidden
+	}
+
+	current, err := s.editableDiagram(ctx, caller, id)
+	if err != nil {
+		return domain.Diagram{}, err
+	}
+	instrument, err := s.instruments.GetByID(ctx, current.InstrumentID)
+	if err != nil {
+		return domain.Diagram{}, err
+	}
+
+	names := updatedNames(current, update)
+	positions := current.Positions
+	if update.Positions != nil {
+		positions = s.withPositionIDs(update.Positions)
+	}
+	skillIDs, conceptIDs := current.SkillIDs(), current.ConceptIDs()
+	classificationChanged := update.SkillIDs != nil || update.ConceptIDs != nil
+	if classificationChanged {
+		skillIDs, conceptIDs = update.SkillIDs, update.ConceptIDs
+	}
+	offered, err := offeredLanguages(ctx, s.languages)
+	if err != nil {
+		return domain.Diagram{}, err
+	}
+	opts, err := s.updatedOptions(current, update)
+	if err != nil {
+		return domain.Diagram{}, err
+	}
+	if err := s.checkSoundsKept(ctx, current, update, opts.Playbacks); err != nil {
+		return domain.Diagram{}, err
+	}
+	updated, err := domain.NewDiagram(current.ID, current.CreatedBy, instrument, names, offered, positions, skillIDs, conceptIDs, opts, current.CreatedAt)
+	if err != nil {
+		return domain.Diagram{}, err
+	}
+	if updated.InstrumentIDs, err = s.updatedInstrumentIDs(ctx, instrument, current, update); err != nil {
+		return domain.Diagram{}, err
+	}
+	if err := s.recheckClassification(ctx, classificationChanged || update.InstrumentIDs != nil, updated); err != nil {
+		return domain.Diagram{}, err
+	}
+
+	updated.UpdatedAt = s.now()
+	if err := s.diagrams.Update(ctx, updated); err != nil {
+		return domain.Diagram{}, err
+	}
+	return s.savedDiagram(ctx, updated.ID)
+}
+
+// updatedNames returns update's names, or current's when update leaves them out.
+func updatedNames(current domain.Diagram, update DiagramUpdate) map[string]string {
+	if update.Names != nil {
+		return update.Names
+	}
+	return current.Names
+}
+
+// updatedOptions is updatedDiagramOptions with ids assigned to update's new
+// regions and playbacks.
+func (s *DiagramService) updatedOptions(current domain.Diagram, update DiagramUpdate) (domain.DiagramOptions, error) {
+	if update.Regions != nil {
+		update.Regions = s.withRegionIDs(update.Regions)
+	}
+	if update.Playbacks != nil {
+		update.Playbacks = s.withPlaybackIDs(update.Playbacks)
+	}
+	opts, err := updatedDiagramOptions(current, update)
+	if err != nil {
+		return domain.DiagramOptions{}, err
+	}
+	if update.Regions != nil {
+		opts.Regions = update.Regions
+	}
+	return opts, nil
+}
+
+// updatedDiagramOptions returns current's options with update's given root
+// note, label display, color, mode, playbacks and default playback applied.
+// Kind always stays current's; regions are current's too, for the caller to
+// replace.
+func updatedDiagramOptions(current domain.Diagram, update DiagramUpdate) (domain.DiagramOptions, error) {
+	opts := domain.DiagramOptions{
+		RootNote: current.RootNote, LabelDisplay: current.LabelDisplay, Color: current.Color, Kind: current.Kind, Regions: current.Regions,
+		Mode: current.Mode, Playbacks: current.Playbacks,
+	}
+	if update.RootNote != nil {
+		opts.RootNote = update.RootNote
+	}
+	if update.LabelDisplay != nil {
+		opts.LabelDisplay = *update.LabelDisplay
+	}
+	if update.Color != nil {
+		opts.Color = update.Color
+	}
+	if update.Mode.Set {
+		opts.Mode = update.Mode.Value
+	}
+	if update.Playbacks != nil {
+		opts.Playbacks = update.Playbacks
+	}
+	defaultID, err := updatedDefaultPlaybackID(current, update, opts.Playbacks)
+	if err != nil {
+		return domain.DiagramOptions{}, err
+	}
+	opts.DefaultPlaybackID = defaultID
+	return opts, nil
+}
+
+// updatedDefaultPlaybackID is the default playback update chooses among
+// playbacks, the playbacks as updated: the one it names, none when it clears
+// the default (only valid when there are no playbacks), and otherwise
+// current's default while it is still one of them. A nil result with
+// playbacks lets the first one become the default.
+func updatedDefaultPlaybackID(current domain.Diagram, update DiagramUpdate, playbacks []domain.DiagramPlayback) (*string, error) {
+	switch {
+	case update.DefaultPlaybackID.Set && update.DefaultPlaybackID.Value != nil:
+		return update.DefaultPlaybackID.Value, nil
+	case update.DefaultPlaybackID.Set && len(playbacks) > 0:
+		return nil, domain.NewValidationError("default_playback_id", "can only be cleared when the diagram has no playbacks")
+	case update.DefaultPlaybackID.Set:
+		return nil, nil
+	default:
+		return domain.KeptDefaultPlaybackID(current.DefaultPlaybackID, playbacks), nil
+	}
+}
+
+// checkSoundsKept refuses, with domain.ErrConflict, an update whose
+// playbacks leave out a playback of current some exercise plays as its
+// sound: the exercise would otherwise silently sound different, and so
+// change its answer. The playback may still change; it only has to stay. An
+// update that doesn't replace the playbacks is never refused.
+func (s *DiagramService) checkSoundsKept(ctx context.Context, current domain.Diagram, update DiagramUpdate, playbacks []domain.DiagramPlayback) error {
+	if update.Playbacks == nil {
+		return nil
+	}
+	kept := map[string]bool{}
+	for _, p := range playbacks {
+		kept[p.ID] = true
+	}
+	removed := map[string]domain.DiagramPlayback{}
+	for _, p := range current.Playbacks {
+		if !kept[p.ID] {
+			removed[p.ID] = p
+		}
+	}
+	if len(removed) == 0 {
+		return nil
+	}
+	uses, err := s.sounds.ListSoundUses(ctx, current.ID)
+	if err != nil {
+		return err
+	}
+	byPlayback := map[string][]string{}
+	var order []string
+	for _, use := range uses {
+		if _, ok := removed[use.PlaybackID]; !ok {
+			continue
+		}
+		if byPlayback[use.PlaybackID] == nil {
+			order = append(order, use.PlaybackID)
+		}
+		byPlayback[use.PlaybackID] = append(byPlayback[use.PlaybackID], strconv.Quote(use.Title))
+	}
+	if len(order) == 0 {
+		return nil
+	}
+	slices.Sort(order)
+	parts := make([]string, len(order))
+	for i, id := range order {
+		titles := byPlayback[id]
+		slices.Sort(titles)
+		parts[i] = fmt.Sprintf("playback %s is the sound of %s", strconv.Quote(playbackName(removed[id])), strings.Join(titles, ", "))
+	}
+	return fmt.Errorf("%w: a playback an exercise plays can't be removed: %s", domain.ErrConflict, strings.Join(parts, "; "))
+}
+
+// playbackName is p's English name (or another, if it has none), else its id.
+func playbackName(p domain.DiagramPlayback) string {
+	if name := p.Names.Resolve("en"); name != "" {
+		return name
+	}
+	return p.ID
+}
+
+// editableDiagram returns the diagram caller is about to update: refused
+// with domain.ErrForbidden unless caller may edit it, and with
+// domain.ErrConflict when it is a chord voicing, which only the chord
+// catalog may change.
+func (s *DiagramService) editableDiagram(ctx context.Context, caller domain.User, id string) (domain.Diagram, error) {
+	current, err := s.diagrams.GetByID(ctx, id)
+	if err != nil {
+		return domain.Diagram{}, err
+	}
+	if err := requireDiagramEditor(caller, current); err != nil {
+		return domain.Diagram{}, err
+	}
+	if current.Purpose == domain.DiagramPurposeChordVoicing {
+		return domain.Diagram{}, fmt.Errorf("%w: this diagram is a chord voicing, which only the chord catalog can change", domain.ErrConflict)
+	}
+	return current, nil
+}
+
+// requireDiagramEditor returns domain.ErrForbidden unless caller may update
+// diagram: an admin may update any diagram, a teacher only their own custom
+// ones — never a basic one, whoever created it.
+func requireDiagramEditor(caller domain.User, diagram domain.Diagram) error {
+	if diagram.Kind == domain.DiagramKindBasic && caller.Role != domain.RoleAdmin {
+		return domain.ErrForbidden
+	}
+	return requireOwner(caller, diagram.CreatedBy)
+}
+
+// withPositionIDs returns a copy of positions with an id assigned to every
+// position that lacks one, leaving the caller's slice untouched.
+func (s *DiagramService) withPositionIDs(positions []domain.Position) []domain.Position {
+	out := make([]domain.Position, len(positions))
+	copy(out, positions)
+	for i := range out {
+		if out[i].ID == "" {
+			out[i].ID = s.newID()
+		}
+	}
+	return out
+}
+
+// withPlaybackIDs returns a copy of playbacks with an id assigned to every
+// playback that lacks one, leaving the caller's slice untouched. A nil slice
+// stays nil.
+func (s *DiagramService) withPlaybackIDs(playbacks []domain.DiagramPlayback) []domain.DiagramPlayback {
+	if playbacks == nil {
+		return nil
+	}
+	out := make([]domain.DiagramPlayback, len(playbacks))
+	copy(out, playbacks)
+	for i := range out {
+		if out[i].ID == "" {
+			out[i].ID = s.newID()
+		}
+	}
+	return out
+}
+
+// withRegionIDs returns a copy of regions with an id assigned to every
+// region that lacks one, leaving the caller's slice untouched. A nil slice
+// stays nil.
+func (s *DiagramService) withRegionIDs(regions []domain.Region) []domain.Region {
+	if regions == nil {
+		return nil
+	}
+	out := make([]domain.Region, len(regions))
+	copy(out, regions)
+	for i := range out {
+		if out[i].ID == "" {
+			out[i].ID = s.newID()
+		}
+	}
+	return out
+}

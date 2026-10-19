@@ -1,0 +1,107 @@
+package schema
+
+import (
+	"time"
+
+	"entgo.io/ent"
+	"entgo.io/ent/schema/edge"
+	"entgo.io/ent/schema/field"
+
+	"github.com/google/uuid"
+)
+
+// Exercise is a reusable, standalone practice item classified by Skill/
+// Concept tree references (the same trees ContentNode classifies against)
+// and independent of any single challenge — it may be linked to zero, one,
+// or many challenges via the many-to-many "challenges" edge.
+type Exercise struct {
+	ent.Schema
+}
+
+func (Exercise) Fields() []ent.Field {
+	return []ent.Field{
+		field.UUID("id", uuid.UUID{}).
+			Default(uuid.New).
+			Immutable(),
+
+		field.String("title"),
+		// prompt stores marshaled PromptDocument JSON as text rather than
+		// using a JSON-typed field, so a row written before prompts became
+		// structured documents (plain, non-JSON text) still loads without
+		// error — the repository layer detects and shims that case on read
+		// instead of the column type rejecting it.
+		field.Text("prompt"),
+
+		field.Enum("exercise_type").
+			Values("text_response", "audio_recognition", "image_recognition", "image_choice", "audio_selection").
+			Immutable(),
+
+		field.String("image_url").
+			Optional().
+			Nillable(),
+
+		field.String("audio_url").
+			Optional().
+			Nillable(),
+
+		field.Int("estimated_duration_seconds").
+			Optional().
+			Nillable(),
+
+		// remediation_targets stores a marshaled JSON array of
+		// domain.RemediationTarget as text, the same pattern prompt uses —
+		// nil/absent means no remediation is configured.
+		field.Text("remediation_targets").
+			Optional().
+			Nillable(),
+
+		// diagram_ref/diagram_stack_ref store marshaled domain.DiagramRef/
+		// domain.DiagramStackRef JSON as text, the same pattern
+		// remediation_targets uses. Present only for an image_recognition
+		// exercise whose stimulus is a diagram rather than image_url — at
+		// most one of the two is ever set.
+		field.Text("diagram_ref").
+			Optional().
+			Nillable(),
+		field.Text("diagram_stack_ref").
+			Optional().
+			Nillable(),
+
+		// created_by is fixed at creation. Exercises created before
+		// creators were recorded have none.
+		field.UUID("created_by", uuid.UUID{}).
+			Optional().
+			Nillable().
+			Immutable(),
+
+		field.Time("created_at").
+			Immutable().
+			Default(time.Now),
+
+		// updated_at is when the exercise was created or last edited; authoring
+		// lists sort by it.
+		field.Time("updated_at").
+			Default(time.Now),
+	}
+}
+
+func (Exercise) Edges() []ent.Edge {
+	return []ent.Edge{
+		edge.To("challenges", Challenge.Type).
+			Through("challenge_exercises", ChallengeExercise.Type),
+		edge.To("content_nodes", ContentNode.Type).
+			Through("content_node_exercises", ContentNodeExercise.Type),
+		edge.To("options", ExerciseOption.Type),
+		edge.To("languages", Language.Type).
+			Through("exercise_languages", ExerciseLanguage.Type),
+
+		edge.To("skills", KnowledgeNode.Type).
+			Through("exercise_skills", ExerciseSkill.Type),
+
+		edge.To("concepts", KnowledgeNode.Type).
+			Through("exercise_concepts", ExerciseConcept.Type),
+
+		edge.To("instruments", Instrument.Type).
+			Through("exercise_instruments", ExerciseInstrument.Type),
+	}
+}

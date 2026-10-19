@@ -1,0 +1,334 @@
+package domain
+
+import (
+	"slices"
+
+	"golang.org/x/text/language"
+	"golang.org/x/text/search"
+)
+
+const (
+	// DefaultPageLimit is the page size applied when a list request gives none.
+	DefaultPageLimit = 20
+	// MaxPageLimit is the largest page size a list request may ask for.
+	MaxPageLimit = 100
+)
+
+// PageRequest is a validated window into a list's filtered results: skip
+// Offset matching items, return at most Limit.
+type PageRequest struct {
+	Limit  int
+	Offset int
+}
+
+// NewPageRequest applies the default limit and offset to whichever is nil
+// and rejects a limit outside 1..MaxPageLimit or a negative offset.
+func NewPageRequest(limit, offset *int) (PageRequest, error) {
+	req := PageRequest{Limit: DefaultPageLimit}
+	if limit != nil {
+		req.Limit = *limit
+	}
+	if offset != nil {
+		req.Offset = *offset
+	}
+
+	if req.Limit < 1 || req.Limit > MaxPageLimit {
+		return PageRequest{}, NewValidationError("limit", "must be between 1 and 100")
+	}
+	if req.Offset < 0 {
+		return PageRequest{}, NewValidationError("offset", "must not be negative")
+	}
+	return req, nil
+}
+
+// Page is one window of a filtered list plus the size of the whole
+// filtered set, so callers can render page controls.
+type Page[T any] struct {
+	Items []T
+	// Total counts every item matching the request's filters across all
+	// pages, not just the ones in Items.
+	Total int
+}
+
+// ContentNodeFilter narrows a content node listing. A zero-valued field
+// means "no filter" on that dimension. SkillIDs/ConceptIDs keep a node whose
+// linked ids contain any of them; the application widens each id to its
+// whole subtree before the repository sees it. Query is a case-insensitive
+// substring match against the node's title.
+type ContentNodeFilter struct {
+	ContentType ContentType
+	SkillIDs    []string
+	ConceptIDs  []string
+	Difficulty  DifficultyLevel
+	Query       string
+	// InstrumentID keeps nodes for that instrument and nodes for every
+	// instrument (no instruments listed).
+	InstrumentID string
+	// CreatedBy keeps nodes created by that user.
+	CreatedBy string
+	// Language keeps nodes available in that language code; a
+	// language-agnostic node never matches.
+	Language string
+	// Status keeps nodes in that publishing state; empty keeps every state.
+	Status ContentNodeStatus
+	// Sort orders the results; the zero value orders by title.
+	Sort ListSort
+}
+
+// ContentNodeStatus is where a content node stands in publishing, as a list
+// filters it.
+type ContentNodeStatus string
+
+const (
+	// ContentNodeStatusDraft is a node that has never been published.
+	ContentNodeStatusDraft ContentNodeStatus = "draft"
+	// ContentNodeStatusPublished is a published node that matches its
+	// latest version.
+	ContentNodeStatusPublished ContentNodeStatus = "published"
+	// ContentNodeStatusUnpublishedChanges is a published node that now
+	// differs from its latest version.
+	ContentNodeStatusUnpublishedChanges ContentNodeStatus = "unpublished_changes"
+)
+
+// Valid reports whether s is a status this service knows; the zero value
+// means every status.
+func (s ContentNodeStatus) Valid() bool {
+	switch s {
+	case "", ContentNodeStatusDraft, ContentNodeStatusPublished, ContentNodeStatusUnpublishedChanges:
+		return true
+	}
+	return false
+}
+
+// Matches reports whether node is in status s; the zero value matches every
+// node.
+func (s ContentNodeStatus) Matches(node ContentNode) bool {
+	switch s {
+	case ContentNodeStatusDraft:
+		return node.LatestPublishedVersion == nil
+	case ContentNodeStatusPublished:
+		return node.LatestPublishedVersion != nil && !node.HasUnpublishedChanges
+	case ContentNodeStatusUnpublishedChanges:
+		return node.LatestPublishedVersion != nil && node.HasUnpublishedChanges
+	}
+	return true
+}
+
+// ExerciseFilter narrows an exercise listing. A zero-valued field means "no
+// filter" on that dimension.
+type ExerciseFilter struct {
+	// SkillIDs/ConceptIDs keep exercises linked to any of them.
+	SkillIDs     []string
+	ConceptIDs   []string
+	ExerciseType ExerciseType
+	// Language keeps exercises available in that language code.
+	Language string
+	// CreatedBy keeps exercises created by that user; an exercise with no
+	// recorded creator never matches.
+	CreatedBy string
+	// Query is a case-insensitive substring match against the title.
+	Query string
+	// InstrumentIDs keeps exercises for at least one of these instruments,
+	// plus exercises for every instrument; empty applies no filter.
+	InstrumentIDs []string
+	// Sort orders the results; the zero value orders by title.
+	Sort ListSort
+}
+
+// LearningPathFilter narrows a learning path listing. Query is a
+// case-insensitive substring match against the path's title.
+type LearningPathFilter struct {
+	Query string
+	// CreatedBy keeps only paths created by that user.
+	CreatedBy string
+	// Levels keeps paths at any of these levels; a path with no level
+	// recorded never matches.
+	Levels []DifficultyLevel
+	// SkillIDs and ConceptIDs keep a path when one of its content nodes is
+	// classified with any of the skills and, if both are given, also with
+	// any of the concepts.
+	SkillIDs   []string
+	ConceptIDs []string
+	// InstrumentID keeps paths for that instrument and paths for every
+	// instrument (no instruments listed).
+	InstrumentID string
+	// Language keeps paths written in that language; a path with no
+	// language recorded never matches.
+	Language string
+	// Status keeps paths with that publishing status; empty keeps every
+	// status.
+	Status LearningPathStatus
+	// Sort orders the results; the zero value orders by title.
+	Sort ListSort
+}
+
+// ListSort is the order an authoring list is returned in.
+type ListSort string
+
+const (
+	// ListSortTitle orders by title (a diagram's by the name the caller
+	// reads), then id.
+	ListSortTitle ListSort = "title"
+	// ListSortUpdated orders by most recently changed first, then id.
+	ListSortUpdated ListSort = "updated"
+)
+
+// Valid reports whether s is a sort order this service knows; the zero
+// value means the default, title.
+func (s ListSort) Valid() bool {
+	return s == "" || s == ListSortTitle || s == ListSortUpdated
+}
+
+// SortValidationError is the error every list returns for an unknown sort.
+func SortValidationError() error {
+	return NewValidationError("sort", "must be one of: title, updated")
+}
+
+// CourseListFilter narrows a course catalog listing. A zero-valued field
+// means "no filter" on that dimension, and every set field must match. Query
+// is a case-insensitive substring match against title or summary; Levels,
+// SkillIDs and ConceptIDs are any-of within themselves. A course matches
+// SkillIDs/ConceptIDs when some checkpoint's learning path template contains
+// a content node classified with any of the given skills and — if both are
+// given — any of the given concepts.
+//
+// PublishedView selects what the text, level and classification predicates
+// (and the result's ordering) are evaluated against: the course's latest
+// published version when true, its live draft when false. Status filters the
+// live row either way.
+type CourseListFilter struct {
+	Status     *CourseStatus
+	Query      string
+	Levels     []DifficultyLevel
+	CreatedBy  string
+	SkillIDs   []string
+	ConceptIDs []string
+	// Language, when set, keeps only courses written in that language.
+	Language string
+	// InstrumentID keeps courses for that instrument and courses for every
+	// instrument (no instruments listed).
+	InstrumentID  string
+	PublishedView bool
+	// Sort orders the results; the zero value orders by title.
+	Sort ListSort
+}
+
+// DiagramListFilter narrows a diagram library listing. A zero-valued field
+// means "no filter" on that dimension, and every set field must match.
+// SkillIDs/ConceptIDs keep a diagram whose linked ids contain any of them.
+//
+// VisibleTo, when set, is the role scoping a teacher's listing gets: only
+// basic diagrams, plus custom diagrams created by that user id, match.
+// Language, when set, keeps only diagrams with a name in that language.
+// Name, when set, keeps diagrams with a name in any language containing it,
+// ignoring case and accents (see ContainsLoosely). RootNote, when set, keeps
+// diagrams recorded with exactly that root; one with none never matches.
+// CreatedBy narrows within VisibleTo, never widening what a caller sees.
+// Playable, when set, keeps only diagrams with at least one playback, the
+// ones a listening exercise can play as its sound.
+//
+// Locale does not filter: it is the caller's language, which orders the
+// results by the name that caller sees (see LocalizedText.Resolve).
+type DiagramListFilter struct {
+	InstrumentID string
+	SkillIDs     []string
+	ConceptIDs   []string
+	Kind         DiagramKind
+	Purpose      DiagramPurposeFilter
+	CreatedBy    string
+	VisibleTo    string
+	Language     string
+	Name         string
+	RootNote     string
+	Playable     bool
+	Locale       string
+	// Sort orders the results; the zero value orders by the name the
+	// caller reads.
+	Sort ListSort
+}
+
+// Matches reports whether d satisfies every set field of f — the
+// in-memory statement of the predicate a repository applies in its query.
+func (f DiagramListFilter) Matches(d Diagram) bool {
+	return f.matchesScope(d) && f.matchesContent(d)
+}
+
+// matchesScope checks who may see d, what it is for and who made it:
+// VisibleTo, Kind, Purpose and CreatedBy.
+func (f DiagramListFilter) matchesScope(d Diagram) bool {
+	if f.VisibleTo != "" && d.Kind != DiagramKindBasic && d.CreatedBy != f.VisibleTo {
+		return false
+	}
+	if f.Kind != "" && d.Kind != f.Kind {
+		return false
+	}
+	if !f.Purpose.Matches(d.Purpose) {
+		return false
+	}
+	return f.CreatedBy == "" || d.CreatedBy == f.CreatedBy
+}
+
+// matchesContent checks what d is: its instrument, classification and the
+// languages it is named in.
+func (f DiagramListFilter) matchesContent(d Diagram) bool {
+	instrumentIDs := d.InstrumentIDs
+	if len(instrumentIDs) == 0 && d.InstrumentID != "" {
+		instrumentIDs = []string{d.InstrumentID}
+	}
+	if f.InstrumentID != "" && !slices.Contains(instrumentIDs, f.InstrumentID) {
+		return false
+	}
+	if !ContainsAny(d.SkillIDs(), f.SkillIDs) || !ContainsAny(d.ConceptIDs(), f.ConceptIDs) {
+		return false
+	}
+	if f.RootNote != "" && (d.RootNote == nil || *d.RootNote != f.RootNote) {
+		return false
+	}
+	if f.Playable && len(d.Playbacks) == 0 {
+		return false
+	}
+	if f.Name != "" && !f.matchesName(d) {
+		return false
+	}
+	_, named := d.Names[f.Language]
+	return f.Language == "" || named
+}
+
+// matchesName reports whether any of d's names contains f.Name loosely.
+func (f DiagramListFilter) matchesName(d Diagram) bool {
+	for _, name := range d.Names {
+		if ContainsLoosely(name, f.Name) {
+			return true
+		}
+	}
+	return false
+}
+
+// ContainsLoosely reports whether text contains query the way a person
+// searching reads it: ignoring case and accents, so "jonico" is found in
+// "Modo Jônico".
+func ContainsLoosely(text, query string) bool {
+	start, _ := search.New(language.Und, search.Loose).IndexString(text, query)
+	return start >= 0
+}
+
+// ContainsAny reports whether ids holds any of wanted; an empty wanted is no
+// filter and always matches.
+func ContainsAny(ids, wanted []string) bool {
+	if len(wanted) == 0 {
+		return true
+	}
+	for _, id := range wanted {
+		if slices.Contains(ids, id) {
+			return true
+		}
+	}
+	return false
+}
+
+// CreatorCount is one author of a list's items and how many of them the
+// caller can see.
+type CreatorCount struct {
+	UserID string
+	Count  int
+}

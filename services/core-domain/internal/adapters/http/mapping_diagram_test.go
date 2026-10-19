@@ -1,0 +1,328 @@
+package http
+
+import (
+	"testing"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/motifpath/core-domain/internal/adapters/http/generated"
+	"github.com/motifpath/core-domain/internal/domain"
+)
+
+func strPtr(s string) *string { return &s }
+
+func intPtr(n int) *int { return &n }
+
+func TestDiagramColorMapping(t *testing.T) {
+	positionID := uuid.NewString()
+	diagram := domain.Diagram{
+		ID:           uuid.NewString(),
+		InstrumentID: uuid.NewString(),
+		Names:        domain.LocalizedText{"en": "Colored"},
+		Kind:         domain.DiagramKindCustom,
+		CreatedBy:    uuid.NewString(),
+		LabelDisplay: domain.LabelDisplayInterval,
+		Color:        strPtr("#3B82F6"),
+		Positions: []domain.Position{
+			{ID: positionID, Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, Color: strPtr("#EF4444")},
+			{ID: uuid.NewString(), Interval: "b3", NoteName: "C", Shape: domain.PositionShapeDot},
+		},
+		CreatedAt: time.Date(2026, 9, 23, 12, 0, 0, 0, time.UTC),
+	}
+
+	t.Run("a diagram's general and per-position colors reach the response", func(t *testing.T) {
+		got := toGeneratedDiagram(diagram, userNames{})
+
+		require.NotNil(t, got.Color)
+		assert.Equal(t, "#3B82F6", *got.Color)
+		require.NotNil(t, got.Positions[0].Color)
+		assert.Equal(t, "#EF4444", *got.Positions[0].Color)
+		assert.Nil(t, got.Positions[1].Color)
+	})
+
+	t.Run("an unrecorded general color stays nil in the response", func(t *testing.T) {
+		plain := diagram
+		plain.Color = nil
+
+		assert.Nil(t, toGeneratedDiagram(plain, userNames{}).Color)
+	})
+
+	t.Run("the list mapping carries colors too", func(t *testing.T) {
+		got := toGeneratedDiagrams([]domain.Diagram{diagram}, userNames{})
+
+		require.Len(t, got, 1)
+		require.NotNil(t, got[0].Color)
+		assert.Equal(t, "#3B82F6", *got[0].Color)
+	})
+
+	t.Run("request positions carry their color into the domain, and an omitted color stays nil", func(t *testing.T) {
+		got := toDomainPositions([]generated.DiagramPosition{
+			{Interval: "R", NoteName: "A", Color: strPtr("#EF4444")},
+			{Interval: "b3", NoteName: "C"},
+		})
+
+		require.NotNil(t, got[0].Color)
+		assert.Equal(t, "#EF4444", *got[0].Color)
+		assert.Nil(t, got[1].Color)
+	})
+}
+
+func TestDiagramOwnershipMapping(t *testing.T) {
+	owner := uuid.New()
+	diagram := domain.Diagram{
+		ID: uuid.NewString(), InstrumentID: uuid.NewString(), Names: domain.LocalizedText{"en": "Owned"},
+		Kind: domain.DiagramKindBasic, CreatedBy: owner.String(), LabelDisplay: domain.LabelDisplayInterval,
+		CreatedAt: time.Date(2026, 9, 24, 12, 0, 0, 0, time.UTC),
+	}
+
+	t.Run("a diagram's kind and creator reach the response", func(t *testing.T) {
+		got := toGeneratedDiagram(diagram, userNames{owner.String(): "Ana Souza"})
+
+		assert.Equal(t, generated.DiagramKindBasic, got.Kind)
+		assert.Equal(t, generated.UserRef{UserId: owner, DisplayName: "Ana Souza"}, got.CreatedBy)
+	})
+
+	t.Run("an omitted create kind maps to the zero value, left for the domain to default", func(t *testing.T) {
+		assert.Equal(t, domain.DiagramKind(""), toDomainDiagramKind(nil))
+		basic := generated.CreateDiagramRequestKindBasic
+		assert.Equal(t, domain.DiagramKindBasic, toDomainDiagramKind(&basic))
+	})
+
+	t.Run("list parameters map onto the diagram filter", func(t *testing.T) {
+		instrument, skill, concept, creator := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+		kind := generated.ListDiagramsParamsKindCustom
+		name, root := "pentatonic", "A"
+
+		got, err := diagramListFilter(generated.ListDiagramsParams{
+			InstrumentId: &instrument, SkillIds: &[]uuid.UUID{skill}, ConceptIds: &[]uuid.UUID{concept}, CreatedBy: &creator, Kind: &kind,
+			Name: &name, RootNote: &root,
+		})
+
+		require.NoError(t, err)
+		assert.Equal(t, domain.DiagramListFilter{
+			InstrumentID: instrument.String(), SkillIDs: []string{skill.String()}, ConceptIDs: []string{concept.String()},
+			CreatedBy: creator.String(), Kind: domain.DiagramKindCustom, Name: "pentatonic", RootNote: "A",
+		}, got)
+	})
+
+	t.Run("absent list parameters leave the filter empty", func(t *testing.T) {
+		got, err := diagramListFilter(generated.ListDiagramsParams{})
+
+		require.NoError(t, err)
+		assert.Equal(t, domain.DiagramListFilter{}, got)
+	})
+
+	t.Run("a name or root note given empty is a validation error, not a missing filter", func(t *testing.T) {
+		empty := ""
+		for field, params := range map[string]generated.ListDiagramsParams{
+			"name":      {Name: &empty},
+			"root_note": {RootNote: &empty},
+		} {
+			_, err := diagramListFilter(params)
+
+			var valErr *domain.ValidationError
+			require.ErrorAs(t, err, &valErr, field)
+			assert.Equal(t, field, valErr.Fields[0].Field)
+		}
+	})
+}
+
+func TestDiagramCompatibleInstrumentsMapping(t *testing.T) {
+	layout, compatible := uuid.NewString(), uuid.NewString()
+	diagram := domain.Diagram{
+		ID: uuid.NewString(), InstrumentID: layout, InstrumentIDs: []string{layout, compatible},
+		Names: domain.LocalizedText{"en": "Shared"}, Kind: domain.DiagramKindBasic,
+		CreatedBy: uuid.NewString(), LabelDisplay: domain.LabelDisplayInterval,
+	}
+
+	got := toGeneratedDiagram(diagram, userNames{})
+
+	assert.ElementsMatch(t, []uuid.UUID{mustUUID(layout), mustUUID(compatible)}, got.InstrumentIds)
+}
+
+func TestDiagramLocalizationMapping(t *testing.T) {
+	diagram := domain.Diagram{
+		ID: uuid.NewString(), InstrumentID: uuid.NewString(), Kind: domain.DiagramKindBasic, CreatedBy: uuid.NewString(),
+		Names:        domain.LocalizedText{"pt_BR": "Escala maior", "en": "Major Scale"},
+		LabelDisplay: domain.LabelDisplayInterval,
+		Positions:    []domain.Position{{ID: uuid.NewString(), Interval: "#4", NoteName: "F#", Shape: domain.PositionShapeDot}},
+	}
+
+	t.Run("names and their sorted languages reach the response", func(t *testing.T) {
+		got := toGeneratedDiagram(diagram, userNames{})
+
+		assert.Equal(t, generated.LocalizedNames{"en": "Major Scale", "pt_BR": "Escala maior"}, got.Names)
+		assert.Equal(t, []string{"en", "pt_BR"}, got.Languages)
+	})
+
+	t.Run("interval codes pass through unchanged in both directions", func(t *testing.T) {
+		got := toGeneratedDiagram(diagram, userNames{})
+		assert.Equal(t, generated.DiagramPositionInterval("#4"), got.Positions[0].Interval)
+
+		back := toDomainPositions(got.Positions)
+		assert.Equal(t, "#4", back[0].Interval)
+	})
+
+	t.Run("the language list parameter maps onto the filter", func(t *testing.T) {
+		language := "pt_BR"
+
+		got, err := diagramListFilter(generated.ListDiagramsParams{Language: &language})
+
+		require.NoError(t, err)
+		assert.Equal(t, "pt_BR", got.Language)
+	})
+}
+
+func TestDiagramAnnotationMapping(t *testing.T) {
+	regionID := uuid.NewString()
+	diagram := domain.Diagram{
+		ID: uuid.NewString(), InstrumentID: uuid.NewString(), Kind: domain.DiagramKindCustom, CreatedBy: uuid.NewString(),
+		Names:        domain.LocalizedText{"en": "Boxes"},
+		LabelDisplay: domain.LabelDisplayInterval,
+		Positions: []domain.Position{
+			{ID: uuid.NewString(), Interval: "b3", NoteName: "C", Shape: domain.PositionShapeDot, CustomLabel: domain.LocalizedText{"en": "Av"}, Note: domain.LocalizedText{"en": "Avoid it"}},
+			{ID: uuid.NewString(), Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot},
+		},
+		Regions: []domain.Region{
+			{ID: regionID, FretStart: intPtr(7), FretEnd: intPtr(10), StringStart: intPtr(1), StringEnd: intPtr(3), Description: domain.LocalizedText{"en": "Box 2"}, Color: strPtr("#22C55E")},
+		},
+	}
+
+	t.Run("custom labels and notes reach the response; absent ones stay absent", func(t *testing.T) {
+		got := toGeneratedDiagram(diagram, userNames{})
+
+		require.NotNil(t, got.Positions[0].CustomLabel)
+		assert.Equal(t, generated.LocalizedMarkerLabel{"en": "Av"}, *got.Positions[0].CustomLabel)
+		require.NotNil(t, got.Positions[0].Note)
+		assert.Equal(t, generated.LocalizedNote{"en": "Avoid it"}, *got.Positions[0].Note)
+		assert.Nil(t, got.Positions[1].CustomLabel)
+		assert.Nil(t, got.Positions[1].Note)
+	})
+
+	t.Run("regions reach the response in order", func(t *testing.T) {
+		id := uuid.MustParse(regionID)
+
+		got := toGeneratedDiagram(diagram, userNames{})
+
+		assert.Equal(t, []generated.DiagramRegion{{
+			RegionId: &id, FretStart: intPtr(7), FretEnd: intPtr(10), StringStart: intPtr(1), StringEnd: intPtr(3),
+			Description: generated.LocalizedCaption{"en": "Box 2"}, Color: strPtr("#22C55E"),
+		}}, got.Regions)
+	})
+
+	t.Run("a diagram without regions responds with an empty list, never null", func(t *testing.T) {
+		plain := diagram
+		plain.Regions = nil
+
+		got := toGeneratedDiagram(plain, userNames{})
+
+		assert.NotNil(t, got.Regions)
+		assert.Empty(t, got.Regions)
+	})
+
+	t.Run("request positions carry their custom label and note into the domain", func(t *testing.T) {
+		label, note := generated.LocalizedMarkerLabel{"en": "Av"}, generated.LocalizedNote{"en": "Avoid it"}
+
+		got := toDomainPositions([]generated.DiagramPosition{{Interval: "b3", NoteName: "C", CustomLabel: &label, Note: &note}, {Interval: "R", NoteName: "A"}})
+
+		assert.Equal(t, domain.LocalizedText{"en": "Av"}, got[0].CustomLabel)
+		assert.Equal(t, domain.LocalizedText{"en": "Avoid it"}, got[0].Note)
+		assert.Nil(t, got[1].CustomLabel)
+		assert.Nil(t, got[1].Note)
+	})
+
+	t.Run("request regions map into the domain, an omitted list staying nil and an empty one empty", func(t *testing.T) {
+		id := uuid.New()
+		regions := []generated.DiagramRegion{
+			{RegionId: &id, KeyStart: strPtr("C4"), KeyEnd: strPtr("B4"), Description: generated.LocalizedCaption{"en": "Octave 4"}},
+			{FretStart: intPtr(5), FretEnd: intPtr(8), Description: generated.LocalizedCaption{"en": "Box 1"}},
+		}
+
+		got := toDomainRegions(&regions)
+
+		assert.Equal(t, []domain.Region{
+			{ID: id.String(), KeyStart: strPtr("C4"), KeyEnd: strPtr("B4"), Description: domain.LocalizedText{"en": "Octave 4"}},
+			{FretStart: intPtr(5), FretEnd: intPtr(8), Description: domain.LocalizedText{"en": "Box 1"}},
+		}, got)
+		assert.Nil(t, toDomainRegions(nil))
+		empty := toDomainRegions(&[]generated.DiagramRegion{})
+		assert.NotNil(t, empty)
+		assert.Empty(t, empty)
+	})
+}
+
+func TestDiagramAnswerCellMapping(t *testing.T) {
+	diagramID, positionID := uuid.NewString(), uuid.NewString()
+
+	t.Run("a cell option carries its cell, and the position occupying it", func(t *testing.T) {
+		got := toOption(domain.Option{
+			ID: uuid.NewString(), IsCorrect: true, DiagramID: &diagramID, DiagramPositionID: &positionID,
+			FretCell: &domain.FretCell{String: 6, Fret: 0},
+		})
+
+		require.NotNil(t, got.FretCell)
+		assert.Equal(t, 6, got.FretCell.String)
+		assert.Equal(t, 0, got.FretCell.Fret)
+		require.NotNil(t, got.DiagramPositionId)
+		assert.Equal(t, positionID, got.DiagramPositionId.String())
+	})
+
+	t.Run("an option without a cell has none on the wire", func(t *testing.T) {
+		assert.Nil(t, toOption(domain.Option{ID: uuid.NewString()}).FretCell)
+	})
+
+	t.Run("a diagram ref's label, hidden and correct positions cross the wire both ways", func(t *testing.T) {
+		label := domain.DiagramLabelCustom
+		ref := domain.DiagramRef{
+			DiagramID:          diagramID,
+			Layers:             domain.DiagramLayers{Label: &label, HiddenPositionIDs: &[]string{positionID}},
+			CorrectPositionIDs: &[]string{positionID},
+		}
+
+		back := toDomainDiagramRefPtr(toGeneratedDiagramRefPtr(&ref))
+
+		assert.Equal(t, &ref, back)
+	})
+}
+
+func TestDiagramPurposeMapping(t *testing.T) {
+	t.Run("a diagram's purpose reaches the response", func(t *testing.T) {
+		owner := uuid.New()
+		diagram := domain.Diagram{
+			ID: uuid.NewString(), InstrumentID: uuid.NewString(), Names: domain.LocalizedText{"en": "Am — open"},
+			Kind: domain.DiagramKindBasic, Purpose: domain.DiagramPurposeChordVoicing, CreatedBy: owner.String(), LabelDisplay: domain.LabelDisplayInterval,
+		}
+
+		got := toGeneratedDiagram(diagram, userNames{owner.String(): "MotifPath Catalog"})
+
+		assert.Equal(t, generated.DiagramPurposeChordVoicing, got.Purpose)
+	})
+
+	t.Run("the purpose list parameter maps onto the filter", func(t *testing.T) {
+		for param, want := range map[generated.ListDiagramsParamsPurpose]domain.DiagramPurposeFilter{
+			generated.ListDiagramsParamsPurposeGeneral:      domain.DiagramPurposeFilterGeneral,
+			generated.ListDiagramsParamsPurposeChordVoicing: domain.DiagramPurposeFilterChordVoicing,
+			generated.ListDiagramsParamsPurposeAny:          domain.DiagramPurposeFilterAny,
+		} {
+			got, err := diagramListFilter(generated.ListDiagramsParams{Purpose: &param})
+
+			require.NoError(t, err)
+			assert.Equal(t, want, got.Purpose, string(param))
+		}
+	})
+
+	t.Run("the playable list parameter maps onto the filter", func(t *testing.T) {
+		for _, playable := range []bool{true, false} {
+			got, err := diagramListFilter(generated.ListDiagramsParams{Playable: &playable})
+
+			require.NoError(t, err)
+			assert.Equal(t, playable, got.Playable)
+		}
+		got, err := diagramListFilter(generated.ListDiagramsParams{})
+		require.NoError(t, err)
+		assert.False(t, got.Playable)
+	})
+}

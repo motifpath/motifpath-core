@@ -1,0 +1,141 @@
+# deploy/compose.yaml — one hosted environment (staging or production) on the
+# shared VM. The same file runs both, as two Compose projects that share
+# nothing but the host:
+#
+#   docker compose -p staging \
+#     --env-file env/staging.env --env-file /etc/motifpath/staging.secrets.env \
+#     -f compose.yaml up -d
+#
+# deploy.sh is the only thing meant to run that; it renders the secrets file
+# from SSM Parameter Store first. Every ${VAR:?} below must be set by one of
+# the two files: env/<environment>.env holds what is safe to review in Git
+# (hostnames, ports, sizing), the secrets file holds the rest. A missing value
+# stops Compose before any container is touched.
+#
+# Postgres, MongoDB and media storage are managed services outside the VM.
+# Only the broker runs here, one per project, because the topic and consumer
+# group names are fixed in code and two environments on one broker would
+# consume each other's events. Broker data is disposable: MongoDB's event log
+# is the store of record and can replay it.
+#
+# HTTP services publish on 127.0.0.1 only, on per-environment ports, and the
+# edge Caddy project (deploy/edge) is the one thing listening on 80/443.
+#
+# Memory and CPU limits keep staging from starving production on the shared
+# host; production's env file gives its containers the larger share.
+
+name: ${MOTIFPATH_ENV:?}
+
+x-service: &service
+  restart: unless-stopped
+  stop_grace_period: 20s
+  logging:
+    driver: awslogs
+    options:
+      awslogs-region: ${AWS_REGION:?}
+      awslogs-group: /motifpath/${MOTIFPATH_ENV:?}
+      awslogs-create-group: "false"
+      tag: "{{.Name}}"
+
+services:
+  redpanda:
+    <<: *service
+    image: redpandadata/redpanda:v24.2.7
+    command:
+      - redpanda start
+      - --smp 1
+      - --memory ${REDPANDA_MEMORY:?}
+      - --reserve-memory 0M
+      - --overprovisioned
+      - --node-id 0
+      - --kafka-addr PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr PLAINTEXT://redpanda:9092
+      - --set redpanda.auto_create_topics_enabled=true
+    volumes:
+      - redpanda_data:/var/lib/redpanda/data
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -E 'Healthy:.+true'"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: ${REDPANDA_CPUS:?}
+          # Redpanda's own --memory plus headroom for the process outside it.
+          memory: ${REDPANDA_LIMIT:?}
+
+  core-domain:
+    <<: *service
+    image: ${ECR_REGISTRY:?}/motifpath/core-domain:${IMAGE_TAG:?}
+    environment:
+      PORT: "8080"
+      DATABASE_URL: ${DATABASE_URL:?}
+      MONGO_URI: ${MONGO_URI:?}
+      MONGO_DATABASE: ${MONGO_DATABASE:?}
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:?}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?}
+      # Real S3 (no endpoint). Containers cannot reach the instance role, so
+      # the SDK reads this environment's media key from the standard
+      # variables; that key can touch only this environment's bucket.
+      AWS_ACCESS_KEY_ID: ${MEDIA_AWS_ACCESS_KEY_ID:?}
+      AWS_SECRET_ACCESS_KEY: ${MEDIA_AWS_SECRET_ACCESS_KEY:?}
+      MEDIA_S3_BUCKET: ${MEDIA_S3_BUCKET:?}
+      MEDIA_S3_REGION: ${AWS_REGION:?}
+      MEDIA_PUBLIC_BASE_URL: ${MEDIA_PUBLIC_BASE_URL:?}
+    ports:
+      - 127.0.0.1:${CORE_DOMAIN_HOST_PORT:?}:8080
+    # Migrations run before the service listens, so a long one on a cold
+    # start is not a hang.
+    stop_grace_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: ${CORE_DOMAIN_CPUS:?}
+          memory: ${CORE_DOMAIN_MEMORY:?}
+
+  event-ingestion:
+    <<: *service
+    image: ${ECR_REGISTRY:?}/motifpath/event-ingestion:${IMAGE_TAG:?}
+    environment:
+      PORT: "8081"
+      MONGO_URI: ${MONGO_URI:?}
+      MONGO_DATABASE: ${MONGO_DATABASE:?}
+      KAFKA_BROKERS: redpanda:9092
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:?}
+      CORE_DOMAIN_BASE_URL: http://core-domain:8080
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?}
+    ports:
+      - 127.0.0.1:${EVENT_INGESTION_HOST_PORT:?}:8081
+    depends_on:
+      redpanda: { condition: service_healthy }
+      core-domain: { condition: service_started }
+    deploy:
+      resources:
+        limits:
+          cpus: ${EVENT_INGESTION_CPUS:?}
+          memory: ${EVENT_INGESTION_MEMORY:?}
+
+  aggregation-worker:
+    <<: *service
+    image: ${ECR_REGISTRY:?}/motifpath/aggregation-worker:${IMAGE_TAG:?}
+    environment:
+      PORT: "8082"
+      MONGO_URI: ${MONGO_URI:?}
+      MONGO_DATABASE: ${MONGO_DATABASE:?}
+      KAFKA_BROKERS: redpanda:9092
+    # Not routed by the edge; published on loopback only so deploy.sh can
+    # probe its health endpoints like the other two.
+    ports:
+      - 127.0.0.1:${AGGREGATION_WORKER_HOST_PORT:?}:8082
+    depends_on:
+      redpanda: { condition: service_healthy }
+    deploy:
+      resources:
+        limits:
+          cpus: ${AGGREGATION_WORKER_CPUS:?}
+          memory: ${AGGREGATION_WORKER_MEMORY:?}
+
+volumes:
+  redpanda_data:

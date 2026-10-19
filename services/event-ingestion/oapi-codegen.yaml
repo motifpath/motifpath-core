@@ -3,4 +3,4 @@ generate:
   models: true
   chi-server: true
   strict-server: true
-output: internal/adapters/http/generated/api.gen.go
+output: services/event-ingestion/internal/adapters/http/generated/api.gen.go

@@ -1,0 +1,383 @@
+// Command seed-dev-data populates the local dev Postgres + MongoDB with a
+// realistic student learning path, reusing the same application services
+// and domain constructors the HTTP handlers use (not raw SQL), so the
+// invariants they enforce (position assignment, section-label
+// normalisation, single-active-assignment) hold exactly as they would via
+// the real API. It targets whichever student is already registered in the
+// local dev database (from having signed in once through the SPA) and is
+// meant to be run once, ad hoc, against `make dev`'s docker-compose stack —
+// it is not part of the service and is not wired into any build.
+package main
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+	"log"
+	"math/rand"
+	"os"
+	"time"
+
+	"entgo.io/ent/dialect"
+	entsql "entgo.io/ent/dialect/sql"
+	"github.com/google/uuid"
+	_ "github.com/lib/pq"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
+
+	"github.com/motifpath/core-domain/internal/adapters/repo"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/user"
+	"github.com/motifpath/core-domain/internal/application"
+	"github.com/motifpath/core-domain/internal/domain"
+	"github.com/motifpath/core-domain/internal/ports"
+)
+
+func getenvDefault(name, def string) string {
+	if v := os.Getenv(name); v != "" {
+		return v
+	}
+	return def
+}
+
+func main() {
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func run() error {
+	ctx := context.Background()
+
+	databaseURL := getenvDefault("DATABASE_URL", "postgres://motifpath:motifpath@localhost:5432/core_domain?sslmode=disable")
+	mongoURI := getenvDefault("MONGO_URI", "mongodb://motifpath:motifpath@localhost:27017/?authSource=admin")
+	mongoDatabase := getenvDefault("MONGO_DATABASE", "motifpath_events")
+
+	sqlDB, err := sql.Open("postgres", databaseURL)
+	if err != nil {
+		return fmt.Errorf("connect to postgres: %w", err)
+	}
+	defer func() {
+		if closeErr := sqlDB.Close(); closeErr != nil {
+			log.Printf("failed to close postgres connection: %v", closeErr)
+		}
+	}()
+
+	entClient := ent.NewClient(ent.Driver(entsql.OpenDB(dialect.Postgres, sqlDB)))
+	defer func() {
+		if closeErr := entClient.Close(); closeErr != nil {
+			log.Printf("failed to close ent client: %v", closeErr)
+		}
+	}()
+
+	mongoClient, err := mongo.Connect(options.Client().ApplyURI(mongoURI))
+	if err != nil {
+		return fmt.Errorf("connect to mongodb: %w", err)
+	}
+	defer func() {
+		if closeErr := mongoClient.Disconnect(ctx); closeErr != nil {
+			log.Printf("failed to disconnect mongodb client: %v", closeErr)
+		}
+	}()
+
+	userRepo := repo.NewEntUserRepository(entClient)
+	nodeRepo := repo.NewEntContentNodeRepository(entClient)
+	instrumentRepo := repo.NewEntInstrumentRepository(entClient)
+	voiceRepo := repo.NewEntVoiceRepository(entClient)
+	expandedRepo := repo.NewEntExpandedContentRepository(entClient)
+	pathRepo := repo.NewEntLearningPathRepository(entClient)
+	studentPathRepo := repo.NewEntStudentPathRepository(entClient)
+	contentNodeVersionRepo := repo.NewEntContentNodeVersionRepository(entClient)
+	studentLearningStateRepo := repo.NewEntStudentLearningStateRepository(entClient)
+	courseEnrollmentRepo := repo.NewEntCourseEnrollmentRepository(entClient)
+	courseVersionRepo := repo.NewEntCourseVersionRepository(entClient)
+	challengeRepo := repo.NewEntChallengeRepository(entClient)
+	exerciseRepo := repo.NewEntExerciseRepository(entClient)
+	knowledgeRepo := repo.NewEntKnowledgeNodeRepository(entClient)
+	diagramRepo := repo.NewEntDiagramRepository(entClient)
+
+	newID := uuid.NewString
+	now := func() time.Time { return time.Now().UTC() }
+
+	contentService := application.NewContentService(nodeRepo, expandedRepo, knowledgeRepo, contentNodeVersionRepo, diagramRepo, instrumentRepo, voiceRepo, repo.NewEntSongChartRepository(entClient), userRepo, newID, now)
+	pathService := application.NewLearningPathService(nodeRepo, pathRepo, courseVersionRepo, contentNodeVersionRepo, repo.NewEntLanguageRepository(entClient), userRepo, instrumentRepo, knowledgeRepo, newID, now)
+	studentPathService := application.NewStudentPathService(userRepo, pathRepo, studentPathRepo, contentNodeVersionRepo, studentLearningStateRepo, courseEnrollmentRepo, courseVersionRepo, nodeRepo, exerciseRepo, nil, newID, now)
+	challengeService := application.NewChallengeService(nodeRepo, challengeRepo, exerciseRepo, newID, now)
+	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, knowledgeRepo, diagramRepo, instrumentRepo, voiceRepo, userRepo, repo.NewMongoPracticeReferenceWriter(mongoClient.Database(mongoDatabase), now), newID, now, rand.Shuffle)
+
+	student, err := findFirstStudent(ctx, entClient)
+	if err != nil {
+		return err
+	}
+	log.Printf("seeding a path for existing student %s (clerk_user_id=%s)", student.ID, student.ClerkUserID)
+
+	identityService := application.NewIdentityService(userRepo, repo.NewEntLanguageRepository(entClient), newID, now)
+	teacher, err := seedTeacher(ctx, identityService)
+	if err != nil {
+		return err
+	}
+
+	classifier := &classificationSeeder{nodes: knowledgeRepo}
+	nodeIDs, err := seedPathAndProgress(ctx, teacher, student, contentService, pathService, studentPathService, classifier, mongoClient.Database(mongoDatabase))
+	if err != nil {
+		return err
+	}
+
+	// A challenge + exercises on the in-progress node (nodeIDs[2]) so
+	// /path/nodes/:nodeId/practice has something real to run against.
+	practiceNodeID := nodeIDs[2]
+	if err := seedPracticeChallenge(ctx, teacher, challengeService, exerciseService, classifier, practiceNodeID); err != nil {
+		return fmt.Errorf("seed practice challenge: %w", err)
+	}
+	log.Printf("seeded a challenge + exercises on content node %s", practiceNodeID)
+
+	log.Println("done — reload the SPA's /path view to see it")
+	return nil
+}
+
+// classificationSeeder resolves knowledge map keys to the ids of the nodes
+// the migrations installed. Seeds never create nodes: a key the map doesn't
+// have is an error, not a new node.
+type classificationSeeder struct {
+	nodes ports.KnowledgeNodeRepository
+}
+
+func (c *classificationSeeder) skillID(ctx context.Context, key string) (string, error) {
+	return c.nodeID(ctx, domain.KnowledgeNodeKindSkill, key)
+}
+
+func (c *classificationSeeder) conceptID(ctx context.Context, key string) (string, error) {
+	return c.nodeID(ctx, domain.KnowledgeNodeKindConcept, key)
+}
+
+func (c *classificationSeeder) nodeID(ctx context.Context, kind domain.KnowledgeNodeKind, key string) (string, error) {
+	found, err := c.nodes.GetByKeys(ctx, []string{key})
+	if err != nil {
+		return "", fmt.Errorf("look up knowledge node %q: %w", key, err)
+	}
+	node, ok := found[key]
+	if !ok || node.Kind != kind {
+		return "", fmt.Errorf("the knowledge map has no %s %q — run every migration before seeding", kind, key)
+	}
+	return node.ID, nil
+}
+
+// guitars are the catalog instruments (fixed IDs, installed by the
+// migrations) seeded guitar lessons are for, so they may be classified under
+// guitar-only skills and concepts.
+var guitars = []string{"6ea2d087-ab9c-59dc-9657-8546025414d2", "e6fac4f3-7d52-5f46-8f44-4de1b239ebdd"}
+
+// seedPathAndProgress creates the six-node learning path, assigns it to
+// student, and seeds Mongo completion aggregates so the first two nodes show
+// completed and the third shows in-progress. Returns the created content
+// node ids in path order.
+func seedPathAndProgress(
+	ctx context.Context,
+	teacher, student domain.User,
+	contentService *application.ContentService,
+	pathService *application.LearningPathService,
+	studentPathService *application.StudentPathService,
+	classifier *classificationSeeder,
+	mongoDB *mongo.Database,
+) ([]string, error) {
+	type nodeSpec struct {
+		title, skill, concept string
+		difficulty            domain.DifficultyLevel
+		section               string
+	}
+	specs := []nodeSpec{
+		{"Open position C major scale", "play-major-scale-open", "major-scale", domain.DifficultyLevelBeginner, "Fundamentals"},
+		{"Alternate picking basics", "alternate-picking", "note-values", domain.DifficultyLevelBeginner, "Fundamentals"},
+		{"Minor pentatonic shape 1", "play-pentatonic-position-1", "pentatonic-shapes", domain.DifficultyLevelIntermediate, "Fundamentals"},
+		{"Call-and-response phrasing", "phrase-call-response", "call-and-response", domain.DifficultyLevelIntermediate, "Improvisation"},
+		{"Bending into the blue note", "bend-to-pitch", "tones-and-semitones", domain.DifficultyLevelIntermediate, "Improvisation"},
+		{"12-bar blues solo, backing track", "improvise-blues", "blues-form", domain.DifficultyLevelAdvanced, "Improvisation"},
+	}
+
+	// A real, publicly reachable sample video — cdn.motifpath.io doesn't
+	// resolve to anything, so a node seeded with it can never actually play.
+	seedVideoURL := "https://samplelib.com/lib/preview/mp4/sample-10s.mp4"
+
+	var items []application.PathItemInput
+	var nodeIDs []string
+	for _, spec := range specs {
+		skillID, err := classifier.skillID(ctx, spec.skill)
+		if err != nil {
+			return nil, err
+		}
+		conceptID, err := classifier.conceptID(ctx, spec.concept)
+		if err != nil {
+			return nil, err
+		}
+		node, err := contentService.CreateContentNode(ctx, teacher, application.ContentNodeInput{Title: spec.title, ContentType: domain.ContentTypeVideo, SkillIDs: []string{skillID}, ConceptIDs: []string{conceptID}, Difficulty: spec.difficulty, Languages: []string{"en"}, MediaURL: &seedVideoURL, RichContent: nil, InstrumentIDs: guitars})
+		if err != nil {
+			return nil, fmt.Errorf("create content node %q: %w", spec.title, err)
+		}
+		section := spec.section
+		items = append(items, application.PathItemInput{ContentNodeID: node.ID, SectionLabel: &section})
+		nodeIDs = append(nodeIDs, node.ID)
+	}
+
+	path, err := pathService.CreateLearningPath(ctx, teacher, application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Blues Guitar Foundations", Summary: strPtr("From your first shuffle to a twelve-bar solo."), Language: strPtr("en"), Items: items})
+	if err != nil {
+		return nil, fmt.Errorf("create learning path: %w", err)
+	}
+	log.Printf("created learning path %s with %d items", path.ID, len(path.Items))
+
+	for _, item := range path.Items {
+		if _, err := contentService.PublishContentNode(ctx, teacher, item.ContentNodeID); err != nil {
+			return nil, fmt.Errorf("publish content node %s: %w", item.ContentNodeID, err)
+		}
+	}
+
+	// Only a published path can be assigned; publishing is an admin's act.
+	if _, err := pathService.PublishLearningPath(ctx, domain.User{ID: teacher.ID, Role: domain.RoleAdmin}, path.ID); err != nil {
+		return nil, fmt.Errorf("publish learning path: %w", err)
+	}
+
+	if _, _, err := studentPathService.AssignLearningPath(ctx, teacher, student.ID, path.ID); err != nil {
+		return nil, fmt.Errorf("assign learning path: %w", err)
+	}
+	log.Printf("assigned path %s to student %s", path.ID, student.ID)
+
+	// Two completed, one in-progress; BuildStudentPathItems locks everything
+	// after the first non-completed item, so the remaining three items
+	// render as locked without needing their own aggregate rows.
+	statuses := map[string]string{
+		nodeIDs[0]: "completed",
+		nodeIDs[1]: "completed",
+		nodeIDs[2]: "in_progress",
+	}
+	if err := seedCompletionStatuses(ctx, mongoDB, student.ID, statuses); err != nil {
+		return nil, fmt.Errorf("seed completion statuses: %w", err)
+	}
+	log.Printf("seeded %d completion statuses in MongoDB aggregates", len(statuses))
+
+	return nodeIDs, nil
+}
+
+func seedPracticeChallenge(ctx context.Context, teacher domain.User, challengeService *application.ChallengeService, exerciseService *application.ExerciseService, classifier *classificationSeeder, contentNodeID string) error {
+	// The practice node, nodeIDs[2], is classified under
+	// "play-pentatonic-position-1", and a challenge's subject must be one of
+	// its node's skills.
+	subjectSkillID, err := classifier.skillID(ctx, "play-pentatonic-position-1")
+	if err != nil {
+		return err
+	}
+	challenge, err := challengeService.CreateChallenge(ctx, teacher, contentNodeID, &subjectSkillID, nil, 70, nil, false, false)
+	if err != nil {
+		return fmt.Errorf("create challenge: %w", err)
+	}
+
+	label := func(s string) *string { return &s }
+	type exerciseSpec struct {
+		prompt  string
+		options []domain.Option
+	}
+	specs := []exerciseSpec{
+		{
+			prompt: "Which fret marks the root note of minor pentatonic shape 1 on the low E string?",
+			options: []domain.Option{
+				{ID: uuid.NewString(), IsCorrect: true, Label: label("5th fret")},
+				{ID: uuid.NewString(), IsCorrect: false, Label: label("3rd fret")},
+				{ID: uuid.NewString(), IsCorrect: false, Label: label("7th fret")},
+			},
+		},
+		{
+			prompt: "How many notes per string does minor pentatonic shape 1 use?",
+			options: []domain.Option{
+				{ID: uuid.NewString(), IsCorrect: false, Label: label("Three")},
+				{ID: uuid.NewString(), IsCorrect: true, Label: label("Two")},
+				{ID: uuid.NewString(), IsCorrect: false, Label: label("Four")},
+			},
+		},
+		{
+			prompt: "Shifting shape 1 up twelve frets lands on the same shape an octave higher — true or false?",
+			options: []domain.Option{
+				{ID: uuid.NewString(), IsCorrect: true, Label: label("True")},
+				{ID: uuid.NewString(), IsCorrect: false, Label: label("False")},
+			},
+		},
+	}
+
+	pentatonicSkillID, err := classifier.skillID(ctx, "play-pentatonic-position-1")
+	if err != nil {
+		return err
+	}
+	pentatonicConceptID, err := classifier.conceptID(ctx, "pentatonic-shapes")
+	if err != nil {
+		return err
+	}
+	for _, spec := range specs {
+		exercise, err := exerciseService.CreateExercise(ctx, teacher, "Pentatonic shape 1 — "+spec.prompt, domain.NewPlainTextPrompt(spec.prompt), domain.ExerciseTypeTextResponse,
+			[]string{pentatonicSkillID}, []string{pentatonicConceptID}, nil, nil, nil, nil, spec.options, nil, nil, []string{"en"}, &guitars)
+		if err != nil {
+			return fmt.Errorf("create exercise: %w", err)
+		}
+		if _, err := exerciseService.LinkExerciseToChallenge(ctx, teacher, challenge.ID, exercise.ID); err != nil {
+			return fmt.Errorf("link exercise %s to challenge %s: %w", exercise.ID, challenge.ID, err)
+		}
+	}
+
+	return nil
+}
+
+// seedTeacherClerkUserID is the fake clerk_user_id of the synthetic teacher
+// that authors this script's content and assigns its path — never a real
+// Clerk identity.
+const seedTeacherClerkUserID = "seed_dev_teacher"
+
+// seedTeacher returns the synthetic teacher, registering it with a name on
+// the first run and reusing it on every later one, so what it authors
+// always points at a real, named user.
+func seedTeacher(ctx context.Context, identity *application.IdentityService) (domain.User, error) {
+	teacher, err := identity.ResolveCaller(ctx, seedTeacherClerkUserID, "")
+	if err == nil {
+		return teacher, nil
+	}
+	if !errors.Is(err, domain.ErrNotFound) {
+		return domain.User{}, fmt.Errorf("look up seed teacher: %w", err)
+	}
+	teacher, err = identity.RegisterUser(ctx, seedTeacherClerkUserID, domain.RoleTeacher, "en", "Tomás Ribeiro")
+	if err != nil {
+		return domain.User{}, fmt.Errorf("register seed teacher: %w", err)
+	}
+	return teacher, nil
+}
+
+func findFirstStudent(ctx context.Context, client *ent.Client) (domain.User, error) {
+	row, err := client.User.Query().Where(user.RoleEQ(user.Role(domain.RoleStudent))).First(ctx)
+	if err != nil {
+		return domain.User{}, fmt.Errorf("find a registered student (sign in once through the SPA as a student first): %w", err)
+	}
+	return domain.User{
+		ID:           row.ID.String(),
+		ClerkUserID:  row.ClerkUserID,
+		Role:         domain.Role(row.Role),
+		DisplayName:  row.DisplayName,
+		RegisteredAt: row.RegisteredAt,
+	}, nil
+}
+
+func seedCompletionStatuses(ctx context.Context, db *mongo.Database, studentID string, statuses map[string]string) error {
+	collection := db.Collection("aggregates")
+	for contentNodeID, status := range statuses {
+		_, err := collection.UpdateOne(ctx,
+			bson.D{{Key: "student_id", Value: studentID}, {Key: "content_node_id", Value: contentNodeID}},
+			bson.D{{Key: "$set", Value: bson.D{
+				{Key: "student_id", Value: studentID},
+				{Key: "content_node_id", Value: contentNodeID},
+				{Key: "status", Value: status},
+			}}},
+			options.UpdateOne().SetUpsert(true),
+		)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func strPtr(s string) *string { return &s }

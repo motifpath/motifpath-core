@@ -1,0 +1,41 @@
+# The VM's only public listener. Terminates TLS (certificates are issued and
+# renewed automatically) and routes each API hostname to its environment's
+# loopback port from deploy/env/<environment>.env. The SPA and media hostnames
+# are not here: they point at CloudFront, not at this host.
+{
+	email {$ACME_EMAIL}
+}
+
+(api) {
+	encode zstd gzip
+	header -Server
+	log {
+		output stdout
+		format json
+	}
+}
+
+api.motifpath.com {
+	import api
+	reverse_proxy 127.0.0.1:8080
+}
+
+events.motifpath.com {
+	import api
+	reverse_proxy 127.0.0.1:8081
+}
+
+api.staging.motifpath.com {
+	import api
+	reverse_proxy 127.0.0.1:9080
+}
+
+events.staging.motifpath.com {
+	import api
+	reverse_proxy 127.0.0.1:9081
+}
+
+# Nothing is published at the apex; it exists to send people to the app.
+motifpath.com, www.motifpath.com {
+	redir https://app.motifpath.com{uri} permanent
+}

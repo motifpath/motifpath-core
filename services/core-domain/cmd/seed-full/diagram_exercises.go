@@ -1,0 +1,128 @@
+package main
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/google/uuid"
+
+	"github.com/motifpath/core-domain/internal/application"
+	"github.com/motifpath/core-domain/internal/domain"
+)
+
+// seedDiagramExercises creates the three exercises a student answers on a
+// prebuilt diagram, and links them into challengeID:
+//   - image_recognition with a diagram stimulus: every marker is a choice
+//     (derived by the server), the roots are correct, and the labels are
+//     hidden so they don't give the answer away;
+//   - image_choice whose three options are diagram thumbnails (an odd
+//     count, so the last one sits alone on its row);
+//   - image_recognition on the E major chord that offers Play: its sequence
+//     plays reversed and loops, and the open high E sounds though it isn't
+//     drawn (it stays an empty answer cell). The major third is correct;
+//
+// then the practice diagram exercises (seedPracticeDiagramExercises) and the
+// listening exercises that play a chord voicing (seedListeningDiagramExercises).
+func seedDiagramExercises(ctx context.Context, teacher domain.User, exerciseSvc *application.ExerciseService, diagramSvc *application.DiagramService,
+	chords *application.ChordCatalogService, classifier *classificationSeeder, diagrams seededDiagrams, challengeID string) error {
+	scalesID, err := classifier.skillID(ctx, "play-pentatonic-positions")
+	if err != nil {
+		return err
+	}
+	pentatonicID, err := classifier.conceptID(ctx, "pentatonic-shapes")
+	if err != nil {
+		return err
+	}
+	chordsID, err := classifier.skillID(ctx, "play-open-chords")
+	if err != nil {
+		return err
+	}
+	openChordsID, err := classifier.conceptID(ctx, "open-chord-shapes")
+	if err != nil {
+		return err
+	}
+
+	rootsTitle := "Tap every root of the A minor pentatonic"
+	roots := &domain.DiagramRef{
+		DiagramID:        diagrams.pentatonicPos1.ID,
+		Layers:           domain.DiagramLayers{Intervals: false},
+		CorrectIntervals: &[]string{"R"},
+	}
+	tapRoots, err := exerciseSvc.CreateExercise(ctx, teacher, rootsTitle, domain.NewPlainTextPrompt(rootsTitle), domain.ExerciseTypeImageRecognition,
+		[]string{scalesID}, []string{pentatonicID}, nil, nil, roots, nil, nil, nil, nil, []string{"en"}, forGuitars())
+	if err != nil {
+		return fmt.Errorf("create exercise %q: %w", rootsTitle, err)
+	}
+
+	chordTitle := "Which diagram shows the E major chord?"
+	pickChord, err := exerciseSvc.CreateExercise(ctx, teacher, chordTitle, domain.NewPlainTextPrompt(chordTitle), domain.ExerciseTypeImageChoice,
+		[]string{chordsID}, []string{openChordsID}, nil, nil, nil, nil, []domain.Option{
+			{ID: uuid.NewString(), IsCorrect: true, DiagramRef: intervalsRef(diagrams.eMajorChord.ID)},
+			{ID: uuid.NewString(), IsCorrect: false, DiagramRef: intervalsRef(diagrams.cMajorOpen.ID)},
+			{ID: uuid.NewString(), IsCorrect: false, DiagramRef: intervalsRef(diagrams.pentatonicPos1.ID)},
+		}, nil, nil, []string{"en"}, forGuitars())
+	if err != nil {
+		return fmt.Errorf("create exercise %q: %w", chordTitle, err)
+	}
+
+	listen, err := seedListeningExercise(ctx, teacher, exerciseSvc, classifier, diagrams.eMajorChord)
+	if err != nil {
+		return err
+	}
+
+	for _, exercise := range []domain.Exercise{tapRoots, pickChord, listen} {
+		if _, err := exerciseSvc.LinkExerciseToChallenge(ctx, teacher, challengeID, exercise.ID); err != nil {
+			return fmt.Errorf("link exercise %q to challenge: %w", exercise.Title, err)
+		}
+	}
+	if _, err := seedPracticeDiagramExercises(ctx, teacher, exerciseSvc, chords, classifier, diagrams, challengeID); err != nil {
+		return fmt.Errorf("seed practice diagram exercises: %w", err)
+	}
+	if _, err := seedListeningDiagramExercises(ctx, teacher, exerciseSvc, diagramSvc, chords, classifier, challengeID); err != nil {
+		return fmt.Errorf("seed listening diagram exercises: %w", err)
+	}
+	return nil
+}
+
+// listeningTitle is the listening exercise's title and prompt.
+const listeningTitle = "Listen to the E major chord, then tap its major third"
+
+// listeningClassification is what the listening exercise asks: recognising
+// the chord by ear and finding a tone of its major triad, not playing it.
+var listeningClassification = exerciseClassification{skill: "hear-chord-quality", concept: "major-triads"}
+
+// seedListeningExercise asks for the E major chord's major third on a
+// diagram the student can hear: labels off, the chord's sequence reversed
+// and looping, and the open high E hidden but still sounding.
+func seedListeningExercise(ctx context.Context, teacher domain.User, exerciseSvc *application.ExerciseService, classifier *classificationSeeder, eMajor domain.Diagram) (domain.Exercise, error) {
+	skillID, conceptID, err := classifier.ids(ctx, listeningClassification)
+	if err != nil {
+		return domain.Exercise{}, err
+	}
+	var third, highE string
+	for _, p := range eMajor.Positions {
+		switch {
+		case p.Interval == "3":
+			third = p.ID
+		case p.String != nil && *p.String == 1:
+			highE = p.ID
+		}
+	}
+	if third == "" || highE == "" {
+		return domain.Exercise{}, fmt.Errorf("the E major chord has no major third or high E position")
+	}
+
+	title := listeningTitle
+	stimulus := &domain.DiagramRef{
+		DiagramID:          eMajor.ID,
+		Layers:             domain.DiagramLayers{Intervals: false, HiddenPositionIDs: &[]string{highE}},
+		Playback:           &domain.DiagramRefPlayback{Direction: domain.DiagramPlaybackDirectionReversed, Loop: true},
+		CorrectPositionIDs: &[]string{third},
+	}
+	exercise, err := exerciseSvc.CreateExercise(ctx, teacher, title, domain.NewPlainTextPrompt(title), domain.ExerciseTypeImageRecognition,
+		[]string{skillID}, []string{conceptID}, nil, nil, stimulus, nil, nil, nil, nil, []string{"en"}, forGuitars())
+	if err != nil {
+		return domain.Exercise{}, fmt.Errorf("create exercise %q: %w", title, err)
+	}
+	return exercise, nil
+}

@@ -1,0 +1,482 @@
+package domain
+
+import (
+	"math"
+	"slices"
+	"time"
+)
+
+// PracticeRulesVersion is the version of the mastery rules this service
+// reads item states under, and boxWaitDays below their review waits. Both
+// copy the Aggregation Worker's, which folds the states: a rule change
+// bumps the worker's version first, and this one with it once this
+// service reads the new rules. A state folded under an older version is
+// stale until its item is next answered and rebuilt, so it is offered as
+// due; one folded under a newer version is read as it is, so the worker
+// shipping first never makes every item due.
+const PracticeRulesVersion = 1
+
+// KnowledgeLevel is how well a student knows a practice item.
+type KnowledgeLevel string
+
+const (
+	KnowledgeLevelNew      KnowledgeLevel = "new"
+	KnowledgeLevelLearning KnowledgeLevel = "learning"
+	KnowledgeLevelAccurate KnowledgeLevel = "accurate"
+	KnowledgeLevelFluent   KnowledgeLevel = "fluent"
+	KnowledgeLevelRetained KnowledgeLevel = "retained"
+)
+
+// lapsed is the level one step below l. A practised item never falls back
+// to new: new means never practised.
+func (l KnowledgeLevel) lapsed() KnowledgeLevel {
+	switch l {
+	case KnowledgeLevelRetained:
+		return KnowledgeLevelFluent
+	case KnowledgeLevelFluent:
+		return KnowledgeLevelAccurate
+	case KnowledgeLevelAccurate:
+		return KnowledgeLevelLearning
+	case KnowledgeLevelLearning, KnowledgeLevelNew:
+		return l
+	default:
+		return l
+	}
+}
+
+// boxWaitDays is the wait before the next review, by Leitner box: the
+// waits the item states are folded with, kept in step with the worker's
+// under PracticeRulesVersion. Box 0 is unseen.
+var boxWaitDays = [...]int{0, 1, 2, 4, 8, 16, 32}
+
+// PracticeItemState is what the evidence says about one student's item, as
+// the Aggregation Worker folded it. Level is the earned level, before any
+// lapse for an overdue review.
+type PracticeItemState struct {
+	ItemKey      string
+	RulesVersion int
+	Level        KnowledgeLevel
+	Counted      int
+	Box          int
+	DueAt        *time.Time
+	LastAt       *time.Time
+	// Accuracy and Fluency are the shares, from 0 to 1, of the item's
+	// counted answers that were correct and that were fluent.
+	Accuracy float64
+	Fluency  float64
+	// BestCleanBPM is the best tempo rated clean since the latest teacher
+	// review, the fastest at effective speed, as played in
+	// BestCleanNoteValue; nil with no clean take. A nil note value with a
+	// tempo was played in quarters.
+	BestCleanBPM       *int
+	BestCleanNoteValue *TempoNoteValue
+	// RightByResponse counts the right answers by the way the item was
+	// asked, such as name_the_note; nil before any.
+	RightByResponse map[string]int
+	// BestChangesPerMinute is a chord or root change's best clean count since
+	// the latest teacher review; nil with no clean minute.
+	BestChangesPerMinute *int
+	// LastChangeMinute is a chord or root change's last minute, which the next
+	// one starts from; nil for an item never played that way.
+	LastChangeMinute *ChangeMinuteState
+}
+
+// ChangeMinuteState is a chord or root change's last minute: the tempo it was
+// played at, the clean changes counted, whether it was struggled, and the
+// clean minutes in a row it ended.
+type ChangeMinuteState struct {
+	TempoBPM         int
+	ChangesPerMinute int
+	Struggled        bool
+	CleanInARow      int
+}
+
+// BestCleanTempo is the best clean take's tempo as played, nil with no clean
+// take, and the note value it was played at: quarters without one.
+func (s PracticeItemState) BestCleanTempo() (*int, TempoNoteValue) {
+	return s.BestCleanBPM, tempoNoteValueOr(s.BestCleanNoteValue)
+}
+
+// Stale reports whether s was folded under mastery rules older than these.
+func (s PracticeItemState) Stale() bool {
+	return s.RulesVersion < PracticeRulesVersion
+}
+
+// Due reports whether s should be offered for review at now: its review is
+// due, or it is stale, since answering it rebuilds it under the current
+// rules.
+func (s PracticeItemState) Due(now time.Time) bool {
+	return s.Stale() || s.ReviewDue(now)
+}
+
+// ReviewDue reports whether s's review date has come at now, whatever rules
+// it was folded under.
+func (s PracticeItemState) ReviewDue(now time.Time) bool {
+	return s.DueAt != nil && !s.DueAt.After(now)
+}
+
+// Weak reports whether s is weak at now: practised, not due, and shown
+// below fluent.
+func (s PracticeItemState) Weak(now time.Time) bool {
+	return s.Counted > 0 && !s.Due(now) && s.ShownLevel(now).Rank() < KnowledgeLevelFluent.Rank()
+}
+
+// ShownLevel is the level shown at now: the earned level, one step lower
+// once the review is overdue by more than the box's wait.
+func (s PracticeItemState) ShownLevel(now time.Time) KnowledgeLevel {
+	if s.DueAt == nil || s.Box < 0 || s.Box >= len(boxWaitDays) {
+		return s.Level
+	}
+	if now.After(s.DueAt.AddDate(0, 0, boxWaitDays[s.Box])) {
+		return s.Level.lapsed()
+	}
+	return s.Level
+}
+
+// PracticeItemKind is the kind of a practice item, its item key's prefix.
+type PracticeItemKind string
+
+const (
+	PracticeItemKindPlayAlong     PracticeItemKind = "play_along"
+	PracticeItemKindExercise      PracticeItemKind = "exercise"
+	PracticeItemKindFretboardCell PracticeItemKind = "fretboard_cell"
+)
+
+// PlayAlongItemKey is the item key of playing diagramID along with its
+// playback.
+func PlayAlongItemKey(diagramID string) string {
+	return string(PracticeItemKindPlayAlong) + ":" + diagramID
+}
+
+// ExerciseItemKey is the item key of answering the authored exercise
+// exerciseID.
+func ExerciseItemKey(exerciseID string) string {
+	return string(PracticeItemKindExercise) + ":" + exerciseID
+}
+
+// PracticePickReason is why the composer put an item in a session.
+type PracticePickReason string
+
+const (
+	PracticePickDue         PracticePickReason = "due"
+	PracticePickWeak        PracticePickReason = "weak"
+	PracticePickNew         PracticePickReason = "new"
+	PracticePickWarmUp      PracticePickReason = "warm_up"
+	PracticePickApplication PracticePickReason = "application"
+	PracticePickReviewAhead PracticePickReason = "review_ahead"
+	PracticePickStretch     PracticePickReason = "stretch"
+)
+
+// PlannedPlayAlong is how a play-along is played in a session: from a
+// start tempo in a note value, toward a target tempo in quarters (as
+// written). The best clean tempo is as played, in its note value; both are
+// nil with no clean take.
+type PlannedPlayAlong struct {
+	DiagramID          string
+	StartTempoBPM      int
+	StartNoteValue     TempoNoteValue
+	TargetTempoBPM     int
+	BestCleanTempoBPM  *int
+	BestCleanNoteValue *TempoNoteValue
+}
+
+// PracticeFocusSource is who chose a session's subjects.
+type PracticeFocusSource string
+
+const (
+	// PracticeFocusSuggested is Today's mix: the composer picked them.
+	PracticeFocusSuggested PracticeFocusSource = "suggested"
+	// PracticeFocusChosen is a session holding the one subject the student
+	// chose.
+	PracticeFocusChosen PracticeFocusSource = "chosen"
+)
+
+// MaxFocusNodes is the most subjects a session names: what a student can
+// still say they worked on afterwards.
+const MaxFocusNodes = 3
+
+// ItemsFocus names the subjects of a session of items: the nodes its items
+// serve, by the time planned on each, most first, the earliest served on a
+// tie, at most MaxFocusNodes. A node is described by nodes, keyed by id,
+// and one nodes doesn't hold is left out, as are items serving none.
+func ItemsFocus(items []PracticeSessionItem, nodes map[string]KnowledgeNode) []KnowledgeNode {
+	var order []string
+	seconds := map[string]int{}
+	for _, item := range items {
+		if item.NodeID == nil {
+			continue
+		}
+		if _, ok := nodes[*item.NodeID]; !ok {
+			continue
+		}
+		if _, seen := seconds[*item.NodeID]; !seen {
+			order = append(order, *item.NodeID)
+		}
+		seconds[*item.NodeID] += item.EstimatedSeconds
+	}
+	slices.SortStableFunc(order, func(a, b string) int { return seconds[b] - seconds[a] })
+	focus := make([]KnowledgeNode, 0, MaxFocusNodes)
+	for _, id := range order[:min(len(order), MaxFocusNodes)] {
+		focus = append(focus, nodes[id])
+	}
+	return focus
+}
+
+// PracticeSessionItem is one pick of a composed session.
+type PracticeSessionItem struct {
+	ItemKey string
+	Kind    PracticeItemKind
+	Reason  PracticePickReason
+	// Rung is the rung of the practice ladder the pick trains: see ItemRung.
+	Rung PracticeRung
+	// Way is the response type a generated drill item is asked through,
+	// which with Kind names its drill template; empty for any other pick.
+	Way string
+	// NodeID is the knowledge node the pick serves; nil when none applies.
+	NodeID           *string
+	Level            KnowledgeLevel
+	EstimatedSeconds int
+	// Exactly one of PlayAlong, Exercise, FretboardCell, DiagramShape,
+	// GeneratedChoice, ChordVoicing, ChordChange, RootFifth and RootChange is
+	// set, matching Kind.
+	PlayAlong       *PlannedPlayAlong
+	Exercise        *Exercise
+	FretboardCell   *PlannedFretboardCell
+	DiagramShape    *PlannedDiagramShape
+	GeneratedChoice *PlannedGeneratedChoice
+	ChordVoicing    *PlannedChordVoicing
+	ChordChange     *PlannedChordChange
+	RootFifth       *PlannedRootFifth
+	RootChange      *PlannedRootChange
+}
+
+// DrillTemplateKey is the timed drill template answering the item
+// practises: a generated drill item's kind and the way it is asked, or an
+// exercise's type.
+// A play-along or a chord item is rated, not timed, so it practises none ("").
+func (i PracticeSessionItem) DrillTemplateKey() string {
+	if _, rated := selfRatedChordKinds[i.Kind]; rated {
+		return ""
+	}
+	switch {
+	case i.Way != "":
+		return string(i.Kind) + ":" + i.Way
+	case i.FretboardCell != nil:
+		return string(PracticeItemKindFretboardCell) + ":" + string(i.FretboardCell.Drill)
+	case i.DiagramShape != nil:
+		return string(PracticeItemKindDiagramShape) + ":" + string(i.DiagramShape.Drill)
+	case i.Exercise != nil:
+		return string(PracticeItemKindExercise) + ":" + string(i.Exercise.ExerciseType)
+	}
+	return ""
+}
+
+// PlanDrillTemplates lists the timed drill templates items practise, each
+// once, in plan order.
+func PlanDrillTemplates(items []PracticeSessionItem) []string {
+	var templates []string
+	for _, item := range items {
+		if key := item.DrillTemplateKey(); key != "" && !slices.Contains(templates, key) {
+			templates = append(templates, key)
+		}
+	}
+	return templates
+}
+
+// MaxGeneratedDrillItems is the most items of one generated drill, a
+// fretboard cell's or a diagram shape's way of being asked, that a session
+// asks: past it, the same kind of question over and over is a chore, not
+// practice. Authored exercises and play-alongs aren't capped, since each one
+// is different content.
+const MaxGeneratedDrillItems = 10
+
+// IsGeneratedDrill reports whether the item is asked by a generated drill,
+// such as a fretboard cell or a diagram shape.
+func (i PracticeSessionItem) IsGeneratedDrill() bool {
+	return i.Way != "" || i.FretboardCell != nil || i.DiagramShape != nil
+}
+
+// SessionCap is the drill the item counts toward in a session and the most
+// items of it a session takes: single chords and chord changes each by their
+// kind, any other generated drill by its template. False for an item no cap
+// applies to, such as a play-along or an exercise.
+func (i PracticeSessionItem) SessionCap() (string, int, bool) {
+	if most, ok := chordSessionCaps[i.Kind]; ok {
+		return string(i.Kind), most, true
+	}
+	if i.IsGeneratedDrill() {
+		return i.DrillTemplateKey(), MaxGeneratedDrillItems, true
+	}
+	return "", 0, false
+}
+
+// Ask makes the item ask p: p's planned question on it, and the way it is
+// asked, which names its drill.
+func (i *PracticeSessionItem) Ask(p PlannedDrill) {
+	p.AttachTo(i)
+	i.Way = p.Way()
+}
+
+// MaxFeltQuestions is the most "How did it feel?" questions a session asks,
+// so the end of a session stays short.
+const MaxFeltQuestions = 2
+
+// FeltQuestions picks the timed drill templates of items to ask "How did it
+// feel?" about: those with the fewest felt-rated sessions so far, fewest
+// first, MaxFeltQuestions at most. Felt ratings calibrate a template's fluent
+// time, so the least calibrated gain the most from one more. A tie keeps the
+// plan's order. A plan with no timed drill asks none.
+func FeltQuestions(items []PracticeSessionItem, feltRatedSessions map[string]int) []string {
+	templates := PlanDrillTemplates(items)
+	slices.SortStableFunc(templates, func(a, b string) int {
+		return feltRatedSessions[a] - feltRatedSessions[b]
+	})
+	if len(templates) > MaxFeltQuestions {
+		templates = templates[:MaxFeltQuestions]
+	}
+	if templates == nil {
+		return []string{}
+	}
+	return templates
+}
+
+// PlannedFretboardCell is a fretboard cell picked for a session, the way it
+// is asked and the window of frets its drill is asked within, which holds
+// the cell's fret.
+type PlannedFretboardCell struct {
+	FretboardCell
+	Drill  FretboardDrill
+	Window FretWindow
+}
+
+// PracticeSessionPlan is a composed session. It is never stored: the client
+// starts the session with it.
+type PracticeSessionPlan struct {
+	ID string
+	// InstrumentID is the instrument in hand; nil for a session in the head.
+	InstrumentID *string
+	Minutes      int
+	// FocusSource says who chose the session's subjects, and FocusNodes
+	// names them, the main subject first.
+	FocusSource PracticeFocusSource
+	FocusNodes  []KnowledgeNode
+	Items       []PracticeSessionItem
+	// FeltQuestions are the timed drill templates the client asks "How did
+	// it feel?" about at the end, if the student practised them: see
+	// FeltQuestions.
+	FeltQuestions []string
+	// TapCheckDue is true when the client should offer a tap check before
+	// the first item: see TapCheckDue.
+	TapCheckDue bool
+}
+
+// TapCheckValidity is how long a tap check stands for the student's tap
+// time: a student's device or habits change, so a plan asks for another
+// once the newest is older.
+const TapCheckValidity = 30 * 24 * time.Hour
+
+// TapCheckDue reports whether a plan of items asks for a tap check: when
+// it has a fretboard cell or a diagram shape and the student's newest tap
+// check, lastDone, is older than TapCheckValidity, or there is none.
+func TapCheckDue(items []PracticeSessionItem, lastDone *time.Time, now time.Time) bool {
+	if !slices.ContainsFunc(items, func(item PracticeSessionItem) bool {
+		return item.Kind == PracticeItemKindFretboardCell || item.Kind == PracticeItemKindDiagramShape
+	}) {
+		return false
+	}
+	return lastDone == nil || lastDone.Before(now.Add(-TapCheckValidity))
+}
+
+// The bounds of a session's length, in minutes.
+const (
+	MinPracticeMinutes = 1
+	MaxPracticeMinutes = 60
+)
+
+// ValidatePracticeMinutes checks a requested session length.
+func ValidatePracticeMinutes(minutes int) error {
+	if minutes < MinPracticeMinutes || minutes > MaxPracticeMinutes {
+		return NewValidationError("minutes", "must be between 1 and 60")
+	}
+	return nil
+}
+
+// Play-along tempo and timing rules.
+const (
+	// A play-along with no clean take yet starts at this share of its
+	// target, rounded down to a tempoStepBPM step.
+	firstStartTempoShare = 0.6
+	// A warm-up starts at this share of the best clean tempo, outside the
+	// tempo ladder.
+	warmUpTempoShare = 0.8
+	tempoStepBPM     = 5
+	// A focus play-along is played over this many takes, a warm-up over
+	// warmUpTakes; rating a take takes about rateSeconds.
+	focusTakes  = 4
+	warmUpTakes = 2
+	rateSeconds = 10
+)
+
+// PlayAlongStartTempo is the tempo a play-along's ladder starts at: the best
+// clean tempo, or 60% of the target rounded down to 5 BPM with no clean
+// take yet. It is kept between the slowest playable tempo and the target,
+// unless the student has played it clean past the target: that tempo is
+// theirs, and kept.
+func PlayAlongStartTempo(target int, bestClean *int) int {
+	if bestClean != nil {
+		return clampTempo(*bestClean, max(target, *bestClean))
+	}
+	return clampTempo(roundDownToStep(float64(target)*firstStartTempoShare), target)
+}
+
+// WarmUpTempo is a warm-up's tempo: about 80% of the best clean tempo,
+// rounded down to 5 BPM, kept between the slowest playable tempo and the
+// target, or the best clean tempo when the student has played it past the
+// target.
+func WarmUpTempo(target, bestClean int) int {
+	return clampTempo(roundDownToStep(float64(bestClean)*warmUpTempoShare), max(target, bestClean))
+}
+
+func roundDownToStep(bpm float64) int {
+	return int(math.Floor(bpm/tempoStepBPM)) * tempoStepBPM
+}
+
+func clampTempo(bpm, ceiling int) int {
+	return max(MinTempoBPM, min(bpm, ceiling))
+}
+
+// PlayAlongSeconds estimates how long playing d's default playback at tempo
+// in note value v takes in a session: takes of a count-in bar plus the
+// playback's steps, each followed by its rating. The count-in follows the
+// click; the steps play v's times faster than written.
+func PlayAlongSeconds(d Diagram, tempo int, v TempoNoteValue, warmUp bool) int {
+	takes := focusTakes
+	if warmUp {
+		takes = warmUpTakes
+	}
+	playback, _ := d.DefaultPlayback()
+	signature := playback.TimeSignature
+	if signature.Beats == 0 {
+		signature = DefaultTimeSignature
+	}
+	var written float64
+	for _, step := range playback.Steps {
+		written += float64(step.Value.Num) / float64(step.Value.Den) * float64(signature.BeatValue)
+	}
+	beats := float64(signature.Beats) + written/v.factor()
+	take := beats * 60 / float64(tempo)
+	return int(math.Ceil(float64(takes) * (take + rateSeconds)))
+}
+
+// defaultExerciseSeconds is how long an exercise with no authored estimate
+// is taken to need in a session.
+const defaultExerciseSeconds = 30
+
+// ExerciseSeconds estimates how long answering e once takes in a session:
+// its authored estimate, or 30 seconds without one.
+func ExerciseSeconds(e Exercise) int {
+	if e.EstimatedDurationSeconds != nil {
+		return *e.EstimatedDurationSeconds
+	}
+	return defaultExerciseSeconds
+}

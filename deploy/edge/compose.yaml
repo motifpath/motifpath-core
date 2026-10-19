@@ -1,0 +1,42 @@
+# deploy/edge/compose.yaml — the reverse proxy in front of both environments.
+# A project of its own, so deploying staging or production never restarts it.
+# deploy.sh brings it up (or reloads its Caddyfile) on every deploy:
+#
+#   docker compose -p edge -f edge/compose.yaml up -d
+#
+# Host networking: the environments publish on 127.0.0.1 only, and this is the
+# one container that binds 80 and 443 on the public interface.
+
+name: edge
+
+services:
+  caddy:
+    image: caddy:2.11.4-alpine
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL:?}
+    volumes:
+      # deploy.sh updates this file with cp, which rewrites it in place, so
+      # the running container sees the new contents before it reloads.
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Certificates and ACME account; losing them means re-issuing, which
+      # Let's Encrypt rate-limits.
+      - caddy_data:/data
+      - caddy_config:/config
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ${AWS_REGION:?}
+        awslogs-group: /motifpath/edge
+        awslogs-create-group: "false"
+        tag: "{{.Name}}"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128M
+
+volumes:
+  caddy_data:
+  caddy_config:

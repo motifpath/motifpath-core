@@ -1,0 +1,44 @@
+package ports
+
+import (
+	"context"
+
+	"github.com/motifpath/core-domain/internal/domain"
+)
+
+// LearningPathRepository persists LearningPath records.
+type LearningPathRepository interface {
+	Create(ctx context.Context, path domain.LearningPath) error
+
+	// GetByID returns domain.ErrNotFound if no path exists with the given id.
+	GetByID(ctx context.Context, id string) (domain.LearningPath, error)
+
+	// CountItems returns the item count of every path in ids in one
+	// round-trip, keyed by path id. An id with no items — an empty path, or
+	// one that matches no path at all — is simply absent, never an error.
+	CountItems(ctx context.Context, ids []string) (map[string]int, error)
+
+	// List returns one page of the learning paths matching filter, ordered
+	// by title then id, with the count of all matches across pages.
+	List(ctx context.Context, filter domain.LearningPathFilter, page domain.PageRequest) (domain.Page[domain.LearningPath], error)
+
+	// ListCreatorCounts returns each distinct creator of the paths matching
+	// filter with how many of them they created, in no particular order.
+	ListCreatorCounts(ctx context.Context, filter domain.LearningPathFilter) ([]domain.CreatorCount, error)
+
+	// Replace replaces path's title and items wholesale — its current items
+	// are deleted and path.Items inserted in their place, in one
+	// transaction. Returns domain.ErrNotFound if no path exists with the
+	// given id.
+	Replace(ctx context.Context, path domain.LearningPath) error
+
+	// UpdateStatus sets the path's publishing status and nothing else.
+	// Returns domain.ErrNotFound if no path exists with the given id.
+	UpdateStatus(ctx context.Context, id string, status domain.LearningPathStatus) error
+
+	// Delete permanently removes the learning path with the given id and
+	// all of its items, in one transaction. Never touches any StudentPath
+	// already copied from it — those are independent snapshots. Returns
+	// domain.ErrNotFound if no path exists with the given id.
+	Delete(ctx context.Context, id string) error
+}

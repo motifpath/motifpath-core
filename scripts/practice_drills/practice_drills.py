@@ -1,0 +1,613 @@
+"""Compiles the practice drill catalog (motifpath-specs catalogs/practice-drills.yaml)
+into the SQL that installs its drill templates, its timed thresholds, the
+fretboard cell ranges each skill's generated cells come from, and the diagram
+shape families with the catalog diagrams each one takes. Deterministic and
+offline; needs PyYAML. Cell ranges are checked against the knowledge map
+(catalogs/knowledge-map.yaml) and the catalog instruments; shape families
+against the basic-guitar diagram catalog (scripts/diagram_catalog).
+scripts/reference_data/build.py writes that SQL into the baseline_reference_data
+migration, keeping the threshold versions it already installs; run on its own,
+this prints the catalog's counts.
+
+Usage: python3 practice_drills.py [--specs ../../../motifpath-specs]
+"""
+import argparse
+import datetime
+import json
+import re
+import sys
+import uuid
+from dataclasses import dataclass
+from pathlib import Path
+
+import yaml
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'knowledge_map'))
+import knowledge_map as km  # noqa: E402  (a sibling script, not a package)
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'diagram_catalog'))
+import catalog as diagram_catalog  # noqa: E402  (a sibling script, not a package)
+
+NAMESPACE = uuid.UUID('4ac75155-7804-5527-a6ba-01b73c0e3e1a')
+LANGUAGES = ('en', 'pt_BR')
+TEMPLATE_KEY = re.compile(r'^[a-z][a-z_]*:[a-z][a-z_]*$')
+SOURCES = ('default', 'benchmark', 'calibrated')
+RUNGS = ('know', 'hear', 'play_clean', 'play_in_time', 'move', 'target', 'use')
+LEVELS = ('new', 'learning', 'accurate', 'fluent', 'retained')
+
+
+
+def stable_id(name):
+    return str(uuid.uuid5(NAMESPACE, name))
+
+
+def template_id(key):
+    return stable_id('drill-template/' + key)
+
+
+def threshold_id(template_key, version):
+    return stable_id(f'drill-threshold/{template_key}/v{version}')
+
+
+@dataclass
+class Template:
+    key: str
+    item_kind: str
+    response_type: str
+    timed: bool
+    names: dict
+    rung: str = 'know'
+    second_way: str = None
+    comes_back: bool = False
+
+    @property
+    def id(self):
+        return template_id(self.key)
+
+
+@dataclass
+class Threshold:
+    template: str
+    version: int
+    effective_from: datetime.date
+    fluent_net_ms: int
+    source: str
+    sessions: int
+    students: int
+
+    @property
+    def id(self):
+        return threshold_id(self.template, self.version)
+
+
+@dataclass
+class Drills:
+    templates: list
+    thresholds: list
+    hear_tempo_bpm: dict = None
+
+
+def build(raw, installed=frozenset(), today=None):
+    """Validates raw (the parsed YAML) against the catalog's rules and returns its
+    templates in catalog order and its thresholds by template, then version.
+
+    installed holds the ids of the versions the frozen migration already installs. Any
+    other version must take effect today or later: answers are judged by the version in
+    force when they were given and items are rebuilt from their evidence, so a version
+    that started before it was installed would re-judge answers already folded."""
+    templates = {}
+    for entry in raw.get('templates') or []:
+        key = entry.get('key', '')
+        if not TEMPLATE_KEY.match(key):
+            raise ValueError(f'{key!r} is not a <item kind>:<name> template key')
+        if key in templates:
+            raise ValueError(f'template {key!r} appears more than once')
+        names = entry.get('names') or {}
+        if set(names) != set(LANGUAGES) or not all(str(names[lang]).strip() for lang in LANGUAGES):
+            raise ValueError(f'template {key!r} needs exactly a name in each of {LANGUAGES}')
+        if not isinstance(entry.get('timed'), bool):
+            raise ValueError(f'template {key!r} needs timed: true or false')
+        t = Template(key, entry.get('item_kind', ''), entry.get('response_type', ''), entry['timed'],
+                     {lang: names[lang] for lang in LANGUAGES}, entry.get('rung'), entry.get('second_way'),
+                     entry.get('comes_back', False))
+        if not isinstance(t.comes_back, bool):
+            raise ValueError(f'template {key!r} needs comes_back: true or false')
+        if t.rung not in RUNGS:
+            raise ValueError(f'template {key!r} has rung {t.rung!r}, not one of {RUNGS}')
+        if not t.item_kind or not key.startswith(t.item_kind + ':') or not t.response_type:
+            raise ValueError(f'template {key!r} needs an item_kind its key starts with, and a response_type')
+        if entry.get('id') != t.id:
+            raise ValueError(f'template {key!r} has id {entry.get("id")!r}, not {t.id!r}')
+        templates[key] = t
+    for t in templates.values():
+        if t.second_way is None:
+            continue
+        other = templates.get(t.second_way)
+        if t.second_way == t.key:
+            raise ValueError(f'template {t.key!r} is its own second way')
+        if other is None:
+            raise ValueError(f'template {t.key!r} names a second way no template has, {t.second_way!r}')
+        if other.item_kind != t.item_kind:
+            raise ValueError(f'template {t.key!r} asks {t.item_kind} items, but its second way '
+                             f'{other.key!r} asks {other.item_kind} items')
+
+    by_template = {}
+    for entry in raw.get('thresholds') or []:
+        key = entry.get('template')
+        if key not in templates:
+            raise ValueError(f'a threshold names unknown template {key!r}')
+        if not templates[key].timed:
+            raise ValueError(f'template {key!r} is not timed, so it has no fluent time')
+        effective = entry.get('effective_from')
+        if isinstance(effective, str):
+            effective = datetime.date.fromisoformat(effective)
+        if not isinstance(effective, datetime.date):
+            raise ValueError(f'a threshold of {key!r} needs an effective_from date')
+        t = Threshold(key, entry.get('version'), effective, entry.get('fluent_net_ms'), entry.get('source'),
+                      entry.get('sessions', 0), entry.get('students', 0))
+        if not isinstance(t.fluent_net_ms, int) or t.fluent_net_ms <= 0:
+            raise ValueError(f'{key!r} v{t.version} needs a positive fluent_net_ms')
+        if t.source not in SOURCES:
+            raise ValueError(f'{key!r} v{t.version} has source {t.source!r}, not one of {SOURCES}')
+        if not all(isinstance(n, int) and n >= 0 for n in (t.sessions, t.students)):
+            raise ValueError(f'{key!r} v{t.version} needs sessions and students of 0 or more')
+        if entry.get('id') != t.id:
+            raise ValueError(f'{key!r} v{t.version} has id {entry.get("id")!r}, not {t.id!r}')
+        if today is not None and t.id not in installed and t.effective_from < today:
+            raise ValueError(f'{key!r} v{t.version} is new, so its effective_from must be {today} or later')
+        by_template.setdefault(key, []).append(t)
+
+    thresholds = []
+    for key in templates:
+        versions = sorted(by_template.get(key, []), key=lambda t: t.version if isinstance(t.version, int) else 0)
+        for expected, t in enumerate(versions, start=1):
+            if t.version != expected:
+                raise ValueError(f'{key!r} versions must count from 1 without gaps or repeats')
+            if expected > 1 and t.effective_from <= versions[expected - 2].effective_from:
+                raise ValueError(f'{key!r} v{t.version} effective_from must be later than v{expected - 1}\'s')
+        thresholds.extend(versions)
+    return Drills(list(templates.values()), thresholds, build_hear_tempo(raw.get('hear_tempo_bpm')))
+
+
+def build_hear_tempo(raw):
+    """Validates the tempo a question asked by ear starts at, per knowledge level: a positive
+    whole number of BPM for every level. None when the catalog gives none."""
+    if raw is None:
+        return None
+    for level in LEVELS:
+        bpm = raw.get(level)
+        if not isinstance(bpm, int) or isinstance(bpm, bool) or bpm <= 0:
+            raise ValueError(f'hear_tempo_bpm needs a positive whole number of BPM for {level!r}')
+    return {level: raw[level] for level in LEVELS}
+
+
+@dataclass
+class CellRange:
+    skill: str
+    layout: str
+    strings: list
+    from_fret: int
+    to_fret: int
+
+    @property
+    def id(self):
+        return stable_id(f'fretboard-cells/{self.skill}/{self.layout}')
+
+    @property
+    def cell_count(self):
+        return len(self.strings) * (self.to_fret - self.from_fret + 1)
+
+
+def build_cells(entries, nodes):
+    """Validates the catalog's fretboard_cells entries against nodes (knowledge-map
+    nodes by key) and the catalog instruments, and returns one range per skill and
+    layout, in catalog order. A layout is a catalog instrument; a string must be one
+    it has, the skill must suit it, no cell may serve two skills, and a skill lists one
+    layout per fretboard geometry."""
+    ranges = []
+    owner = {}
+    for entry in entries or []:
+        skill = entry.get('skill')
+        node = nodes.get(skill)
+        if node is None or node.kind != 'skill':
+            raise ValueError(f'fretboard cells name {skill!r}, which is not a skill of the knowledge map')
+        geometries = {}
+        for layout, spec in (entry.get('layouts') or {}).items():
+            instrument = km.INSTRUMENTS.get(layout)
+            if instrument is None:
+                raise ValueError(f'fretboard cells of {skill!r} name layout {layout!r}, which is not a catalog instrument')
+            # Instruments of the same tuning share one fretboard: listing two of them
+            # would give each note two item keys, so progress on one never counts for
+            # the other.
+            twin = geometries.setdefault(tuple(instrument['tuning']), layout)
+            if twin != layout:
+                raise ValueError(f'fretboard cells of {skill!r} list layouts {twin!r} and {layout!r}, which share one fretboard')
+            if node.instruments and layout not in node.instruments:
+                raise ValueError(f'skill {skill!r} is not for layout {layout!r}')
+            strings = list(spec.get('strings') or [])
+            frets = list(spec.get('frets') or [])
+            if len(frets) != 2 or not 0 <= frets[0] <= frets[1]:
+                raise ValueError(f'fretboard cells of {skill!r} on layout {layout!r} need frets [from, to] in order')
+            for string in strings:
+                if not isinstance(string, int) or not 1 <= string <= len(instrument['tuning']):
+                    raise ValueError(f'layout {layout!r} has no string {string} (skill {skill!r})')
+                for fret in range(frets[0], frets[1] + 1):
+                    other = owner.setdefault((layout, string, fret), skill)
+                    if other != skill:
+                        raise ValueError(f'layout {layout!r} string {string} fret {fret} serves both {other!r} and {skill!r}')
+            if not strings:
+                raise ValueError(f'fretboard cells of {skill!r} on layout {layout!r} list no strings')
+            ranges.append(CellRange(skill, layout, strings, frets[0], frets[1]))
+    return ranges
+
+
+def load_cells(path, map_path):
+    with open(path, encoding='utf-8') as f:
+        entries = (yaml.safe_load(f) or {}).get('fretboard_cells')
+    nodes = {n.key: n for n in km.load(map_path).nodes}
+    return build_cells(entries, nodes)
+
+
+@dataclass
+class ShapeFamily:
+    key: str
+    pattern: re.Pattern
+    names: dict
+    # members lists the family's shapes in catalog order, each a {shape, names} dict:
+    # the options a name-the-shape drill offers, in the order it offers them.
+    members: list
+
+    @property
+    def id(self):
+        return stable_id('diagram-shape-family/' + self.key)
+
+
+@dataclass
+class Shape:
+    diagram_id: str
+    family: str
+    shape: str
+
+    @property
+    def id(self):
+        return stable_id('diagram-shape/' + self.diagram_id)
+
+
+@dataclass
+class Shapes:
+    families: list
+    shapes: list
+
+
+PLACEHOLDER = re.compile(r'\\\{([a-z]+)\\\}')
+
+
+def shape_pattern(family, diagrams):
+    """The regular expression a family's diagrams pattern stands for: each {name}
+    placeholder matches one key segment, and {shape} names the member."""
+    if '{shape}' not in diagrams:
+        raise ValueError(f'family {family!r} has diagrams {diagrams!r}, which have no {{shape}} placeholder')
+    return re.compile('^' + PLACEHOLDER.sub(lambda m: f'(?P<{m.group(1)}>[^/]+)', re.escape(diagrams)) + '$')
+
+
+def localized(names):
+    names = names or {}
+    return set(names) == set(LANGUAGES) and all(str(names[lang]).strip() for lang in LANGUAGES)
+
+
+def build_shapes(entries, diagrams):
+    """Validates the catalog's diagram_shapes entries against diagrams (the diagram
+    catalog's entries, each with its key and diagram_id) and returns the families in
+    catalog order and their shapes in diagram catalog order. Every diagram whose key
+    matches a family's pattern is a shape of the member its {shape} names; a family
+    matching no diagram, a shape that isn't a member, or a diagram in two families is
+    an error."""
+    families = []
+    for entry in entries or []:
+        key = entry.get('family', '')
+        if not key or any(f.key == key for f in families):
+            raise ValueError(f'shape family {key!r} is empty or appears more than once')
+        if not localized(entry.get('names')):
+            raise ValueError(f'shape family {key!r} needs exactly a name in each of {LANGUAGES}')
+        members = []
+        for member in entry.get('members') or []:
+            shape = str(member.get('shape', ''))
+            if not shape or any(m['shape'] == shape for m in members):
+                raise ValueError(f'shape family {key!r} lists member {shape!r} empty or more than once')
+            if not localized(member.get('names')):
+                raise ValueError(f'member {shape!r} of shape family {key!r} needs exactly a name in each of {LANGUAGES}')
+            members.append(dict(shape=shape, names={lang: member['names'][lang] for lang in LANGUAGES}))
+        if not members:
+            raise ValueError(f'shape family {key!r} lists no members')
+        families.append(ShapeFamily(key, shape_pattern(key, entry.get('diagrams', '')),
+                                    {lang: entry['names'][lang] for lang in LANGUAGES}, members))
+
+    shapes = []
+    owner = {}
+    for d in diagrams:
+        for f in families:
+            match = f.pattern.match(d['key'])
+            if not match:
+                continue
+            other = owner.setdefault(d['key'], f.key)
+            if other != f.key:
+                raise ValueError(f'diagram {d["key"]!r} is a shape of both {other!r} and {f.key!r}')
+            shape = match.group('shape')
+            if not any(m['shape'] == shape for m in f.members):
+                raise ValueError(f'diagram {d["key"]!r} is shape {shape!r}, which is not a member of family {f.key!r}')
+            shapes.append(Shape(d['diagram_id'], f.key, shape))
+    for f in families:
+        if not any(s.family == f.key for s in shapes):
+            raise ValueError(f'shape family {f.key!r} matches no catalog diagram')
+    return Shapes(families, shapes)
+
+
+def load_shapes(path):
+    with open(path, encoding='utf-8') as f:
+        entries = (yaml.safe_load(f) or {}).get('diagram_shapes')
+    return build_shapes(entries, diagram_catalog.generate())
+
+
+def load(path, installed=frozenset(), today=None):
+    with open(path, encoding='utf-8') as f:
+        return build(yaml.safe_load(f), installed, today)
+
+
+def installed_threshold_ids(sql):
+    """The ids of the threshold versions a rendered migration installs."""
+    rows = sql.split('INSERT INTO "drill_thresholds"', 1)
+    if len(rows) < 2:
+        return set()
+    return set(re.findall(r"^\s*\('([0-9a-f-]{36})'", rows[1], re.MULTILINE))
+
+
+def sql_text(value):
+    return "'" + value.replace("'", "''") + "'"
+
+
+def compact(value):
+    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(',', ':'))
+
+
+def render_sql(drills):
+    out = ['-- Frozen practice drill catalog, compiled from motifpath-specs catalogs/practice-drills.yaml by',
+           '-- scripts/practice_drills. Each id is the UUID v5 of drill-template/<key> or',
+           '-- drill-threshold/<template key>/v<version>. A row already holding one of these ids stops the migration.',
+           'INSERT INTO "drill_templates" ("id", "key", "item_kind", "response_type", "rung", "second_way", "comes_back", "timed", "names") VALUES']
+    out.append(',\n'.join(
+        f"  ({sql_text(t.id)}, {sql_text(t.key)}, {sql_text(t.item_kind)}, {sql_text(t.response_type)}, "
+        f"{sql_text(t.rung)}, {sql_text(t.second_way) if t.second_way else 'NULL'}, "
+        f"{'true' if t.comes_back else 'false'}, "
+        f"{'true' if t.timed else 'false'}, {sql_text(compact(t.names))})"
+        for t in drills.templates) + ';')
+    if drills.thresholds:
+        out.append('INSERT INTO "drill_thresholds" ("id", "template_id", "version", "effective_from", "fluent_net_ms", '
+                   '"source", "sessions", "students") VALUES')
+        out.append(',\n'.join(
+            f"  ({sql_text(t.id)}, {sql_text(template_id(t.template))}, {t.version}, "
+            f"'{t.effective_from.isoformat()}T00:00:00Z', {t.fluent_net_ms}, {sql_text(t.source)}, {t.sessions}, {t.students})"
+            for t in drills.thresholds) + ';')
+    return '\n'.join(out) + '\n'
+
+
+def render_cells_sql(ranges):
+    out = ['-- Frozen fretboard cell ranges, compiled from motifpath-specs catalogs/practice-drills.yaml by',
+           '-- scripts/practice_drills. Each id is the UUID v5 of fretboard-cells/<skill key>/<layout key>.',
+           '-- Every string and fret in a range is a generated practice item of its skill.']
+    if ranges:
+        out.append('INSERT INTO "fretboard_cell_ranges" ("id", "skill_id", "layout_instrument_id", "strings", "from_fret", "to_fret") VALUES')
+        out.append(',\n'.join(
+            f"  ({sql_text(r.id)}, {sql_text(km.stable_id('knowledge-node/' + r.skill))}, {sql_text(km.instrument_id(r.layout))}, "
+            f"{sql_text(compact(r.strings))}, {r.from_fret}, {r.to_fret})"
+            for r in ranges) + ';')
+    return '\n'.join(out) + '\n'
+
+
+def render_shapes_sql(built):
+    out = ['-- Frozen diagram shapes, compiled from motifpath-specs catalogs/practice-drills.yaml by',
+           '-- scripts/practice_drills. Each id is the UUID v5 of diagram-shape-family/<family key> or',
+           '-- diagram-shape/<diagram id>. Every shape is a generated practice item of its diagram.']
+    if built.families:
+        out.append('INSERT INTO "diagram_shape_families" ("id", "key", "names", "members") VALUES')
+        out.append(',\n'.join(
+            f"  ({sql_text(f.id)}, {sql_text(f.key)}, {sql_text(compact(f.names))}, {sql_text(compact(f.members))})"
+            for f in built.families) + ';')
+    if built.shapes:
+        family_ids = {f.key: f.id for f in built.families}
+        out.append('INSERT INTO "diagram_shapes" ("id", "diagram_id", "family_id", "shape") VALUES')
+        out.append(',\n'.join(
+            f"  ({sql_text(s.id)}, {sql_text(s.diagram_id)}, {sql_text(family_ids[s.family])}, {sql_text(s.shape)})"
+            for s in built.shapes) + ';')
+    return '\n'.join(out) + '\n'
+
+
+CHORD_DRILL_SETTINGS = ('max_voicings_per_session', 'max_changes_per_session', 'voicing_seconds', 'change_seconds',
+                        'change_first_tempo_bpm', 'change_tempo_step_bpm', 'change_min_tempo_bpm')
+
+
+@dataclass
+class ChordDrill:
+    voicing: str
+    diagram_id: str
+    chord: str
+
+    @property
+    def id(self):
+        return stable_id('chord-drill/' + self.voicing)
+
+
+@dataclass
+class ChordChangePair:
+    from_voicing: str
+    to_voicing: str
+
+    @property
+    def id(self):
+        return stable_id(f'chord-change/{self.from_voicing}/{self.to_voicing}')
+
+
+@dataclass
+class ChordDrills:
+    voicings: list
+    changes: list
+
+
+def build_chord_drills(raw, voicings):
+    """Validates the catalog's chord_drills section against voicings (the chord catalog's
+    voicings by key, each with its diagram_id and chord symbol) and returns the chord drills
+    and change pairs in catalog order. A chord drill names a voicing the chord catalog has,
+    by the chord it is; a change pairs two different chord drills, listed once in either
+    order. The session settings are positive whole numbers, and the rating shares fall from
+    clean to almost."""
+    raw = raw or {}
+    if raw.get('bass_layout') not in km.INSTRUMENTS:
+        raise ValueError(f'chord drills name bass layout {raw.get("bass_layout")!r}, which is not a catalog instrument')
+    for name in CHORD_DRILL_SETTINGS:
+        value = raw.get(name)
+        if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
+            raise ValueError(f'chord drills need a positive whole number for {name}')
+    if raw['change_first_tempo_bpm'] < raw['change_min_tempo_bpm']:
+        raise ValueError('chord drills need change_first_tempo_bpm at or above change_min_tempo_bpm')
+    shares = raw.get('change_rating_from') or {}
+    clean, almost = shares.get('clean'), shares.get('almost')
+    if not all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in (clean, almost)) or not 0 < almost < clean <= 1:
+        raise ValueError('chord drills need change_rating_from with 0 < almost < clean <= 1')
+
+    drills = []
+    for entry in raw.get('voicings') or []:
+        key = entry.get('voicing')
+        voicing = voicings.get(key)
+        if voicing is None:
+            raise ValueError(f'chord drill {key!r} names a voicing the chord catalog doesn\'t have')
+        if any(d.voicing == key for d in drills):
+            raise ValueError(f'chord drill {key!r} is listed more than once')
+        if entry.get('chord') != voicing['chord']:
+            raise ValueError(f'chord drill {key!r} is chord {voicing["chord"]!r}, not {entry.get("chord")!r}')
+        drill = ChordDrill(key, voicing['diagram_id'], voicing['chord'])
+        if entry.get('id') != drill.id:
+            raise ValueError(f'chord drill {key!r} has id {entry.get("id")!r}, not {drill.id!r}')
+        drills.append(drill)
+
+    known = {d.voicing for d in drills}
+    changes = []
+    for entry in raw.get('changes') or []:
+        a, b = entry.get('from'), entry.get('to')
+        for key in (a, b):
+            if key not in known:
+                raise ValueError(f'a chord change names {key!r}, which is not a chord drill')
+        if a == b:
+            raise ValueError(f'a chord change pairs {a!r} with itself')
+        if any({c.from_voicing, c.to_voicing} == {a, b} for c in changes):
+            raise ValueError(f'the chord change of {a!r} and {b!r} is listed more than once')
+        change = ChordChangePair(a, b)
+        if entry.get('id') != change.id:
+            raise ValueError(f'the chord change {a!r} to {b!r} has id {entry.get("id")!r}, not {change.id!r}')
+        changes.append(change)
+    return ChordDrills(drills, changes)
+
+
+@dataclass
+class ChangeTarget:
+    version: int
+    effective_from: datetime.date
+    changes_per_minute: int
+    source: str
+
+    @property
+    def id(self):
+        return stable_id(f'change-target/v{self.version}')
+
+
+def build_change_targets(entries, installed=frozenset(), today=None):
+    """Validates the catalog's change_targets: versions counting from 1, each later than the
+    one before, a positive rate and a known source. Like a fluent time, a version not yet
+    installed must take effect today or later."""
+    targets = []
+    for expected, entry in enumerate(sorted(entries or [], key=lambda e: e.get('version') or 0), start=1):
+        effective = entry.get('effective_from')
+        if isinstance(effective, str):
+            effective = datetime.date.fromisoformat(effective)
+        if not isinstance(effective, datetime.date):
+            raise ValueError(f'change target v{entry.get("version")} needs an effective_from date')
+        t = ChangeTarget(entry.get('version'), effective, entry.get('changes_per_minute'), entry.get('source'))
+        if t.version != expected:
+            raise ValueError('change target versions must count from 1 without gaps or repeats')
+        if expected > 1 and t.effective_from <= targets[-1].effective_from:
+            raise ValueError(f'change target v{t.version} effective_from must be later than v{expected - 1}\'s')
+        if not isinstance(t.changes_per_minute, int) or isinstance(t.changes_per_minute, bool) or t.changes_per_minute <= 0:
+            raise ValueError(f'change target v{t.version} needs a positive whole number of changes_per_minute')
+        if t.source not in SOURCES:
+            raise ValueError(f'change target v{t.version} has source {t.source!r}, not one of {SOURCES}')
+        if entry.get('id') != t.id:
+            raise ValueError(f'change target v{t.version} has id {entry.get("id")!r}, not {t.id!r}')
+        if today is not None and t.id not in installed and t.effective_from < today:
+            raise ValueError(f'change target v{t.version} is new, so its effective_from must be {today} or later')
+        targets.append(t)
+    return targets
+
+
+def chord_catalog_voicings(chord_path):
+    """The chord catalog's voicings by key, each with its diagram id and chord symbol."""
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'chord_catalog'))
+    import chord_catalog  # noqa: E402  (a sibling script, not a package)
+    generated = chord_catalog.generate(chord_catalog.load(chord_path))
+    symbols = {c['chord_definition_id']: c['canonical_symbol'] for c in generated['chords']}
+    return {v['key']: {'diagram_id': v['diagram_id'], 'chord': symbols[v['chord_definition_id']]}
+            for v in generated['voicings']}
+
+
+def load_chord_drills(path, chord_path):
+    with open(path, encoding='utf-8') as f:
+        raw = (yaml.safe_load(f) or {}).get('chord_drills')
+    return build_chord_drills(raw, chord_catalog_voicings(chord_path))
+
+
+def load_change_targets(path, installed=frozenset(), today=None):
+    with open(path, encoding='utf-8') as f:
+        return build_change_targets((yaml.safe_load(f) or {}).get('change_targets'), installed, today)
+
+
+def installed_change_target_ids(sql):
+    """The ids of the change target versions a rendered migration installs."""
+    rows = sql.split('INSERT INTO "change_targets"', 1)
+    if len(rows) < 2:
+        return set()
+    return set(re.findall(r"^\s*\('([0-9a-f-]{36})'", rows[1], re.MULTILINE))
+
+
+def render_chord_drills_sql(built, targets):
+    out = ['-- Frozen chord drills and change targets, compiled from motifpath-specs catalogs/practice-drills.yaml by',
+           '-- scripts/practice_drills. Each id is the UUID v5 of chord-drill/<voicing key>,',
+           '-- chord-change/<from voicing key>/<to voicing key> or change-target/v<version>.']
+    if built.voicings:
+        out.append('INSERT INTO "chord_drills" ("id", "diagram_id", "chord", "ordinal") VALUES')
+        out.append(',\n'.join(f"  ({sql_text(d.id)}, {sql_text(d.diagram_id)}, {sql_text(d.chord)}, {i})"
+                               for i, d in enumerate(built.voicings, start=1)) + ';')
+    if built.changes:
+        out.append('INSERT INTO "chord_change_pairs" ("id", "from_chord_drill_id", "to_chord_drill_id", "ordinal") VALUES')
+        out.append(',\n'.join(
+            f"  ({sql_text(c.id)}, {sql_text(stable_id('chord-drill/' + c.from_voicing))}, "
+            f"{sql_text(stable_id('chord-drill/' + c.to_voicing))}, {i})"
+            for i, c in enumerate(built.changes, start=1)) + ';')
+    if targets:
+        out.append('INSERT INTO "change_targets" ("id", "version", "effective_from", "changes_per_minute", "source") VALUES')
+        out.append(',\n'.join(
+            f"  ({sql_text(t.id)}, {t.version}, '{t.effective_from.isoformat()}T00:00:00Z', {t.changes_per_minute}, {sql_text(t.source)})"
+            for t in targets) + ';')
+    return '\n'.join(out) + '\n'
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--specs', type=Path, default=Path(__file__).resolve().parents[3] / 'motifpath-specs')
+    args = parser.parse_args()
+    drills = load(args.specs / 'catalogs/practice-drills.yaml', set(), datetime.date.today())
+    ranges = load_cells(args.specs / 'catalogs/practice-drills.yaml', args.specs / 'catalogs/knowledge-map.yaml')
+    shapes = load_shapes(args.specs / 'catalogs/practice-drills.yaml')
+    print(json.dumps(dict(templates=len(drills.templates), thresholds=len(drills.thresholds),
+                          cell_ranges=len(ranges), cells=sum(r.cell_count for r in ranges),
+                          shape_families=len(shapes.families), shapes=len(shapes.shapes))))
+
+
+if __name__ == '__main__':
+    main()

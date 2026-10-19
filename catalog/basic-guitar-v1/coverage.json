@@ -1,0 +1,24 @@
+{
+  "diagrams": 1969,
+  "positions": 55615,
+  "tiers": {
+    "A": 558,
+    "B": 355,
+    "C": 1056
+  },
+  "families": {
+    "3nps": 163,
+    "arpeggio": 216,
+    "caged": 52,
+    "caged-window": 208,
+    "chromatic": 12,
+    "digital-pattern": 24,
+    "interval-structure": 48,
+    "pentatonic-box": 94,
+    "root": 12,
+    "scale": 192,
+    "substitution": 864,
+    "triad-pair": 84
+  },
+  "sha256": "9908e50d2f3e5f45ec2bb9ce1542cd00b47ce77d525f4fa1cbeab12303367f23"
+}

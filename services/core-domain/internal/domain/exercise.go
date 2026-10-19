@@ -1,0 +1,780 @@
+package domain
+
+import (
+	"regexp"
+	"time"
+)
+
+// ExerciseType identifies the kind of practice interaction. Every type is
+// checked the same way: option selection — the student's selected option
+// ID(s) must match the option(s) marked correct.
+type ExerciseType string
+
+const (
+	ExerciseTypeTextResponse     ExerciseType = "text_response"
+	ExerciseTypeAudioRecognition ExerciseType = "audio_recognition"
+	ExerciseTypeImageRecognition ExerciseType = "image_recognition"
+	ExerciseTypeImageChoice      ExerciseType = "image_choice"
+	ExerciseTypeAudioSelection   ExerciseType = "audio_selection"
+)
+
+// PromptDocument is a structured rich-text document for an exercise's
+// prompt, produced by the exercise-prompt rich-text editor and persisted
+// exactly as the editor produces it.
+type PromptDocument struct {
+	Type    string       `json:"type"`
+	Content []PromptNode `json:"content"`
+}
+
+// NewPlainTextPrompt builds a PromptDocument holding text as a single,
+// unformatted paragraph — the minimal valid document. An empty text
+// produces an empty paragraph (no text node) — ProseMirror rejects
+// zero-length text nodes as invalid.
+func NewPlainTextPrompt(text string) PromptDocument {
+	content := []PromptNode{}
+	if text != "" {
+		content = []PromptNode{{Type: PromptNodeTypeText, Text: text}}
+	}
+	return PromptDocument{
+		Type: "doc",
+		Content: []PromptNode{
+			{Type: PromptNodeTypeParagraph, Content: content},
+		},
+	}
+}
+
+// PromptNodeType identifies the kind of a PromptNode. Only the node types
+// the exercise-prompt editor can actually produce are valid here.
+type PromptNodeType string
+
+const (
+	PromptNodeTypeHeading     PromptNodeType = "heading"
+	PromptNodeTypeParagraph   PromptNodeType = "paragraph"
+	PromptNodeTypeText        PromptNodeType = "text"
+	PromptNodeTypeBulletList  PromptNodeType = "bulletList"
+	PromptNodeTypeOrderedList PromptNodeType = "orderedList"
+	PromptNodeTypeListItem    PromptNodeType = "listItem"
+	PromptNodeTypeTable       PromptNodeType = "table"
+	PromptNodeTypeTableRow    PromptNodeType = "tableRow"
+	PromptNodeTypeTableHeader PromptNodeType = "tableHeader"
+	PromptNodeTypeTableCell   PromptNodeType = "tableCell"
+	PromptNodeTypeImage       PromptNodeType = "image"
+	// PromptNodeTypeAudio and PromptNodeTypeVideo are available to rich_text
+	// ExpandedContent and Exercise.RemediationTargets' rich content — the
+	// exercise-prompt authoring toolbar does not offer them, so they never
+	// appear in a PromptDocument used as an exercise's own prompt, but this
+	// shared type permits them for the surfaces that do.
+	PromptNodeTypeAudio PromptNodeType = "audio"
+	PromptNodeTypeVideo PromptNodeType = "video"
+	// PromptNodeTypeDiagram embeds a prebuilt diagram inline, via its
+	// PromptNodeAttrs.DiagramRef or DiagramStackRef. Available to every
+	// surface that produces a PromptDocument, including an exercise's own
+	// prompt — a diagram is not a content type of its own, it is a resource
+	// embedded into content that already has a format.
+	PromptNodeTypeDiagram PromptNodeType = "diagram"
+	// PromptNodeTypeSongChart embeds a published song chart, named by its
+	// PromptNodeAttrs.SongChartID. Only lesson content may hold one: an
+	// article's body and rich expanded content, never an exercise.
+	PromptNodeTypeSongChart PromptNodeType = "songChart"
+)
+
+// PromptNodeAttrs holds the type-specific attributes a PromptNode may
+// carry. Which fields are set depends on the node's Type; the rest stay
+// nil.
+type PromptNodeAttrs struct {
+	Level           *int    `json:"level,omitempty"`
+	TextAlign       *string `json:"textAlign,omitempty"`
+	Src             *string `json:"src,omitempty"`
+	Alt             *string `json:"alt,omitempty"`
+	Colspan         *int    `json:"colspan,omitempty"`
+	Rowspan         *int    `json:"rowspan,omitempty"`
+	BackgroundColor *string `json:"backgroundColor,omitempty"`
+	BorderColor     *string `json:"borderColor,omitempty"`
+	// DiagramRef and DiagramStackRef carry a diagram PromptNode's embedded
+	// diagram — exactly one is set, never both.
+	DiagramRef      *DiagramRef      `json:"diagramRef,omitempty"`
+	DiagramStackRef *DiagramStackRef `json:"diagramStackRef,omitempty"`
+	// SongChartID names a songChart PromptNode's song chart.
+	SongChartID *string `json:"songChartId,omitempty"`
+}
+
+// PromptNode is a single node in a PromptDocument's tree. Container node
+// types nest further nodes under Content; Text is a leaf carrying the
+// literal string, with any inline formatting under Marks.
+type PromptNode struct {
+	Type    PromptNodeType   `json:"type"`
+	Attrs   *PromptNodeAttrs `json:"attrs,omitempty"`
+	Content []PromptNode     `json:"content,omitempty"`
+	Text    string           `json:"text,omitempty"`
+	Marks   []PromptMark     `json:"marks,omitempty"`
+}
+
+// PromptMarkType identifies the kind of an inline PromptMark. Only the mark
+// types the exercise-prompt editor can actually produce are valid here.
+type PromptMarkType string
+
+const (
+	PromptMarkTypeBold      PromptMarkType = "bold"
+	PromptMarkTypeItalic    PromptMarkType = "italic"
+	PromptMarkTypeStrike    PromptMarkType = "strike"
+	PromptMarkTypeHighlight PromptMarkType = "highlight"
+	PromptMarkTypeLink      PromptMarkType = "link"
+	// PromptMarkTypeTextStyle carries a chosen font color, background
+	// color, or both, via its Attrs.Color and Attrs.BackgroundColor.
+	PromptMarkTypeTextStyle PromptMarkType = "textStyle"
+)
+
+// PromptMarkAttrs holds the type-specific attributes a PromptMark may
+// carry. Which fields are set depends on the mark's Type; the rest stay
+// nil.
+type PromptMarkAttrs struct {
+	Href            *string `json:"href,omitempty"`
+	Color           *string `json:"color,omitempty"`
+	BackgroundColor *string `json:"backgroundColor,omitempty"`
+}
+
+// PromptMark is an inline formatting mark applied to a PromptNode.
+type PromptMark struct {
+	Type  PromptMarkType   `json:"type"`
+	Attrs *PromptMarkAttrs `json:"attrs,omitempty"`
+}
+
+// OptionRegionShape is the rendered shape of an OptionRegion.
+type OptionRegionShape string
+
+const (
+	OptionRegionShapeRectangle OptionRegionShape = "rectangle"
+	OptionRegionShapeCircle    OptionRegionShape = "circle"
+)
+
+// OptionRegion is a region on an exercise's ImageURL, used by
+// image_recognition options — selecting the region is selecting the option.
+type OptionRegion struct {
+	X      float64
+	Y      float64
+	Width  float64
+	Height float64
+	Shape  OptionRegionShape
+}
+
+// Option is one selectable answer choice within an Exercise. Which of Label,
+// ImageURL, AudioURL, or Region is populated depends on the parent exercise's
+// ExerciseType.
+type Option struct {
+	ID        string
+	IsCorrect bool
+	Label     *string
+	ImageURL  *string
+	AudioURL  *string
+	Region    *OptionRegion
+	// DiagramRef renders this option's own thumbnail from a prebuilt
+	// diagram, replacing ImageURL — only meaningful for image_choice
+	// options.
+	DiagramRef *DiagramRef
+	// DiagramID and DiagramPositionID are server-derived and read-only:
+	// present only on an option that came from an image_recognition
+	// exercise's DiagramRef/DiagramStackRef stimulus, identifying which
+	// Diagram and Position this option represents. Never set by request
+	// construction — the application layer derives them.
+	DiagramID         *string
+	DiagramPositionID *string
+	// FretCell is the fretboard cell this option is, for a diagram
+	// stimulus whose answers are cells; DiagramPositionID is then set only
+	// when a position of the diagram occupies the cell. Server-derived.
+	FretCell *FretCell
+}
+
+// RemediationTarget is one piece of content recommended to a student who
+// answers a specific exercise incorrectly. Exactly one of ContentNodeID or
+// RichContent must be set — a target is either a reference to an existing
+// content node, or inline-authored content (e.g. a specific external video
+// or article, with a caption explaining why it's suggested) using the same
+// rich-content model as an exercise prompt.
+type RemediationTarget struct {
+	ContentNodeID *string
+	RichContent   *PromptDocument
+	Caption       *string
+}
+
+// Exercise is a reusable, standalone practice item classified by Skill/
+// Concept tree references — the same shared trees ContentNode classifies
+// against — and independent of any single challenge. It is checked by
+// option selection: the student's selected option ID(s) must match the
+// option(s) marked correct.
+type Exercise struct {
+	ID           string
+	Title        string
+	Prompt       PromptDocument
+	ExerciseType ExerciseType
+	// Skills/Concepts carry only ID until this Exercise is read back from
+	// the repository with its Skill/Concept rows joined in — the same
+	// construct-then-refetch convention Languages already follows.
+	Skills   []KnowledgeNode
+	Concepts []KnowledgeNode
+	ImageURL *string
+	AudioURL *string
+	// DiagramRef and DiagramStackRef, when set, replace ImageURL as an
+	// image_recognition exercise's stimulus — the diagram's own positions
+	// (after layers.subset filtering) become this exercise's options
+	// automatically. Meaningless for any other ExerciseType.
+	DiagramRef               *DiagramRef
+	DiagramStackRef          *DiagramStackRef
+	Options                  []Option
+	EstimatedDurationSeconds *int
+	// RemediationTargets is the ordered content recommended to a student who
+	// answers this exercise incorrectly. May be empty.
+	RemediationTargets []RemediationTarget
+	// ChallengeIDs are the challenges this exercise is currently linked to.
+	// Managed exclusively through LinkChallenge/UnlinkChallenge — never set
+	// directly by NewExercise beyond the empty slice a brand-new exercise
+	// starts with.
+	ChallengeIDs []string
+	// ContentNodeIDs are the content nodes this exercise is currently linked
+	// to as a path exercise. Managed exclusively through
+	// LinkContentNode/UnlinkContentNode, independent of ChallengeIDs.
+	ContentNodeIDs []string
+	// Languages are the languages this exercise is available in, or a single
+	// LanguageCodeAny entry for language-agnostic content. Independent of
+	// any ContentNode's languages — an exercise reused across nodes has no
+	// single parent to inherit a language from. Name is populated only once
+	// this Exercise has been read back from the repository with its
+	// Language rows joined in.
+	Languages []Language
+	// InstrumentIDs are the instruments the exercise is for; empty means
+	// every instrument.
+	InstrumentIDs []string
+	// CreatedBy is the id of the user who created the exercise, or "" for
+	// an exercise created before creators were recorded. Fixed at creation.
+	CreatedBy string
+	CreatedAt time.Time
+	// UpdatedAt is when the exercise was created or last edited.
+	UpdatedAt time.Time
+}
+
+// NewExercise validates and constructs a standalone Exercise, not yet linked
+// to any challenge or content node. Whether it later gets linked to a
+// challenge or node that exists is an application-layer concern — as is
+// whether each remediationTargets[i].ContentNodeID refers to a content node
+// that actually exists, which requires a repository round-trip this
+// constructor can't perform.
+func NewExercise(id, title string, prompt PromptDocument, exerciseType ExerciseType, skillIDs, conceptIDs []string, imageURL, audioURL *string, diagramRef *DiagramRef, diagramStackRef *DiagramStackRef, options []Option, estimatedDurationSeconds *int, remediationTargets []RemediationTarget, languageCodes []string, createdAt time.Time) (Exercise, error) {
+	errs := validateExerciseType(exerciseType)
+	errs = append(errs, validateExerciseContent(title, prompt, exerciseType, skillIDs, conceptIDs, imageURL, audioURL, diagramRef, diagramStackRef, options, estimatedDurationSeconds, remediationTargets)...)
+	errs = append(errs, validateLanguageCodes("language_codes", languageCodes)...)
+	if len(errs) > 0 {
+		return Exercise{}, &ValidationError{Fields: errs}
+	}
+
+	return Exercise{
+		ID:                       id,
+		Title:                    title,
+		Prompt:                   prompt,
+		ExerciseType:             exerciseType,
+		Skills:                   skillsFromIDs(skillIDs),
+		Concepts:                 conceptsFromIDs(conceptIDs),
+		ImageURL:                 imageURL,
+		AudioURL:                 audioURL,
+		DiagramRef:               diagramRef,
+		DiagramStackRef:          diagramStackRef,
+		Options:                  options,
+		EstimatedDurationSeconds: estimatedDurationSeconds,
+		RemediationTargets:       remediationTargets,
+		ChallengeIDs:             []string{},
+		ContentNodeIDs:           []string{},
+		Languages:                languagesFromCodes(languageCodes),
+		CreatedAt:                createdAt,
+		UpdatedAt:                createdAt,
+	}, nil
+}
+
+// Update validates and returns a copy of e with its authored content
+// replaced: title, prompt, skill tags, stimulus media, options, estimated
+// duration, and remediation targets. ID, ExerciseType, ChallengeIDs,
+// ContentNodeIDs, and CreatedAt carry over unchanged — exercise_type cannot
+// change after creation since it determines the option shape (region vs.
+// text vs. image), and links are managed exclusively through the exercise's
+// Link/Unlink operations, not through an update.
+func (e Exercise) Update(title string, prompt PromptDocument, skillIDs, conceptIDs []string, imageURL, audioURL *string, diagramRef *DiagramRef, diagramStackRef *DiagramStackRef, options []Option, estimatedDurationSeconds *int, remediationTargets []RemediationTarget, languageCodes []string) (Exercise, error) {
+	errs := validateExerciseContent(title, prompt, e.ExerciseType, skillIDs, conceptIDs, imageURL, audioURL, diagramRef, diagramStackRef, options, estimatedDurationSeconds, remediationTargets)
+	errs = append(errs, validateLanguageCodes("language_codes", languageCodes)...)
+	if len(errs) > 0 {
+		return Exercise{}, &ValidationError{Fields: errs}
+	}
+
+	updated := e
+	updated.Title = title
+	updated.Prompt = prompt
+	updated.Skills = skillsFromIDs(skillIDs)
+	updated.Concepts = conceptsFromIDs(conceptIDs)
+	updated.ImageURL = imageURL
+	updated.AudioURL = audioURL
+	updated.DiagramRef = diagramRef
+	updated.DiagramStackRef = diagramStackRef
+	updated.Options = options
+	updated.EstimatedDurationSeconds = estimatedDurationSeconds
+	updated.RemediationTargets = remediationTargets
+	updated.Languages = languagesFromCodes(languageCodes)
+	return updated, nil
+}
+
+// validateExerciseContent checks the fields shared by creation and update —
+// everything except exercise_type itself, which only creation sets and only
+// creation validates.
+func validateExerciseContent(title string, prompt PromptDocument, exerciseType ExerciseType, skillIDs, conceptIDs []string, imageURL, audioURL *string, diagramRef *DiagramRef, diagramStackRef *DiagramStackRef, options []Option, estimatedDurationSeconds *int, remediationTargets []RemediationTarget) []FieldError {
+	var errs []FieldError
+
+	if title == "" {
+		errs = append(errs, FieldError{Field: "title", Reason: "must not be empty"})
+	}
+	errs = append(errs, validatePromptDocument(prompt, exercisePrompt)...)
+	if len(skillIDs) == 0 {
+		errs = append(errs, FieldError{Field: "skill_ids", Reason: "must not be empty"})
+	}
+	if len(conceptIDs) == 0 {
+		errs = append(errs, FieldError{Field: "concept_ids", Reason: "must not be empty"})
+	}
+	errs = append(errs, validateStimulusMedia(exerciseType, imageURL, audioURL, diagramRef, diagramStackRef)...)
+	errs = append(errs, validateOptions(exerciseType, diagramRef, diagramStackRef, options)...)
+	if estimatedDurationSeconds != nil && *estimatedDurationSeconds < 1 {
+		errs = append(errs, FieldError{Field: "estimated_duration_seconds", Reason: "must be at least 1 when present"})
+	}
+	errs = append(errs, validateRemediationTargets(remediationTargets)...)
+
+	return errs
+}
+
+// validateRemediationTargets checks that each target carries exactly one of
+// ContentNodeID or RichContent, and that any RichContent is a well-formed
+// document. Whether a ContentNodeID refers to a content node that actually
+// exists is an application-layer concern.
+func validateRemediationTargets(targets []RemediationTarget) []FieldError {
+	var errs []FieldError
+	for _, target := range targets {
+		hasNode := target.ContentNodeID != nil && *target.ContentNodeID != ""
+		hasRich := target.RichContent != nil
+		switch {
+		case hasNode == hasRich:
+			errs = append(errs, FieldError{Field: "remediation_targets", Reason: "each target must carry exactly one of content_node_id or rich_content"})
+		case hasRich:
+			for _, docErr := range validatePromptDocument(*target.RichContent, remediationContent) {
+				errs = append(errs, FieldError{Field: "remediation_targets", Reason: docErr.Reason})
+			}
+		}
+	}
+	return errs
+}
+
+// promptSurface is what a place that holds a PromptDocument allows beyond
+// text, tables and images and inline diagrams, which every place allows.
+type promptSurface struct {
+	// media allows audio and video nodes.
+	media bool
+	// songCharts allows songChart nodes.
+	songCharts bool
+}
+
+var (
+	// exercisePrompt is an exercise's own prompt: its authoring toolbar
+	// offers neither audio, video nor song charts.
+	exercisePrompt = promptSurface{}
+	// remediationContent is the rich content an exercise points a student
+	// to after a wrong answer.
+	remediationContent = promptSurface{media: true}
+	// lessonContent is an article's body and rich expanded content: the
+	// lesson itself, which may embed song charts.
+	lessonContent = promptSurface{media: true, songCharts: true}
+)
+
+// validatePromptDocument checks a PromptDocument's structure, and that it
+// holds only the node types surface allows.
+func validatePromptDocument(prompt PromptDocument, surface promptSurface) []FieldError {
+	if prompt.Type != "doc" {
+		return []FieldError{{Field: "prompt", Reason: "must be a structured document with type \"doc\""}}
+	}
+	if len(prompt.Content) == 0 {
+		return []FieldError{{Field: "prompt", Reason: "must not be empty"}}
+	}
+	for _, node := range prompt.Content {
+		if reason := promptNodeError(node, surface); reason != "" {
+			return []FieldError{{Field: "prompt", Reason: reason}}
+		}
+	}
+	return nil
+}
+
+// promptNodeError reports the reason node (and, recursively, its content
+// and marks) is invalid, or "" if it's valid.
+func promptNodeError(node PromptNode, surface promptSurface) string {
+	switch node.Type {
+	case PromptNodeTypeHeading, PromptNodeTypeParagraph, PromptNodeTypeText,
+		PromptNodeTypeBulletList, PromptNodeTypeOrderedList, PromptNodeTypeListItem,
+		PromptNodeTypeTable, PromptNodeTypeTableRow, PromptNodeTypeTableHeader, PromptNodeTypeTableCell,
+		PromptNodeTypeImage:
+	case PromptNodeTypeAudio, PromptNodeTypeVideo:
+		if !surface.media {
+			return "contains an unsupported node type \"" + string(node.Type) + "\""
+		}
+	case PromptNodeTypeDiagram:
+		if reason := diagramPromptNodeError(node.Attrs); reason != "" {
+			return reason
+		}
+	case PromptNodeTypeSongChart:
+		if reason := songChartPromptNodeError(node.Attrs, surface); reason != "" {
+			return reason
+		}
+	default:
+		return "contains an unsupported node type \"" + string(node.Type) + "\""
+	}
+
+	for _, child := range node.Content {
+		if reason := promptNodeError(child, surface); reason != "" {
+			return reason
+		}
+	}
+	for _, mark := range node.Marks {
+		if reason := promptMarkError(mark); reason != "" {
+			return reason
+		}
+	}
+	return ""
+}
+
+// songChartPromptNodeError reports why a songChart node is invalid where it
+// is, or "" if it's valid: only lesson content embeds song charts, and the
+// node names its chart by a UUID.
+func songChartPromptNodeError(attrs *PromptNodeAttrs, surface promptSurface) string {
+	if !surface.songCharts {
+		return "contains an unsupported node type \"songChart\": only lesson content embeds song charts"
+	}
+	if attrs == nil || attrs.SongChartID == nil || !uuidPattern.MatchString(*attrs.SongChartID) {
+		return "a songChart node must name its song chart by songChartId, a UUID"
+	}
+	return ""
+}
+
+// uuidPattern is a UUID in its canonical text form.
+var uuidPattern = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+
+// EmbeddedSongChartIDs lists the song charts the document's songChart nodes
+// name, in document order.
+func (d PromptDocument) EmbeddedSongChartIDs() []string {
+	var ids []string
+	var walk func(nodes []PromptNode)
+	walk = func(nodes []PromptNode) {
+		for _, node := range nodes {
+			if node.Type == PromptNodeTypeSongChart && node.Attrs != nil && node.Attrs.SongChartID != nil {
+				ids = append(ids, *node.Attrs.SongChartID)
+			}
+			walk(node.Content)
+		}
+	}
+	walk(d.Content)
+	return ids
+}
+
+// diagramPromptNodeError reports the reason a diagram PromptNode's attrs are
+// invalid, or "" if they're valid: exactly one of DiagramRef/DiagramStackRef
+// must be set, and it must itself be structurally valid.
+func diagramPromptNodeError(attrs *PromptNodeAttrs) string {
+	hasRef := attrs != nil && attrs.DiagramRef != nil
+	hasStack := attrs != nil && attrs.DiagramStackRef != nil
+	switch {
+	case hasRef == hasStack:
+		return "a diagram node must carry exactly one of diagram_ref or diagram_stack_ref"
+	case hasRef:
+		if err := ValidateDiagramRef(*attrs.DiagramRef); err != nil {
+			return "diagram_ref: " + err.Error()
+		}
+	case hasStack:
+		if err := ValidateDiagramStackRef(*attrs.DiagramStackRef); err != nil {
+			return "diagram_stack_ref: " + err.Error()
+		}
+	}
+	return ""
+}
+
+// promptMarkError reports the reason mark is invalid, or "" if it's valid.
+func promptMarkError(mark PromptMark) string {
+	switch mark.Type {
+	case PromptMarkTypeBold, PromptMarkTypeItalic, PromptMarkTypeStrike, PromptMarkTypeHighlight, PromptMarkTypeLink, PromptMarkTypeTextStyle:
+		return ""
+	default:
+		return "contains an unsupported mark type \"" + string(mark.Type) + "\""
+	}
+}
+
+func validateExerciseType(exerciseType ExerciseType) []FieldError {
+	switch exerciseType {
+	case ExerciseTypeTextResponse, ExerciseTypeAudioRecognition, ExerciseTypeImageRecognition, ExerciseTypeImageChoice, ExerciseTypeAudioSelection:
+		return nil
+	default:
+		return []FieldError{{Field: "exercise_type", Reason: "must be one of text_response, audio_recognition, image_recognition, image_choice, audio_selection"}}
+	}
+}
+
+// validateStimulusMedia checks the exercise-level stimulus required by
+// exerciseType. image_recognition needs exactly one of image_url,
+// diagram_ref, or diagram_stack_ref; a diagram stimulus must carry
+// correct_intervals (or, for a stack, each entry must) since that is what
+// makes its positions gradable, and must itself be structurally valid.
+// audio_recognition needs a stimulus audio clip. Other types carry no
+// exercise-level stimulus.
+func validateStimulusMedia(exerciseType ExerciseType, imageURL, audioURL *string, diagramRef *DiagramRef, diagramStackRef *DiagramStackRef) []FieldError {
+	var errs []FieldError
+
+	if exerciseType == ExerciseTypeImageRecognition {
+		hasImage := imageURL != nil && *imageURL != ""
+		hasRef := diagramRef != nil
+		hasStack := diagramStackRef != nil
+		switch {
+		case countTrue(hasImage, hasRef, hasStack) == 0:
+			errs = append(errs, FieldError{Field: "image_url", Reason: "one of image_url, diagram_ref, or diagram_stack_ref is required when exercise_type is image_recognition"})
+		case countTrue(hasImage, hasRef, hasStack) > 1:
+			errs = append(errs, FieldError{Field: "image_url", Reason: "at most one of image_url, diagram_ref, or diagram_stack_ref may be set"})
+		case hasRef:
+			errs = append(errs, validateDiagramStimulusRef(*diagramRef)...)
+		case hasStack:
+			if err := ValidateDiagramStackRef(*diagramStackRef); err != nil {
+				errs = append(errs, FieldError{Field: "diagram_stack_ref", Reason: err.Error()})
+			}
+			for _, ref := range diagramStackRef.Stack {
+				errs = append(errs, validateDiagramStimulusRef(ref)...)
+			}
+		}
+	} else if exerciseType == ExerciseTypeAudioRecognition {
+		errs = append(errs, validateStimulusSound(audioURL, diagramRef, diagramStackRef)...)
+	} else if diagramRef != nil || diagramStackRef != nil {
+		errs = append(errs, FieldError{Field: "diagram_ref", Reason: "only meaningful when exercise_type is image_recognition or audio_recognition"})
+	}
+	return errs
+}
+
+// validateStimulusSound checks an audio_recognition stimulus: exactly one of
+// an uploaded clip or a diagram that plays, and never a stack.
+func validateStimulusSound(audioURL *string, diagramRef *DiagramRef, diagramStackRef *DiagramStackRef) []FieldError {
+	hasClip := audioURL != nil && *audioURL != ""
+	switch {
+	case diagramStackRef != nil:
+		return []FieldError{{Field: "diagram_stack_ref", Reason: "only meaningful when exercise_type is image_recognition"}}
+	case hasClip && diagramRef != nil:
+		return []FieldError{{Field: "diagram_ref", Reason: "must not be given together with audio_url"}}
+	case !hasClip && diagramRef == nil:
+		return []FieldError{{Field: "audio_url", Reason: "one of audio_url or diagram_ref is required when exercise_type is audio_recognition"}}
+	case diagramRef != nil:
+		if reason := soundRefProblem(*diagramRef); reason != "" {
+			return []FieldError{{Field: "diagram_ref", Reason: reason}}
+		}
+	}
+	return nil
+}
+
+// soundRefProblem returns why ref can't be a listening exercise's sound, or
+// "" if it can. A sound plays one named playback once: naming it, rather
+// than following the diagram's default, keeps the sound — and so the
+// answer — unchanged when the diagram's default changes.
+func soundRefProblem(ref DiagramRef) string {
+	if err := ValidateDiagramRef(ref); err != nil {
+		return err.Error()
+	}
+	switch {
+	case ref.Playback == nil:
+		return "playback is required when the diagram is a sound"
+	case ref.Playback.PlaybackID == nil || *ref.Playback.PlaybackID == "":
+		return "playback.playback_id is required when the diagram is a sound"
+	case ref.Playback.Loop:
+		return "playback.loop must be false when the diagram is a sound"
+	}
+	return ""
+}
+
+// validateDiagramStimulusRef checks that ref is structurally valid and
+// carries correct_intervals — required only when a DiagramRef is an
+// Exercise's image_recognition stimulus, unlike its other usages.
+func validateDiagramStimulusRef(ref DiagramRef) []FieldError {
+	var errs []FieldError
+	if err := ValidateDiagramRef(ref); err != nil {
+		errs = append(errs, FieldError{Field: "diagram_ref", Reason: err.Error()})
+	}
+	switch {
+	case ref.CorrectPositionIDs != nil:
+		if len(*ref.CorrectPositionIDs) == 0 {
+			errs = append(errs, FieldError{Field: "diagram_ref", Reason: "correct_position_ids must name at least one position"})
+		}
+	case ref.CorrectIntervals == nil:
+		errs = append(errs, FieldError{Field: "diagram_ref", Reason: "correct_position_ids is required when used as an image_recognition stimulus"})
+	}
+	return errs
+}
+
+// countTrue returns how many of bs are true.
+func countTrue(bs ...bool) int {
+	n := 0
+	for _, b := range bs {
+		if b {
+			n++
+		}
+	}
+	return n
+}
+
+// validateOptions checks that at least one option exists, at least one is
+// marked correct, and each option's shape matches exerciseType.
+func validateOptions(exerciseType ExerciseType, diagramRef *DiagramRef, diagramStackRef *DiagramStackRef, options []Option) []FieldError {
+	if len(options) == 0 {
+		return []FieldError{{Field: "options", Reason: "must contain at least one option"}}
+	}
+
+	diagramDriven := exerciseType == ExerciseTypeImageRecognition && (diagramRef != nil || diagramStackRef != nil)
+
+	var errs []FieldError
+	hasCorrect := false
+	for _, opt := range options {
+		if opt.IsCorrect {
+			hasCorrect = true
+		}
+		if reason := optionShapeError(exerciseType, diagramDriven, opt); reason != "" {
+			errs = append(errs, FieldError{Field: "options", Reason: reason})
+		}
+	}
+	if !hasCorrect {
+		errs = append(errs, FieldError{Field: "options", Reason: "at least one option must be marked correct"})
+	}
+	return errs
+}
+
+// optionShapeError reports the reason opt's shape is invalid for
+// exerciseType, or "" if it's valid. image_recognition options select a
+// region on the exercise's image, or — when diagramDriven — are entirely
+// server-derived (diagram_id/diagram_position_id) from the exercise's
+// diagram stimulus; image_choice options each carry their own image or
+// diagram_ref; audio_selection options each carry their own sound, a clip
+// or a diagram that plays; text_response and audio_recognition options
+// carry a text label.
+func optionShapeError(exerciseType ExerciseType, diagramDriven bool, opt Option) string {
+	switch exerciseType {
+	case ExerciseTypeImageRecognition:
+		return imageRecognitionOptionShapeError(diagramDriven, opt)
+	case ExerciseTypeImageChoice:
+		return imageChoiceOptionShapeError(opt)
+	case ExerciseTypeAudioSelection:
+		return audioSelectionOptionShapeError(opt)
+	case ExerciseTypeTextResponse, ExerciseTypeAudioRecognition:
+		if opt.Label == nil || *opt.Label == "" {
+			return "text_response and audio_recognition options must carry a label"
+		}
+	}
+	return ""
+}
+
+// audioSelectionOptionShapeError reports the reason an audio_selection
+// option's shape is invalid, or "" if it's valid: exactly one sound, an
+// uploaded clip or a diagram that plays.
+func audioSelectionOptionShapeError(opt Option) string {
+	hasClip := opt.AudioURL != nil && *opt.AudioURL != ""
+	switch {
+	case hasClip && opt.DiagramRef != nil:
+		return "audio_selection options must not carry both an audio_url and a diagram_ref"
+	case !hasClip && opt.DiagramRef == nil:
+		return "audio_selection options must carry an audio_url or a diagram_ref"
+	case opt.DiagramRef != nil:
+		if reason := soundRefProblem(*opt.DiagramRef); reason != "" {
+			return "diagram_ref: " + reason
+		}
+	}
+	return ""
+}
+
+// imageRecognitionOptionShapeError reports the reason an image_recognition
+// option's shape is invalid, or "" if it's valid: a region on the
+// exercise's image, or — when diagramDriven — server-derived diagram_id/
+// diagram_position_id from the exercise's diagram stimulus.
+func imageRecognitionOptionShapeError(diagramDriven bool, opt Option) string {
+	if diagramDriven {
+		hasDiagram := opt.DiagramID != nil && *opt.DiagramID != ""
+		hasPosition := opt.DiagramPositionID != nil && *opt.DiagramPositionID != ""
+		if !hasDiagram || (opt.FretCell == nil && !hasPosition) {
+			return "diagram-driven image_recognition options must carry diagram_id and a fret_cell or diagram_position_id"
+		}
+		return ""
+	}
+	if opt.Region == nil {
+		return "image_recognition options must carry a region"
+	}
+	return ""
+}
+
+// imageChoiceOptionShapeError reports the reason an image_choice option's
+// shape is invalid, or "" if it's valid: exactly one of an image_url or a
+// structurally valid diagram_ref.
+func imageChoiceOptionShapeError(opt Option) string {
+	hasImage := opt.ImageURL != nil && *opt.ImageURL != ""
+	hasDiagram := opt.DiagramRef != nil
+	switch {
+	case !hasImage && !hasDiagram:
+		return "image_choice options must carry an image_url or a diagram_ref"
+	case hasImage && hasDiagram:
+		return "image_choice options must not carry both an image_url and a diagram_ref"
+	case hasDiagram:
+		if err := ValidateDiagramRef(*opt.DiagramRef); err != nil {
+			return "diagram_ref: " + err.Error()
+		}
+	}
+	return ""
+}
+
+// ForInstruments returns the exercise for instrumentIDs instead; empty means
+// every instrument. Whether each id references an existing Instrument is an
+// application-layer concern.
+func (e Exercise) ForInstruments(instrumentIDs []string) (Exercise, error) {
+	if problem := instrumentIDsProblem(instrumentIDs); problem != "" {
+		return Exercise{}, NewValidationError("instrument_ids", problem)
+	}
+	e.InstrumentIDs = instrumentIDs
+	return e, nil
+}
+
+// Suits reports whether the exercise may be linked to a content node for
+// nodeInstrumentIDs (empty meaning every instrument), as a path exercise or
+// through one of its challenges: an exercise for every instrument suits any
+// node; an exercise for specific instruments suits a node for at least one
+// of them, never a node for every instrument.
+func (e Exercise) Suits(nodeInstrumentIDs []string) bool {
+	return scopeSuits(e.InstrumentIDs, nodeInstrumentIDs)
+}
+
+// ExerciseSoundUse is one playback of a diagram that an exercise plays as
+// its sound: an audio_recognition stimulus or an audio_selection option.
+type ExerciseSoundUse struct {
+	ExerciseID string
+	Title      string
+	PlaybackID string
+}
+
+// SoundUses returns the playbacks of diagramID that e plays as its sound,
+// once per playback, in the order they appear.
+func (e Exercise) SoundUses(diagramID string) []ExerciseSoundUse {
+	var refs []*DiagramRef
+	switch e.ExerciseType {
+	case ExerciseTypeAudioRecognition:
+		refs = append(refs, e.DiagramRef)
+	case ExerciseTypeAudioSelection:
+		for _, opt := range e.Options {
+			refs = append(refs, opt.DiagramRef)
+		}
+	case ExerciseTypeTextResponse, ExerciseTypeImageRecognition, ExerciseTypeImageChoice:
+		// A diagram here is drawn, never played as the exercise's sound.
+	}
+	var uses []ExerciseSoundUse
+	seen := map[string]bool{}
+	for _, ref := range refs {
+		if ref == nil || ref.DiagramID != diagramID || ref.Playback == nil || ref.Playback.PlaybackID == nil {
+			continue
+		}
+		id := *ref.Playback.PlaybackID
+		if !seen[id] {
+			seen[id] = true
+			uses = append(uses, ExerciseSoundUse{ExerciseID: e.ID, Title: e.Title, PlaybackID: id})
+		}
+	}
+	return uses
+}

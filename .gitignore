@@ -5,6 +5,10 @@ node_modules/
 dist/
 build/
 *.tsbuildinfo
+.bundled/
+
+# Rendered voice samples and the recordings they come from (scripts/voice-samples.sh)
+.voice-samples/
 
 # Environment
 .env
@@ -27,3 +31,9 @@ coverage/
 # Logs
 *.log
 npm-debug.log*
+
+# Local implementation plans (ADR-022) — never committed
+plans/
+
+# Python bytecode (scripts/*)
+__pycache__/

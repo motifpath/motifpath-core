@@ -1,0 +1,82 @@
+package repo
+
+import (
+	"time"
+
+	"github.com/google/uuid"
+
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent"
+	"github.com/motifpath/core-domain/internal/domain"
+)
+
+// parseUUIDs parses each of ids, failing on the first value that isn't a
+// valid uuid. Unlike GetByIDs' "not found, simply absent" convention, a
+// malformed id here is a hard error: by the time ids reach this layer they
+// have already been checked to reference real knowledge nodes (and are
+// therefore expected to be well-formed uuids), so a parse failure signals a
+// bug upstream rather than a legitimately absent reference.
+func parseUUIDs(ids []string) ([]uuid.UUID, error) {
+	parsed := make([]uuid.UUID, 0, len(ids))
+	for _, id := range ids {
+		u, err := uuid.Parse(id)
+		if err != nil {
+			return nil, err
+		}
+		parsed = append(parsed, u)
+	}
+	return parsed, nil
+}
+
+// parseOptionalUUID parses *s if s is non-nil and non-empty, returning nil
+// otherwise — the shape a self-referential optional parent_id field takes
+// at this layer.
+func parseOptionalUUID(s *string) (*uuid.UUID, error) {
+	if s == nil || *s == "" {
+		return nil, nil
+	}
+	parsed, err := uuid.Parse(*s)
+	if err != nil {
+		return nil, err
+	}
+	return &parsed, nil
+}
+
+// parseUUIDsSkippingInvalid is parseUUIDs' counterpart for lookup filters
+// following the "not found, simply absent" convention: an id that isn't a
+// valid uuid can never match a row, so it's dropped rather than failing the
+// whole lookup.
+func parseUUIDsSkippingInvalid(ids []string) []uuid.UUID {
+	parsed := make([]uuid.UUID, 0, len(ids))
+	for _, id := range ids {
+		if u, err := uuid.Parse(id); err == nil {
+			parsed = append(parsed, u)
+		}
+	}
+	return parsed
+}
+
+// nodeIDsOf extracts the ids from nodes — used where a domain value (e.g.
+// domain.Exercise.Skills) carries full nodes but only the ids are needed to
+// persist the join edge.
+func nodeIDsOf(nodes []domain.KnowledgeNode) []string {
+	ids := make([]string, len(nodes))
+	for i, n := range nodes {
+		ids[i] = n.ID
+	}
+	return ids
+}
+
+// withNodeInstruments loads a classification edge's nodes with their
+// instruments, the shape toDomainKnowledgeNode expects.
+func withNodeInstruments(q *ent.KnowledgeNodeQuery) {
+	q.WithInstruments()
+}
+
+// updatedAtOr is updatedAt, or createdAt for a value built before it carried
+// a last change — a record is last changed when it was created until edited.
+func updatedAtOr(updatedAt, createdAt time.Time) time.Time {
+	if updatedAt.IsZero() {
+		return createdAt
+	}
+	return updatedAt
+}

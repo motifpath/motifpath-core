@@ -1,0 +1,1133 @@
+// Command seed-full populates a fresh local dev database with a broad,
+// self-contained combination matrix of MotifPath's domain state — every
+// CourseStatus, every CourseEnrollmentStatus, standalone paths both current
+// and archived, every ExerciseType, and a diagram library (acoustic guitar
+// and electric bass; basic templates and custom diagrams with regions, notes, custom
+// labels, every marker shape and label display) used by lessons' cues and
+// pop-ups — rather than the single happy-path
+// student `seed-dev-data` seeds. It creates its own synthetic teacher and
+// student users (fake clerk_user_id values, never real Clerk identities),
+// so it never depends on anyone having signed in through the SPA first —
+// meant to run right after a schema reset (`make db:reset`), reusing the
+// same application services and domain constructors the HTTP handlers use,
+// not raw SQL, so every invariant they enforce holds exactly as it would
+// via the real API.
+//
+// If ADMIN_CLERK_USER_ID is set and no user with that clerk_user_id exists
+// yet, registers it as an admin — lets each teammate bootstrap their own
+// real Clerk identity as admin after a reset without hardcoding anyone's
+// personal id here. Already-existing users (e.g. restored from a backup
+// taken before the reset) are left untouched.
+package main
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"log"
+	"math/rand"
+	"net/url"
+	"os"
+	"strings"
+	"time"
+
+	"entgo.io/ent/dialect"
+	entsql "entgo.io/ent/dialect/sql"
+	"github.com/clerk/clerk-sdk-go/v2"
+	clerkuser "github.com/clerk/clerk-sdk-go/v2/user"
+	"github.com/google/uuid"
+	_ "github.com/lib/pq"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
+
+	"github.com/motifpath/core-domain/internal/adapters/repo"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/user"
+	"github.com/motifpath/core-domain/internal/application"
+	"github.com/motifpath/core-domain/internal/domain"
+	"github.com/motifpath/core-domain/internal/ports"
+)
+
+func getenvDefault(name, def string) string {
+	if v := os.Getenv(name); v != "" {
+		return v
+	}
+	return def
+}
+
+func main() {
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+// services bundles every application service seeding needs — passed around
+// as one value rather than a long, repeated parameter list.
+type services struct {
+	identity    *application.IdentityService
+	content     *application.ContentService
+	path        *application.LearningPathService
+	studentPath *application.StudentPathService
+	course      *application.CourseService
+	enrollment  *application.CourseEnrollmentService
+	challenge   *application.ChallengeService
+	exercise    *application.ExerciseService
+	knowledge   ports.KnowledgeNodeRepository
+	instrument  *application.InstrumentService
+	diagram     *application.DiagramService
+	songChart   *application.SongChartService
+	chords      *application.ChordCatalogService
+}
+
+func run() error {
+	ctx := context.Background()
+
+	resources, closeResources, err := connectResources(ctx)
+	if err != nil {
+		return err
+	}
+	defer closeResources()
+
+	svc, deps := wireServices(resources)
+
+	admin, adminIsFresh, err := ensureAdmin(ctx, resources.entClient, deps.userRepo, deps.newID, deps.now)
+	if err != nil {
+		return fmt.Errorf("ensure admin: %w", err)
+	}
+
+	if err := seedStaff(ctx, svc, &deps); err != nil {
+		return fmt.Errorf("seed staff: %w", err)
+	}
+
+	return seedAll(ctx, svc, deps, resources, admin, adminIsFresh)
+}
+
+// resources bundles the raw connections and their ent/mongo clients —
+// everything connectResources opens and wireServices' repositories are
+// built from.
+type resources struct {
+	entClient *ent.Client
+	mongoDB   *mongo.Database
+}
+
+// connectResources opens the Postgres and MongoDB connections seeding
+// needs, returning a single cleanup func that closes both in order rather
+// than requiring the caller to manage two separate defers.
+func connectResources(ctx context.Context) (resources, func(), error) {
+	databaseURL := getenvDefault("DATABASE_URL", "postgres://motifpath:motifpath@localhost:5432/core_domain?sslmode=disable")
+	mongoURI := getenvDefault("MONGO_URI", "mongodb://motifpath:motifpath@localhost:27017/?authSource=admin")
+	mongoDatabase := getenvDefault("MONGO_DATABASE", "motifpath_events")
+
+	sqlDB, err := sql.Open("postgres", databaseURL)
+	if err != nil {
+		return resources{}, nil, fmt.Errorf("connect to postgres: %w", err)
+	}
+	entClient := ent.NewClient(ent.Driver(entsql.OpenDB(dialect.Postgres, sqlDB)))
+
+	mongoClient, err := mongo.Connect(options.Client().ApplyURI(mongoURI))
+	if err != nil {
+		if closeErr := sqlDB.Close(); closeErr != nil {
+			log.Printf("failed to close postgres connection: %v", closeErr)
+		}
+		return resources{}, nil, fmt.Errorf("connect to mongodb: %w", err)
+	}
+
+	closeFn := func() {
+		if closeErr := entClient.Close(); closeErr != nil {
+			log.Printf("failed to close ent client: %v", closeErr)
+		}
+		if closeErr := mongoClient.Disconnect(ctx); closeErr != nil {
+			log.Printf("failed to disconnect mongodb client: %v", closeErr)
+		}
+	}
+
+	return resources{entClient: entClient, mongoDB: mongoClient.Database(mongoDatabase)}, closeFn, nil
+}
+
+// seedDeps bundles the repositories and id/time helpers seedAll's steps
+// need directly, alongside the application services already bundled in
+// services.
+type seedDeps struct {
+	userRepo             ports.UserRepository
+	courseEnrollmentRepo *repo.EntCourseEnrollmentRepository
+	newID                func() string
+	now                  func() time.Time
+	// teacher authors every seeded content node, path and course, and
+	// synthAdmin stands in for an admin where one is needed but no real
+	// admin was bootstrapped. Both are saved users with names (see
+	// seedStaff): everything that points at a user must point at a real,
+	// named one.
+	teacher    domain.User
+	synthAdmin domain.User
+	// otherTeacher is a second teacher, so there is work owned by someone
+	// other than teacher (a custom diagram teacher can only view).
+	otherTeacher domain.User
+	classifier   *classificationSeeder
+}
+
+// wireServices builds every repository and application service seeding
+// needs from an already-open resources, and the shared seedDeps values
+// (id/time generators, the throwaway authoring "teacher" identity, and the
+// skill/concept classifier) every seed step below is threaded through.
+func wireServices(res resources) (services, seedDeps) {
+	entClient := res.entClient
+	userRepo := repo.NewEntUserRepository(entClient)
+	languageRepo := repo.NewEntLanguageRepository(entClient)
+	nodeRepo := repo.NewEntContentNodeRepository(entClient)
+	expandedRepo := repo.NewEntExpandedContentRepository(entClient)
+	pathRepo := repo.NewEntLearningPathRepository(entClient)
+	studentPathRepo := repo.NewEntStudentPathRepository(entClient)
+	contentNodeVersionRepo := repo.NewEntContentNodeVersionRepository(entClient)
+	studentLearningStateRepo := repo.NewEntStudentLearningStateRepository(entClient)
+	courseRepo := repo.NewEntCourseRepository(entClient)
+	courseVersionRepo := repo.NewEntCourseVersionRepository(entClient)
+	courseEnrollmentRepo := repo.NewEntCourseEnrollmentRepository(entClient)
+	challengeRepo := repo.NewEntChallengeRepository(entClient)
+	exerciseRepo := repo.NewEntExerciseRepository(entClient)
+	knowledgeRepo := repo.NewEntKnowledgeNodeRepository(entClient)
+	diagramRepo := repo.NewEntDiagramRepository(entClient)
+	instrumentRepo := repo.NewEntInstrumentRepository(entClient)
+	voiceRepo := repo.NewEntVoiceRepository(entClient)
+
+	newID := uuid.NewString
+	now := func() time.Time { return time.Now().UTC() }
+
+	// A real completion reader, not nil: unlike seed-dev-data (which only
+	// ever assigns paths), this script also switches current pointers
+	// through SetCurrentPath, and resolving a course-enrollment pointer
+	// always runs checkAndAdvanceCheckpoint — which needs a working
+	// CompletionStateReader even when nothing is actually completed yet.
+	completionReader := repo.NewMongoCompletionStateReader(res.mongoDB)
+
+	studentPathService := application.NewStudentPathService(userRepo, pathRepo, studentPathRepo, contentNodeVersionRepo, studentLearningStateRepo, courseEnrollmentRepo, courseVersionRepo, nodeRepo, exerciseRepo, completionReader, newID, now)
+
+	svc := services{
+		identity:    application.NewIdentityService(userRepo, languageRepo, newID, now),
+		content:     application.NewContentService(nodeRepo, expandedRepo, knowledgeRepo, contentNodeVersionRepo, diagramRepo, instrumentRepo, voiceRepo, repo.NewEntSongChartRepository(entClient), userRepo, newID, now),
+		path:        application.NewLearningPathService(nodeRepo, pathRepo, courseVersionRepo, contentNodeVersionRepo, languageRepo, userRepo, instrumentRepo, knowledgeRepo, newID, now),
+		studentPath: studentPathService,
+		course:      application.NewCourseService(pathRepo, courseRepo, courseVersionRepo, userRepo, languageRepo, instrumentRepo, knowledgeRepo, newID, now),
+		enrollment:  application.NewCourseEnrollmentService(courseRepo, courseVersionRepo, pathRepo, studentPathRepo, courseEnrollmentRepo, studentPathService, studentLearningStateRepo, completionReader, newID, now),
+		challenge:   application.NewChallengeService(nodeRepo, challengeRepo, exerciseRepo, newID, now),
+		exercise:    application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, knowledgeRepo, diagramRepo, instrumentRepo, voiceRepo, userRepo, repo.NewMongoPracticeReferenceWriter(res.mongoDB, now), newID, now, rand.Shuffle),
+		knowledge:   knowledgeRepo,
+		instrument:  application.NewInstrumentService(instrumentRepo, voiceRepo, languageRepo, repo.NewMongoPracticeReferenceWriter(res.mongoDB, now), newID),
+		diagram:     application.NewDiagramService(diagramRepo, instrumentRepo, knowledgeRepo, languageRepo, userRepo, repo.NewMongoPracticeReferenceWriter(res.mongoDB, now), repo.NewEntChordCatalogRepository(entClient), exerciseRepo, newID, now),
+		songChart:   application.NewSongChartService(repo.NewEntSongChartRepository(entClient), repo.NewEntChordCatalogRepository(entClient), diagramRepo, languageRepo, newID, now),
+		chords:      application.NewChordCatalogService(repo.NewEntChordCatalogRepository(entClient)),
+	}
+
+	return svc, seedDeps{
+		userRepo:             userRepo,
+		courseEnrollmentRepo: courseEnrollmentRepo,
+		newID:                newID,
+		now:                  now,
+	}
+}
+
+// seedStaff saves the synthetic teacher and admin every seeding step acts
+// as — fake clerk_user_id values, never real Clerk identities — and points
+// deps and its classifier at them. The teacher registers like any teacher;
+// the admin goes through userRepo directly because self-registration can
+// never grant admin (see ensureAdmin).
+func seedStaff(ctx context.Context, svc services, deps *seedDeps) error {
+	teacher, err := svc.identity.RegisterUser(ctx, "seed_teacher_tomas", domain.RoleTeacher, "en", "Tomás Ribeiro")
+	if err != nil {
+		return fmt.Errorf("register seed teacher: %w", err)
+	}
+	otherTeacher, err := svc.identity.RegisterUser(ctx, "seed_teacher_helena", domain.RoleTeacher, "pt_BR", "Helena Costa")
+	if err != nil {
+		return fmt.Errorf("register second seed teacher: %w", err)
+	}
+	synthAdmin := domain.User{
+		ID:           deps.newID(),
+		ClerkUserID:  "seed_admin_marina",
+		Role:         domain.RoleAdmin,
+		DisplayName:  "Marina Alves",
+		Locale:       domain.Language{Code: "en"},
+		RegisteredAt: deps.now(),
+	}
+	if err := deps.userRepo.Create(ctx, synthAdmin); err != nil {
+		return fmt.Errorf("create seed admin: %w", err)
+	}
+	deps.teacher = teacher
+	deps.synthAdmin = synthAdmin
+	deps.otherTeacher = otherTeacher
+	deps.classifier = &classificationSeeder{nodes: svc.knowledge}
+	log.Printf("seeded synthetic teachers %q and %q, and admin %q", teacher.DisplayName, otherTeacher.DisplayName, synthAdmin.DisplayName)
+	return nil
+}
+
+// seedAll runs every seeding step in dependency order, logging a one-line
+// summary after each.
+func seedAll(ctx context.Context, svc services, deps seedDeps, res resources, admin domain.User, adminIsFresh bool) error {
+	teacher, classifier := deps.teacher, deps.classifier
+
+	students, err := seedStudents(ctx, svc.identity)
+	if err != nil {
+		return fmt.Errorf("seed students: %w", err)
+	}
+	log.Printf("seeded %d synthetic students", len(students))
+
+	nodes, err := seedContentNodes(ctx, teacher, svc.content, classifier)
+	if err != nil {
+		return fmt.Errorf("seed content nodes: %w", err)
+	}
+	log.Printf("seeded %d content nodes (video + article) across every difficulty level", len(nodes))
+
+	videoIntermediateChallenge, err := seedExercisesAllTypes(ctx, teacher, svc.challenge, svc.exercise, svc.chords, svc.diagram, classifier, nodes)
+	if err != nil {
+		return fmt.Errorf("seed exercises: %w", err)
+	}
+	log.Println("seeded one exercise of every exercise_type, linked to a challenge")
+
+	diagrams, err := seedInstrumentsAndDiagrams(ctx, teacher, deps.otherTeacher, templateCurator(admin, deps.synthAdmin), svc.instrument, svc.diagram, classifier)
+	if err != nil {
+		return fmt.Errorf("seed instruments and diagrams: %w", err)
+	}
+	log.Println("used the installed acoustic guitar and electric bass; seeded 6 basic diagram templates (regions, notes, custom labels, every shape and label display, a joined two-shape diagram, a bass scale) and 2 custom diagrams (one per teacher)")
+
+	if err := seedDiagramExercises(ctx, teacher, svc.exercise, svc.diagram, svc.chords, classifier, diagrams, videoIntermediateChallenge.ID); err != nil {
+		return fmt.Errorf("seed diagram exercises: %w", err)
+	}
+	log.Println("seeded 6 diagram exercises (tap the roots on a diagram; pick the diagram from 3 thumbnails; hear the E major chord and tap its third; " +
+		"a full-neck pentatonic to tap, too wide for a phone; two boxes stacked in a prompt, with a legend; a catalog A chord voicing, shown as a chord box), linked to the shared practice challenge")
+
+	lessons, err := seedDiagramLessons(ctx, teacher, svc.content, classifier, diagrams)
+	if err != nil {
+		return fmt.Errorf("seed diagram lessons: %w", err)
+	}
+	log.Printf("seeded video %q (image, rich-text and diagram cues) and article %q (paragraph pop-ups; 3 published versions plus unpublished edits)", lessons.video.Title, lessons.article.Title)
+	log.Printf("seeded video %q (a cue per way a student sees a diagram; in no path, so no student can open it yet)", lessons.scenarios.Title)
+	if err := seedPlayableCue(ctx, teacher, svc.content, nodes["video-intermediate"].ID, diagrams); err != nil {
+		return fmt.Errorf("seed playable diagram cue: %w", err)
+	}
+	log.Println("seeded a diagram cue that offers Play (the blues lick, 0:11-0:25) on video-intermediate, a video on the admin's path")
+
+	// Every template a course or standalone path is copied from holds videos
+	// only, which the synthetic students' seeded progress is written for. The
+	// article lessons are on the admin's own path.
+	templateA, templateB, err := seedPathTemplates(ctx, svc, deps, teacher, nodes, diagrams.guitar.ID)
+	if err != nil {
+		return err
+	}
+
+	courses, err := seedCourses(ctx, teacher, deps.synthAdmin, svc.course, templateA.ID, templateB.ID, diagrams.guitar.ID)
+	if err != nil {
+		return fmt.Errorf("seed courses: %w", err)
+	}
+	log.Printf("seeded courses: draft=%s published(2 checkpoints)=%s single-checkpoint=%s retired=%s",
+		courses.draft.ID, courses.published.ID, courses.single.ID, courses.retired.ID)
+
+	brunoEnrollmentID, err := seedEnrollments(ctx, svc, deps.courseEnrollmentRepo, teacher, students, courses, nodes, res.mongoDB)
+	if err != nil {
+		return fmt.Errorf("seed enrollments: %w", err)
+	}
+	log.Println("seeded enrollments: active@checkpoint1, active@checkpoint2, completed, abandoned")
+
+	if err := seedStandalonePaths(ctx, svc, teacher, students, templateA.ID, templateB.ID, brunoEnrollmentID, nodes, res.mongoDB); err != nil {
+		return fmt.Errorf("seed standalone paths: %w", err)
+	}
+	log.Println("seeded standalone paths: current, and archived-while-course-active")
+
+	songCharts, err := seedSongCharts(ctx, svc.songChart, deps.synthAdmin)
+	if err != nil {
+		return fmt.Errorf("seed song charts: %w", err)
+	}
+	log.Printf("seeded %d public-domain song charts by %q (published then corrected, published then withdrawn, and a draft with N.C., a slash chord without its bass and an unparsed symbol):", len(songCharts), deps.synthAdmin.DisplayName)
+	logSongChartPreviews(songCharts)
+
+	if adminIsFresh {
+		if err := seedAdmin(ctx, svc, deps, admin, courses, nodes, lessons, diagrams, songCharts, videoIntermediateChallenge.ID, res.mongoDB); err != nil {
+			return err
+		}
+	}
+
+	log.Println("done")
+	return nil
+}
+
+// seedAdmin seeds the bootstrapped admin's own state: the article lessons of
+// their path, then their course enrollment and standalone path.
+func seedAdmin(ctx context.Context, svc services, deps seedDeps, admin domain.User, courses seededCourses, nodes map[string]domain.ContentNode, lessons seededLessons, diagrams seededDiagrams, songCharts []domain.SongChart, videoIntermediateChallengeID string, mongoDB *mongo.Database) error {
+	articles, err := seedAdminArticles(ctx, deps.teacher, svc, deps.classifier, diagrams, songCharts, lessons.article)
+	if err != nil {
+		return err
+	}
+	if err := seedAdminZeroUser(ctx, svc, deps, admin, courses, nodes, articles, videoIntermediateChallengeID, mongoDB); err != nil {
+		return fmt.Errorf("seed admin zero-user state: %w", err)
+	}
+	log.Printf("seeded a course enrollment and a standalone path for admin zero-user %s: a done video, a done article with a challenge (review), "+
+		"then the current article %q (paragraph cues; Mark as done), a diagram-first article with a song chart, an article ending in Practise this, "+
+		"video-intermediate, four drill articles, and an article only in Portuguese (language-locked for an English profile)", admin.ID, lessons.article.Title)
+	return nil
+}
+
+// ensureAdmin creates ADMIN_CLERK_USER_ID (if set) as an admin, but only
+// when no user with that clerk_user_id already exists — running this
+// against a database where that identity was already restored from a
+// pre-reset backup must be a no-op, never a duplicate-key failure. Goes
+// through userRepo directly rather than IdentityService.RegisterUser:
+// domain.NewUser deliberately refuses to construct a User with role admin
+// (self-registration can never grant admin — promotion is always an
+// out-of-band operation), so this mirrors what a hand-run SQL insert would
+// do instead.
+//
+// Returns the admin User (zero value if ADMIN_CLERK_USER_ID isn't set) and
+// whether it was created by this call — seedAll only gives this identity a
+// course enrollment and standalone path (its "zero-user" state) when it was
+// just created, never when it's a restored pre-reset identity that may
+// already carry real progress of its own.
+func ensureAdmin(ctx context.Context, client *ent.Client, userRepo ports.UserRepository, newID func() string, now func() time.Time) (domain.User, bool, error) {
+	clerkUserID := os.Getenv("ADMIN_CLERK_USER_ID")
+	if clerkUserID == "" {
+		log.Println("ADMIN_CLERK_USER_ID not set — skipping admin bootstrap; restore your own admin row separately")
+		return domain.User{}, false, nil
+	}
+	row, err := client.User.Query().Where(user.ClerkUserIDEQ(clerkUserID)).Only(ctx)
+	if err == nil {
+		log.Printf("admin %s already present — leaving it untouched", clerkUserID)
+		return domain.User{
+			ID:           row.ID.String(),
+			ClerkUserID:  row.ClerkUserID,
+			Role:         domain.Role(row.Role),
+			DisplayName:  row.DisplayName,
+			RegisteredAt: row.RegisteredAt,
+		}, false, nil
+	}
+	if !ent.IsNotFound(err) {
+		return domain.User{}, false, err
+	}
+	admin := domain.User{
+		ID:           newID(),
+		ClerkUserID:  clerkUserID,
+		Role:         domain.RoleAdmin,
+		DisplayName:  adminDisplayName(ctx, clerkUserID),
+		Locale:       domain.Language{Code: "en"},
+		RegisteredAt: now(),
+	}
+	if err := userRepo.Create(ctx, admin); err != nil {
+		return domain.User{}, false, fmt.Errorf("create admin %s: %w", clerkUserID, err)
+	}
+	log.Printf("created %s as admin", clerkUserID)
+	return admin, true, nil
+}
+
+// placeholderAdminName is the name a bootstrapped admin gets when Clerk
+// can't be asked for the real one. It is temporary either way: the admin's
+// real name replaces it on their first authenticated request.
+const placeholderAdminName = "MotifPath admin"
+
+// adminDisplayName asks the Clerk Backend API for clerkUserID's full name,
+// the same name the session token's "name" claim will carry. Seeding must
+// not fail over a cosmetic value, so when CLERK_SECRET_KEY isn't set or the
+// lookup fails, it logs why and returns placeholderAdminName.
+func adminDisplayName(ctx context.Context, clerkUserID string) string {
+	secretKey := os.Getenv("CLERK_SECRET_KEY")
+	if secretKey == "" {
+		log.Printf("CLERK_SECRET_KEY not set — admin gets the placeholder name %q until their first sign-in", placeholderAdminName)
+		return placeholderAdminName
+	}
+	clerk.SetKey(secretKey)
+	u, err := clerkuser.Get(ctx, clerkUserID)
+	if err != nil {
+		log.Printf("could not read admin %s from Clerk (%v) — using the placeholder name %q until their first sign-in", clerkUserID, err, placeholderAdminName)
+		return placeholderAdminName
+	}
+	var parts []string
+	for _, part := range []*string{u.FirstName, u.LastName} {
+		if part != nil && strings.TrimSpace(*part) != "" {
+			parts = append(parts, strings.TrimSpace(*part))
+		}
+	}
+	name, ok := domain.NormalizeDisplayName(strings.Join(parts, " "))
+	if !ok {
+		log.Printf("admin %s has no name in Clerk — using the placeholder name %q until they add one", clerkUserID, placeholderAdminName)
+		return placeholderAdminName
+	}
+	return name
+}
+
+// classificationSeeder resolves knowledge map keys to the ids of the nodes
+// the migrations installed. Seeds never create nodes: a key the map doesn't
+// have is an error, not a new node.
+type classificationSeeder struct {
+	nodes nodeKeyLookup
+}
+
+// nodeKeyLookup finds knowledge nodes by key.
+type nodeKeyLookup interface {
+	GetByKeys(ctx context.Context, keys []string) (map[string]domain.KnowledgeNode, error)
+}
+
+func (c *classificationSeeder) skillID(ctx context.Context, key string) (string, error) {
+	return c.nodeID(ctx, domain.KnowledgeNodeKindSkill, key)
+}
+
+func (c *classificationSeeder) conceptID(ctx context.Context, key string) (string, error) {
+	return c.nodeID(ctx, domain.KnowledgeNodeKindConcept, key)
+}
+
+// ids resolves both keys of an exercise's classification.
+func (c *classificationSeeder) ids(ctx context.Context, keys exerciseClassification) (skillID, conceptID string, err error) {
+	if skillID, err = c.skillID(ctx, keys.skill); err != nil {
+		return "", "", err
+	}
+	if conceptID, err = c.conceptID(ctx, keys.concept); err != nil {
+		return "", "", err
+	}
+	return skillID, conceptID, nil
+}
+
+func (c *classificationSeeder) nodeID(ctx context.Context, kind domain.KnowledgeNodeKind, key string) (string, error) {
+	found, err := c.nodes.GetByKeys(ctx, []string{key})
+	if err != nil {
+		return "", fmt.Errorf("look up knowledge node %q: %w", key, err)
+	}
+	node, ok := found[key]
+	if !ok || node.Kind != kind {
+		return "", fmt.Errorf("the knowledge map has no %s %q — run every migration before seeding", kind, key)
+	}
+	return node.ID, nil
+}
+
+// seedStudentSpec is one synthetic student this script registers — a fake
+// clerk_user_id, never a real Clerk identity.
+type seedStudentSpec struct {
+	key         string // stable lookup key into the returned map
+	clerkUserID string
+	displayName string
+}
+
+func seedStudents(ctx context.Context, identity *application.IdentityService) (map[string]domain.User, error) {
+	specs := []seedStudentSpec{
+		{"alice", "seed_student_alice", "Alice Martins"},
+		{"bruno", "seed_student_bruno", "Bruno Costa"},
+		{"carla", "seed_student_carla", "Carla Nunes"},
+	}
+	result := make(map[string]domain.User, len(specs))
+	for _, spec := range specs {
+		u, err := identity.RegisterUser(ctx, spec.clerkUserID, domain.RoleStudent, "en", spec.displayName)
+		if err != nil {
+			return nil, fmt.Errorf("register student %q: %w", spec.key, err)
+		}
+		result[spec.key] = u
+	}
+	return result, nil
+}
+
+// contentNodeSpec is one seeded content node, keyed by a descriptive
+// lookup key.
+type contentNodeSpec struct {
+	key         string
+	title       string
+	contentType domain.ContentType
+	difficulty  domain.DifficultyLevel
+	skill       string
+	concept     string
+}
+
+// contentNodeSpecs lists every seeded content node. The two fretboard-notes
+// articles teach the skills fretboard cells are generated for, so a path
+// holding them gets note drills in a session in the head; the CAGED and
+// pentatonic articles teach skills the catalog's drill shapes belong to, so
+// it gets shape drills too.
+func contentNodeSpecs() []contentNodeSpec {
+	return []contentNodeSpec{
+		{"video-beginner", "Open position C major scale", domain.ContentTypeVideo, domain.DifficultyLevelBeginner, "play-major-scale-open", "major-scale"},
+		{"article-beginner", "Reading a chord chart", domain.ContentTypeArticle, domain.DifficultyLevelBeginner, "read-chord-charts", "chord-charts"},
+		{"video-intermediate", "Call-and-response phrasing", domain.ContentTypeVideo, domain.DifficultyLevelIntermediate, "phrase-call-response", "call-and-response"},
+		{"video-beginner-rhythm", "A steady eighth-note strum", domain.ContentTypeVideo, domain.DifficultyLevelBeginner, "strum-steady", "strumming-patterns"},
+		{"video-advanced", "Phrasing over a blues turnaround", domain.ContentTypeVideo, domain.DifficultyLevelAdvanced, "improvise-blues", "blues-form"},
+		{"article-advanced", "Modal interchange in blues turnarounds", domain.ContentTypeArticle, domain.DifficultyLevelAdvanced, "use-modal-interchange", "modal-interchange"},
+		{"article-notes-root-strings", "Notes on the E and A strings", domain.ContentTypeArticle, domain.DifficultyLevelBeginner, "find-notes-root-strings", "notes-fretboard"},
+		{"article-notes-top-strings", "Notes on the D, G, B and high E strings", domain.ContentTypeArticle, domain.DifficultyLevelBeginner, "find-notes-top-strings", "notes-fretboard"},
+		{"article-caged-grips", "The five CAGED grips", domain.ContentTypeArticle, domain.DifficultyLevelIntermediate, "map-fretboard-caged", "caged-system"},
+		{"article-pentatonic-boxes", "The five pentatonic boxes", domain.ContentTypeArticle, domain.DifficultyLevelIntermediate, "play-pentatonic-positions", "pentatonic-shapes"},
+	}
+}
+
+// seedContentNodes creates video and article nodes at a spread of
+// difficulty levels, keyed by a descriptive lookup key — every content
+// node created here is published immediately, since every downstream
+// consumer (learning path items, course checkpoints) needs a published
+// node to resolve.
+func seedContentNodes(ctx context.Context, teacher domain.User, content *application.ContentService, classifier *classificationSeeder) (map[string]domain.ContentNode, error) {
+	// A real, publicly reachable sample video — cdn.motifpath.io doesn't
+	// resolve to anything, so a node seeded with it can never actually play.
+	// Matches the sample host cmd/seed-lesson-content already relies on.
+	seedVideoURL := "https://samplelib.com/lib/preview/mp4/sample-10s.mp4"
+	// video-intermediate, a video on the admin's path, runs 30 s, so its playable diagram cue fits
+	// after its image cues.
+	longSeedVideoURL := "https://samplelib.com/lib/preview/mp4/sample-30s.mp4"
+	specs := contentNodeSpecs()
+
+	result := make(map[string]domain.ContentNode, len(specs))
+	for _, s := range specs {
+		skillID, err := classifier.skillID(ctx, s.skill)
+		if err != nil {
+			return nil, err
+		}
+		conceptID, err := classifier.conceptID(ctx, s.concept)
+		if err != nil {
+			return nil, err
+		}
+		var mediaURL *string
+		var richContent *domain.PromptDocument
+		switch {
+		case s.key == "video-intermediate":
+			mediaURL = &longSeedVideoURL
+		case s.contentType == domain.ContentTypeVideo:
+			mediaURL = &seedVideoURL
+		default:
+			doc := domain.NewPlainTextPrompt("Seed placeholder body for " + s.title + ".")
+			richContent = &doc
+		}
+		node, err := content.CreateContentNode(ctx, teacher, application.ContentNodeInput{Title: s.title, ContentType: s.contentType, SkillIDs: []string{skillID}, ConceptIDs: []string{conceptID}, Difficulty: s.difficulty, Languages: []string{"en"}, MediaURL: mediaURL, RichContent: richContent, InstrumentIDs: guitars})
+		if err != nil {
+			return nil, fmt.Errorf("create content node %q: %w", s.title, err)
+		}
+		if _, err := content.PublishContentNode(ctx, teacher, node.ID); err != nil {
+			return nil, fmt.Errorf("publish content node %q: %w", s.title, err)
+		}
+		result[s.key] = node
+	}
+	return result, nil
+}
+
+// templateCurator returns the admin that owns seeded basic diagrams: the
+// bootstrapped admin when there is one (the zero user, which is also who
+// the ownership migration assigns pre-existing diagrams to), otherwise the
+// synthetic seed admin — a basic diagram is editable by every admin
+// whoever created it.
+func templateCurator(admin, synthAdmin domain.User) domain.User {
+	if admin.ID != "" {
+		return admin
+	}
+	return synthAdmin
+}
+
+// seedExercisesAllTypes creates one exercise of every domain.ExerciseType,
+// each carrying the option shape that type requires (region for
+// image_recognition, a catalog chord voicing per option for image_choice,
+// a clip per option for audio_selection, a text label otherwise), and links
+// each into a shared practice challenge on the video-intermediate node.
+func seedExercisesAllTypes(ctx context.Context, teacher domain.User, challengeSvc *application.ChallengeService, exerciseSvc *application.ExerciseService,
+	chords *application.ChordCatalogService, diagramSvc *application.DiagramService, classifier *classificationSeeder, nodes map[string]domain.ContentNode) (domain.Challenge, error) {
+	// subject_skill_id must be one of the parent content node's own linked
+	// skills — video-intermediate was seeded with "phrase-call-response" in
+	// seedContentNodes, so the challenge's subject reuses that same id
+	// rather than an unrelated skill.
+	subjectSkillID, err := classifier.skillID(ctx, "phrase-call-response")
+	if err != nil {
+		return domain.Challenge{}, err
+	}
+	challenge, err := challengeSvc.CreateChallenge(ctx, teacher, nodes["video-intermediate"].ID, &subjectSkillID, nil, 70, nil, false, false)
+	if err != nil {
+		return domain.Challenge{}, fmt.Errorf("create shared practice challenge: %w", err)
+	}
+
+	cMajor, err := catalogChord(ctx, teacher, chords, diagramSvc, "C")
+	if err != nil {
+		return domain.Challenge{}, err
+	}
+	gMajor, err := catalogChord(ctx, teacher, chords, diagramSvc, "G")
+	if err != nil {
+		return domain.Challenge{}, err
+	}
+	// Real, publicly reachable sample media — see seedContentNodes' video URL
+	// comment above for why cdn.motifpath.io can't be used here.
+	media := exerciseMedia{
+		imageURL: "https://placehold.co/640x360/png?text=Fretboard", audioURL: "https://samplelib.com/lib/preview/mp3/sample-3s.mp3",
+		cMajorVoicingID: cMajor.ID, gMajorVoicingID: gMajor.ID,
+	}
+	for _, s := range exerciseTypeSpecs(media) {
+		skillID, conceptID, err := classifier.ids(ctx, s.classification)
+		if err != nil {
+			return domain.Challenge{}, err
+		}
+		exercise, err := exerciseSvc.CreateExercise(ctx, teacher, s.title, domain.NewPlainTextPrompt(s.title), s.exerciseType,
+			[]string{skillID}, []string{conceptID}, s.imageURL, s.audioURL, nil, nil, s.options, nil, nil, []string{"en"}, forGuitars())
+		if err != nil {
+			return domain.Challenge{}, fmt.Errorf("create %s exercise: %w", s.exerciseType, err)
+		}
+		if _, err := exerciseSvc.LinkExerciseToChallenge(ctx, teacher, challenge.ID, exercise.ID); err != nil {
+			return domain.Challenge{}, fmt.Errorf("link %s exercise to challenge: %w", s.exerciseType, err)
+		}
+	}
+	return challenge, nil
+}
+
+// exerciseClassification is the skill and concept a seeded exercise is
+// classified under, by knowledge map key.
+type exerciseClassification struct {
+	skill, concept string
+}
+
+// exerciseTypeSpec is one exercise of exerciseTypeSpecs.
+type exerciseTypeSpec struct {
+	title          string
+	exerciseType   domain.ExerciseType
+	imageURL       *string
+	audioURL       *string
+	options        []domain.Option
+	classification exerciseClassification
+}
+
+// exerciseMedia is what exerciseTypeSpecs' exercises show: a picture, a
+// clip, and the diagrams of two catalog chord voicings, each drawn as a chord box.
+type exerciseMedia struct {
+	imageURL, audioURL               string
+	cMajorVoicingID, gMajorVoicingID string
+}
+
+// exerciseTypeSpecs is one exercise of every exercise_type, each classified
+// under what it actually asks — not the challenge's subject.
+func exerciseTypeSpecs(media exerciseMedia) []exerciseTypeSpec {
+	imageURL, audioURL := media.imageURL, media.audioURL
+	label := func(s string) *string { return &s }
+	intervals := exerciseClassification{skill: "hear-intervals", concept: "interval-names"}
+	return []exerciseTypeSpec{
+		{
+			title: "Name the interval — text response", exerciseType: domain.ExerciseTypeTextResponse, classification: intervals,
+			options: []domain.Option{
+				{ID: uuid.NewString(), IsCorrect: true, Label: label("Perfect fifth")},
+				{ID: uuid.NewString(), IsCorrect: false, Label: label("Major third")},
+			},
+		},
+		{
+			title: "Identify the recorded interval", exerciseType: domain.ExerciseTypeAudioRecognition, audioURL: &audioURL, classification: intervals,
+			options: []domain.Option{
+				{ID: uuid.NewString(), IsCorrect: true, Label: label("Minor third")},
+				{ID: uuid.NewString(), IsCorrect: false, Label: label("Major sixth")},
+			},
+		},
+		{
+			title: "Tap the root note on the fretboard", exerciseType: domain.ExerciseTypeImageRecognition, imageURL: &imageURL,
+			classification: exerciseClassification{skill: "find-notes", concept: "root-note"},
+			// Four regions, one per image quadrant, each 18% of the image's
+			// width/height — big, easy-to-hit tap targets rather than the
+			// tiny 6% markers a real diagram's precise hotspots would use.
+			options: []domain.Option{
+				{ID: uuid.NewString(), IsCorrect: true, Region: &domain.OptionRegion{X: 0.10, Y: 0.15, Width: 0.18, Height: 0.18, Shape: domain.OptionRegionShapeCircle}},
+				{ID: uuid.NewString(), IsCorrect: false, Region: &domain.OptionRegion{X: 0.62, Y: 0.15, Width: 0.18, Height: 0.18, Shape: domain.OptionRegionShapeCircle}},
+				{ID: uuid.NewString(), IsCorrect: false, Region: &domain.OptionRegion{X: 0.10, Y: 0.60, Width: 0.18, Height: 0.18, Shape: domain.OptionRegionShapeCircle}},
+				{ID: uuid.NewString(), IsCorrect: false, Region: &domain.OptionRegion{X: 0.62, Y: 0.60, Width: 0.18, Height: 0.18, Shape: domain.OptionRegionShapeCircle}},
+			},
+		},
+		{
+			title: "Pick the C major chord shape", exerciseType: domain.ExerciseTypeImageChoice,
+			classification: exerciseClassification{skill: "play-open-chords", concept: "open-chord-shapes"},
+			options: []domain.Option{
+				{ID: uuid.NewString(), IsCorrect: true, DiagramRef: intervalsRef(media.cMajorVoicingID)},
+				{ID: uuid.NewString(), IsCorrect: false, DiagramRef: intervalsRef(media.gMajorVoicingID)},
+			},
+		},
+		{
+			title: "Pick the matching recorded lick", exerciseType: domain.ExerciseTypeAudioSelection,
+			classification: exerciseClassification{skill: "hear-licks", concept: "lick"},
+			options: []domain.Option{
+				{ID: uuid.NewString(), IsCorrect: true, AudioURL: &audioURL},
+				{ID: uuid.NewString(), IsCorrect: false, AudioURL: &audioURL},
+			},
+		},
+	}
+}
+
+// seededCourses is the four courses seedCourses creates, one per
+// domain.CourseStatus plus a second published course kept to a single
+// checkpoint for scenarios that want a course to complete or abandon
+// quickly.
+type seededCourses struct {
+	draft     domain.Course
+	published domain.Course
+	single    domain.Course
+	retired   domain.Course
+}
+
+// seedThumbnailURL is a placeholder image for the seeded course that shows
+// thumbnails in the catalog; seeding uploads nothing to object storage.
+const seedThumbnailURL = "https://placehold.co/640x360/png?text=Fingerstyle+Foundations"
+
+func seedCourses(ctx context.Context, teacher, admin domain.User, courseSvc *application.CourseService, templateAID, templateBID, guitarID string) (seededCourses, error) {
+
+	draft, err := courseSvc.CreateCourse(ctx, teacher, application.CourseInput{Language: "en", Title: "Draft Course — Never Published", Summary: "A course still being authored.", Level: domain.DifficultyLevelBeginner, Checkpoints: []application.CheckpointInput{{LearningPathID: templateAID}}})
+	if err != nil {
+		return seededCourses{}, fmt.Errorf("create draft course: %w", err)
+	}
+
+	published, err := courseSvc.CreateCourse(ctx, teacher, application.CourseInput{Language: "en", Title: "Fingerstyle Foundations", Summary: "Two checkpoints, from open position to improvisation.", Level: domain.DifficultyLevelBeginner, InstrumentIDs: []string{guitarID}, ThumbnailURL: stringPtr(seedThumbnailURL), Checkpoints: []application.CheckpointInput{{LearningPathID: templateAID}, {LearningPathID: templateBID}}})
+	if err != nil {
+		return seededCourses{}, fmt.Errorf("create published course: %w", err)
+	}
+	if _, err := courseSvc.PublishCourse(ctx, admin, published.ID); err != nil {
+		return seededCourses{}, fmt.Errorf("publish published course: %w", err)
+	}
+
+	single, err := courseSvc.CreateCourse(ctx, teacher, application.CourseInput{Language: "en", Title: "Rhythm Basics", Summary: "One checkpoint, for quick complete/abandon scenarios.", Level: domain.DifficultyLevelBeginner, Checkpoints: []application.CheckpointInput{{LearningPathID: templateBID}}})
+	if err != nil {
+		return seededCourses{}, fmt.Errorf("create single-checkpoint course: %w", err)
+	}
+	if _, err := courseSvc.PublishCourse(ctx, admin, single.ID); err != nil {
+		return seededCourses{}, fmt.Errorf("publish single-checkpoint course: %w", err)
+	}
+
+	retired, err := courseSvc.CreateCourse(ctx, teacher, application.CourseInput{Language: "en", Title: "Retired Classics", Summary: "Published once, then retired.", Level: domain.DifficultyLevelBeginner, Checkpoints: []application.CheckpointInput{{LearningPathID: templateAID}}})
+	if err != nil {
+		return seededCourses{}, fmt.Errorf("create retired course: %w", err)
+	}
+	if _, err := courseSvc.PublishCourse(ctx, admin, retired.ID); err != nil {
+		return seededCourses{}, fmt.Errorf("publish retired course (before retiring): %w", err)
+	}
+	if _, err := courseSvc.RetireCourse(ctx, admin, retired.ID); err != nil {
+		return seededCourses{}, fmt.Errorf("retire retired course: %w", err)
+	}
+
+	// A published course in Portuguese, for the catalog's language filter.
+	portuguese, err := courseSvc.CreateCourse(ctx, teacher, application.CourseInput{Language: "pt_BR", Title: "Violão: primeiros passos", Summary: "Da posição aberta à improvisação.", Level: domain.DifficultyLevelBeginner, InstrumentIDs: []string{guitarID}, Checkpoints: []application.CheckpointInput{{LearningPathID: templateAID}}})
+	if err != nil {
+		return seededCourses{}, fmt.Errorf("create Portuguese course: %w", err)
+	}
+	if _, err := courseSvc.PublishCourse(ctx, admin, portuguese.ID); err != nil {
+		return seededCourses{}, fmt.Errorf("publish Portuguese course: %w", err)
+	}
+
+	return seededCourses{draft: draft, published: published, single: single, retired: retired}, nil
+}
+
+// seedEnrollments drives every domain.CourseEnrollmentStatus, plus an
+// active enrollment past its first checkpoint: alice ends active at
+// checkpoint 1, with checkpoint 1's first item already completed so her
+// path isn't shown as entirely untouched; bruno self-enrolls then is
+// advanced straight to checkpoint 2 (bypassing the real completion-discovery
+// flow, which needs a real CompletionStateReader this script doesn't wire
+// up — the resulting row shape is identical to what
+// checkAndAdvanceCheckpoint would have produced, just reached directly);
+// carla's enrollment is marked completed; alice also picks up a second,
+// abandoned enrollment in the single-checkpoint course, so her own
+// enrollment list alone already shows active + abandoned.
+func seedEnrollments(ctx context.Context, svc services, enrollmentRepo *repo.EntCourseEnrollmentRepository, teacher domain.User, students map[string]domain.User, courses seededCourses, nodes map[string]domain.ContentNode, mongoDB *mongo.Database) (string, error) {
+	aliceCtx := students["alice"]
+	brunoCtx := students["bruno"]
+	carlaCtx := students["carla"]
+
+	if _, err := svc.enrollment.CreateCourseEnrollment(ctx, aliceCtx, courses.published.ID); err != nil {
+		return "", fmt.Errorf("enroll alice in published course: %w", err)
+	}
+	// checkpoint 1 is templateA, whose first item is video-beginner.
+	if err := seedCompletionStatuses(ctx, mongoDB, aliceCtx.ID, map[string]string{
+		nodes["video-beginner"].ID: "completed",
+	}); err != nil {
+		return "", err
+	}
+
+	brunoEnrollment, err := svc.enrollment.CreateCourseEnrollment(ctx, brunoCtx, courses.published.ID)
+	if err != nil {
+		return "", fmt.Errorf("enroll bruno in published course: %w", err)
+	}
+	latestPublished, err := svc.course.LatestVersion(ctx, courses.published.ID)
+	if err != nil {
+		return "", fmt.Errorf("resolve published course's latest version: %w", err)
+	}
+	template, err := resolveCheckpointTemplate(ctx, svc, teacher, latestPublished, 2)
+	if err != nil {
+		return "", fmt.Errorf("resolve checkpoint 2 template: %w", err)
+	}
+	checkpoint2Path, err := svc.studentPath.CopyTemplateForCheckpoint(ctx, brunoCtx.ID, template, brunoCtx.ID, brunoEnrollment.ID, 2)
+	if err != nil {
+		return "", fmt.Errorf("copy checkpoint 2 template for bruno: %w", err)
+	}
+	if err := enrollmentRepo.AdvanceCheckpoint(ctx, brunoEnrollment.ID, checkpoint2Path.ID, 2); err != nil {
+		return "", fmt.Errorf("advance bruno to checkpoint 2: %w", err)
+	}
+
+	carlaEnrollment, err := svc.enrollment.CreateCourseEnrollment(ctx, carlaCtx, courses.single.ID)
+	if err != nil {
+		return "", fmt.Errorf("enroll carla in single-checkpoint course: %w", err)
+	}
+	if err := enrollmentRepo.Complete(ctx, carlaEnrollment.ID); err != nil {
+		return "", fmt.Errorf("mark carla's enrollment completed: %w", err)
+	}
+
+	aliceSecondEnrollment, err := svc.enrollment.CreateCourseEnrollment(ctx, aliceCtx, courses.single.ID)
+	if err != nil {
+		return "", fmt.Errorf("enroll alice in single-checkpoint course: %w", err)
+	}
+	if err := enrollmentRepo.Abandon(ctx, aliceSecondEnrollment.ID); err != nil {
+		return "", fmt.Errorf("mark alice's second enrollment abandoned: %w", err)
+	}
+
+	return brunoEnrollment.ID, nil
+}
+
+// resolveCheckpointTemplate looks up the LearningPath template behind
+// version's checkpoint at position.
+func resolveCheckpointTemplate(ctx context.Context, svc services, caller domain.User, version domain.CourseVersion, position int) (domain.LearningPath, error) {
+	for _, cp := range version.Checkpoints {
+		if cp.Position == position {
+			return svc.path.GetLearningPath(ctx, caller, cp.LearningPathID)
+		}
+	}
+	return domain.LearningPath{}, fmt.Errorf("no checkpoint at position %d", position)
+}
+
+// seedStandalonePaths gives carla a current standalone path — with its
+// first item already completed, so it isn't shown as entirely untouched —
+// alongside her already-completed course enrollment, and gives bruno a
+// standalone path that ends up archived while his course enrollment is
+// current — assigning always sets current unconditionally, so bruno's path
+// is switched back off current before archiving it, exercising the same
+// "archive a non-current path" path the application layer's conflict guard
+// allows unconditionally.
+func seedStandalonePaths(ctx context.Context, svc services, teacher domain.User, students map[string]domain.User, templateAID, templateBID, brunoEnrollmentID string, nodes map[string]domain.ContentNode, mongoDB *mongo.Database) error {
+
+	carlaCtx := students["carla"]
+	templateA, err := svc.path.GetLearningPath(ctx, teacher, templateAID)
+	if err != nil {
+		return fmt.Errorf("resolve template A: %w", err)
+	}
+	if _, _, err := svc.studentPath.AssignLearningPath(ctx, teacher, carlaCtx.ID, templateA.ID); err != nil {
+		return fmt.Errorf("assign standalone path to carla: %w", err)
+	}
+
+	brunoCtx := students["bruno"]
+	templateB, err := svc.path.GetLearningPath(ctx, teacher, templateBID)
+	if err != nil {
+		return fmt.Errorf("resolve template B: %w", err)
+	}
+	brunoStandalone, _, err := svc.studentPath.AssignLearningPath(ctx, teacher, brunoCtx.ID, templateB.ID)
+	if err != nil {
+		return fmt.Errorf("assign standalone path to bruno: %w", err)
+	}
+
+	if _, err := svc.studentPath.SetCurrentPath(ctx, brunoCtx, application.SetCurrentPathInput{CourseEnrollmentID: &brunoEnrollmentID}); err != nil {
+		return fmt.Errorf("switch bruno's current back to his course enrollment: %w", err)
+	}
+	if _, err := svc.studentPath.ArchiveStandaloneStudentPath(ctx, brunoCtx, brunoStandalone.ID); err != nil {
+		return fmt.Errorf("archive bruno's now-non-current standalone path: %w", err)
+	}
+
+	// carla's standalone path is templateA, whose first item is
+	// video-beginner.
+	return seedCompletionStatuses(ctx, mongoDB, carlaCtx.ID, map[string]string{
+		nodes["video-beginner"].ID: "completed",
+	})
+}
+
+// adminPathNodeKeys are the admin's standalone path items, in order: a done
+// video and a done article (a review offering Practise again), then the
+// article lessons a student meets next, each opening the one after it — the
+// cued article (paragraph cues, one past the end; Mark as done), a
+// diagram-first article, an article whose challenge finishes it — then a
+// video to watch and practise, the fretboard-notes articles, so a session in
+// the head has notes to drill, and the CAGED and pentatonic articles, so it
+// has shapes to name and degrees to find. An article only in Portuguese
+// comes last: a language lock holds every step after it.
+var adminPathNodeKeys = []string{
+	"video-beginner", "article-review", "article-cues", "article-diagram-first", "article-challenge",
+	"video-intermediate", "article-notes-root-strings", "article-notes-top-strings",
+	"article-caged-grips", "article-pentatonic-boxes", "article-pt-br-only",
+}
+
+// adminPathCompletedKeys are the admin's path items already done.
+var adminPathCompletedKeys = []string{"video-beginner", "article-review"}
+
+// adminPathInstrumentIDs makes the admin's path a guitar path, so the home
+// has a guitar tab with its fretboard map.
+var adminPathInstrumentIDs = []string{acousticGuitarID}
+
+// seedAdminZeroUser enrolls the freshly-bootstrapped admin
+// (ADMIN_CLERK_USER_ID) in a course and a standalone path exactly like the
+// synthetic students — so signing in as yourself after a reset shows real,
+// populated state instead of an empty dashboard.
+//
+// Completion is tracked per (student, content node), not per path — so the
+// course enrollment's checkpoint deliberately gets no completion status of
+// its own here, even though "enrolled in a course" is otherwise all this
+// step needs: video-intermediate is also an item of the standalone path
+// below, and marking it completed in one context would silently mark it
+// completed in the other too, leaving nothing "current" to open there.
+//
+// The standalone path is adminPathNodeKeys, with adminPathCompletedKeys
+// done: articles names the article lessons (see seedArticleLessons), the rest
+// come from nodes. video-beginner and video-intermediate both get timed cues
+// plus their own practice challenge, so each has something to watch and
+// practise instead of an empty lesson screen.
+//
+// Every exercise seeded anywhere (video-intermediate's own 5 plus
+// video-beginner's 2) also gets linked into video-intermediate's challenge,
+// on top of whatever challenge it was originally created for — so the admin
+// zero-user's video-intermediate always has the full practice pool available,
+// not just the handful seeded specifically for it.
+func seedAdminZeroUser(ctx context.Context, svc services, deps seedDeps, admin domain.User, courses seededCourses, nodes map[string]domain.ContentNode, articles map[string]domain.ContentNode, videoIntermediateChallengeID string, mongoDB *mongo.Database) error {
+	teacher, classifier := deps.teacher, deps.classifier
+	pathNodes := make(map[string]domain.ContentNode, len(nodes)+len(articles))
+	for key, node := range nodes {
+		pathNodes[key] = node
+	}
+	for key, node := range articles {
+		pathNodes[key] = node
+	}
+
+	if _, err := svc.enrollment.CreateCourseEnrollment(ctx, admin, courses.single.ID); err != nil {
+		return fmt.Errorf("enroll admin in single-checkpoint course: %w", err)
+	}
+
+	if err := seedVideoBeginnerChallenge(ctx, teacher, svc.challenge, svc.exercise, classifier, nodes["video-beginner"]); err != nil {
+		return fmt.Errorf("seed video-beginner's own practice challenge: %w", err)
+	}
+	if err := seedTimedCues(ctx, svc.content, teacher, nodes["video-beginner"].ID, "Open position C major scale"); err != nil {
+		return fmt.Errorf("seed timed cues for video-beginner: %w", err)
+	}
+	if err := seedTimedCues(ctx, svc.content, teacher, nodes["video-intermediate"].ID, "Call-and-response phrasing"); err != nil {
+		return fmt.Errorf("seed timed cues for video-intermediate: %w", err)
+	}
+	if err := linkAllExercisesToChallenge(ctx, teacher, svc.exercise, videoIntermediateChallengeID); err != nil {
+		return fmt.Errorf("link every exercise to video-intermediate's challenge: %w", err)
+	}
+
+	items := make([]application.PathItemInput, 0, len(adminPathNodeKeys))
+	for _, key := range adminPathNodeKeys {
+		node, ok := pathNodes[key]
+		if !ok {
+			return fmt.Errorf("admin's path names %q, which was not seeded", key)
+		}
+		items = append(items, application.PathItemInput{ContentNodeID: node.ID})
+	}
+	adminPath, err := svc.path.CreateLearningPath(ctx, teacher, application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Admin Zero-User Path", Summary: seedStr("A short path to try the lesson and practice screens."), Language: seedStr("en"), InstrumentIDs: adminPathInstrumentIDs, Items: items})
+	if err != nil {
+		return fmt.Errorf("create admin's standalone path: %w", err)
+	}
+	if _, err := svc.path.PublishLearningPath(ctx, deps.synthAdmin, adminPath.ID); err != nil {
+		return fmt.Errorf("publish admin's standalone path: %w", err)
+	}
+	if _, _, err := svc.studentPath.AssignLearningPath(ctx, teacher, admin.ID, adminPath.ID); err != nil {
+		return fmt.Errorf("assign standalone path to admin: %w", err)
+	}
+	completed := make(map[string]string, len(adminPathCompletedKeys))
+	for _, key := range adminPathCompletedKeys {
+		completed[pathNodes[key].ID] = "completed"
+	}
+	return seedCompletionStatuses(ctx, mongoDB, admin.ID, completed)
+}
+
+// seedVideoBeginnerChallenge gives node its own practice challenge with two
+// text_response exercises — mirroring the richer challenge
+// seedExercisesAllTypes already gives video-intermediate, so either video on
+// the admin's path has exercises to practise, not just a video. The
+// challenge's subjects are the skill and concept video-beginner was seeded
+// with; video-intermediate's challenge keeps a skill-only subject, so both
+// shapes are seeded.
+func seedVideoBeginnerChallenge(ctx context.Context, teacher domain.User, challengeSvc *application.ChallengeService, exerciseSvc *application.ExerciseService, classifier *classificationSeeder, node domain.ContentNode) error {
+	return seedTextChallenge(ctx, teacher, challengeSvc, exerciseSvc, classifier, node,
+		exerciseClassification{skill: "play-major-scale-open", concept: "major-scale"},
+		[]textQuestion{
+			{"Which note is the root of a C major scale in open position?", "C", "G"},
+			{"How many notes does a major scale have before it repeats an octave higher?", "Seven", "Five"},
+		})
+}
+
+// seedTimedCues attaches two short image cues to a video content node, so
+// its lesson screen has something in the timed-content rail instead of an
+// empty one.
+func seedTimedCues(ctx context.Context, contentSvc *application.ContentService, teacher domain.User, nodeID, caption string) error {
+	cues := []struct{ start, end int }{
+		{start: 2, end: 6},
+		{start: 7, end: 10},
+	}
+	for i, cue := range cues {
+		text := fmt.Sprintf("%s — cue %d", caption, i+1)
+		mediaURL := "https://placehold.co/640x360/png?text=" + url.QueryEscape(text)
+		start, end := cue.start, cue.end
+		if _, err := contentSvc.CreateExpandedContent(ctx, teacher, nodeID, domain.ExpandedContentTypeImage, &mediaURL, nil, nil, nil, &start, &end, nil, nil, &text); err != nil {
+			return fmt.Errorf("create cue %q: %w", text, err)
+		}
+	}
+	return nil
+}
+
+// linkAllExercisesToChallenge links every exercise in the reusable pool to
+// challengeID, skipping any already linked to it (LinkExerciseToChallenge
+// refuses a duplicate link with domain.ErrAlreadyExists) — an exercise
+// keeps every challenge it was already linked to; this only adds one more.
+func linkAllExercisesToChallenge(ctx context.Context, teacher domain.User, exerciseSvc *application.ExerciseService, challengeID string) error {
+	for offset := 0; ; offset += domain.MaxPageLimit {
+		page, err := exerciseSvc.ListExercises(ctx, teacher, domain.ExerciseFilter{}, domain.PageRequest{Limit: domain.MaxPageLimit, Offset: offset})
+		if err != nil {
+			return fmt.Errorf("list exercises: %w", err)
+		}
+		for _, exercise := range page.Items {
+			if containsString(exercise.ChallengeIDs, challengeID) {
+				continue
+			}
+			if _, err := exerciseSvc.LinkExerciseToChallenge(ctx, teacher, challengeID, exercise.ID); err != nil {
+				return fmt.Errorf("link exercise %s: %w", exercise.ID, err)
+			}
+		}
+		if offset+domain.MaxPageLimit >= page.Total {
+			return nil
+		}
+	}
+}
+
+func containsString(values []string, target string) bool {
+	for _, v := range values {
+		if v == target {
+			return true
+		}
+	}
+	return false
+}
+
+func seedCompletionStatuses(ctx context.Context, db *mongo.Database, studentID string, statuses map[string]string) error {
+	collection := db.Collection("aggregates")
+	for contentNodeID, status := range statuses {
+		_, err := collection.UpdateOne(ctx,
+			bson.D{{Key: "student_id", Value: studentID}, {Key: "content_node_id", Value: contentNodeID}},
+			bson.D{{Key: "$set", Value: bson.D{
+				{Key: "student_id", Value: studentID},
+				{Key: "content_node_id", Value: contentNodeID},
+				{Key: "status", Value: status},
+			}}},
+			options.UpdateOne().SetUpsert(true),
+		)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func stringPtr(s string) *string { return &s }
+
+func seedStr(s string) *string { return &s }
+
+// seedPathTemplates creates and publishes the two learning path templates
+// the courses and standalone paths are copied from.
+func seedPathTemplates(ctx context.Context, svc services, deps seedDeps, teacher domain.User, nodes map[string]domain.ContentNode, guitarID string) (domain.LearningPath, domain.LearningPath, error) {
+	templateA, err := svc.path.CreateLearningPath(ctx, teacher, application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Open Position Foundations", Summary: seedStr("Your first open chords and a steady strumming hand."), Language: seedStr("en"), InstrumentIDs: []string{guitarID}, Items: []application.PathItemInput{
+		{ContentNodeID: nodes["video-beginner"].ID},
+		{ContentNodeID: nodes["video-beginner-rhythm"].ID},
+	}})
+	if err != nil {
+		return domain.LearningPath{}, domain.LearningPath{}, fmt.Errorf("create template A: %w", err)
+	}
+	templateB, err := svc.path.CreateLearningPath(ctx, teacher, application.LearningPathInput{Level: domain.DifficultyLevelIntermediate, Title: "Improvisation Essentials", Summary: seedStr("Scales, phrasing and call-and-response to start soloing."), Language: seedStr("en"), Items: []application.PathItemInput{
+		{ContentNodeID: nodes["video-intermediate"].ID},
+		{ContentNodeID: nodes["video-advanced"].ID},
+	}})
+	if err != nil {
+		return domain.LearningPath{}, domain.LearningPath{}, fmt.Errorf("create template B: %w", err)
+	}
+	// Both templates are published: courses publish only with published
+	// paths, staff assign only published paths, and the path catalog lists
+	// them.
+	for _, template := range []domain.LearningPath{templateA, templateB} {
+		if _, err := svc.path.PublishLearningPath(ctx, deps.synthAdmin, template.ID); err != nil {
+			return domain.LearningPath{}, domain.LearningPath{}, fmt.Errorf("publish template %q: %w", template.Title, err)
+		}
+	}
+	log.Printf("seeded 2 published learning path templates: %q, %q", templateA.Title, templateB.Title)
+	return templateA, templateB, nil
+}
