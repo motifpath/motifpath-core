@@ -108,7 +108,10 @@ cp "$bundle/edge/compose.yaml" "$bundle/edge/Caddyfile" "$edge_dir/"
 edge=(docker compose -p edge --env-file "$state_dir/edge.secrets.env"
 	-f "$edge_dir/compose.yaml")
 "${edge[@]}" up --detach
-"${edge[@]}" exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
+# Forced even when the Caddyfile is unchanged: a hostname whose DNS record
+# appeared after Caddy started has had its certificate attempts fail and
+# backed off, and a reload is what makes Caddy try again right away.
+"${edge[@]}" exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile --force
 
 # core-domain applies pending migrations before it listens, so the first
 # probes can see a refused connection for a while.
