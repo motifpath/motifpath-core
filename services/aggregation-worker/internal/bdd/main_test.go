@@ -32,6 +32,7 @@ func TestFeatures(t *testing.T) {
 			Paths: []string{
 				specsDir + "/features/practice/grade-practice-response.feature",
 				specsDir + "/features/practice/knowledge-state.feature",
+				specsDir + "/features/practice/progression-key-tour.feature",
 				specsDir + "/features/practice/practice-sessions.feature",
 				specsDir + "/features/practice/timed-thresholds.feature",
 			},
