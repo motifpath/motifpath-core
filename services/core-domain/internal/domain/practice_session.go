@@ -79,6 +79,9 @@ type PracticeItemState struct {
 	// LastChangeMinute is a chord or root change's last minute, which the next
 	// one starts from; nil for an item never played that way.
 	LastChangeMinute *ChangeMinuteState
+	// KeyTour is a progression key tour as the student left it; nil for an
+	// item never played that way.
+	KeyTour *KeyTourState
 }
 
 // ChangeMinuteState is a chord or root change's last minute: the tempo it was
@@ -248,6 +251,7 @@ type PracticeSessionItem struct {
 	ChordChange     *PlannedChordChange
 	RootFifth       *PlannedRootFifth
 	RootChange      *PlannedRootChange
+	ProgressionKeys *PlannedProgressionKeys
 }
 
 // DrillTemplateKey is the timed drill template answering the item
