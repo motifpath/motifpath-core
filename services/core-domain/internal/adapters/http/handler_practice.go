@@ -372,6 +372,9 @@ func toGeneratedPracticeSessionItem(item domain.PracticeSessionItem, names userN
 			FromRoot: toGeneratedFretPlace(r.FromRoot), ToRoot: toGeneratedFretPlace(r.ToRoot), Minute: toGeneratedChangeMinute(r.Minute),
 		}
 	}
+	if tour := item.ProgressionKeys; tour != nil {
+		out.ProgressionKeys = toGeneratedProgressionKeys(*tour, locale)
+	}
 	return out
 }
 
