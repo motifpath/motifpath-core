@@ -67,8 +67,8 @@ type PracticeResponse struct {
 	Way     string
 	Options []string
 	Choice  string
-	// MusicKey (generated_choice, timed_taps) is the major key the question was
-	// asked in, when its item doesn't fix one.
+	// MusicKey (generated_choice, timed_taps, self_rating) is the major key the
+	// question was asked or the take was played in, when its item doesn't fix one.
 	MusicKey string
 	// Tone and Taps (timed_taps) are the chord tone asked and every tap of the take;
 	// TempoBPM is the tempo it played at.

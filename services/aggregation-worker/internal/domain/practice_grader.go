@@ -35,6 +35,9 @@ type GradedEvidence struct {
 	TempoBPM         *int
 	NoteValue        *NoteValue
 	ChangesPerMinute *int
+	// MusicKey is the key a progression key tour take was played in; empty for
+	// every other kind.
+	MusicKey string
 	// AnswerKey is what a right answer was, kept with auto-graded evidence so a
 	// disputed answer can be checked from the evidence alone; nil when the grader
 	// had nothing to keep.
@@ -197,7 +200,7 @@ func TimedDrillTemplate(key PracticeItemKey, response PracticeResponse, ref Prac
 			return e.DrillTemplateKey()
 		}
 	case PracticeItemKindPlayAlong, PracticeItemKindChordChange, PracticeItemKindChordVoicing,
-		PracticeItemKindRootFifth, PracticeItemKindRootChange:
+		PracticeItemKindRootFifth, PracticeItemKindRootChange, PracticeItemKindProgressionKeys:
 	}
 	return ""
 }
@@ -234,6 +237,7 @@ var graderByKind = map[PracticeItemKind]Grader{
 	PracticeItemKindChordVoicing:     selfRatingV1{},
 	PracticeItemKindRootFifth:        selfRatingV1{},
 	PracticeItemKindRootChange:       selfRatingV1{},
+	PracticeItemKindProgressionKeys:  selfRatingV1{},
 	PracticeItemKindExercise:         exerciseOptionV1{},
 	PracticeItemKindFretboardCell:    fretboardCellV2{},
 	PracticeItemKindDiagramShape:     diagramShapeV1{},

@@ -35,6 +35,16 @@ func TestParsePracticeItemKey(t *testing.T) {
 	}
 }
 
+func TestParsePracticeItemKey_ProgressionKeyTour(t *testing.T) {
+	key, err := ParsePracticeItemKey("progression_keys:" + diagramA + ":I-V-vi-IV")
+	require.NoError(t, err)
+
+	assert.Equal(t, PracticeItemKindProgressionKeys, key.Kind)
+	assert.Equal(t, diagramA, key.LayoutInstrumentID())
+	assert.Equal(t, "I-V-vi-IV", key.ProgressionKey())
+	assert.Nil(t, key.DiagramIDs())
+}
+
 func TestParsePracticeItemKey_RejectsMalformedKeys(t *testing.T) {
 	for _, raw := range []string{
 		"",
@@ -44,6 +54,8 @@ func TestParsePracticeItemKey_RejectsMalformedKeys(t *testing.T) {
 		"chord_change:" + diagramA,
 		"fretboard_cell:" + diagramA + ":0:3",
 		"diagram_shape:" + diagramA + ":" + diagramB,
+		"progression_keys:" + diagramA,
+		"progression_keys:I-V-vi-IV",
 	} {
 		t.Run(raw, func(t *testing.T) {
 			_, err := ParsePracticeItemKey(raw)

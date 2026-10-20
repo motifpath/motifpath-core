@@ -62,6 +62,7 @@ type goldenCaseFile struct {
 				TempoBPM         *int    `json:"tempo_bpm"`
 				NoteValue        *string `json:"note_value"`
 				ChangesPerMinute *int    `json:"changes_per_minute"`
+				MusicKey         string  `json:"music_key"`
 				AnswerKey        *struct {
 					String   *int   `json:"string"`
 					Fret     *int   `json:"fret"`
@@ -159,6 +160,7 @@ func TestGraderGoldenCases(t *testing.T) {
 					assert.Equal(t, want.TempoBPM, got.Evidence.TempoBPM)
 					assert.Equal(t, noteValueOf(want.NoteValue), got.Evidence.NoteValue)
 					assert.Equal(t, want.ChangesPerMinute, got.Evidence.ChangesPerMinute)
+					assert.Equal(t, want.MusicKey, got.Evidence.MusicKey)
 					if want.AnswerKey == nil {
 						assert.Nil(t, got.Evidence.AnswerKey)
 						return
