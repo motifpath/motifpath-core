@@ -62,6 +62,7 @@ func registerPracticeFocusSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" has (\d+) cells on guitar, all fluent for "([^"]+)" and none due within the week$`, w.hasFluentCellsNotDueSoon)
 	sc.Step(`^"([^"]+)" has (\d+) minute of due items, nothing weak and (\d+) new items on "([^"]+)" on guitar$`, w.hasDueMinuteAndNewItemsOn)
 	sc.Step(`^"([^"]+)" is practised only by fretboard cells, recalled in the head$`, w.isPractisedOnlyByCells)
+	sc.Step(`^"([^"]+)" has only self-rated chord items, played in hand$`, w.hasOnlySelfRatedChords)
 
 	sc.Step(`^"([^"]+)" composes a (\d+)-minute session with "([a-z-]+)" in hand, choosing "([^"]+)"$`, w.composesChoosing)
 	sc.Step(`^"([^"]+)" composes a (\d+)-minute session with no instrument in hand, choosing "([^"]+)"$`, w.composesInTheHeadChoosing)
@@ -75,6 +76,8 @@ func registerPracticeFocusSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" lists the subjects they can practise with "([a-z-]+)" in hand$`, w.listsSubjectsInHand)
 	sc.Step(`^"([^"]+)" lists the subjects they can practise with no instrument in hand$`, w.listsSubjectsInTheHead)
 	sc.Step(`^"([^"]+)" is listed in the area "([^"]+)"$`, w.isListedInArea)
+	sc.Step(`^"([^"]+)" is listed$`, w.isListed)
+	sc.Step(`^"([^"]+)" is not listed$`, w.isNotListed)
 	sc.Step(`^every listed node has at least one item that suits "([^"]+)" and can be played in hand$`, w.everyListedNodeHasItems)
 	sc.Step(`^"([^"]+)" shows "([^"]+)"'s level on guitar and the current rung (\w+)$`, w.subjectShowsLevelAndRung)
 }
@@ -585,6 +588,14 @@ func (w *world) isPractisedOnlyByCells(skill string) error {
 	return nil
 }
 
+// hasOnlySelfRatedChords classifies every catalog voicing under skill on
+// guitar: chords are played on the instrument and rated, never recalled on
+// the screen.
+func (w *world) hasOnlySelfRatedChords(skill string) error {
+	w.classifyChords("guitar", skill, allVoicingKeys()...)
+	return nil
+}
+
 func (w *world) composeChoosing(minutes int, instrument *openapi_types.UUID, node openapi_types.UUID) error {
 	resp, err := w.handler.CreatePracticeSessionPlan(w.ctx(), generated.CreatePracticeSessionPlanRequestObject{
 		Body: &generated.CreatePracticeSessionPlanRequest{InstrumentId: instrument, Minutes: minutes, FocusNodeId: &node},
@@ -691,6 +702,26 @@ func (w *world) isListedInArea(node, area string) error {
 	}
 	if got != w.nodeIDByName(area) {
 		return fmt.Errorf("expected %q in the area %q, got %v", node, area, got)
+	}
+	return nil
+}
+
+func (w *world) isListed(node string) error {
+	_, _, err := w.listedSubject(node)
+	return err
+}
+
+func (w *world) isNotListed(node string) error {
+	list, err := w.subjectList()
+	if err != nil {
+		return err
+	}
+	for _, g := range list.Groups {
+		for _, s := range g.Subjects {
+			if s.NodeId == w.nodeIDByName(node) {
+				return fmt.Errorf("expected %q not to be listed", node)
+			}
+		}
 	}
 	return nil
 }
