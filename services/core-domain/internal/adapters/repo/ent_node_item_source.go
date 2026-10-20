@@ -88,7 +88,69 @@ func (s *EntNodeItemSource) ClassifiedItems(ctx context.Context, instrumentID st
 	if err != nil {
 		return nil, err
 	}
-	return slices.Concat(items, cells, shapes, harmony, chords), nil
+	tours, err := s.tourItems(ctx, parsed)
+	if err != nil {
+		return nil, err
+	}
+	return slices.Concat(items, cells, shapes, harmony, chords, tours), nil
+}
+
+// The progression key tours' nodes: every tour practises the progressions,
+// and on guitar moving shapes to any key, on bass chord-tone lines.
+const (
+	tourProgressionsNode = "common-progressions"
+	tourGuitarSkill      = "play-shapes-in-any-key"
+	tourBassSkill        = "play-chord-tone-lines"
+)
+
+// tourItems generates a progression key tour of every progression on the
+// fretboard layout instrumentID shares, so instruments of one fretboard share
+// them. Each rolls up to the progressions node, the skill the instrument is
+// for (bass before guitar), and its progression's nodes. An instrument with no
+// fretboard layout, or that neither skill is for, has none.
+func (s *EntNodeItemSource) tourItems(ctx context.Context, instrumentID uuid.UUID) ([]domain.ClassifiedItem, error) {
+	rows, err := s.client.KnowledgeNode.Query().
+		Where(knowledgenode.KeyIn(tourProgressionsNode, tourGuitarSkill, tourBassSkill)).
+		WithInstruments().
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	nodes := map[string]domain.KnowledgeNode{}
+	for _, row := range rows {
+		nodes[row.Key] = toDomainKnowledgeNode(row)
+	}
+	var skill domain.KnowledgeNode
+	for _, key := range []string{tourBassSkill, tourGuitarSkill} {
+		if n, ok := nodes[key]; ok && slices.Contains(n.InstrumentIDs, instrumentID.String()) {
+			skill = n
+			break
+		}
+	}
+	if skill.ID == "" {
+		return nil, nil
+	}
+	layouts, err := s.FretboardLayouts(ctx, instrumentID.String())
+	if err != nil || len(layouts) == 0 {
+		return nil, err
+	}
+	var family []string
+	if n, ok := nodes[tourProgressionsNode]; ok {
+		family = append(family, n.ID)
+	}
+	family = append(family, skill.ID)
+	progressions, err := NewEntProgressionRepository(s.client).List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]domain.ClassifiedItem, 0, len(progressions))
+	for _, p := range progressions {
+		items = append(items, domain.ClassifiedItem{
+			ItemKey: domain.ProgressionKeysItemKey(layouts[0].ID, p.Key),
+			NodeIDs: withNodes(family, p.NodeIDs),
+		})
+	}
+	return items, nil
 }
 
 // The chord drills' skills: single chords and changes on guitar, a chord's
