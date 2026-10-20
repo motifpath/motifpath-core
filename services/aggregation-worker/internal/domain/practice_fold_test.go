@@ -297,6 +297,112 @@ func TestFoldEvidence_ChordChangesMeasureChangesPerMinute(t *testing.T) {
 	})
 }
 
+// tourTake is a take of a progression key tour in key at bpm.
+func tourTake(at time.Time, rating SelfRating, bpm int, key string) PracticeEvidence {
+	e := take(at, rating, bpm)
+	e.ItemKey = "progression_keys:" + diagramA + ":I-V-vi-IV"
+	e.MusicKey = key
+	e.Response = PracticeResponse{Type: PracticeResponseSelfRating, Rating: rating, TempoBPM: ptr(bpm), MusicKey: key}
+	return e
+}
+
+func TestFoldEvidence_ProgressionKeyTour(t *testing.T) {
+	tour := ItemGoal{TargetTempoBPM: ptr(ProgressionKeysTargetTempoBPM)}
+	at := func(tempo int, clean ...string) ItemFold {
+		return ItemFold{TourTempoBPM: ptr(tempo), TourCleanKeys: clean}
+	}
+	fold := func(t *testing.T, f ItemFold, evidence ...PracticeEvidence) ItemFold {
+		t.Helper()
+		for _, e := range evidence {
+			var err error
+			f, err = FoldEvidence(f, e, tour)
+			require.NoError(t, err)
+		}
+		return f
+	}
+
+	t.Run("a first clean take starts the tour at 60% of the target and makes its key clean", func(t *testing.T) {
+		f := fold(t, ItemFold{}, tourTake(onDay(0), SelfRatingClean, 60, "C"))
+		assert.Equal(t, 60, *f.TourTempoBPM)
+		assert.Equal(t, []string{"C"}, f.TourCleanKeys)
+		assert.Equal(t, NoteValueQuarters, *f.TourNoteValue)
+	})
+	t.Run("a clean take slower than the tour tempo doesn't make its key clean", func(t *testing.T) {
+		f := fold(t, at(70), tourTake(onDay(0), SelfRatingClean, 65, "C"))
+		assert.Empty(t, f.TourCleanKeys)
+		assert.Equal(t, 70, *f.TourTempoBPM)
+	})
+	t.Run("a clean take faster than the tour tempo makes its key clean and keeps the tempo", func(t *testing.T) {
+		f := fold(t, at(70), tourTake(onDay(0), SelfRatingClean, 80, "C"))
+		assert.Equal(t, []string{"C"}, f.TourCleanKeys)
+		assert.Equal(t, 70, *f.TourTempoBPM)
+	})
+	t.Run("a clean take in eighths counts at its effective speed and sets the note value", func(t *testing.T) {
+		e := tourTake(onDay(0), SelfRatingClean, 40, "C")
+		e.NoteValue = ptr(NoteValueEighths)
+		f := fold(t, at(70), e)
+		assert.Equal(t, []string{"C"}, f.TourCleanKeys)
+		assert.Equal(t, NoteValueEighths, *f.TourNoteValue)
+	})
+	t.Run("a struggle lowers the tour tempo by 5 and keeps the clean keys", func(t *testing.T) {
+		f := fold(t, at(70, "C", "F"), tourTake(onDay(0), SelfRatingStruggled, 70, "Bb"))
+		assert.Equal(t, 65, *f.TourTempoBPM)
+		assert.Equal(t, []string{"C", "F"}, f.TourCleanKeys)
+	})
+	t.Run("an almost take keeps the key and the tempo", func(t *testing.T) {
+		f := fold(t, at(70), tourTake(onDay(0), SelfRatingAlmost, 70, "C"))
+		assert.Equal(t, 70, *f.TourTempoBPM)
+		assert.Empty(t, f.TourCleanKeys)
+	})
+	t.Run("a struggle never lowers the tour below 60% of the target", func(t *testing.T) {
+		f := fold(t, at(60), tourTake(onDay(0), SelfRatingStruggled, 60, "C"))
+		assert.Equal(t, 60, *f.TourTempoBPM)
+	})
+	t.Run("a struggle above the tour tempo explores and doesn't lower it", func(t *testing.T) {
+		f := fold(t, at(70), tourTake(onDay(0), SelfRatingStruggled, 90, "C"))
+		assert.Equal(t, 70, *f.TourTempoBPM)
+	})
+	t.Run("the last key made clean starts the tour again, 5 BPM faster, with no key clean", func(t *testing.T) {
+		eleven := []string{"C", "F", "Bb", "Eb", "Ab", "Db", "F#", "B", "E", "A", "D"}
+		f := fold(t, at(70, eleven...), tourTake(onDay(0), SelfRatingClean, 70, "G"))
+		assert.Equal(t, 75, *f.TourTempoBPM)
+		assert.Empty(t, f.TourCleanKeys)
+	})
+	t.Run("a finished tour never climbs past the target by itself", func(t *testing.T) {
+		eleven := []string{"C", "F", "Bb", "Eb", "Ab", "Db", "F#", "B", "E", "A", "D"}
+		f := fold(t, at(100, eleven...), tourTake(onDay(0), SelfRatingClean, 100, "G"))
+		assert.Equal(t, 100, *f.TourTempoBPM)
+		assert.Empty(t, f.TourCleanKeys)
+	})
+	t.Run("a key made clean twice is listed once", func(t *testing.T) {
+		f := fold(t, at(70, "C"), tourTake(onDay(0), SelfRatingClean, 70, "C"))
+		assert.Equal(t, []string{"C"}, f.TourCleanKeys)
+	})
+	t.Run("clean keys are kept in the tour's order", func(t *testing.T) {
+		f := fold(t, at(70, "F"), tourTake(onDay(0), SelfRatingClean, 70, "C"))
+		assert.Equal(t, []string{"C", "F"}, f.TourCleanKeys)
+	})
+	t.Run("a play-along take keeps no tour", func(t *testing.T) {
+		f := foldAll(t, target100, take(onDay(0), SelfRatingClean, 80))
+		assert.Nil(t, f.TourTempoBPM)
+		assert.Nil(t, f.TourCleanKeys)
+	})
+	t.Run("five clean takes at the target are fluent, far below it only accurate", func(t *testing.T) {
+		keys := []string{"C", "F", "Bb", "Eb", "Ab"}
+		near := make([]PracticeEvidence, 5)
+		far := make([]PracticeEvidence, 5)
+		for i := range near {
+			near[i], far[i] = tourTake(onDay(i), SelfRatingClean, 100, keys[i]), tourTake(onDay(i), SelfRatingClean, 60, keys[i])
+		}
+		assert.Equal(t, KnowledgeLevelFluent, fold(t, ItemFold{}, near...).Level())
+		assert.Equal(t, KnowledgeLevelAccurate, fold(t, ItemFold{}, far...).Level())
+	})
+}
+
+func TestProgressionKeyOrder_IsTheCycleOfFourthsFromC(t *testing.T) {
+	assert.Equal(t, []string{"C", "F", "Bb", "Eb", "Ab", "Db", "F#", "B", "E", "A", "D", "G"}, ProgressionKeyOrder)
+}
+
 func TestFoldEvidence_RejectsSourcesWithoutRulesYet(t *testing.T) {
 	e := take(onDay(0), SelfRatingClean, 80)
 	e.Source = EvidenceSourceTeacherReviewed

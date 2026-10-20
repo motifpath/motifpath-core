@@ -189,19 +189,24 @@ func toEvidence(answer domain.PracticeAnswer, graderID string, graded domain.Gra
 		TempoBPM:          graded.TempoBPM,
 		NoteValue:         graded.NoteValue,
 		ChangesPerMinute:  graded.ChangesPerMinute,
+		MusicKey:          graded.MusicKey,
 		AnswerKey:         graded.AnswerKey,
 	}
 }
 
 // goalOf is what the item's fluency is measured against. A play-along is measured
 // against its diagram's tempo, an exercise against its type's fluent times, and a
-// generated drill against the fluent times of each way it is asked, and a chord or
-// root change against the change target in force when it was played. A chord played
+// generated drill against the fluent times of each way it is asked, a chord or
+// root change against the change target in force when it was played, and a
+// progression key tour against the tour target. A chord played
 // clean has no measure at all.
 func (s *PracticeEvidenceService) goalOf(ctx context.Context, key domain.PracticeItemKey, ref domain.PracticeReference) (domain.ItemGoal, error) {
 	switch key.Kind {
 	case domain.PracticeItemKindPlayAlong:
 		return domain.ItemGoal{TargetTempoBPM: ref.Diagrams[key.DiagramIDs()[0]].TempoBPM}, nil
+	case domain.PracticeItemKindProgressionKeys:
+		target := domain.ProgressionKeysTargetTempoBPM
+		return domain.ItemGoal{TargetTempoBPM: &target}, nil
 	case domain.PracticeItemKindExercise:
 		fluentTimes, err := s.reference.FluentTimes(ctx, ref.Exercises[key.ExerciseID()].DrillTemplateKey())
 		return domain.ItemGoal{FluentTimes: fluentTimes}, err
