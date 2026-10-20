@@ -35,15 +35,24 @@ feat/…  →  dev  →  stage  →  main
    `motifpath/<service>:<commit-sha>`. The workflow then calls `Deploy` for
    **staging** with that SHA.
 2. **Check staging** at `https://staging.motifpath.com`.
-3. **Merge `stage` into `main`**, then run `Deploy` by hand with
-   `environment: production` and the **SHA staging ran**, not the merge
-   commit. The workflow and the VM both refuse a SHA that is not on `main`.
-   The images also get a `production-<sha>` tag, which keeps them out of
-   ECR's expiry of older release candidates.
+3. **Merge `stage` into `main`** (with a merge commit), then run `Deploy` by
+   hand with `environment: production` and `image_tag` left blank:
+
+   ```bash
+   gh workflow run deploy.yml -R motifpath/motifpath-core --ref main -f environment=production
+   ```
+
+   A blank tag means the newest commit on `main` whose three images are in
+   ECR. The merge commit has none, so that is the `stage` commit staging ran.
+   The run's log and summary name the SHA it picked. The workflow and the VM
+   both refuse a SHA that is not on `main`. The images also get a
+   `production-<sha>` tag, which keeps them out of ECR's expiry of older
+   release candidates.
 4. **Hotfix:** merging a `hotfix/…` PR into `main` builds that merge commit.
-   Deploy it to production by hand (staging first if it changes the schema).
-5. **Rollback:** run `Deploy` with the previous SHA. The VM records the last
-   two in `/etc/motifpath/<environment>.deployed`.
+   Deploy it to production the same way, with a blank tag, once `Build images`
+   has finished (staging first if it changes the schema).
+5. **Rollback:** run `Deploy` with `image_tag` set to the previous SHA. The VM
+   records the last two in `/etc/motifpath/<environment>.deployed`.
 
 Containers are recreated in place, so each service is down for a few
 seconds per deploy. core-domain applies pending migrations before it starts
