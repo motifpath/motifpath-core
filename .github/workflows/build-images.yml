@@ -112,6 +112,12 @@ jobs:
     needs: build
     if: github.event_name == 'push' && github.ref == 'refs/heads/stage'
     uses: ./.github/workflows/deploy.yml
+    # A called workflow's jobs get at most what the caller grants, and
+    # deploy.yml declares a job (publishing a GitHub Release) that asks for
+    # contents: write. It never runs for staging, and deploy.yml's own
+    # top-level permissions keep the deploy job itself read-only.
+    permissions:
+      contents: write
     with:
       environment: staging
       release: ${{ github.sha }}
