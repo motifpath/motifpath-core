@@ -35,15 +35,39 @@ feat/…  →  dev  →  stage  →  main
    `motifpath/<service>:<commit-sha>`. The workflow then calls `Deploy` for
    **staging** with that SHA.
 2. **Check staging** at `https://staging.motifpath.com`.
-3. **Merge `stage` into `main`**, then run `Deploy` by hand with
-   `environment: production` and the **SHA staging ran**, not the merge
-   commit. The workflow and the VM both refuse a SHA that is not on `main`.
-   The images also get a `production-<sha>` tag, which keeps them out of
-   ECR's expiry of older release candidates.
-4. **Hotfix:** merging a `hotfix/…` PR into `main` builds that merge commit.
-   Deploy it to production by hand (staging first if it changes the schema).
-5. **Rollback:** run `Deploy` with the previous SHA. The VM records the last
-   two in `/etc/motifpath/<environment>.deployed`.
+3. **Merge `stage` into `main`** with a merge commit.
+4. **Release:** tag that merge commit on `main` with the next version and push
+   the tag. Anything without a tag is an intermediate build: a release
+   candidate on `stage`, or a staging-only deploy.
+
+   ```bash
+   git fetch origin main && git tag -a v0.2.0 origin/main -m "v0.2.0" && git push origin v0.2.0
+   ```
+
+   The tag starts `Deploy` for **production**, which waits for the
+   `production` environment's approval if it has reviewers. The merge commit
+   has no images, so it deploys the newest commit in the tag that was built
+   in all three repositories: the `stage` commit staging ran. The images get
+   `production-<sha>` and the release tag in ECR (`production-` images are
+   kept out of the expiry of older release candidates). Once production runs
+   it, a GitHub Release is published with notes since the previous tag. A tag
+   that is not on `main` is refused, here and on the VM.
+5. **Hotfix:** merging a `hotfix/…` PR into `main` builds that merge commit.
+   Once `Build images` has finished, tag it with the next patch version
+   (staging first if it changes the schema).
+6. **Rollback or redeploy:** run `Deploy` with `environment: production` and
+   `release` set to an earlier tag. The VM records the last two SHAs in
+   `/etc/motifpath/<environment>.deployed`. In an emergency `release` also
+   takes a full commit SHA; that deploy is not a release and publishes
+   nothing.
+
+   ```bash
+   gh workflow run deploy.yml -R motifpath/motifpath-core --ref main -f environment=production -f release=v0.1.0
+   ```
+
+Versions are this repository's own (motifpath-web numbers its releases
+separately). Old release images expire with the rest of the `production-`
+images, so only the most recent few releases can be rolled back to.
 
 Containers are recreated in place, so each service is down for a few
 seconds per deploy. core-domain applies pending migrations before it starts
@@ -113,7 +137,13 @@ branches** so other branches cannot read its secrets:
 |---|---|---|---|
 | `images` | `stage`, `main` | push to the three `motifpath/*` repositories | — |
 | `staging` | `stage`, `main` | send only staging's deploy document; `ecr:DescribeImages` | variable `VM_INSTANCE_ID` |
-| `production` | `main` | send only production's deploy document; `ecr:DescribeImages`; add the `production-` tag (`ecr:BatchGetImage`, `ecr:PutImage`) | variable `VM_INSTANCE_ID`; required reviewers recommended |
+| `production` | `main`, and **tags** `v*` | send only production's deploy document; `ecr:DescribeImages`; add the `production-` and release tags (`ecr:BatchGetImage`, `ecr:PutImage`) | variable `VM_INSTANCE_ID`; required reviewers recommended |
+
+A release runs on its tag, not on a branch, so `production`'s rule is
+**Selected branches and tags** with `main` and the tag pattern `v*`. Protect
+the tags with a ruleset on `refs/tags/v*` that blocks updating and deleting
+them and lets only repository admins create them: a moved tag would make a
+release name point at different code, and creating one deploys production.
 
 A build refuses to push over an existing tag, so an image published early
 with a leaked push key fails the build instead of being deployed.
