@@ -64,4 +64,5 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	registerActivitySteps(sc, w)
 	registerReviewSteps(sc, w)
 	registerChordSteps(sc, w)
+	registerTourSteps(sc, w)
 }
