@@ -114,5 +114,5 @@ jobs:
     uses: ./.github/workflows/deploy.yml
     with:
       environment: staging
-      image_tag: ${{ github.sha }}
+      release: ${{ github.sha }}
     secrets: inherit
