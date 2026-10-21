@@ -1346,7 +1346,8 @@ INSERT INTO "drill_templates" ("id", "key", "item_kind", "response_type", "rung"
   ('d63bfeed-3175-5b8a-a838-f543cec550ce', 'chart_progression:numbers_to_chart', 'chart_progression', 'generated_choice', 'know', 'chart_progression:chart_to_numbers', false, true, '{"en":"Pick the chart","pt_BR":"Escolher a cifra"}'),
   ('001c9d1a-6bcb-5d1b-8656-b65a9a8dddfb', 'heard_chord:cadence_then_chord', 'heard_chord', 'generated_choice', 'hear', 'heard_chord:see_then_name', true, true, '{"en":"Hear the chord","pt_BR":"Ouça o acorde"}'),
   ('91209c2d-71e8-52b2-a19b-f286d85f1c07', 'heard_chord:see_then_name', 'heard_chord', 'generated_choice', 'hear', 'heard_chord:cadence_then_chord', false, true, '{"en":"See the chord","pt_BR":"Veja o acorde"}'),
-  ('c236ecad-5bd5-5755-b012-fd1999ee46b8', 'heard_progression:progression_by_number', 'heard_progression', 'generated_choice', 'hear', NULL, true, true, '{"en":"Hear the progression","pt_BR":"Ouça a progressão"}');
+  ('c236ecad-5bd5-5755-b012-fd1999ee46b8', 'heard_progression:progression_by_number', 'heard_progression', 'generated_choice', 'hear', NULL, true, true, '{"en":"Hear the progression","pt_BR":"Ouça a progressão"}'),
+  ('448900eb-6410-554f-9e2e-dd96621008f6', 'guide_tone:tap_the_third', 'guide_tone', 'timed_taps', 'target', NULL, false, false, '{"en":"Guide tones","pt_BR":"Notas-guia"}');
 INSERT INTO "drill_thresholds" ("id", "template_id", "version", "effective_from", "fluent_net_ms", "source", "sessions", "students") VALUES
   ('bf63ad0e-f1c7-52ba-a303-230472134f6c', '4c6ffb77-ee8b-5fda-b243-784f4209bc65', 1, '2026-10-06T00:00:00Z', 3000, 'default', 0, 0),
   ('b4038212-bd6e-5749-8b39-cc8862e1974e', '6e38da0b-df26-5aa8-ab14-3b6640582174', 1, '2026-10-06T00:00:00Z', 4000, 'default', 0, 0),

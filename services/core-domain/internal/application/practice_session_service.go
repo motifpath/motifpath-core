@@ -551,7 +551,9 @@ func (s *PracticeSessionService) drillCandidates(ctx context.Context, skillID, i
 			return nil, err
 		}
 		for _, item := range items {
-			candidates = append(candidates, practiceCandidate{drill: item, nodeID: &skillID})
+			if readyFor(knowledge, item) {
+				candidates = append(candidates, practiceCandidate{drill: item, nodeID: &skillID})
+			}
 		}
 	}
 	return candidates, nil
@@ -634,7 +636,7 @@ func (s *PracticeSessionService) stretchCandidates(ctx context.Context, knowledg
 			return nil, err
 		}
 		c.nodeID = &pick.nodeID
-		if ok && c.suitsSession(inHand) && fits(c) {
+		if ok && c.suitsSession(inHand) && (c.drill == nil || readyFor(knowledge, c.drill)) && fits(c) {
 			c.instrumentID = instrumentID
 			stretch = append(stretch, c)
 			found += c.seconds()
@@ -1533,4 +1535,23 @@ func nextInQueue(queue []domain.PracticeSessionItem, lastCell *domain.PlannedFre
 // the same layout.
 func sameString(cell, last *domain.PlannedFretboardCell) bool {
 	return cell != nil && cell.LayoutInstrumentID == last.LayoutInstrumentID && cell.String == last.String
+}
+
+// readyFor reports whether the student may meet item: true unless it waits on
+// a node the student hasn't reached the level of yet.
+func readyFor(knowledge KnowledgeMap, item domain.DrillItem) bool {
+	waiting, ok := item.(domain.WaitingItem)
+	if !ok {
+		return true
+	}
+	nodeKey, level, waits := waiting.WaitsOn()
+	if !waits {
+		return true
+	}
+	i := slices.IndexFunc(knowledge.Nodes, func(n domain.KnowledgeNode) bool { return n.Key == nodeKey })
+	if i < 0 {
+		return false
+	}
+	reached := knowledge.Standings[knowledge.Nodes[i].ID].Level
+	return reached != nil && reached.Rank() >= level.Rank()
 }

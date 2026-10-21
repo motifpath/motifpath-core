@@ -82,6 +82,9 @@ type PracticeItemState struct {
 	// KeyTour is a progression key tour as the student left it; nil for an
 	// item never played that way.
 	KeyTour *KeyTourState
+	// LastMusicKey is the key of a guide tone's last take, which its next one
+	// is never planned in; empty for any other item.
+	LastMusicKey string
 }
 
 // ChangeMinuteState is a chord or root change's last minute: the tempo it was
@@ -252,14 +255,16 @@ type PracticeSessionItem struct {
 	RootFifth       *PlannedRootFifth
 	RootChange      *PlannedRootChange
 	ProgressionKeys *PlannedProgressionKeys
+	GuideTone       *PlannedGuideTone
 }
 
 // DrillTemplateKey is the timed drill template answering the item
 // practises: a generated drill item's kind and the way it is asked, or an
 // exercise's type.
-// A play-along or a chord item is rated, not timed, so it practises none ("").
+// A play-along or a chord item is rated, and a guide tone measured by tempo,
+// not timed, so they practise none ("").
 func (i PracticeSessionItem) DrillTemplateKey() string {
-	if _, rated := selfRatedChordKinds[i.Kind]; rated {
+	if _, untimed := fixedRung(i.Kind); untimed {
 		return ""
 	}
 	switch {
@@ -301,11 +306,11 @@ func (i PracticeSessionItem) IsGeneratedDrill() bool {
 }
 
 // SessionCap is the drill the item counts toward in a session and the most
-// items of it a session takes: single chords and chord changes each by their
-// kind, any other generated drill by its template. False for an item no cap
+// items of it a session takes: single chords, chord changes, tours and guide
+// tones each by their kind, any other generated drill by its template. False for an item no cap
 // applies to, such as a play-along or an exercise.
 func (i PracticeSessionItem) SessionCap() (string, int, bool) {
-	if most, ok := chordSessionCaps[i.Kind]; ok {
+	if most, ok := kindSessionCap(i.Kind); ok {
 		return string(i.Kind), most, true
 	}
 	if i.IsGeneratedDrill() {

@@ -375,6 +375,9 @@ func toGeneratedPracticeSessionItem(item domain.PracticeSessionItem, names userN
 	if tour := item.ProgressionKeys; tour != nil {
 		out.ProgressionKeys = toGeneratedProgressionKeys(*tour, locale)
 	}
+	if g := item.GuideTone; g != nil {
+		out.GuideTone = toGeneratedGuideTone(*g, locale)
+	}
 	return out
 }
 
