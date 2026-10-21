@@ -11,28 +11,36 @@ import (
 // cover what the golden files can't: the registry, and a rating outside the enum.
 
 func TestGraderFor(t *testing.T) {
-	want := map[PracticeItemKind]string{
-		PracticeItemKindPlayAlong:        "self_rating.v1",
-		PracticeItemKindChordChange:      "self_rating.v1",
-		PracticeItemKindChordVoicing:     "self_rating.v1",
-		PracticeItemKindRootFifth:        "self_rating.v1",
-		PracticeItemKindRootChange:       "self_rating.v1",
-		PracticeItemKindProgressionKeys:  "self_rating.v1",
-		PracticeItemKindExercise:         "exercise_option.v1",
-		PracticeItemKindFretboardCell:    "fretboard_cell.v2",
-		PracticeItemKindDiagramShape:     "diagram_shape.v1",
-		PracticeItemKindDiatonicChord:    "generated_choice.v1",
-		PracticeItemKindChordFunction:    "generated_choice.v1",
-		PracticeItemKindChartProgression: "generated_choice.v1",
-		PracticeItemKindHeardChord:       "generated_choice.v1",
-		PracticeItemKindHeardProgression: "generated_choice.v1",
-		PracticeItemKindGuideTone:        "timed_taps.v1",
-		PracticeItemKindFretboardNote:    "multi_tap.v1",
+	tests := []struct {
+		kind     PracticeItemKind
+		response PracticeResponseType
+		want     string
+	}{
+		{PracticeItemKindPlayAlong, PracticeResponseSelfRating, "self_rating.v1"},
+		{PracticeItemKindChordChange, PracticeResponseSelfRating, "self_rating.v1"},
+		{PracticeItemKindChordVoicing, PracticeResponseSelfRating, "self_rating.v1"},
+		{PracticeItemKindRootFifth, PracticeResponseSelfRating, "self_rating.v1"},
+		{PracticeItemKindRootChange, PracticeResponseSelfRating, "self_rating.v1"},
+		{PracticeItemKindProgressionKeys, PracticeResponseSelfRating, "self_rating.v1"},
+		{PracticeItemKindExercise, PracticeResponseOptionChoice, "exercise_option.v1"},
+		{PracticeItemKindFretboardCell, PracticeResponseNameTheNote, "fretboard_cell.v2"},
+		{PracticeItemKindFretboardCell, PracticeResponseFindTheNote, "fretboard_cell.v2"},
+		{PracticeItemKindFretboardCell, PracticeResponseMultiTap, "multi_tap.v2"},
+		{PracticeItemKindDiagramShape, PracticeResponseNameTheShape, "diagram_shape.v1"},
+		{PracticeItemKindDiatonicChord, PracticeResponseGeneratedChoice, "generated_choice.v1"},
+		{PracticeItemKindChordFunction, PracticeResponseGeneratedChoice, "generated_choice.v1"},
+		{PracticeItemKindChartProgression, PracticeResponseGeneratedChoice, "generated_choice.v1"},
+		{PracticeItemKindHeardChord, PracticeResponseGeneratedChoice, "generated_choice.v1"},
+		{PracticeItemKindHeardProgression, PracticeResponseGeneratedChoice, "generated_choice.v1"},
+		{PracticeItemKindGuideTone, PracticeResponseTimedTaps, "timed_taps.v1"},
+		{PracticeItemKindFretboardNote, PracticeResponseMultiTap, "multi_tap.v1"},
 	}
-	for kind, id := range want {
-		g, ok := GraderFor(kind)
-		require.True(t, ok, kind)
-		assert.Equal(t, id, g.ID(), kind)
+	for _, tt := range tests {
+		t.Run(string(tt.kind)+"/"+string(tt.response), func(t *testing.T) {
+			g, ok := GraderFor(tt.kind, tt.response)
+			require.True(t, ok)
+			assert.Equal(t, tt.want, g.ID())
+		})
 	}
 }
 
