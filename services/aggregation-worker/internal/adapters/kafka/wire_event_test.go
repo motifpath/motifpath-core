@@ -116,18 +116,18 @@ func TestToDomainEvent_PracticeItemAnswered(t *testing.T) {
 		},
 		{
 			name:    "multi tap with no place keeps its empty list",
-			payload: `{` + base + `,"item_key":"fretboard_note:6ea2d087-ab9c-59dc-9657-8546025414d2:E","response":{"response_type":"multi_tap","fret_window":{"from_fret":3},"cells":[],"latency_ms":4000}}`,
+			payload: `{` + base + `,"item_key":"fretboard_cell:6ea2d087-ab9c-59dc-9657-8546025414d2:6:5","response":{"response_type":"multi_tap","fret_window":{"from_fret":3},"cells":[],"latency_ms":4000}}`,
 			want: domain.PracticeAnswer{
-				ItemKey: "fretboard_note:6ea2d087-ab9c-59dc-9657-8546025414d2:E",
+				ItemKey: "fretboard_cell:6ea2d087-ab9c-59dc-9657-8546025414d2:6:5",
 				Response: domain.PracticeResponse{Type: domain.PracticeResponseMultiTap, FretWindowFrom: intPtr(3),
 					Cells: []domain.AnswerCell{}, LatencyMs: intPtr(4000)},
 			},
 		},
 		{
 			name:    "multi tap at the nut",
-			payload: `{` + base + `,"item_key":"fretboard_note:6ea2d087-ab9c-59dc-9657-8546025414d2:E","response":{"response_type":"multi_tap","fret_window":{"from_fret":0},"cells":[{"string":1,"fret":0}],"latency_ms":4000}}`,
+			payload: `{` + base + `,"item_key":"fretboard_cell:6ea2d087-ab9c-59dc-9657-8546025414d2:6:0","response":{"response_type":"multi_tap","fret_window":{"from_fret":0},"cells":[{"string":1,"fret":0}],"latency_ms":4000}}`,
 			want: domain.PracticeAnswer{
-				ItemKey: "fretboard_note:6ea2d087-ab9c-59dc-9657-8546025414d2:E",
+				ItemKey: "fretboard_cell:6ea2d087-ab9c-59dc-9657-8546025414d2:6:0",
 				Response: domain.PracticeResponse{Type: domain.PracticeResponseMultiTap, FretWindowFrom: intPtr(0),
 					Cells: []domain.AnswerCell{{String: 1, Fret: 0}}, LatencyMs: intPtr(4000)},
 			},

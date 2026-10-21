@@ -256,8 +256,6 @@ func (s *PracticeEvidenceService) goalOf(ctx context.Context, key domain.Practic
 	case domain.PracticeItemKindGuideTone:
 		target := domain.GuideToneTargetTempoBPM
 		return domain.ItemGoal{TargetTempoBPM: &target}, nil
-	case domain.PracticeItemKindFretboardNote:
-		return s.goalByWayAsked(ctx, key.Kind, domain.WayAsked(key.Kind, domain.PracticeResponse{Type: domain.PracticeResponseMultiTap}))
 	case domain.PracticeItemKindChordChange, domain.PracticeItemKindRootChange:
 		targets, err := s.reference.ChangeTargets(ctx)
 		return domain.ItemGoal{ChangeTargets: targets}, err

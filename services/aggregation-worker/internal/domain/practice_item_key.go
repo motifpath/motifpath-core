@@ -30,7 +30,6 @@ const (
 	PracticeItemKindRootFifth        PracticeItemKind = "root_fifth"
 	PracticeItemKindRootChange       PracticeItemKind = "root_change"
 	PracticeItemKindGuideTone        PracticeItemKind = "guide_tone"
-	PracticeItemKindFretboardNote    PracticeItemKind = "fretboard_note"
 	PracticeItemKindProgressionKeys  PracticeItemKind = "progression_keys"
 )
 
@@ -62,7 +61,6 @@ var practiceItemKeyPattern = regexp.MustCompile(`^(` +
 	`|root_fifth:` + uuidPattern + `:` + chordPattern +
 	`|root_change:` + uuidPattern + `:` + chordPattern + `:` + chordPattern +
 	`|guide_tone:` + uuidPattern + `:` + progressionKeyPattern +
-	`|fretboard_note:` + uuidPattern + `:(C|C#|D|D#|E|F|F#|G|G#|A|A#|B)` +
 	`|progression_keys:` + uuidPattern + `:` + progressionKeyPattern +
 	`)$`)
 
@@ -101,7 +99,7 @@ func (k PracticeItemKey) LayoutInstrumentID() string {
 // played or tapped on.
 var onALayout = map[PracticeItemKind]bool{
 	PracticeItemKindFretboardCell: true, PracticeItemKindRootFifth: true, PracticeItemKindRootChange: true,
-	PracticeItemKindGuideTone: true, PracticeItemKindFretboardNote: true, PracticeItemKindProgressionKeys: true,
+	PracticeItemKindGuideTone: true, PracticeItemKindProgressionKeys: true,
 }
 
 // ProgressionKey is the progression of the progression catalog the item is about:
@@ -137,7 +135,7 @@ func (k PracticeItemKey) DiagramIDs() []string {
 		return k.parts
 	case PracticeItemKindFretboardCell, PracticeItemKindExercise, PracticeItemKindDiatonicChord, PracticeItemKindChordFunction,
 		PracticeItemKindChartProgression, PracticeItemKindHeardChord, PracticeItemKindHeardProgression,
-		PracticeItemKindRootFifth, PracticeItemKindRootChange, PracticeItemKindGuideTone, PracticeItemKindFretboardNote,
+		PracticeItemKindRootFifth, PracticeItemKindRootChange, PracticeItemKindGuideTone,
 		PracticeItemKindProgressionKeys:
 		return nil
 	}
