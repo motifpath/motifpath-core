@@ -139,13 +139,13 @@ func TestMongoEventRepository_FindByEventID_RoundTripsPracticeEvents(t *testing.
 		domain.PracticeItemAnsweredEvent{
 			TrackingEventBase: practiceBase("a1000000-0000-4000-8000-000000000106", domain.EventTypePracticeItemAnswered, practiceStudentID, practiceAt),
 			PracticeSessionID: practiceSessionID,
-			ItemKey:           "fretboard_note:6ea2d087-ab9c-59dc-9657-8546025414d2:E",
+			ItemKey:           "fretboard_cell:6ea2d087-ab9c-59dc-9657-8546025414d2:6:0",
 			Response:          domain.PracticeResponse{Type: domain.PracticeResponseMultiTap, FretWindowFrom: intRef(0), Cells: []domain.TappedCell{{String: 1, Fret: 0}}, LatencyMs: intRef(4000)},
 		},
 		domain.PracticeItemAnsweredEvent{
 			TrackingEventBase: practiceBase("a1000000-0000-4000-8000-000000000107", domain.EventTypePracticeItemAnswered, practiceStudentID, practiceAt),
 			PracticeSessionID: practiceSessionID,
-			ItemKey:           "fretboard_note:6ea2d087-ab9c-59dc-9657-8546025414d2:E",
+			ItemKey:           "fretboard_cell:6ea2d087-ab9c-59dc-9657-8546025414d2:6:0",
 			Response:          domain.PracticeResponse{Type: domain.PracticeResponseMultiTap, FretWindowFrom: intRef(3), Cells: []domain.TappedCell{}, LatencyMs: intRef(4000)},
 		},
 		domain.PracticeSessionEndedEvent{

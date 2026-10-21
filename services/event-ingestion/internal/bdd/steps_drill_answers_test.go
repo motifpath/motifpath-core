@@ -114,8 +114,13 @@ func (w *world) submitMultiTap(name, places, note, fromStr string) error {
 		}
 		cells = append(cells, tappedCell{String: str, Fret: fret})
 	}
+	// Finding every instance is answered under the planned cell's key: the first
+	// place tapped, which must be the note named.
+	if len(cells) == 0 || guitarNoteAt(cells[0].String, cells[0].Fret) != note {
+		return fmt.Errorf("the first place tapped must be a %s, the cell asked", note)
+	}
 	latency := 5200
-	return w.submitPractice(w.answerEvent(name, fmt.Sprintf("fretboard_note:%s:%s", guitarID, note), &practiceResponse{
+	return w.submitPractice(w.answerEvent(name, fmt.Sprintf("fretboard_cell:%s:%d:%d", guitarID, cells[0].String, cells[0].Fret), &practiceResponse{
 		ResponseType: "multi_tap", FretWindow: &fretWindow{FromFret: from}, Cells: &cells, LatencyMs: &latency,
 	}))
 }
@@ -169,4 +174,12 @@ func (w *world) answerKeepsAnEmptyListOfTaps() error {
 		}
 	}
 	return nil
+}
+
+// guitarNoteAt is the note of a standard-tuned guitar's string at fret, spelled
+// with sharps; string 1 is the highest-pitched.
+func guitarNoteAt(str, fret int) string {
+	notes := []string{"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"}
+	openByString := map[int]int{1: 4, 2: 11, 3: 7, 4: 2, 5: 9, 6: 4}
+	return notes[(openByString[str]+fret)%12]
 }
