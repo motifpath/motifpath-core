@@ -35,6 +35,20 @@ type practiceItemStateDocument struct {
 	LastChangesPerMinute *int   `bson:"last_changes_per_minute"`
 	LastRating           string `bson:"last_rating"`
 	CleanMinutesInARow   int    `bson:"clean_minutes_in_a_row"`
+	// A progression key tour's tempo at effective speed, its keys clean at
+	// that tempo and the note value of its last clean take; absent for any
+	// other item.
+	TourTempoBPM  *int     `bson:"tour_tempo_bpm"`
+	TourCleanKeys []string `bson:"tour_clean_keys"`
+	TourNoteValue *string  `bson:"tour_note_value"`
+}
+
+// keyTour is the document's progression key tour; nil without one.
+func (d practiceItemStateDocument) keyTour() *domain.KeyTourState {
+	if d.TourTempoBPM == nil {
+		return nil
+	}
+	return &domain.KeyTourState{TempoBPM: *d.TourTempoBPM, CleanKeys: d.TourCleanKeys, NoteValue: tempoNoteValue(d.TourNoteValue)}
 }
 
 // lastChangeMinute is the document's last change minute; nil without one.
@@ -93,6 +107,7 @@ func (r *MongoPracticeItemStateReader) GetStates(ctx context.Context, studentID 
 			RightByResponse:      doc.RightByResponse,
 			BestChangesPerMinute: doc.BestChangesPerMinute,
 			LastChangeMinute:     doc.lastChangeMinute(),
+			KeyTour:              doc.keyTour(),
 		}
 	}
 	if err := cursor.Err(); err != nil {

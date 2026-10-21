@@ -246,9 +246,13 @@ func (s *PracticeSessionService) ComposePlan(ctx context.Context, caller domain.
 		return domain.PracticeSessionPlan{}, err
 	}
 	var boxes *chordBoxes
-	if s.harmony != nil && instrumentID == nil {
-		if c.reading, c.bassInstrumentID, err = s.harmony.reading(ctx, instrumentIDs, c.newTurn); err != nil {
-			return domain.PracticeSessionPlan{}, err
+	if s.harmony != nil {
+		// Harmony questions are read in the head only; a tour played in hand
+		// still sounds its chords in their voicings.
+		if instrumentID == nil {
+			if c.reading, c.bassInstrumentID, err = s.harmony.reading(ctx, instrumentIDs, c.newTurn); err != nil {
+				return domain.PracticeSessionPlan{}, err
+			}
 		}
 		boxes = s.harmony.boxes(ctx)
 		c.voicing = boxes.diagramOf

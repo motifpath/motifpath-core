@@ -57,6 +57,11 @@ func TestMongoPracticeItemStateReader_ReadsAggregationWorkerShape(t *testing.T) 
 			{Key: "best_changes_per_minute", Value: 38}, {Key: "last_change_tempo_bpm", Value: 45},
 			{Key: "last_changes_per_minute", Value: 20}, {Key: "last_rating", Value: "struggled"},
 		}),
+		stateDoc("alice", "progression_keys:g:I-V-vi-IV", bson.D{
+			{Key: "level", Value: "learning"}, {Key: "counted", Value: 2}, {Key: "box", Value: 1},
+			{Key: "due_at", Value: dueAt}, {Key: "last_at", Value: lastAt},
+			{Key: "tour_tempo_bpm", Value: 65}, {Key: "tour_clean_keys", Value: bson.A{"C", "F"}}, {Key: "tour_note_value", Value: "eighths"},
+		}),
 		// Different student — must never leak into alice's result.
 		stateDoc("bob", "play_along:d1", bson.D{
 			{Key: "level", Value: "fluent"}, {Key: "counted", Value: 6}, {Key: "box", Value: 4},
@@ -67,7 +72,7 @@ func TestMongoPracticeItemStateReader_ReadsAggregationWorkerShape(t *testing.T) 
 
 	reader := NewMongoPracticeItemStateReader(db)
 
-	states, err := reader.GetStates(ctx, "alice", []string{"play_along:d1", "play_along:d2", "play_along:d3", "fretboard_cell:g:6:3", "chord_change:c1:c2"})
+	states, err := reader.GetStates(ctx, "alice", []string{"play_along:d1", "play_along:d2", "play_along:d3", "fretboard_cell:g:6:3", "chord_change:c1:c2", "progression_keys:g:I-V-vi-IV"})
 	require.NoError(t, err)
 	bpm, eighths := 90, domain.TempoNoteValueEighths
 	assert.Equal(t, map[string]domain.PracticeItemState{
@@ -84,6 +89,11 @@ func TestMongoPracticeItemStateReader_ReadsAggregationWorkerShape(t *testing.T) 
 			DueAt: &dueAt, LastAt: &lastAt, Accuracy: 0.7, Fluency: 0.5,
 			BestChangesPerMinute: intPtr(38),
 			LastChangeMinute:     &domain.ChangeMinuteState{TempoBPM: 45, ChangesPerMinute: 20, Struggled: true},
+		},
+		"progression_keys:g:I-V-vi-IV": {
+			ItemKey: "progression_keys:g:I-V-vi-IV", RulesVersion: 1, Level: domain.KnowledgeLevelLearning, Counted: 2, Box: 1,
+			DueAt: &dueAt, LastAt: &lastAt, Accuracy: 0.7, Fluency: 0.5,
+			KeyTour: &domain.KeyTourState{TempoBPM: 65, CleanKeys: []string{"C", "F"}, NoteValue: &eighths},
 		},
 	}, states)
 
