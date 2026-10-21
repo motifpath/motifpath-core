@@ -1330,6 +1330,7 @@ INSERT INTO diagram_concepts (diagram_id,concept_id,linked_at) VALUES ('d59be890
 INSERT INTO "drill_templates" ("id", "key", "item_kind", "response_type", "rung", "second_way", "comes_back", "timed", "names") VALUES
   ('4c6ffb77-ee8b-5fda-b243-784f4209bc65', 'fretboard_cell:name_the_note', 'fretboard_cell', 'name_the_note', 'know', 'fretboard_cell:find_the_note', false, true, '{"en":"Name the note","pt_BR":"Diga a nota"}'),
   ('6e38da0b-df26-5aa8-ab14-3b6640582174', 'fretboard_cell:find_the_note', 'fretboard_cell', 'find_the_note', 'know', 'fretboard_cell:name_the_note', false, true, '{"en":"Find the note","pt_BR":"Ache a nota"}'),
+  ('f3e74d03-ed82-514f-99e0-8f7ed46f27d3', 'fretboard_cell:find_every_instance', 'fretboard_cell', 'multi_tap', 'know', NULL, false, false, '{"en":"Find every instance","pt_BR":"Ache todas as posições"}'),
   ('30abb724-d181-56d0-8255-889411531213', 'diagram_shape:name_the_shape', 'diagram_shape', 'name_the_shape', 'know', 'diagram_shape:find_the_degree', false, true, '{"en":"Name the shape","pt_BR":"Diga a forma"}'),
   ('c11e550e-1612-5414-ba78-298e158700d0', 'diagram_shape:find_the_degree', 'diagram_shape', 'find_the_degree', 'know', 'diagram_shape:name_the_shape', false, true, '{"en":"Find the degree","pt_BR":"Ache o grau"}'),
   ('eee88cdc-8c03-5246-b798-3ccf6941875f', 'exercise:text_response', 'exercise', 'option_choice', 'know', NULL, false, true, '{"en":"Text exercises","pt_BR":"Exercícios de texto"}'),

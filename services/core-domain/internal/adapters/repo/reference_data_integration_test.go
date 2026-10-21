@@ -124,7 +124,9 @@ func TestFreshInstall(t *testing.T) {
 	})
 
 	t.Run("the drill catalog has its templates and every exercise family's default fluent time, with fixed ids", func(t *testing.T) {
-		assert.Equal(t, 18, count(t, "SELECT count(*) FROM drill_templates"))
+		assert.Equal(t, 19, count(t, "SELECT count(*) FROM drill_templates"))
+		assert.Equal(t, 1, count(t, "SELECT count(*) FROM drill_templates WHERE key = 'fretboard_cell:find_every_instance' AND id = '"+catalogID("drill-template/fretboard_cell:find_every_instance")+"'"+
+			" AND rung = 'know' AND second_way IS NULL AND NOT timed AND NOT comes_back AND response_type = 'multi_tap'"))
 		assert.Equal(t, 1, count(t, "SELECT count(*) FROM drill_templates WHERE key = 'fretboard_cell:name_the_note' AND id = '"+catalogID("drill-template/fretboard_cell:name_the_note")+"'"))
 		assert.Equal(t, 1, count(t, "SELECT count(*) FROM drill_templates WHERE key = 'fretboard_cell:name_the_note' AND rung = 'know' AND second_way = 'fretboard_cell:find_the_note'"))
 		assert.Equal(t, 3, count(t, "SELECT count(*) FROM drill_templates WHERE rung = 'hear' AND second_way IS NULL"))
