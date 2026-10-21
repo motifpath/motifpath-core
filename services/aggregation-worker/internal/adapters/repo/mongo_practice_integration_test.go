@@ -423,7 +423,7 @@ func TestMongoPracticeItemStateRepository(t *testing.T) {
 	first := domain.ItemFold{Attempts: 1, Counted: 1, Accuracy: 1, Fluency: 0.9, Box: 1, DueAt: &due, LastAt: &last, BestCleanBPM: intPtr(90), BestCleanNoteValue: &eighths, BestChangesPerMinute: intPtr(48),
 		RightByResponse: map[string]int{"name_the_note": 2, "find_the_note": 1},
 		LastChangeTempoBPM: intPtr(55), LastChangesPerMinute: intPtr(48), LastRating: domain.SelfRatingAlmost, CleanMinutesInARow: 2,
-		TourTempoBPM: intPtr(65), TourCleanKeys: []string{"C", "F"}, TourNoteValue: &eighths}
+		TourTempoBPM: intPtr(65), TourCleanKeys: []string{"C", "F"}, TourNoteValue: &eighths, LastMusicKey: "Eb"}
 	require.NoError(t, repo.Put(ctx, studentA, itemKey, first))
 	replaced := first
 	replaced.Attempts, replaced.Counted, replaced.Box = 6, 5, 3
@@ -453,6 +453,8 @@ func TestMongoPracticeItemStateRepository(t *testing.T) {
 		assert.EqualValues(t, 65, doc["tour_tempo_bpm"])
 		assert.Equal(t, bson.A{"C", "F"}, doc["tour_clean_keys"])
 		assert.Equal(t, "eighths", doc["tour_note_value"])
+		// and a guide tone's last key by this one, to plan its next take in another.
+		assert.Equal(t, "Eb", doc["last_music_key"])
 		count, err := db.Collection("practice_item_state").CountDocuments(ctx, bson.D{})
 		require.NoError(t, err)
 		assert.EqualValues(t, 1, count)

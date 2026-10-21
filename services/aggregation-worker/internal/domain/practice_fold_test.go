@@ -445,6 +445,13 @@ func TestFoldEvidence_GuideTonesMeasureTempo(t *testing.T) {
 		})
 	}
 
+	t.Run("the last take's key is kept, right or not, so the next plan can avoid it", func(t *testing.T) {
+		inG := guideTake(onDay(1), false, 60, nil)
+		inG.Response.MusicKey = "G"
+
+		assert.Equal(t, "G", foldAll(t, goal, guideTake(onDay(0), true, 60, nil), inG).LastMusicKey)
+	})
+
 	t.Run("a late hit within its bar is never held against the student", func(t *testing.T) {
 		e := guideTake(onDay(0), true, 90, nil)
 		e.LatencyMs = ptr(2000)

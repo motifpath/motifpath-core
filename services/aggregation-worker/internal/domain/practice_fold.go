@@ -216,6 +216,9 @@ type ItemFold struct {
 	TourTempoBPM  *int
 	TourCleanKeys []string
 	TourNoteValue *NoteValue
+	// LastMusicKey is the key of a guide tone's last take, right or not, which
+	// its next take is never planned in; empty for any other item.
+	LastMusicKey string
 	// RightByResponse counts the right answers by the way the item was asked
 	// (WayAsked), so an item asked more than one way can next be asked the way it
 	// knows least. Both ways of a generated question share one response type, so
@@ -283,6 +286,9 @@ func foldAnswer(f ItemFold, e PracticeEvidence, goal ItemGoal) (ItemFold, error)
 	f.Attempts++
 	at := e.OccurredAt
 	f.LastAt = &at
+	if kindOf(e.ItemKey) == PracticeItemKindGuideTone {
+		f.LastMusicKey = e.Response.MusicKey
+	}
 
 	judged, timed := JudgeTimed(e, goal)
 	tempo := effectiveTempo(e.Response.TempoBPM, e.Response.NoteValue)
