@@ -234,7 +234,7 @@ func toEvidence(answer domain.PracticeAnswer, graderID string, graded domain.Gra
 // against its diagram's tempo, an exercise against its type's fluent times, and a
 // generated drill against the fluent times of each way it is asked, a chord or
 // root change against the change target in force when it was played, and a
-// progression key tour against the tour target. A chord played
+// progression key tour or a guide tone against its target tempo. A chord played
 // clean has no measure at all.
 func (s *PracticeEvidenceService) goalOf(ctx context.Context, key domain.PracticeItemKey, ref domain.PracticeReference) (domain.ItemGoal, error) {
 	switch key.Kind {
@@ -254,7 +254,8 @@ func (s *PracticeEvidenceService) goalOf(ctx context.Context, key domain.Practic
 		domain.PracticeItemKindHeardChord, domain.PracticeItemKindHeardProgression:
 		return s.goalByWayAsked(ctx, key.Kind, domain.WaysOf(key.Kind)...)
 	case domain.PracticeItemKindGuideTone:
-		return s.goalByWayAsked(ctx, key.Kind, domain.WayAsked(key.Kind, domain.PracticeResponse{Type: domain.PracticeResponseTimedTaps}))
+		target := domain.GuideToneTargetTempoBPM
+		return domain.ItemGoal{TargetTempoBPM: &target}, nil
 	case domain.PracticeItemKindFretboardNote:
 		return s.goalByWayAsked(ctx, key.Kind, domain.WayAsked(key.Kind, domain.PracticeResponse{Type: domain.PracticeResponseMultiTap}))
 	case domain.PracticeItemKindChordChange, domain.PracticeItemKindRootChange:

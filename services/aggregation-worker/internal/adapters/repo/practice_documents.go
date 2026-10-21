@@ -385,6 +385,8 @@ type practiceItemStateDocument struct {
 	TourTempoBPM  *int     `bson:"tour_tempo_bpm,omitempty"`
 	TourCleanKeys []string `bson:"tour_clean_keys,omitempty"`
 	TourNoteValue *string  `bson:"tour_note_value,omitempty"`
+	// A guide tone's last key, which its next take is never planned in.
+	LastMusicKey string `bson:"last_music_key,omitempty"`
 	// RightByResponse counts right answers by the way the item was asked.
 	RightByResponse map[string]int `bson:"right_by_response,omitempty"`
 	UpdatedAt       time.Time      `bson:"updated_at"`
@@ -409,6 +411,7 @@ func (d practiceItemStateDocument) toDomain() domain.ItemFold {
 		TourTempoBPM:         d.TourTempoBPM,
 		TourCleanKeys:        d.TourCleanKeys,
 		TourNoteValue:        domainNoteValue(d.TourNoteValue),
+		LastMusicKey:         d.LastMusicKey,
 		RightByResponse:      d.RightByResponse,
 	}
 }

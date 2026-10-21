@@ -21,6 +21,7 @@ func registerDrillAnswerSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" submits a practice\.item_answered event skipping exercise "([^"]+)" because its sound failed to load$`, w.submitSkippedExercise)
 	sc.Step(`^"([^"]+)" submits a practice\.item_answered event picking "([^"]+)" among `+list+` for the chord on (\S+) in (\S+)$`, w.submitGeneratedChoice)
 	sc.Step(`^"([^"]+)" submits a practice\.item_answered event for a guide-tone take of "([^"]+)" in (\S+) at (\d+) BPM with no taps$`, w.submitEmptyGuideToneTake)
+	sc.Step(`^"([^"]+)" submits a practice\.item_answered event for a guide-tone take of "([^"]+)" in (\S+) at (\d+) BPM in (\w+) with no taps$`, w.submitEmptyGuideToneTakeInNoteValue)
 	sc.Step(`^"([^"]+)" submits a practice\.item_answered event tapping ((?:string \d+ at fret \d+(?:, | and )?)+) for the note "([^"]+)" in the window from fret (\d+)$`, w.submitMultiTap)
 
 	sc.Step(`^the stored and published practice\.item_answered event keeps the choices `+list+`$`, w.answerKeepsTheChoices)
@@ -83,6 +84,16 @@ func (w *world) submitEmptyGuideToneTake(name, progression, key, tempoStr string
 	}
 	return w.submitPractice(w.answerEvent(name, fmt.Sprintf("guide_tone:%s:%s", guitarID, progression), &practiceResponse{
 		ResponseType: "timed_taps", MusicKey: key, Tone: "3", TempoBPM: tempo, Taps: &[]timedTap{},
+	}))
+}
+
+func (w *world) submitEmptyGuideToneTakeInNoteValue(name, progression, key, tempoStr, noteValue string) error {
+	tempo, err := strconv.Atoi(tempoStr)
+	if err != nil {
+		return err
+	}
+	return w.submitPractice(w.answerEvent(name, fmt.Sprintf("guide_tone:%s:%s", guitarID, progression), &practiceResponse{
+		ResponseType: "timed_taps", MusicKey: key, Tone: "3", TempoBPM: tempo, NoteValue: noteValue, Taps: &[]timedTap{},
 	}))
 }
 
