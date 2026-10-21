@@ -2,7 +2,10 @@ package application
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+
+	"github.com/google/uuid"
 
 	"github.com/motifpath/aggregation-worker/internal/domain"
 	"github.com/motifpath/aggregation-worker/internal/ports"
@@ -61,7 +64,7 @@ func (s *PracticeEvidenceService) process(ctx context.Context, answer domain.Pra
 		log.InfoContext(ctx, "practice item not answered, no evidence", "not_answered_reason", answer.Response.Reason)
 		return "", nil
 	}
-	grader, ok := domain.GraderFor(key.Kind)
+	grader, ok := domain.GraderFor(key.Kind, answer.Response.Type)
 	if !ok {
 		log.InfoContext(ctx, "no grader for this item kind yet, dropping", "kind", key.Kind)
 		return "", nil
@@ -76,20 +79,53 @@ func (s *PracticeEvidenceService) process(ctx context.Context, answer domain.Pra
 		log.InfoContext(ctx, "practice answer rejected by its grader", "grader", grader.ID(), "reason", result.Rejection)
 		return "", nil
 	}
-	goal, err := s.goalOf(ctx, key, ref)
-	if err != nil {
-		return "", err
+	if result.EvidenceByItem != nil {
+		return "", s.storeOnEveryItem(ctx, answer, grader.ID(), result.EvidenceByItem, ref)
 	}
-
-	evidence := toEvidence(answer, grader.ID(), result.Evidence)
-	inserted, err := s.evidence.Insert(ctx, evidence)
-	if err != nil {
-		return "", err
-	}
-	if err := s.foldInto(ctx, evidence, goal, inserted); err != nil {
+	if err := s.store(ctx, key, toEvidence(answer, grader.ID(), result.Evidence), ref); err != nil {
 		return "", err
 	}
 	return domain.TimedDrillTemplate(key, answer.Response, ref), nil
+}
+
+// store inserts one item's evidence and folds it into the item's state.
+func (s *PracticeEvidenceService) store(ctx context.Context, key domain.PracticeItemKey, evidence domain.PracticeEvidence, ref domain.PracticeReference) error {
+	goal, err := s.goalOf(ctx, key, ref)
+	if err != nil {
+		return err
+	}
+	inserted, err := s.evidence.Insert(ctx, evidence)
+	if err != nil {
+		return err
+	}
+	return s.foldInto(ctx, evidence, goal, inserted)
+}
+
+// storeOnEveryItem stores an answer graded on several items: each item gets its
+// own evidence, identified by a name-based UUID of its key under the event id, so
+// a redelivered event still counts once on every item.
+func (s *PracticeEvidenceService) storeOnEveryItem(ctx context.Context, answer domain.PracticeAnswer, graderID string, graded []domain.ItemEvidence, ref domain.PracticeReference) error {
+	eventID, err := uuid.Parse(answer.EventID)
+	if err != nil {
+		return fmt.Errorf("practice answer %q has no event id to derive its evidence ids from: %w", answer.EventID, err)
+	}
+	for _, g := range graded {
+		key, err := domain.ParsePracticeItemKey(g.ItemKey)
+		if err != nil {
+			return fmt.Errorf("grader %s graded an invalid item key %q: %w", graderID, g.ItemKey, err)
+		}
+		evidence := toEvidence(answer, graderID, g.Evidence)
+		evidence.ItemKey = g.ItemKey
+		evidence.EvidenceID = uuid.NewSHA1(eventID, []byte(g.ItemKey)).String()
+		if evidence.LatencyMs == nil {
+			// A tap time only offsets a latency; untimed evidence keeps none.
+			evidence.TapMs = nil
+		}
+		if err := s.store(ctx, key, evidence, ref); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // referenceFor reads the reference data the item's key points at.
