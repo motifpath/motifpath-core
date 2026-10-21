@@ -41,6 +41,9 @@ type practiceItemStateDocument struct {
 	TourTempoBPM  *int     `bson:"tour_tempo_bpm"`
 	TourCleanKeys []string `bson:"tour_clean_keys"`
 	TourNoteValue *string  `bson:"tour_note_value"`
+	// A guide tone's last key, which its next take is never planned in;
+	// absent for any other item.
+	LastMusicKey string `bson:"last_music_key"`
 }
 
 // keyTour is the document's progression key tour; nil without one.
@@ -108,6 +111,7 @@ func (r *MongoPracticeItemStateReader) GetStates(ctx context.Context, studentID 
 			BestChangesPerMinute: doc.BestChangesPerMinute,
 			LastChangeMinute:     doc.lastChangeMinute(),
 			KeyTour:              doc.keyTour(),
+			LastMusicKey:         doc.LastMusicKey,
 		}
 	}
 	if err := cursor.Err(); err != nil {
