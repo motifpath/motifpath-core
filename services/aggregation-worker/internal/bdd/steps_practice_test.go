@@ -28,7 +28,8 @@ func registerPracticeSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]*)" rates a take of play-along "([^"]*)" as "([^"]*)" without a tempo$`, w.ratesATakeWithoutATempo)
 	sc.Step(`^"([^"]*)" practises the play-along "([^"]*)" and it is in box (\d+)$`, w.practisesThePlayAlongInBox)
 	sc.Step(`^"([^"]*)"'s best clean tempo on "([^"]*)" is (\d+) BPM$`, w.bestCleanTempoIs)
-	sc.Step(`^"([^"]*)" rates a take of (?:play-along )?"([^"]*)" as "([^"]*)" at (\d+) BPM in (\w+)$`, w.ratesATakeInNoteValue)
+	// A note value is a lower-case word (eighths); a key, a capital (G, Bb).
+	sc.Step(`^"([^"]*)" rates a take of (?:play-along )?"([^"]*)" as "([^"]*)" at (\d+) BPM in ([a-z_]+)$`, w.ratesATakeInNoteValue)
 	// The same words set up a best clean tempo in a note value (Given) or check one (Then).
 	sc.Given(`^"([^"]*)"'s best clean tempo on "([^"]*)" is (\d+) BPM in (\w+)$`, w.hasBestCleanTempoInNoteValue)
 	sc.Then(`^"([^"]*)"'s best clean tempo on "([^"]*)" is (\d+) BPM in (\w+)$`, w.bestCleanTempoInNoteValueIs)

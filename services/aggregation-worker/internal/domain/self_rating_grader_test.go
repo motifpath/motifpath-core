@@ -17,6 +17,7 @@ func TestGraderFor(t *testing.T) {
 		PracticeItemKindChordVoicing:     "self_rating.v1",
 		PracticeItemKindRootFifth:        "self_rating.v1",
 		PracticeItemKindRootChange:       "self_rating.v1",
+		PracticeItemKindProgressionKeys:  "self_rating.v1",
 		PracticeItemKindExercise:         "exercise_option.v1",
 		PracticeItemKindFretboardCell:    "fretboard_cell.v2",
 		PracticeItemKindDiagramShape:     "diagram_shape.v1",

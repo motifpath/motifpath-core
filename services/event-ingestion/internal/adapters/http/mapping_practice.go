@@ -619,7 +619,7 @@ func toOptionChoiceResponse(r rawPracticeResponse) (domain.PracticeResponse, err
 }
 
 func toSelfRatingResponse(r rawPracticeResponse) (domain.PracticeResponse, error) {
-	if property := r.strayProperty("rating", "tempo_bpm", "note_value", "changes_per_minute"); property != "" {
+	if property := r.strayProperty("rating", "tempo_bpm", "note_value", "changes_per_minute", "music_key"); property != "" {
 		return invalidResponse(property + " is not a property of self_rating")
 	}
 	if r.Rating == nil {
@@ -645,5 +645,14 @@ func toSelfRatingResponse(r rawPracticeResponse) (domain.PracticeResponse, error
 		}
 		noteValue = &v
 	}
-	return domain.PracticeResponse{Type: domain.PracticeResponseSelfRating, Rating: rating, TempoBPM: r.TempoBPM, NoteValue: noteValue, ChangesPerMinute: r.ChangesPerMinute}, nil
+	// A progression key tour take names the key it was played in.
+	var musicKey string
+	if r.MusicKey != nil {
+		if !musicKeys[*r.MusicKey] {
+			return invalidResponse("music_key must be a major key spelled as C, Db, D, Eb, E, F, F#, G, Ab, A, Bb or B")
+		}
+		musicKey = *r.MusicKey
+	}
+	return domain.PracticeResponse{Type: domain.PracticeResponseSelfRating, Rating: rating, TempoBPM: r.TempoBPM, NoteValue: noteValue,
+		ChangesPerMinute: r.ChangesPerMinute, MusicKey: musicKey}, nil
 }

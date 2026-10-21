@@ -40,6 +40,8 @@ type PracticeEvidence struct {
 	TempoBPM          *int
 	NoteValue         *NoteValue
 	ChangesPerMinute  *int
+	// MusicKey is the key a progression key tour take was played in.
+	MusicKey string
 	// AnswerKey is what a right answer was, for auto-graded evidence.
 	AnswerKey *AnswerKey
 }
@@ -207,6 +209,13 @@ type ItemFold struct {
 	LastChangesPerMinute *int
 	LastRating           SelfRating
 	CleanMinutesInARow   int
+	// TourTempoBPM, TourCleanKeys and TourNoteValue are a progression key tour's
+	// state: its tempo at effective speed, its keys clean at that tempo in the
+	// tour's order, and the note value of its last clean take. All are unset for
+	// any other item.
+	TourTempoBPM  *int
+	TourCleanKeys []string
+	TourNoteValue *NoteValue
 	// RightByResponse counts the right answers by the way the item was asked
 	// (WayAsked), so an item asked more than one way can next be asked the way it
 	// knows least. Both ways of a generated question share one response type, so
@@ -297,6 +306,9 @@ func foldTake(f ItemFold, e PracticeEvidence, goal ItemGoal) ItemFold {
 	f.Attempts++
 	at := e.OccurredAt
 	f.LastAt = &at
+	if kindOf(e.ItemKey) == PracticeItemKindProgressionKeys {
+		f.foldTour(e, goal)
+	}
 
 	measure, best, target := effectiveTempo(e.TempoBPM, e.NoteValue), effectiveTempo(f.BestCleanBPM, f.BestCleanNoteValue), goal.TargetTempoBPM
 	if e.ChangesPerMinute != nil {

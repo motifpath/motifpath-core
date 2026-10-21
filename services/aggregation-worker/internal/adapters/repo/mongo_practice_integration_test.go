@@ -355,7 +355,14 @@ func TestMongoPracticeEvidenceRepository(t *testing.T) {
 		Correct:  boolPtr(false), LatencyMs: intPtr(3000),
 		AnswerKey: &domain.AnswerKey{NoteName: "G", FretWindowFrom: intPtr(3), Cells: []domain.AnswerCell{{String: 1, Fret: 3}}},
 	}
-	for _, e := range []domain.PracticeEvidence{later, earlier, other, timed, challenge, named, found, namedAmong, heard, tappedAlong, everywhere, noTaps, noPlaces} {
+	toured := domain.PracticeEvidence{
+		EvidenceID: "e0000000-0000-4000-8000-000000000014", StudentID: studentA,
+		ItemKey: "progression_keys:" + guitar + ":I-V-vi-IV", Source: domain.EvidenceSourceSelfAssessed, OccurredAt: monday,
+		GraderID: "self_rating.v1",
+		Response: domain.PracticeResponse{Type: domain.PracticeResponseSelfRating, Rating: domain.SelfRatingClean, TempoBPM: intPtr(60), MusicKey: "Bb"},
+		Rating:   domain.SelfRatingClean, TempoBPM: intPtr(60), MusicKey: "Bb",
+	}
+	for _, e := range []domain.PracticeEvidence{later, earlier, other, timed, challenge, named, found, namedAmong, heard, tappedAlong, everywhere, noTaps, noPlaces, toured} {
 		inserted, err := repo.Insert(ctx, e)
 		require.NoError(t, err)
 		require.True(t, inserted)
@@ -386,7 +393,7 @@ func TestMongoPracticeEvidenceRepository(t *testing.T) {
 	})
 
 	t.Run("the drill v2 answers and a note named among choices keep their responses and answer keys", func(t *testing.T) {
-		for _, e := range []domain.PracticeEvidence{namedAmong, heard, tappedAlong, everywhere, noTaps, noPlaces} {
+		for _, e := range []domain.PracticeEvidence{namedAmong, heard, tappedAlong, everywhere, noTaps, noPlaces, toured} {
 			got, err := repo.ListForItem(ctx, studentA, e.ItemKey)
 			require.NoError(t, err)
 			assert.Equal(t, []domain.PracticeEvidence{e}, got, e.ItemKey)
@@ -415,7 +422,8 @@ func TestMongoPracticeItemStateRepository(t *testing.T) {
 	last := time.Date(2026, 10, 5, 9, 0, 0, 0, time.UTC)
 	first := domain.ItemFold{Attempts: 1, Counted: 1, Accuracy: 1, Fluency: 0.9, Box: 1, DueAt: &due, LastAt: &last, BestCleanBPM: intPtr(90), BestCleanNoteValue: &eighths, BestChangesPerMinute: intPtr(48),
 		RightByResponse: map[string]int{"name_the_note": 2, "find_the_note": 1},
-		LastChangeTempoBPM: intPtr(55), LastChangesPerMinute: intPtr(48), LastRating: domain.SelfRatingAlmost, CleanMinutesInARow: 2}
+		LastChangeTempoBPM: intPtr(55), LastChangesPerMinute: intPtr(48), LastRating: domain.SelfRatingAlmost, CleanMinutesInARow: 2,
+		TourTempoBPM: intPtr(65), TourCleanKeys: []string{"C", "F"}, TourNoteValue: &eighths}
 	require.NoError(t, repo.Put(ctx, studentA, itemKey, first))
 	replaced := first
 	replaced.Attempts, replaced.Counted, replaced.Box = 6, 5, 3
@@ -441,6 +449,10 @@ func TestMongoPracticeItemStateRepository(t *testing.T) {
 		assert.Equal(t, "almost", doc["last_rating"])
 		assert.EqualValues(t, 2, doc["clean_minutes_in_a_row"])
 		assert.EqualValues(t, 48, doc["best_changes_per_minute"], "and the best clean count by this one")
+		// core-domain reads a progression key tour by these names, to plan its next take.
+		assert.EqualValues(t, 65, doc["tour_tempo_bpm"])
+		assert.Equal(t, bson.A{"C", "F"}, doc["tour_clean_keys"])
+		assert.Equal(t, "eighths", doc["tour_note_value"])
 		count, err := db.Collection("practice_item_state").CountDocuments(ctx, bson.D{})
 		require.NoError(t, err)
 		assert.EqualValues(t, 1, count)

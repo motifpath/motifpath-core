@@ -302,6 +302,26 @@ func TestPracticeEvidenceService_GradesAndFoldsAMinuteOfChordChanges(t *testing.
 	assert.InDelta(t, 0.25, fold.Fluency, 1e-9)
 }
 
+func TestPracticeEvidenceService_GradesAndFoldsAProgressionKeyTourTake(t *testing.T) {
+	f := newPracticeFixture()
+	key := "progression_keys:" + guitarLayout + ":I-V-vi-IV"
+	tempo := 60
+	answer := domain.PracticeAnswer{
+		EventID: "e0000000-0000-4000-8000-000000000041", StudentID: alice, OccurredAt: monday, ItemKey: key,
+		Response: domain.PracticeResponse{Type: domain.PracticeResponseSelfRating, Rating: domain.SelfRatingClean, TempoBPM: &tempo, MusicKey: "C"},
+	}
+
+	require.NoError(t, f.service.Process(context.Background(), answer))
+
+	require.Len(t, f.evidence.stored, 1)
+	assert.Equal(t, "C", f.evidence.stored[0].MusicKey)
+	fold, ok := f.fold(t, key)
+	require.True(t, ok)
+	assert.Equal(t, []string{"C"}, fold.TourCleanKeys)
+	// Fluency is measured against the tour target: 60 of 100.
+	assert.InDelta(t, 0.6, fold.Fluency, 1e-9)
+}
+
 func challengeAnswer(eventID string, at time.Time, optionID string, latency int) domain.PracticeAnswer {
 	return domain.PracticeAnswer{
 		EventID:        eventID,

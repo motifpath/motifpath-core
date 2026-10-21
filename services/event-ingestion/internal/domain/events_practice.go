@@ -21,6 +21,7 @@ var practiceItemKeyPattern = regexp.MustCompile(`^(` +
 	`|root_change:` + uuidPattern + `:` + chordPattern + `:` + chordPattern +
 	`|guide_tone:` + uuidPattern + `:` + progressionKeyPattern +
 	`|fretboard_note:` + uuidPattern + `:(C|C#|D|D#|E|F|F#|G|G#|A|A#|B)` +
+	`|progression_keys:` + uuidPattern + `:` + progressionKeyPattern +
 	`)$`)
 
 const (
@@ -135,8 +136,8 @@ type PracticeResponse struct {
 	Options []string
 	Choice  string
 
-	// MusicKey (generated_choice, timed_taps) is the major key the question was asked
-	// in, when its item doesn't fix one.
+	// MusicKey (generated_choice, timed_taps, self_rating) is the major key the
+	// question was asked or the take was played in, when its item doesn't fix one.
 	MusicKey string
 
 	// Tone and Taps (timed_taps) are the chord tone asked and every tap of the take;
