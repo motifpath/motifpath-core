@@ -56,6 +56,14 @@ type world struct {
 	chordDrills       *chordDrillWorld
 	// tourItemKey is the progression key tour a step named.
 	tourItemKey string
+	// guideToneKey is the guide tone a step named, and guideToneKeys the music
+	// keys it was planned in over repeated sessions.
+	guideToneKey  string
+	guideToneKeys []string
+	// pickedGuideTones are the guide tones planned for different students, and
+	// guideTonePlans the responses of repeated sessions in the head.
+	pickedGuideTones []generated.PlannedGuideTone
+	guideTonePlans   []generated.CreatePracticeSessionPlan200JSONResponse
 	shapeWorld  *diagramShapeWorld
 	songCharts  *songChartWorld
 	// dueDays holds the cells a scenario made due on two days.
@@ -342,7 +350,8 @@ func newWorld() *world {
 	practiceSession := application.NewPracticeSessionService(w.instruments, w.studentPaths, w.courseEnrollments, w.paths, w.courseVersions, w.nodes, w.diagrams, w.exercises, w.rollup, catalogDrillTemplates{}, w.tapChecks, w.feltRatings, w.practiceActivity, newID, now).
 		WithHarmonyDrills(catalogProgressions{}, &catalogChordRepository{newFakeChordCatalog()}, harmonyLayouts{}).
 		WithChordDrills(chordDrillCatalog{}, w.instruments).
-		WithProgressionKeyTours(w.instruments)
+		WithProgressionKeyTours(w.instruments).
+		WithGuideTones(w.instruments)
 	w.summaryNow = fixedNow
 	summaryNow := func() time.Time { return w.summaryNow }
 	summaryRollup := application.NewKnowledgeRollupService(w.knowledge, w.knowledgeEdges, w.practiceItems, w.practiceStates, summaryNow)
