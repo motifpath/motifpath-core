@@ -1371,13 +1371,16 @@ func (e FretWindowFromFret) Valid() bool {
 
 // Defines values for FretboardDrill.
 const (
-	FindTheNote FretboardDrill = "find_the_note"
-	NameTheNote FretboardDrill = "name_the_note"
+	FindEveryInstance FretboardDrill = "find_every_instance"
+	FindTheNote       FretboardDrill = "find_the_note"
+	NameTheNote       FretboardDrill = "name_the_note"
 )
 
 // Valid indicates whether the value is a known member of the FretboardDrill enum.
 func (e FretboardDrill) Valid() bool {
 	switch e {
+	case FindEveryInstance:
+		return true
 	case FindTheNote:
 		return true
 	case NameTheNote:
@@ -1822,6 +1825,24 @@ func (e PathDetailLevel) Valid() bool {
 	case PathDetailLevelExpert:
 		return true
 	case PathDetailLevelIntermediate:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PlannedGuideToneTone.
+const (
+	PlannedGuideToneToneN3 PlannedGuideToneTone = "3"
+	PlannedGuideToneToneN7 PlannedGuideToneTone = "7"
+)
+
+// Valid indicates whether the value is a known member of the PlannedGuideToneTone enum.
+func (e PlannedGuideToneTone) Valid() bool {
+	switch e {
+	case PlannedGuideToneToneN3:
+		return true
+	case PlannedGuideToneToneN7:
 		return true
 	default:
 		return false
@@ -5675,7 +5696,9 @@ type FretWindow struct {
 type FretWindowFromFret int
 
 // FretboardDrill How a fretboard cell is asked. name_the_note = the cell is shown and the student names
-// its note; find_the_note = the note and string are named and the student taps the cell.
+// its note; find_the_note = the note and string are named and the student taps the cell;
+// find_every_instance = the cell's note is named and the student taps every place of it in
+// the fret window, on a board with nothing marked and without being told how many there are.
 type FretboardDrill string
 
 // FretboardMap How well the student knows each cell of an instrument's fretboard.
@@ -5706,7 +5729,9 @@ type FretboardMapCell struct {
 	// - fretboard_cell:<layout instrument id>:<string>:<fret> — a generated fretboard cell.
 	//   The instrument is the one whose fretboard layout the cell belongs to, so instruments
 	//   that share a layout share the cell. Strings are numbered from 1, the highest-pitched;
-	//   fret 0 is the open string.
+	//   fret 0 is the open string. A cell asked to find every place of its note in a fret
+	//   window is answered under its own key, and that answer is graded on every cell of the
+	//   window.
 	// - exercise:<exercise id> — an authored exercise.
 	// - play_along:<diagram id> — playing a diagram along with its playback, at a tempo.
 	// - chord_change:<from diagram id>:<to diagram id> — changing between two chord diagrams.
@@ -5733,8 +5758,9 @@ type FretboardMapCell struct {
 	// - guide_tone:<layout instrument id>:<progression key> — tapping a chord tone of each chord
 	//   of a progression in time with its playback. The key, the tone and the tempo are picked
 	//   each time.
-	// - fretboard_note:<layout instrument id>:<note> — finding every place of a note within a
-	//   fret window. The window is picked each time.
+	// - fretboard_note:<layout instrument id>:<note> — retired before it was installed: finding
+	//   every place of a note is a way of asking a fretboard cell. No item has this key; it
+	//   stays only until the multi_tap.v1 golden cases that use it are removed.
 	// - progression_keys:<layout instrument id>:<progression key> — playing a progression along
 	//   with its backing, key after key around the cycle of fourths. The key is the tour's next
 	//   one, sent back with each take.
@@ -6737,6 +6763,83 @@ type PlannedChordVoicing struct {
 	DiagramId openapi_types.UUID `json:"diagram_id"`
 }
 
+// PlannedGuideTone A progression played once in a key, one chord a bar after a bar of count-in, while the
+// student taps the asked tone of each chord on an empty fretboard as it sounds (kind
+// guide_tone), graded by timed_taps.v1. It names the chords, the key and the tone, never the
+// notes to tap or their places. The item ends after a right take or after takes takes, all in
+// music_key; each take is answered with a timed_taps response sending music_key, tone, the
+// tempo and note value it played at, and the taps.
+type PlannedGuideTone struct {
+	// Bars Every bar of the progression, in order, played once a take.
+	Bars []struct {
+		// Chord The bar's chord symbol in music_key, spelled as the chord catalog spells roots. It
+		// is shown and sounded.
+		Chord string `json:"chord"`
+
+		// Numeral The bar's numeral in the progression catalog; a 7 marks a dominant seventh.
+		Numeral string `json:"numeral"`
+	} `json:"bars"`
+
+	// FretWindow The frets a fretboard drill is asked within, so its board is drawn at full tap size without
+	// scrolling sideways. Five frets, plus the open string when the window starts at the nut: a
+	// from_fret of 0 covers the open string and frets 1 to 5; any other from_fret covers it and the
+	// next four frets, such as 3 to 7. Only the window's places can be tapped, and the question
+	// names it. Every cell of the same drill and layout in a plan carries the same window, and the
+	// cell's fret is always inside it.
+	FretWindow FretWindow `json:"fret_window"`
+
+	// LayoutInstrumentId The instrument whose fretboard layout is tapped on: guitar or electric bass. On electric
+	// bass each chord's root also plays under it in the bass voice.
+	LayoutInstrumentId openapi_types.UUID `json:"layout_instrument_id"`
+
+	// MusicKey A major key. In a response, the key a question was asked in or a take was played in when
+	// its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
+	// tone or a progression key tour; absent in a response to any other item. A planned question
+	// always names its key.
+	MusicKey MusicKey `json:"music_key"`
+
+	// Progression The progression played.
+	Progression struct {
+		// Key The progression's key in the progression catalog, such as ii-V-I.
+		Key string `json:"key"`
+
+		// Name The progression's name in the student's language, such as "ii–V–I".
+		Name string `json:"name"`
+	} `json:"progression"`
+
+	// Takes The most takes of the item this session plays.
+	Takes int `json:"takes"`
+
+	// TargetTempoBpm The tempo a right take's effective speed is measured against for fluency, in quarters,
+	// the same for every progression and layout.
+	TargetTempoBpm int `json:"target_tempo_bpm"`
+
+	// TempoBpm The tempo the first take starts at, in quarter notes per minute, by the student's level
+	// on the item: 60 while new or learning, 72 once accurate, 90 once fluent. The student may
+	// change it, and the note value, before any take.
+	TempoBpm int `json:"tempo_bpm"`
+
+	// Tone The chord tone asked of every chord: 3 = its third, until the student is accurate on the
+	// item; 7 = its seventh in the key from then on (the major seventh of I and IV, the minor
+	// seventh of every other chord and of a dominant seventh).
+	Tone PlannedGuideToneTone `json:"tone"`
+
+	// Voicings One voicing per distinct chord of bars.
+	Voicings []struct {
+		// Chord The chord symbol, as it appears in bars.
+		Chord string `json:"chord"`
+
+		// DiagramId The chord catalog voicing the playback sounds: the chord's open voicing if the
+		// catalog has one, else its lowest-difficulty voicing.
+		DiagramId openapi_types.UUID `json:"diagram_id"`
+	} `json:"voicings"`
+}
+
+// PlannedGuideToneTone The chord tone asked of every chord: 3 = its third, until the student is accurate on the
+// item; 7 = its seventh in the key from then on (the major seventh of I and IV, the minor
+// seventh of every other chord and of a dominant seventh).
+type PlannedGuideToneTone string
+
 // PlannedProgressionKeys A progression played along with, key after key around the cycle of fourths (kind
 // progression_keys), self-rated take by take. The plan lists the whole tour, so the client
 // moves to the next key without asking again: after a clean take at an effective speed at
@@ -6925,7 +7028,9 @@ type PracticeInstrumentCard struct {
 //   - fretboard_cell:<layout instrument id>:<string>:<fret> — a generated fretboard cell.
 //     The instrument is the one whose fretboard layout the cell belongs to, so instruments
 //     that share a layout share the cell. Strings are numbered from 1, the highest-pitched;
-//     fret 0 is the open string.
+//     fret 0 is the open string. A cell asked to find every place of its note in a fret
+//     window is answered under its own key, and that answer is graded on every cell of the
+//     window.
 //
 //   - exercise:<exercise id> — an authored exercise.
 //
@@ -6965,8 +7070,9 @@ type PracticeInstrumentCard struct {
 //     of a progression in time with its playback. The key, the tone and the tempo are picked
 //     each time.
 //
-//   - fretboard_note:<layout instrument id>:<note> — finding every place of a note within a
-//     fret window. The window is picked each time.
+//   - fretboard_note:<layout instrument id>:<note> — retired before it was installed: finding
+//     every place of a note is a way of asking a fretboard cell. No item has this key; it
+//     stays only until the multi_tap.v1 golden cases that use it are removed.
 //
 //   - progression_keys:<layout instrument id>:<progression key> — playing a progression along
 //     with its backing, key after key around the cycle of fourths. The key is the tour's next
@@ -6983,7 +7089,8 @@ type PracticeInstrumentCard struct {
 type PracticeItemKey = string
 
 // PracticeItemKind The kind of a practice item, the prefix of its item key. The set is open: a new kind
-// is added with its key scheme, grader and golden cases.
+// is added with its key scheme, grader and golden cases. fretboard_note is retired and has
+// no items.
 type PracticeItemKind string
 
 // PracticeNextStep One suggested next step, framed as an opportunity, never as a failure.
@@ -7163,8 +7270,8 @@ type PracticeRung string
 
 // PracticeSessionItem One item of a composed session, with what the client needs to present it. Exactly
 // one of fretboard_cell, exercise, play_along, diagram_shape, generated_choice,
-// chord_voicing, chord_change, root_fifth, root_change and progression_keys is present,
-// matching kind:
+// chord_voicing, chord_change, root_fifth, root_change, progression_keys and guide_tone is
+// present, matching kind:
 // generated_choice for a diatonic chord, a chord function, a chart progression, a heard
 // chord or a heard progression.
 type PracticeSessionItem struct {
@@ -7230,14 +7337,21 @@ type PracticeSessionItem struct {
 	Exercise *Exercise `json:"exercise,omitempty"`
 
 	// FretboardCell Present when kind is fretboard_cell. The drill is the way of asking the cell has
-	// the fewer right answers so far, name_the_note on a tie. The fret window is the one
+	// the fewest right answers so far: name_the_note, then find_the_note, then
+	// find_every_instance on a tie. No two cells of the same layout and note are asked
+	// find_every_instance in one plan; the second is asked the way it has the next fewest
+	// right answers. A cell asked
+	// find_every_instance is answered under its own key, and its note is the one to find
+	// everywhere in the window. The fret window is the one
 	// the composer picked for this drill and layout: the one holding the most of the
 	// drill's due cells, then weak, then new, the one nearest the nut on a tie. When the
 	// student has started an odd number of sessions in the head so far and the drill has
 	// new cells, it is instead the one holding the most new cells.
 	FretboardCell *struct {
 		// Drill How a fretboard cell is asked. name_the_note = the cell is shown and the student names
-		// its note; find_the_note = the note and string are named and the student taps the cell.
+		// its note; find_the_note = the note and string are named and the student taps the cell;
+		// find_every_instance = the cell's note is named and the student taps every place of it in
+		// the fret window, on a board with nothing marked and without being told how many there are.
 		Drill FretboardDrill `json:"drill"`
 
 		// Fret The cell's fret; 0 is the open string.
@@ -7267,13 +7381,23 @@ type PracticeSessionItem struct {
 	// the playback the client sounds before the options can be picked.
 	GeneratedChoice *GeneratedChoiceQuestion `json:"generated_choice,omitempty"`
 
+	// GuideTone A progression played once in a key, one chord a bar after a bar of count-in, while the
+	// student taps the asked tone of each chord on an empty fretboard as it sounds (kind
+	// guide_tone), graded by timed_taps.v1. It names the chords, the key and the tone, never the
+	// notes to tap or their places. The item ends after a right take or after takes takes, all in
+	// music_key; each take is answered with a timed_taps response sending music_key, tone, the
+	// tempo and note value it played at, and the taps.
+	GuideTone *PlannedGuideTone `json:"guide_tone,omitempty"`
+
 	// ItemKey Stable, readable identifier of a practice item: the smallest thing whose knowledge is
 	// tracked. Every answer, rating and review points at one. The prefix is the item kind:
 	//
 	// - fretboard_cell:<layout instrument id>:<string>:<fret> — a generated fretboard cell.
 	//   The instrument is the one whose fretboard layout the cell belongs to, so instruments
 	//   that share a layout share the cell. Strings are numbered from 1, the highest-pitched;
-	//   fret 0 is the open string.
+	//   fret 0 is the open string. A cell asked to find every place of its note in a fret
+	//   window is answered under its own key, and that answer is graded on every cell of the
+	//   window.
 	// - exercise:<exercise id> — an authored exercise.
 	// - play_along:<diagram id> — playing a diagram along with its playback, at a tempo.
 	// - chord_change:<from diagram id>:<to diagram id> — changing between two chord diagrams.
@@ -7300,8 +7424,9 @@ type PracticeSessionItem struct {
 	// - guide_tone:<layout instrument id>:<progression key> — tapping a chord tone of each chord
 	//   of a progression in time with its playback. The key, the tone and the tempo are picked
 	//   each time.
-	// - fretboard_note:<layout instrument id>:<note> — finding every place of a note within a
-	//   fret window. The window is picked each time.
+	// - fretboard_note:<layout instrument id>:<note> — retired before it was installed: finding
+	//   every place of a note is a way of asking a fretboard cell. No item has this key; it
+	//   stays only until the multi_tap.v1 golden cases that use it are removed.
 	// - progression_keys:<layout instrument id>:<progression key> — playing a progression along
 	//   with its backing, key after key around the cycle of fourths. The key is the tour's next
 	//   one, sent back with each take.
@@ -7317,7 +7442,8 @@ type PracticeSessionItem struct {
 	ItemKey PracticeItemKey `json:"item_key"`
 
 	// Kind The kind of a practice item, the prefix of its item key. The set is open: a new kind
-	// is added with its key scheme, grader and golden cases.
+	// is added with its key scheme, grader and golden cases. fretboard_note is retired and has
+	// no items.
 	Kind PracticeItemKind `json:"kind"`
 
 	// Level How well a student knows an item, or a knowledge node, derived from the evidence.
