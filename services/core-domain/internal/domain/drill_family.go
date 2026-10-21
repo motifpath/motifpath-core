@@ -43,6 +43,15 @@ type IntroducedInOrder interface {
 	IntroductionRank() int
 }
 
+// WaitingItem is a drill item planned as new only once the student reaches a
+// level on a node, such as a 12-bar guide tone waiting until the student is
+// accurate on targeting chord tones. WaitsOn names that node's key and level;
+// false when this item waits on nothing.
+type WaitingItem interface {
+	DrillItem
+	WaitsOn() (nodeKey string, level KnowledgeLevel, waits bool)
+}
+
 // DrillPlanning is what planning a drill item may draw on.
 type DrillPlanning struct {
 	// Pick picks one of n equally fitting choices.
