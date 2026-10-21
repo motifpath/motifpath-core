@@ -96,6 +96,8 @@ func (w *world) putCellsAskedAs(layout, drill string, s domain.PracticeItemState
 		s.RightByResponse = nil
 	case domain.FretboardDrillFindTheNote:
 		s.RightByResponse = map[string]int{string(domain.FretboardDrillNameTheNote): 1}
+	case domain.FretboardDrillFindEveryInstance:
+		s.RightByResponse = map[string]int{string(domain.FretboardDrillNameTheNote): 1, string(domain.FretboardDrillFindTheNote): 1}
 	default:
 		return fmt.Errorf("unknown fretboard drill %q", drill)
 	}

@@ -164,26 +164,6 @@ func TestAFretboardMapWithoutCellsHasNoLayout(t *testing.T) {
 	assert.NotNil(t, got.Cells)
 }
 
-func TestAFretboardCellIsAskedTheWayItHasFewerRightAnswersNamingTheNoteOnATie(t *testing.T) {
-	tests := []struct {
-		name  string
-		state *domain.PracticeItemState
-		want  domain.FretboardDrill
-	}{
-		{"never practised", nil, domain.FretboardDrillNameTheNote},
-		{"practised, never right", &domain.PracticeItemState{Counted: 2}, domain.FretboardDrillNameTheNote},
-		{"named 4 times, found once", &domain.PracticeItemState{RightByResponse: map[string]int{"name_the_note": 4, "find_the_note": 1}}, domain.FretboardDrillFindTheNote},
-		{"found more often than named", &domain.PracticeItemState{RightByResponse: map[string]int{"name_the_note": 1, "find_the_note": 3}}, domain.FretboardDrillNameTheNote},
-		{"named and found as often", &domain.PracticeItemState{RightByResponse: map[string]int{"name_the_note": 2, "find_the_note": 2}}, domain.FretboardDrillNameTheNote},
-		{"only named so far", &domain.PracticeItemState{RightByResponse: map[string]int{"name_the_note": 1}}, domain.FretboardDrillFindTheNote},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, domain.NextFretboardDrill(tt.state))
-		})
-	}
-}
-
 func TestAFretboardCellTakesAbout8Seconds(t *testing.T) {
 	assert.Equal(t, 8, domain.FretboardCellSeconds)
 }
@@ -238,6 +218,71 @@ func TestADrillsFretWindowIsPickedByItsDueThenWeakThenNewCellsNearestTheNutOnATi
 			got := domain.PickFretWindow(tt.due, tt.weak, tt.news, tt.newTurn)
 
 			assert.Equal(t, domain.FretWindow{FromFret: tt.want}, got)
+		})
+	}
+}
+
+func TestAFretboardCellIsAskedThreeWays(t *testing.T) {
+	cell := domain.FretboardCell{LayoutInstrumentID: "guitar", String: 6, Fret: 3}
+	name, find, every := string(domain.FretboardDrillNameTheNote), string(domain.FretboardDrillFindTheNote), string(domain.FretboardDrillFindEveryInstance)
+
+	assert.Equal(t, []string{name, find, every}, cell.Ways())
+
+	tests := []struct {
+		name  string
+		right map[string]int
+		want  string
+	}{
+		{"named and found more often than found everywhere", map[string]int{name: 2, find: 2, every: 1}, every},
+		{"a tie between finding and finding everywhere", map[string]int{name: 2, find: 1, every: 1}, find},
+		{"a tie between all three", map[string]int{name: 1, find: 1, every: 1}, name},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, domain.NextDrillWay(cell, &domain.PracticeItemState{RightByResponse: tt.right}))
+		})
+	}
+}
+
+func TestFindingEveryInstanceTakesLongerThanTheOtherWays(t *testing.T) {
+	cell := domain.FretboardCell{LayoutInstrumentID: "guitar", String: 6, Fret: 3}
+
+	assert.Equal(t, 15, cell.SecondsAsked(string(domain.FretboardDrillFindEveryInstance)))
+	assert.Equal(t, domain.FretboardCellSeconds, cell.SecondsAsked(string(domain.FretboardDrillNameTheNote)))
+	assert.Equal(t, domain.FretboardCellSeconds, cell.SecondsAsked(string(domain.FretboardDrillFindTheNote)))
+}
+
+func TestFindingEveryInstanceDrawsNothingOnTheBoard(t *testing.T) {
+	cell := domain.FretboardCell{LayoutInstrumentID: "guitar", String: 6, Fret: 3}
+
+	planned := cell.Plan(string(domain.FretboardDrillFindEveryInstance), domain.DrillPlanning{Window: &domain.FretWindow{FromFret: 3}})
+
+	s := planned.Stimulus()
+	assert.Empty(t, s.Places)
+	assert.Contains(t, s.Answer.Places, domain.Place{String: 6, Fret: 3})
+	require.NoError(t, domain.CheckChallenge(s))
+}
+
+func TestACellsNoteComesFromItsLayoutsTuning(t *testing.T) {
+	guitar := []string{"E2", "A2", "D3", "G3", "B3", "E4"}
+	tests := []struct {
+		name      string
+		tuning    []string
+		str, fret int
+		want      string
+		ok        bool
+	}{
+		{"the low E string at fret 3 is G", guitar, 6, 3, "G", true},
+		{"the high E string at fret 3 is G too", guitar, 1, 3, "G", true},
+		{"spelled with sharps", guitar, 5, 1, "A#", true},
+		{"a string the tuning doesn't have", guitar, 7, 0, "", false},
+		{"no tuning", nil, 1, 0, "", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, ok := domain.CellNote(tt.tuning, tt.str, tt.fret)
+			assert.Equal(t, tt.ok, ok)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

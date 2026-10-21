@@ -29,6 +29,7 @@ type drillCatalogFile struct {
 		Rung         string  `yaml:"rung"`
 		SecondWay    *string `yaml:"second_way"`
 		ComesBack    bool    `yaml:"comes_back"`
+		Timed        bool    `yaml:"timed"`
 	} `yaml:"templates"`
 	FretboardCells []struct {
 		Skill   string `yaml:"skill"`
@@ -134,7 +135,7 @@ func (w *world) practiceDrillCatalogIsInstalled() error {
 		}
 		templates = append(templates, domain.DrillTemplate{
 			Key: t.Key, ItemKind: domain.PracticeItemKind(t.ItemKind), ResponseType: t.ResponseType,
-			Rung: domain.PracticeRung(t.Rung), SecondWay: t.SecondWay,
+			Rung: domain.PracticeRung(t.Rung), SecondWay: t.SecondWay, Timed: t.Timed,
 		})
 	}
 	if f.pendingTemplate != nil {
@@ -467,7 +468,7 @@ func (catalogDrillTemplates) List(context.Context) ([]domain.DrillTemplate, erro
 	for i, t := range file.Templates {
 		templates[i] = domain.DrillTemplate{
 			Key: t.Key, ItemKind: domain.PracticeItemKind(t.ItemKind), ResponseType: t.ResponseType,
-			Rung: domain.PracticeRung(t.Rung), SecondWay: t.SecondWay, ComesBack: t.ComesBack,
+			Rung: domain.PracticeRung(t.Rung), SecondWay: t.SecondWay, ComesBack: t.ComesBack, Timed: t.Timed,
 		}
 	}
 	return templates, nil

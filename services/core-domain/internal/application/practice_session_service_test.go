@@ -1286,7 +1286,7 @@ func TestPracticeSessionService_ComposePlanFretboardCells(t *testing.T) {
 		keys := f.cellsOn(practiceGuitar, "root-strings", 1, 6, 5)
 		f.stateOf(keys[0], domain.PracticeItemState{
 			Level: domain.KnowledgeLevelLearning, Counted: 5, Box: 1, DueAt: f.daysAgo(1), LastAt: f.daysAgo(2),
-			RightByResponse: map[string]int{"name_the_note": 4, "find_the_note": 1},
+			RightByResponse: map[string]int{"name_the_note": 4, "find_the_note": 1, "find_every_instance": 2},
 		})
 
 		plan := f.composeInTheHead(t, 5)
@@ -1304,6 +1304,54 @@ func TestPracticeSessionService_ComposePlanFretboardCells(t *testing.T) {
 		assert.Equal(t, domain.FretboardDrillNameTheNote, cells[keys[1]].FretboardCell.Drill)
 		for _, item := range cells {
 			assert.Equal(t, domain.FretboardCellSeconds, item.EstimatedSeconds)
+		}
+	})
+
+	t.Run("a cell named and found more often than found everywhere is asked to find every instance, in its window, for 15 seconds", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPathFor([]string{practiceGuitar}, "root-strings")
+		keys := f.cellsOn(practiceGuitar, "root-strings", 1, 6)
+		f.stateOf(keys[0], domain.PracticeItemState{
+			Level: domain.KnowledgeLevelLearning, Counted: 5, Box: 1, DueAt: f.daysAgo(1), LastAt: f.daysAgo(2),
+			RightByResponse: map[string]int{"name_the_note": 2, "find_the_note": 2, "find_every_instance": 1},
+		})
+
+		plan := f.composeInTheHead(t, 5)
+
+		cells := itemsOfKind(plan, domain.PracticeItemKindFretboardCell)
+		require.Len(t, cells, 1)
+		assert.Equal(t, domain.FretboardDrillFindEveryInstance, cells[0].FretboardCell.Drill)
+		assert.True(t, cells[0].FretboardCell.Window.Contains(0))
+		assert.Equal(t, 15, cells[0].EstimatedSeconds)
+	})
+
+	t.Run("two cells of the same note are never both asked to find every instance", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.instruments.put(domain.Instrument{ID: practiceGuitar, Tuning: []string{"E2", "A2", "D3", "G3", "B3", "E4"}})
+		f.onPathFor([]string{practiceGuitar}, "root-strings")
+		f.cellsOn(practiceGuitar, "root-strings", 4, 6, 1)
+		// G is at fret 3 on both E strings.
+		lowG, highG := domain.FretboardCellItemKey(practiceGuitar, 6, 3), domain.FretboardCellItemKey(practiceGuitar, 1, 3)
+		for _, k := range []string{lowG, highG} {
+			f.stateOf(k, domain.PracticeItemState{
+				Level: domain.KnowledgeLevelLearning, Counted: 4, Box: 1, DueAt: f.daysAgo(1), LastAt: f.daysAgo(2),
+				RightByResponse: map[string]int{"name_the_note": 1, "find_the_note": 1},
+			})
+		}
+
+		plan := f.composeInTheHead(t, 10)
+
+		drills := map[string]domain.PlannedFretboardCell{}
+		for _, item := range itemsOfKind(plan, domain.PracticeItemKindFretboardCell) {
+			drills[item.ItemKey] = *item.FretboardCell
+		}
+		require.Contains(t, drills, lowG)
+		require.Contains(t, drills, highG)
+		asked := []domain.FretboardDrill{drills[lowG].Drill, drills[highG].Drill}
+		assert.Contains(t, asked, domain.FretboardDrillFindEveryInstance)
+		assert.Contains(t, asked, domain.FretboardDrillNameTheNote, "the second is asked the way it has the next fewest right answers")
+		for _, cell := range drills {
+			assert.True(t, cell.Window.Contains(cell.Fret), "%+v outside its window", cell)
 		}
 	})
 
@@ -1546,6 +1594,22 @@ func TestPracticeSessionService_ComposePlanFeltQuestions(t *testing.T) {
 		assert.Equal(t, domain.FeltQuestions(plan.Items, f.feltRatings.sessions), plan.FeltQuestions)
 		assert.Equal(t, []string{"exercise:text_response", "fretboard_cell:name_the_note"}, plan.FeltQuestions)
 		assert.Equal(t, [][]string{domain.PlanDrillTemplates(plan.Items)}, f.feltRatings.asked)
+	})
+
+	t.Run("finding every instance isn't timed, so the plan never asks how it felt", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPathFor([]string{practiceGuitar}, "root-strings")
+		keys := f.cellsOn(practiceGuitar, "root-strings", 1, 6)
+		f.stateOf(keys[0], domain.PracticeItemState{
+			Level: domain.KnowledgeLevelLearning, Counted: 5, Box: 1, DueAt: f.daysAgo(1), LastAt: f.daysAgo(2),
+			RightByResponse: map[string]int{"name_the_note": 2, "find_the_note": 2, "find_every_instance": 1},
+		})
+
+		plan := f.composeInTheHead(t, 5)
+
+		require.Equal(t, domain.FretboardDrillFindEveryInstance, itemsOfKind(plan, domain.PracticeItemKindFretboardCell)[0].FretboardCell.Drill)
+		assert.Empty(t, plan.FeltQuestions)
+		assert.Empty(t, f.feltRatings.asked, "a plan with no timed drill reads no felt ratings")
 	})
 
 	t.Run("a plan of play-alongs only asks nothing, nor reads felt ratings", func(t *testing.T) {

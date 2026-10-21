@@ -25,6 +25,13 @@ type DrillItem interface {
 	Plan(way string, planning DrillPlanning) PlannedDrill
 }
 
+// TimedByWay is a drill item whose time in a session depends on the way it
+// is asked; SecondsAsked replaces Seconds for it.
+type TimedByWay interface {
+	DrillItem
+	SecondsAsked(way string) int
+}
+
 // ConfusableItem is a drill item a learner mistakes for others, such as a
 // progression for one that shares most of its chords. A session asks them
 // next to each other, so the student learns to tell them apart.
@@ -115,13 +122,22 @@ func (c FretboardCell) ItemKey() string {
 // Kind is a fretboard cell's.
 func (FretboardCell) Kind() PracticeItemKind { return PracticeItemKindFretboardCell }
 
-// Ways names the note first, then finds it.
+// Ways names the note first, then finds it, then finds every place of it.
 func (FretboardCell) Ways() []string {
-	return []string{string(FretboardDrillNameTheNote), string(FretboardDrillFindTheNote)}
+	return []string{string(FretboardDrillNameTheNote), string(FretboardDrillFindTheNote), string(FretboardDrillFindEveryInstance)}
 }
 
 // Seconds is FretboardCellSeconds.
 func (FretboardCell) Seconds() int { return FretboardCellSeconds }
+
+// SecondsAsked is how long the cell takes asked through way: finding every
+// place of its note takes longer than naming or finding it.
+func (FretboardCell) SecondsAsked(way string) int {
+	if way == string(FretboardDrillFindEveryInstance) {
+		return FindEveryInstanceSeconds
+	}
+	return FretboardCellSeconds
+}
 
 // SuitsSession holds in the head only: a cell is recalled on the screen.
 func (FretboardCell) SuitsSession(inHand bool) bool { return !inHand }
@@ -140,9 +156,14 @@ func (p *PlannedFretboardCell) Way() string { return string(p.Drill) }
 
 // Stimulus shows the cell when its note is named: the cell is what the
 // question gives. To find the note, it says the note and the string and
-// draws an empty window, the cell being the answer.
+// draws an empty window, the cell being the answer. To find every instance,
+// it says the note and draws an empty window, the cell being one of the
+// places that answer.
 func (p *PlannedFretboardCell) Stimulus() DrillStimulus {
 	place := Place{String: p.String, Fret: p.Fret}
+	if p.Drill == FretboardDrillFindEveryInstance {
+		return DrillStimulus{Answer: DrillAnswer{Places: []Place{place}}}
+	}
 	if p.Drill == FretboardDrillFindTheNote {
 		return DrillStimulus{Prompt: []string{fmt.Sprintf("string %d", p.String)}, Answer: DrillAnswer{Places: []Place{place}}}
 	}

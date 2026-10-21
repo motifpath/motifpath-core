@@ -41,26 +41,34 @@ const (
 	// FretboardDrillFindTheNote names the note and string; the student taps
 	// the cell.
 	FretboardDrillFindTheNote FretboardDrill = "find_the_note"
+	// FretboardDrillFindEveryInstance names the cell's note; the student taps
+	// every place of it in the fret window, on a board with nothing marked.
+	FretboardDrillFindEveryInstance FretboardDrill = "find_every_instance"
 )
 
-// FretboardCellSeconds is how long a fretboard cell is estimated to take in
-// a session.
-const FretboardCellSeconds = 8
+// FretboardCellSeconds is how long a fretboard cell named or found is
+// estimated to take in a session; FindEveryInstanceSeconds how long finding
+// every place of its note does.
+const (
+	FretboardCellSeconds     = 8
+	FindEveryInstanceSeconds = 15
+)
 
-// NextFretboardDrill is the way to ask a cell next: the one with the fewer
-// right answers on it, naming the note on a tie, so both ways get practised
-// and a cell never answered right starts from the easier one. state is nil
-// for a cell never practised.
-func NextFretboardDrill(state *PracticeItemState) FretboardDrill {
-	if state == nil {
-		return FretboardDrillNameTheNote
+// sharpNoteNames spells each pitch class with sharps, C first.
+var sharpNoteNames = [12]string{"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"}
+
+// CellNote is the note of string str at fret on a layout tuned to tuning
+// (lowest string first), spelled with sharps. It reports false when the
+// tuning has no such string or doesn't read as pitches.
+func CellNote(tuning []string, str, fret int) (string, bool) {
+	if str < 1 || str > len(tuning) {
+		return "", false
 	}
-	named := state.RightByResponse[string(FretboardDrillNameTheNote)]
-	found := state.RightByResponse[string(FretboardDrillFindTheNote)]
-	if found < named {
-		return FretboardDrillFindTheNote
+	open, ok := ParsePitch(tuning[len(tuning)-str])
+	if !ok {
+		return "", false
 	}
-	return FretboardDrillNameTheNote
+	return sharpNoteNames[(open+fret)%12], true
 }
 
 // FretWindow is the frets a fretboard drill is asked within, so its board
