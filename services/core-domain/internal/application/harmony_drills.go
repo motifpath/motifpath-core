@@ -164,6 +164,15 @@ type chordBoxes struct {
 	err    error
 }
 
+// failure is the error a chord box lookup kept, if any; nil when no boxes
+// were looked up.
+func (b *chordBoxes) failure() error {
+	if b == nil {
+		return nil
+	}
+	return b.err
+}
+
 func (h *harmonyDrills) boxes(ctx context.Context) *chordBoxes {
 	return &chordBoxes{ctx: ctx, chords: h.chords, found: map[string]string{}}
 }
