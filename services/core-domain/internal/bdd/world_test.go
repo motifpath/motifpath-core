@@ -62,6 +62,8 @@ type world struct {
 	dueDays *cellsDueOnTwoDays
 	// lastCell is the fretboard cell a step answered, for a following step.
 	lastCell *lastCell
+	// everyInstancePair are the two cells a find every instance step named.
+	everyInstancePair []string
 	// lastShapeKey is the diagram shape a step set up, for a following step.
 	lastShapeKey     string
 	practiceActivity *fakePracticeActivity

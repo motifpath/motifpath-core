@@ -2387,6 +2387,7 @@ func (c *catalogDrillTemplates) List(context.Context) ([]domain.DrillTemplate, e
 		{Key: "exercise:image_choice", ItemKind: domain.PracticeItemKindExercise, Rung: domain.PracticeRungKnow, Timed: true},
 		{Key: "exercise:image_recognition", ItemKind: domain.PracticeItemKindExercise, Rung: domain.PracticeRungKnow, Timed: true},
 		{Key: "exercise:text_response", ItemKind: domain.PracticeItemKindExercise, Rung: domain.PracticeRungKnow, Timed: true},
+		{Key: "fretboard_cell:find_every_instance", ItemKind: domain.PracticeItemKindFretboardCell, Rung: domain.PracticeRungKnow},
 		{Key: "fretboard_cell:find_the_note", ItemKind: domain.PracticeItemKindFretboardCell, Rung: domain.PracticeRungKnow, SecondWay: way("fretboard_cell:name_the_note"), Timed: true},
 		{Key: "fretboard_cell:name_the_note", ItemKind: domain.PracticeItemKindFretboardCell, Rung: domain.PracticeRungKnow, SecondWay: way("fretboard_cell:find_the_note"), Timed: true},
 	}, c.extra...), nil

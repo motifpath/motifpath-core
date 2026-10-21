@@ -15,6 +15,7 @@ import (
 func registerHeadSessionSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" has nothing due or weak on guitar and new fretboard cells on the E and A strings$`, w.hasNewCellsOnRootStrings)
 	sc.Step(`^"([^"]+)" has named the note of the "([^"]+)" cell on string (\d+), fret (\d+) correctly (\d+) times and found it correctly once$`, w.namedCellAndFoundOnce)
+	sc.Step(`^"([^"]+)" has named the note of the "([^"]+)" cell on string (\d+), fret (\d+) correctly (\d+) times, found it correctly once and found every instance of it correctly (\d+) times$`, w.namedFoundOnceAndFoundEverywhere)
 	sc.Step(`^"([^"]+)" has never answered the "([^"]+)" cell on string (\d+), fret (\d+) correctly$`, w.neverAnsweredCellRight)
 	sc.Step(`^"([^"]+)" has (\d+) new items on guitar and (\d+) new items on electric bass$`, w.hasNewItemsOnBoth)
 	sc.Step(`^"([^"]+)" has no practice history and their path has the skill "([^"]+)"$`, w.noHistoryPathHasSkill)
@@ -33,6 +34,7 @@ func registerHeadSessionSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^the session has at least one fretboard cell with the reason (\w+)$`, w.sessionHasCellWithReason)
 
 	registerFretWindowSteps(sc, w)
+	registerEveryInstanceSteps(sc, w)
 }
 
 // putCells declares the fretboard cells of strs at frets 0 to frets-1 on
@@ -72,6 +74,14 @@ func (w *world) cellDue(name, layout string, str, fret, counted int, right map[s
 
 func (w *world) namedCellAndFoundOnce(name, layout string, str, fret, named int) error {
 	w.cellDue(name, layout, str, fret, named+1, map[string]int{string(domain.FretboardDrillNameTheNote): named, string(domain.FretboardDrillFindTheNote): 1})
+	return nil
+}
+
+func (w *world) namedFoundOnceAndFoundEverywhere(name, layout string, str, fret, named, everywhere int) error {
+	w.cellDue(name, layout, str, fret, named+1+everywhere, map[string]int{
+		string(domain.FretboardDrillNameTheNote): named, string(domain.FretboardDrillFindTheNote): 1,
+		string(domain.FretboardDrillFindEveryInstance): everywhere,
+	})
 	return nil
 }
 
