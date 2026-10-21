@@ -80,7 +80,7 @@ func TestDiagramShapeGrader(t *testing.T) {
 }
 
 func TestDiagramShapeGrader_IsTheGraderOfDiagramShapes(t *testing.T) {
-	g, ok := GraderFor(PracticeItemKindDiagramShape)
+	g, ok := GraderFor(PracticeItemKindDiagramShape, PracticeResponseNameTheShape)
 
 	require.True(t, ok)
 	assert.Equal(t, "diagram_shape.v1", g.ID())

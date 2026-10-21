@@ -327,6 +327,7 @@ type world struct {
 	lastExercise   string
 	lastExerciseID string
 	cells          cellWorld
+	everyInstance  everyInstanceWorld
 	chords         chordWorld
 	// tourKey is the progression key tour a scenario practises, and
 	// tourStudent the student whose next session it is picked for.

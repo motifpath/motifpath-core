@@ -58,6 +58,7 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	w := newWorld()
 	registerPracticeSteps(sc, w)
 	registerCellSteps(sc, w)
+	registerEveryInstanceSteps(sc, w)
 	registerExerciseSteps(sc, w)
 	registerShapeSteps(sc, w)
 	registerGeneratedChoiceSteps(sc, w)

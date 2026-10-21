@@ -51,51 +51,58 @@ type goldenCaseFile struct {
 		ItemKey  string          `json:"item_key"`
 		Response json.RawMessage `json:"response"`
 		Expected struct {
-			Result   string `json:"result"`
-			Reason   string `json:"reason"`
-			Evidence struct {
-				Source           string  `json:"source"`
-				Correct          *bool   `json:"correct"`
-				LatencyMs        *int    `json:"latency_ms"`
-				AudioMs          *int    `json:"audio_ms"`
-				Rating           string  `json:"rating"`
-				TempoBPM         *int    `json:"tempo_bpm"`
-				NoteValue        *string `json:"note_value"`
-				ChangesPerMinute *int    `json:"changes_per_minute"`
-				MusicKey         string  `json:"music_key"`
-				AnswerKey        *struct {
-					String   *int   `json:"string"`
-					Fret     *int   `json:"fret"`
-					NoteName string `json:"note_name"`
-					Options  []struct {
-						OptionID  string `json:"option_id"`
-						IsCorrect bool   `json:"is_correct"`
-					} `json:"options"`
-					ShapeFamily string `json:"shape_family"`
-					Shape       string `json:"shape"`
-					Interval    string `json:"interval"`
-					Cells       []struct {
-						String int `json:"string"`
-						Fret   int `json:"fret"`
-					} `json:"cells"`
-					Choices    []string `json:"choices"`
-					FretWindow *struct {
-						FromFret int `json:"from_fret"`
-					} `json:"fret_window"`
-					Way      string   `json:"way"`
-					MusicKey string   `json:"music_key"`
-					Answer   string   `json:"answer"`
-					Offered  []string `json:"offered"`
-					Tone     string   `json:"tone"`
-					Bars     []struct {
-						Chord    string `json:"chord"`
-						NoteName string `json:"note_name"`
-						Hit      bool   `json:"hit"`
-					} `json:"bars"`
-				} `json:"answer_key"`
-			} `json:"evidence"`
+			Result         string         `json:"result"`
+			Reason         string         `json:"reason"`
+			Evidence       goldenEvidence `json:"evidence"`
+			EvidenceByItem []struct {
+				ItemKey  string         `json:"item_key"`
+				Evidence goldenEvidence `json:"evidence"`
+			} `json:"evidence_by_item"`
 		} `json:"expected"`
 	} `json:"cases"`
+}
+
+// goldenEvidence is the evidence a golden case expects a grader to conclude.
+type goldenEvidence struct {
+	Source           string  `json:"source"`
+	Correct          *bool   `json:"correct"`
+	LatencyMs        *int    `json:"latency_ms"`
+	AudioMs          *int    `json:"audio_ms"`
+	Rating           string  `json:"rating"`
+	TempoBPM         *int    `json:"tempo_bpm"`
+	NoteValue        *string `json:"note_value"`
+	ChangesPerMinute *int    `json:"changes_per_minute"`
+	MusicKey         string  `json:"music_key"`
+	AnswerKey        *struct {
+		String   *int   `json:"string"`
+		Fret     *int   `json:"fret"`
+		NoteName string `json:"note_name"`
+		Options  []struct {
+			OptionID  string `json:"option_id"`
+			IsCorrect bool   `json:"is_correct"`
+		} `json:"options"`
+		ShapeFamily string `json:"shape_family"`
+		Shape       string `json:"shape"`
+		Interval    string `json:"interval"`
+		Cells       []struct {
+			String int `json:"string"`
+			Fret   int `json:"fret"`
+		} `json:"cells"`
+		Choices    []string `json:"choices"`
+		FretWindow *struct {
+			FromFret int `json:"from_fret"`
+		} `json:"fret_window"`
+		Way      string   `json:"way"`
+		MusicKey string   `json:"music_key"`
+		Answer   string   `json:"answer"`
+		Offered  []string `json:"offered"`
+		Tone     string   `json:"tone"`
+		Bars     []struct {
+			Chord    string `json:"chord"`
+			NoteName string `json:"note_name"`
+			Hit      bool   `json:"hit"`
+		} `json:"bars"`
+	} `json:"answer_key"`
 }
 
 // TestGraderGoldenCases runs every golden case of each grader this worker has.
@@ -151,54 +158,68 @@ func TestGraderGoldenCases(t *testing.T) {
 						return
 					}
 					require.Empty(t, got.Rejection)
-					want := c.Expected.Evidence
-					assert.Equal(t, domain.EvidenceSource(want.Source), got.Evidence.Source)
-					assert.Equal(t, want.Correct, got.Evidence.Correct)
-					assert.Equal(t, want.LatencyMs, got.Evidence.LatencyMs)
-					assert.Equal(t, want.AudioMs, got.Evidence.AudioMs)
-					assert.Equal(t, domain.SelfRating(want.Rating), got.Evidence.Rating)
-					assert.Equal(t, want.TempoBPM, got.Evidence.TempoBPM)
-					assert.Equal(t, noteValueOf(want.NoteValue), got.Evidence.NoteValue)
-					assert.Equal(t, want.ChangesPerMinute, got.Evidence.ChangesPerMinute)
-					assert.Equal(t, want.MusicKey, got.Evidence.MusicKey)
-					if want.AnswerKey == nil {
-						assert.Nil(t, got.Evidence.AnswerKey)
+					if c.Expected.EvidenceByItem != nil {
+						require.Len(t, got.EvidenceByItem, len(c.Expected.EvidenceByItem))
+						for i, want := range c.Expected.EvidenceByItem {
+							assert.Equal(t, want.ItemKey, got.EvidenceByItem[i].ItemKey)
+							assertGoldenEvidence(t, want.Evidence, got.EvidenceByItem[i].Evidence)
+						}
 						return
 					}
-					require.NotNil(t, got.Evidence.AnswerKey, "auto-graded evidence keeps its answer key")
-					assert.Equal(t, want.AnswerKey.String, got.Evidence.AnswerKey.String)
-					assert.Equal(t, want.AnswerKey.Fret, got.Evidence.AnswerKey.Fret)
-					assert.Equal(t, want.AnswerKey.NoteName, got.Evidence.AnswerKey.NoteName)
-					require.Len(t, got.Evidence.AnswerKey.Options, len(want.AnswerKey.Options))
-					for i, o := range want.AnswerKey.Options {
-						assert.Equal(t, o.OptionID, got.Evidence.AnswerKey.Options[i].OptionID)
-						assert.Equal(t, o.IsCorrect, got.Evidence.AnswerKey.Options[i].IsCorrect)
-					}
-					assert.Equal(t, want.AnswerKey.ShapeFamily, got.Evidence.AnswerKey.ShapeFamily)
-					assert.Equal(t, want.AnswerKey.Shape, got.Evidence.AnswerKey.Shape)
-					assert.Equal(t, want.AnswerKey.Interval, got.Evidence.AnswerKey.Interval)
-					require.Len(t, got.Evidence.AnswerKey.Cells, len(want.AnswerKey.Cells))
-					for i, c := range want.AnswerKey.Cells {
-						assert.Equal(t, domain.AnswerCell{String: c.String, Fret: c.Fret}, got.Evidence.AnswerKey.Cells[i])
-					}
-					assert.Equal(t, want.AnswerKey.Choices, got.Evidence.AnswerKey.Choices)
-					if want.AnswerKey.FretWindow == nil {
-						assert.Nil(t, got.Evidence.AnswerKey.FretWindowFrom)
-					} else {
-						assert.Equal(t, &want.AnswerKey.FretWindow.FromFret, got.Evidence.AnswerKey.FretWindowFrom)
-					}
-					assert.Equal(t, want.AnswerKey.Way, got.Evidence.AnswerKey.Way)
-					assert.Equal(t, want.AnswerKey.MusicKey, got.Evidence.AnswerKey.MusicKey)
-					assert.Equal(t, want.AnswerKey.Answer, got.Evidence.AnswerKey.Answer)
-					assert.Equal(t, want.AnswerKey.Offered, got.Evidence.AnswerKey.Offered)
-					assert.Equal(t, want.AnswerKey.Tone, got.Evidence.AnswerKey.Tone)
-					require.Len(t, got.Evidence.AnswerKey.Bars, len(want.AnswerKey.Bars))
-					for i, b := range want.AnswerKey.Bars {
-						assert.Equal(t, domain.AnswerBar{Chord: b.Chord, NoteName: b.NoteName, Hit: b.Hit}, got.Evidence.AnswerKey.Bars[i])
-					}
+					assert.Empty(t, got.EvidenceByItem, "an answer about one item is graded on that item")
+					assertGoldenEvidence(t, c.Expected.Evidence, got.Evidence)
 				})
 			}
 		})
+	}
+}
+
+// assertGoldenEvidence checks one piece of graded evidence against a golden case.
+func assertGoldenEvidence(t *testing.T, want goldenEvidence, got domain.GradedEvidence) {
+	t.Helper()
+	assert.Equal(t, domain.EvidenceSource(want.Source), got.Source)
+	assert.Equal(t, want.Correct, got.Correct)
+	assert.Equal(t, want.LatencyMs, got.LatencyMs)
+	assert.Equal(t, want.AudioMs, got.AudioMs)
+	assert.Equal(t, domain.SelfRating(want.Rating), got.Rating)
+	assert.Equal(t, want.TempoBPM, got.TempoBPM)
+	assert.Equal(t, noteValueOf(want.NoteValue), got.NoteValue)
+	assert.Equal(t, want.ChangesPerMinute, got.ChangesPerMinute)
+	assert.Equal(t, want.MusicKey, got.MusicKey)
+	if want.AnswerKey == nil {
+		assert.Nil(t, got.AnswerKey)
+		return
+	}
+	require.NotNil(t, got.AnswerKey, "auto-graded evidence keeps its answer key")
+	assert.Equal(t, want.AnswerKey.String, got.AnswerKey.String)
+	assert.Equal(t, want.AnswerKey.Fret, got.AnswerKey.Fret)
+	assert.Equal(t, want.AnswerKey.NoteName, got.AnswerKey.NoteName)
+	require.Len(t, got.AnswerKey.Options, len(want.AnswerKey.Options))
+	for i, o := range want.AnswerKey.Options {
+		assert.Equal(t, o.OptionID, got.AnswerKey.Options[i].OptionID)
+		assert.Equal(t, o.IsCorrect, got.AnswerKey.Options[i].IsCorrect)
+	}
+	assert.Equal(t, want.AnswerKey.ShapeFamily, got.AnswerKey.ShapeFamily)
+	assert.Equal(t, want.AnswerKey.Shape, got.AnswerKey.Shape)
+	assert.Equal(t, want.AnswerKey.Interval, got.AnswerKey.Interval)
+	require.Len(t, got.AnswerKey.Cells, len(want.AnswerKey.Cells))
+	for i, c := range want.AnswerKey.Cells {
+		assert.Equal(t, domain.AnswerCell{String: c.String, Fret: c.Fret}, got.AnswerKey.Cells[i])
+	}
+	assert.Equal(t, want.AnswerKey.Choices, got.AnswerKey.Choices)
+	if want.AnswerKey.FretWindow == nil {
+		assert.Nil(t, got.AnswerKey.FretWindowFrom)
+	} else {
+		assert.Equal(t, &want.AnswerKey.FretWindow.FromFret, got.AnswerKey.FretWindowFrom)
+	}
+	assert.Equal(t, want.AnswerKey.Way, got.AnswerKey.Way)
+	assert.Equal(t, want.AnswerKey.MusicKey, got.AnswerKey.MusicKey)
+	assert.Equal(t, want.AnswerKey.Answer, got.AnswerKey.Answer)
+	assert.Equal(t, want.AnswerKey.Offered, got.AnswerKey.Offered)
+	assert.Equal(t, want.AnswerKey.Tone, got.AnswerKey.Tone)
+	require.Len(t, got.AnswerKey.Bars, len(want.AnswerKey.Bars))
+	for i, b := range want.AnswerKey.Bars {
+		assert.Equal(t, domain.AnswerBar{Chord: b.Chord, NoteName: b.NoteName, Hit: b.Hit}, got.AnswerKey.Bars[i])
 	}
 }
 

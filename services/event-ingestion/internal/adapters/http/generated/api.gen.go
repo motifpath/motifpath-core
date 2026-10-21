@@ -1401,9 +1401,11 @@ type LoggedEventPage struct {
 	Total int `json:"total"`
 }
 
-// MultiTapResponse Answer to a note asked within a fret window: the student taps every place of the note in
-// the window, then says they are done. It is right only when the places tapped are exactly
-// the note's places in the window.
+// MultiTapResponse Answer to a fretboard cell asked to find every instance: the cell's note is named, and the
+// student taps every place of it in the fret window, then says they are done. It is graded on
+// every cell it covers: each place of the note in the window is right when tapped and wrong
+// when missed, and each other place tapped is wrong. Its time covers several taps, so it
+// counts for accuracy only, never for fluency.
 type MultiTapResponse struct {
 	// Cells The places tapped, in the order tapped. A tap taken back is not sent.
 	Cells []struct {
@@ -1557,7 +1559,9 @@ type PlannedPracticeItem struct {
 	// - fretboard_cell:<layout instrument id>:<string>:<fret> — a generated fretboard cell.
 	//   The instrument is the one whose fretboard layout the cell belongs to, so instruments
 	//   that share a layout share the cell. Strings are numbered from 1, the highest-pitched;
-	//   fret 0 is the open string.
+	//   fret 0 is the open string. A cell asked to find every place of its note in a fret
+	//   window is answered under its own key, and that answer is graded on every cell of the
+	//   window.
 	// - exercise:<exercise id> — an authored exercise.
 	// - play_along:<diagram id> — playing a diagram along with its playback, at a tempo.
 	// - chord_change:<from diagram id>:<to diagram id> — changing between two chord diagrams.
@@ -1584,8 +1588,9 @@ type PlannedPracticeItem struct {
 	// - guide_tone:<layout instrument id>:<progression key> — tapping a chord tone of each chord
 	//   of a progression in time with its playback. The key, the tone and the tempo are picked
 	//   each time.
-	// - fretboard_note:<layout instrument id>:<note> — finding every place of a note within a
-	//   fret window. The window is picked each time.
+	// - fretboard_note:<layout instrument id>:<note> — retired before it was installed: finding
+	//   every place of a note is a way of asking a fretboard cell. No item has this key; it
+	//   stays only until the multi_tap.v1 golden cases that use it are removed.
 	// - progression_keys:<layout instrument id>:<progression key> — playing a progression along
 	//   with its backing, key after key around the cycle of fourths. The key is the tour's next
 	//   one, sent back with each take.
@@ -1628,7 +1633,9 @@ type PracticeItemAnsweredEvent struct {
 	// - fretboard_cell:<layout instrument id>:<string>:<fret> — a generated fretboard cell.
 	//   The instrument is the one whose fretboard layout the cell belongs to, so instruments
 	//   that share a layout share the cell. Strings are numbered from 1, the highest-pitched;
-	//   fret 0 is the open string.
+	//   fret 0 is the open string. A cell asked to find every place of its note in a fret
+	//   window is answered under its own key, and that answer is graded on every cell of the
+	//   window.
 	// - exercise:<exercise id> — an authored exercise.
 	// - play_along:<diagram id> — playing a diagram along with its playback, at a tempo.
 	// - chord_change:<from diagram id>:<to diagram id> — changing between two chord diagrams.
@@ -1655,8 +1662,9 @@ type PracticeItemAnsweredEvent struct {
 	// - guide_tone:<layout instrument id>:<progression key> — tapping a chord tone of each chord
 	//   of a progression in time with its playback. The key, the tone and the tempo are picked
 	//   each time.
-	// - fretboard_note:<layout instrument id>:<note> — finding every place of a note within a
-	//   fret window. The window is picked each time.
+	// - fretboard_note:<layout instrument id>:<note> — retired before it was installed: finding
+	//   every place of a note is a way of asking a fretboard cell. No item has this key; it
+	//   stays only until the multi_tap.v1 golden cases that use it are removed.
 	// - progression_keys:<layout instrument id>:<progression key> — playing a progression along
 	//   with its backing, key after key around the cycle of fourths. The key is the tour's next
 	//   one, sent back with each take.
@@ -1725,7 +1733,9 @@ type PracticeItemAnsweredEvent1 = interface{}
 //   - fretboard_cell:<layout instrument id>:<string>:<fret> — a generated fretboard cell.
 //     The instrument is the one whose fretboard layout the cell belongs to, so instruments
 //     that share a layout share the cell. Strings are numbered from 1, the highest-pitched;
-//     fret 0 is the open string.
+//     fret 0 is the open string. A cell asked to find every place of its note in a fret
+//     window is answered under its own key, and that answer is graded on every cell of the
+//     window.
 //
 //   - exercise:<exercise id> — an authored exercise.
 //
@@ -1765,8 +1775,9 @@ type PracticeItemAnsweredEvent1 = interface{}
 //     of a progression in time with its playback. The key, the tone and the tempo are picked
 //     each time.
 //
-//   - fretboard_note:<layout instrument id>:<note> — finding every place of a note within a
-//     fret window. The window is picked each time.
+//   - fretboard_note:<layout instrument id>:<note> — retired before it was installed: finding
+//     every place of a note is a way of asking a fretboard cell. No item has this key; it
+//     stays only until the multi_tap.v1 golden cases that use it are removed.
 //
 //   - progression_keys:<layout instrument id>:<progression key> — playing a progression along
 //     with its backing, key after key around the cycle of fourths. The key is the tour's next
