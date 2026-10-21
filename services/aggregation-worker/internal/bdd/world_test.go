@@ -333,6 +333,8 @@ type world struct {
 	// tourStudent the student whose next session it is picked for.
 	tourKey     string
 	tourStudent string
+	// guideKey is the guide tone a scenario practises.
+	guideKey string
 }
 
 // chordWorld is the chord change and the single chord a scenario practises.
