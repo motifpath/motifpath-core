@@ -35,7 +35,6 @@ func TestValidPracticeItemKey(t *testing.T) {
 		{"root_fifth:" + id + ":Bbdim", true},
 		{"root_change:" + id + ":C:G7", true},
 		{"guide_tone:" + id + ":ii-V-I", true},
-		{"fretboard_note:" + id + ":F#", true},
 
 		{"", false},
 		{"fretboard:" + id + ":5:3", false},
@@ -60,7 +59,7 @@ func TestValidPracticeItemKey(t *testing.T) {
 		{"root_fifth:" + id + ":Amaj7", false},
 		{"root_change:" + id + ":C", false},
 		{"guide_tone:" + id, false},
-		{"fretboard_note:" + id + ":Gb", false},
+		{"fretboard_note:" + id + ":F#", false},
 	}
 
 	for _, tc := range cases {

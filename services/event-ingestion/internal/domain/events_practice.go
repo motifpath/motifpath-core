@@ -20,7 +20,6 @@ var practiceItemKeyPattern = regexp.MustCompile(`^(` +
 	`|root_fifth:` + uuidPattern + `:` + chordPattern +
 	`|root_change:` + uuidPattern + `:` + chordPattern + `:` + chordPattern +
 	`|guide_tone:` + uuidPattern + `:` + progressionKeyPattern +
-	`|fretboard_note:` + uuidPattern + `:(C|C#|D|D#|E|F|F#|G|G#|A|A#|B)` +
 	`|progression_keys:` + uuidPattern + `:` + progressionKeyPattern +
 	`)$`)
 

@@ -33,7 +33,6 @@ func TestGraderFor(t *testing.T) {
 		{PracticeItemKindHeardChord, PracticeResponseGeneratedChoice, "generated_choice.v1"},
 		{PracticeItemKindHeardProgression, PracticeResponseGeneratedChoice, "generated_choice.v1"},
 		{PracticeItemKindGuideTone, PracticeResponseTimedTaps, "timed_taps.v1"},
-		{PracticeItemKindFretboardNote, PracticeResponseMultiTap, "multi_tap.v1"},
 	}
 	for _, tt := range tests {
 		t.Run(string(tt.kind)+"/"+string(tt.response), func(t *testing.T) {

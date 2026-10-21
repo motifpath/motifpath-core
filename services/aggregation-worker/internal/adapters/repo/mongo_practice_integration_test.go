@@ -332,12 +332,12 @@ func TestMongoPracticeEvidenceRepository(t *testing.T) {
 	}
 	everywhere := domain.PracticeEvidence{
 		EvidenceID: "e0000000-0000-4000-8000-000000000011", StudentID: studentA,
-		ItemKey: "fretboard_note:" + guitar + ":E", Source: domain.EvidenceSourceAutoGraded, OccurredAt: monday,
-		GraderID: "multi_tap.v1",
+		ItemKey: "fretboard_cell:" + guitar + ":1:0", Source: domain.EvidenceSourceAutoGraded, OccurredAt: monday,
+		GraderID: "multi_tap.v2",
 		Response: domain.PracticeResponse{Type: domain.PracticeResponseMultiTap, FretWindowFrom: intPtr(0),
 			Cells: []domain.AnswerCell{{String: 1, Fret: 0}}, LatencyMs: intPtr(4000)},
-		Correct: boolPtr(false), LatencyMs: intPtr(4000),
-		AnswerKey: &domain.AnswerKey{NoteName: "E", FretWindowFrom: intPtr(0), Cells: []domain.AnswerCell{{String: 1, Fret: 0}, {String: 6, Fret: 0}}},
+		Correct:   boolPtr(false),
+		AnswerKey: &domain.AnswerKey{String: intPtr(1), Fret: intPtr(0), NoteName: "E", FretWindowFrom: intPtr(0), Cells: []domain.AnswerCell{{String: 1, Fret: 0}, {String: 6, Fret: 0}}},
 	}
 	noTaps := domain.PracticeEvidence{
 		EvidenceID: "e0000000-0000-4000-8000-000000000012", StudentID: studentA,
@@ -349,11 +349,11 @@ func TestMongoPracticeEvidenceRepository(t *testing.T) {
 	}
 	noPlaces := domain.PracticeEvidence{
 		EvidenceID: "e0000000-0000-4000-8000-000000000013", StudentID: studentA,
-		ItemKey: "fretboard_note:" + guitar + ":G", Source: domain.EvidenceSourceAutoGraded, OccurredAt: monday,
-		GraderID: "multi_tap.v1",
-		Response: domain.PracticeResponse{Type: domain.PracticeResponseMultiTap, FretWindowFrom: intPtr(3), Cells: []domain.AnswerCell{}, LatencyMs: intPtr(3000)},
-		Correct:  boolPtr(false), LatencyMs: intPtr(3000),
-		AnswerKey: &domain.AnswerKey{NoteName: "G", FretWindowFrom: intPtr(3), Cells: []domain.AnswerCell{{String: 1, Fret: 3}}},
+		ItemKey: "fretboard_cell:" + guitar + ":1:3", Source: domain.EvidenceSourceAutoGraded, OccurredAt: monday,
+		GraderID:  "multi_tap.v2",
+		Response:  domain.PracticeResponse{Type: domain.PracticeResponseMultiTap, FretWindowFrom: intPtr(3), Cells: []domain.AnswerCell{}, LatencyMs: intPtr(3000)},
+		Correct:   boolPtr(false),
+		AnswerKey: &domain.AnswerKey{String: intPtr(1), Fret: intPtr(3), NoteName: "G", FretWindowFrom: intPtr(3), Cells: []domain.AnswerCell{{String: 1, Fret: 3}}},
 	}
 	toured := domain.PracticeEvidence{
 		EvidenceID: "e0000000-0000-4000-8000-000000000014", StudentID: studentA,
@@ -421,7 +421,7 @@ func TestMongoPracticeItemStateRepository(t *testing.T) {
 	due := time.Date(2026, 10, 7, 9, 0, 0, 0, time.UTC)
 	last := time.Date(2026, 10, 5, 9, 0, 0, 0, time.UTC)
 	first := domain.ItemFold{Attempts: 1, Counted: 1, Accuracy: 1, Fluency: 0.9, Box: 1, DueAt: &due, LastAt: &last, BestCleanBPM: intPtr(90), BestCleanNoteValue: &eighths, BestChangesPerMinute: intPtr(48),
-		RightByResponse: map[string]int{"name_the_note": 2, "find_the_note": 1},
+		RightByResponse:    map[string]int{"name_the_note": 2, "find_the_note": 1},
 		LastChangeTempoBPM: intPtr(55), LastChangesPerMinute: intPtr(48), LastRating: domain.SelfRatingAlmost, CleanMinutesInARow: 2,
 		TourTempoBPM: intPtr(65), TourCleanKeys: []string{"C", "F"}, TourNoteValue: &eighths, LastMusicKey: "Eb"}
 	require.NoError(t, repo.Put(ctx, studentA, itemKey, first))

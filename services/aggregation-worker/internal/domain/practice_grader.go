@@ -170,8 +170,7 @@ func (e ExerciseReference) DrillTemplateKey() string {
 // after the drill rather than its response: two kinds may answer with the same
 // response shape and still be different drills.
 var singleTemplate = map[PracticeItemKind]string{
-	PracticeItemKindFretboardNote: "find_every_instance",
-	PracticeItemKindGuideTone:     "tap_the_third",
+	PracticeItemKindGuideTone: "tap_the_third",
 }
 
 // WayAsked is the way an answer to an item of kind was asked, the second half of
@@ -213,7 +212,7 @@ func TimedDrillTemplate(key PracticeItemKey, response PracticeResponse, ref Prac
 	switch key.Kind {
 	case PracticeItemKindFretboardCell, PracticeItemKindDiagramShape, PracticeItemKindDiatonicChord,
 		PracticeItemKindChordFunction, PracticeItemKindChartProgression, PracticeItemKindHeardChord,
-		PracticeItemKindHeardProgression, PracticeItemKindGuideTone, PracticeItemKindFretboardNote:
+		PracticeItemKindHeardProgression, PracticeItemKindGuideTone:
 		return string(key.Kind) + ":" + WayAsked(key.Kind, response)
 	case PracticeItemKindExercise:
 		if e, ok := ref.Exercises[key.ExerciseID()]; ok {
@@ -267,7 +266,6 @@ var graderByKind = map[PracticeItemKind]Grader{
 	PracticeItemKindHeardChord:       generatedChoiceV1{},
 	PracticeItemKindHeardProgression: generatedChoiceV1{},
 	PracticeItemKindGuideTone:        timedTapsV1{},
-	PracticeItemKindFretboardNote:    multiTapV1{},
 }
 
 // GraderFor returns the grader for an item kind and the way it was answered, and
@@ -285,5 +283,5 @@ func GraderFor(kind PracticeItemKind, response PracticeResponseType) (Grader, bo
 // whose evidence is still kept.
 func Graders() []Grader {
 	return []Grader{selfRatingV1{}, exerciseOptionV1{}, fretboardCellV1{}, fretboardCellV2{}, diagramShapeV1{},
-		generatedChoiceV1{}, timedTapsV1{}, multiTapV1{}, multiTapV2{}}
+		generatedChoiceV1{}, timedTapsV1{}, multiTapV2{}}
 }

@@ -56,6 +56,8 @@ func TestParsePracticeItemKey_RejectsMalformedKeys(t *testing.T) {
 		"diagram_shape:" + diagramA + ":" + diagramB,
 		"progression_keys:" + diagramA,
 		"progression_keys:I-V-vi-IV",
+		// Finding every instance is a way of asking a fretboard cell, never an item of its own.
+		"fretboard_note:" + diagramA + ":G",
 	} {
 		t.Run(raw, func(t *testing.T) {
 			_, err := ParsePracticeItemKey(raw)

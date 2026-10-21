@@ -58,6 +58,30 @@ func (multiTapV2) Grade(key PracticeItemKey, r PracticeResponse, ref PracticeRef
 	return GradeResult{EvidenceByItem: graded}
 }
 
+// fretWindowEnd is a window's highest fret: the open string to fret 5 at the nut,
+// otherwise its first fret and the next four.
+func fretWindowEnd(from int) int {
+	if from == 0 {
+		return 5
+	}
+	return from + 4
+}
+
+// placesOf is every cell of the window that sounds the note, by string from 1,
+// then fret from the lowest.
+func placesOf(note string, instrument InstrumentReference, from, to int) []AnswerCell {
+	notePitch, _ := pitchClass(note)
+	var places []AnswerCell
+	for str := 1; str <= len(instrument.Tuning); str++ {
+		for fret := from; fret <= to; fret++ {
+			if pc, ok := cellPitchClass(instrument, str, fret); ok && pc == notePitch {
+				places = append(places, AnswerCell{String: str, Fret: fret})
+			}
+		}
+	}
+	return places
+}
+
 func inWindow(c AnswerCell, from, to int) bool { return c.Fret >= from && c.Fret <= to }
 
 // coveredCells is every place of the note and every cell tapped, once each, by

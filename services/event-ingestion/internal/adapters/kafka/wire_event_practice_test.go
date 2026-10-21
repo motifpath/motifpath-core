@@ -183,11 +183,11 @@ func TestToWireEvent_PracticeEvents(t *testing.T) {
 			event: domain.PracticeItemAnsweredEvent{
 				TrackingEventBase: practiceWireBase(domain.EventTypePracticeItemAnswered),
 				PracticeSessionID: "44444444-4444-4444-8444-444444444444",
-				ItemKey:           "fretboard_note:6ea2d087-ab9c-59dc-9657-8546025414d2:E",
+				ItemKey:           "fretboard_cell:6ea2d087-ab9c-59dc-9657-8546025414d2:6:0",
 				Response: domain.PracticeResponse{Type: domain.PracticeResponseMultiTap, FretWindowFrom: &fret,
 					Cells: []domain.TappedCell{{String: 1, Fret: 0}}, LatencyMs: &latency},
 			},
-			want: `{` + wireBaseJSON + `,"event_type":"practice.item_answered","practice_session_id":"44444444-4444-4444-8444-444444444444","item_key":"fretboard_note:6ea2d087-ab9c-59dc-9657-8546025414d2:E","response":{"response_type":"multi_tap","latency_ms":1800,"fret_window":{"from_fret":0},"cells":[{"string":1,"fret":0}]}}`,
+			want: `{` + wireBaseJSON + `,"event_type":"practice.item_answered","practice_session_id":"44444444-4444-4444-8444-444444444444","item_key":"fretboard_cell:6ea2d087-ab9c-59dc-9657-8546025414d2:6:0","response":{"response_type":"multi_tap","latency_ms":1800,"fret_window":{"from_fret":0},"cells":[{"string":1,"fret":0}]}}`,
 		},
 		{
 			name: "session ended early with no felt ratings",
