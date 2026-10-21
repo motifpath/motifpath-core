@@ -399,6 +399,60 @@ func TestFoldEvidence_ProgressionKeyTour(t *testing.T) {
 	})
 }
 
+// guideTake is a guide-tone take, right or not, played at bpm in v (quarters when nil).
+func guideTake(at time.Time, correct bool, bpm int, v *NoteValue) PracticeEvidence {
+	return PracticeEvidence{
+		ItemKey:    "guide_tone:" + guitarLayout + ":ii-V-I",
+		Source:     EvidenceSourceAutoGraded,
+		OccurredAt: at,
+		GraderID:   "timed_taps.v1",
+		Response:   PracticeResponse{Type: PracticeResponseTimedTaps, MusicKey: "C", Tone: "3", TempoBPM: ptr(bpm), NoteValue: v},
+		Correct:    ptr(correct),
+		LatencyMs:  ptr(400),
+	}
+}
+
+func TestFoldEvidence_GuideTonesMeasureTempo(t *testing.T) {
+	goal := ItemGoal{TargetTempoBPM: ptr(GuideToneTargetTempoBPM)}
+	fiveDays := func(correct bool, bpm int, v *NoteValue) []PracticeEvidence {
+		var evidence []PracticeEvidence
+		for i := range 5 {
+			evidence = append(evidence, guideTake(onDay(i), correct, bpm, v))
+		}
+		return evidence
+	}
+
+	cases := []struct {
+		name     string
+		evidence []PracticeEvidence
+		fluency  float64
+		level    KnowledgeLevel
+	}{
+		{"a right take's fluency is its tempo over the target", []PracticeEvidence{guideTake(onDay(0), true, 72, nil)}, 0.8, KnowledgeLevelLearning},
+		{"a take in eighths counts at its effective speed", []PracticeEvidence{guideTake(onDay(0), true, 45, ptr(NoteValueEighths))}, 1, KnowledgeLevelLearning},
+		{"a take faster than the target is fully fluent", []PracticeEvidence{guideTake(onDay(0), true, 120, nil)}, 1, KnowledgeLevelLearning},
+		{"a wrong take judges fluency as none", []PracticeEvidence{guideTake(onDay(0), false, 90, nil)}, 0, KnowledgeLevelLearning},
+		{"five right takes at 72 BPM are fluent", fiveDays(true, 72, nil), 0.8, KnowledgeLevelFluent},
+		{"five right takes at 60 BPM stay accurate", fiveDays(true, 60, nil), 60.0 / 90, KnowledgeLevelAccurate},
+		{"five right takes at 45 BPM in eighths are fluent", fiveDays(true, 45, ptr(NoteValueEighths)), 1, KnowledgeLevelFluent},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			f := foldAll(t, goal, tc.evidence...)
+
+			assert.InDelta(t, tc.fluency, f.Fluency, 1e-9)
+			assert.Equal(t, tc.level, f.Level())
+		})
+	}
+
+	t.Run("a late hit within its bar is never held against the student", func(t *testing.T) {
+		e := guideTake(onDay(0), true, 90, nil)
+		e.LatencyMs = ptr(2000)
+
+		assert.InDelta(t, 1, foldAll(t, goal, e).Fluency, 1e-9)
+	})
+}
+
 func TestProgressionKeyOrder_IsTheCycleOfFourthsFromC(t *testing.T) {
 	assert.Equal(t, []string{"C", "F", "Bb", "Eb", "Ab", "Db", "F#", "B", "E", "A", "D", "G"}, ProgressionKeyOrder)
 }
