@@ -68,6 +68,7 @@ func (r *MongoPracticeItemStateRepository) Put(ctx context.Context, studentID, i
 		TourTempoBPM:         f.TourTempoBPM,
 		TourCleanKeys:        f.TourCleanKeys,
 		TourNoteValue:        noteValueString(f.TourNoteValue),
+		LastMusicKey:         f.LastMusicKey,
 		RightByResponse:      f.RightByResponse,
 		UpdatedAt:            r.now().UTC(),
 	}

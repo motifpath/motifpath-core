@@ -322,6 +322,28 @@ func TestPracticeEvidenceService_GradesAndFoldsAProgressionKeyTourTake(t *testin
 	assert.InDelta(t, 0.6, fold.Fluency, 1e-9)
 }
 
+func TestPracticeEvidenceService_GradesAndFoldsAGuideToneTake(t *testing.T) {
+	f := newPracticeFixture()
+	key := "guide_tone:" + guitarLayout + ":I-V-vi-IV"
+	tempo := 72
+	// I-V-vi-IV in C is C G Am F; at 72 BPM a bar lasts 3333 ms. Each tap is its bar's third.
+	taps := []domain.TimedTap{{AtMs: 100, String: 1, Fret: 0}, {AtMs: 3400, String: 2, Fret: 0}, {AtMs: 6800, String: 2, Fret: 1}, {AtMs: 10100, String: 3, Fret: 2}}
+	answer := domain.PracticeAnswer{
+		EventID: "e0000000-0000-4000-8000-000000000051", StudentID: alice, OccurredAt: monday, ItemKey: key,
+		Response: domain.PracticeResponse{Type: domain.PracticeResponseTimedTaps, MusicKey: "C", Tone: "3", TempoBPM: &tempo, Taps: taps},
+	}
+
+	require.NoError(t, f.service.Process(context.Background(), answer))
+
+	require.Len(t, f.evidence.stored, 1)
+	require.NotNil(t, f.evidence.stored[0].Correct)
+	assert.True(t, *f.evidence.stored[0].Correct)
+	fold, ok := f.fold(t, key)
+	require.True(t, ok)
+	// Fluency is measured against the guide-tone target: 72 of 90.
+	assert.InDelta(t, 0.8, fold.Fluency, 1e-9)
+}
+
 func challengeAnswer(eventID string, at time.Time, optionID string, latency int) domain.PracticeAnswer {
 	return domain.PracticeAnswer{
 		EventID:        eventID,

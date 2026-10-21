@@ -2156,14 +2156,23 @@ type TimedTap struct {
 
 // TimedTapsResponse A take of tapping a chord tone of each chord of a progression in time with its playback,
 // on the fretboard of the item's layout. The progression is played in the key and at the
-// tempo sent, four beats to a bar, one chord per bar. Each tap is kept with the time it
-// was made, so every bar can be graded.
+// tempo and note value sent, one chord per bar of four beats: in quarters a bar lasts
+// 240000 / tempo_bpm milliseconds, and a faster note value shortens it by its speed factor.
+// Each tap is kept with the time it was made, so every bar can be graded.
 type TimedTapsResponse struct {
 	// MusicKey A major key. In a response, the key a question was asked in or a take was played in when
 	// its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
 	// tone or a progression key tour; absent in a response to any other item. A planned question
 	// always names its key.
 	MusicKey MusicKey `json:"music_key"`
+
+	// NoteValue The note value a play-along take was played at: a speed factor on the music as written,
+	// with the click staying on the beat. halves = x0.5, quarters = x1 (as written), eighths = x2,
+	// triplets = x3, sixteenths = x4, quintuplets = x5, sextuplets = x6, thirty_seconds = x8.
+	// A take's effective speed is its tempo_bpm times the factor, in quarter-note beats per
+	// minute: 80 BPM in eighths is as fast as 160 BPM in quarters. Tempos of the same item are
+	// compared at effective speed. Absent means quarters. Present only with a tempo_bpm.
+	NoteValue *NoteValue `json:"note_value,omitempty"`
 
 	// ResponseType Discriminator. The student tapped along with a progression's playback.
 	ResponseType TimedTapsResponseResponseType `json:"response_type"`

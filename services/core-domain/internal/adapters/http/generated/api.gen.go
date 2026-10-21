@@ -1828,6 +1828,24 @@ func (e PathDetailLevel) Valid() bool {
 	}
 }
 
+// Defines values for PlannedGuideToneTone.
+const (
+	PlannedGuideToneToneN3 PlannedGuideToneTone = "3"
+	PlannedGuideToneToneN7 PlannedGuideToneTone = "7"
+)
+
+// Valid indicates whether the value is a known member of the PlannedGuideToneTone enum.
+func (e PlannedGuideToneTone) Valid() bool {
+	switch e {
+	case PlannedGuideToneToneN3:
+		return true
+	case PlannedGuideToneToneN7:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PracticeFocusSource.
 const (
 	Chosen    PracticeFocusSource = "chosen"
@@ -6737,6 +6755,83 @@ type PlannedChordVoicing struct {
 	DiagramId openapi_types.UUID `json:"diagram_id"`
 }
 
+// PlannedGuideTone A progression played once in a key, one chord a bar after a bar of count-in, while the
+// student taps the asked tone of each chord on an empty fretboard as it sounds (kind
+// guide_tone), graded by timed_taps.v1. It names the chords, the key and the tone, never the
+// notes to tap or their places. The item ends after a right take or after takes takes, all in
+// music_key; each take is answered with a timed_taps response sending music_key, tone, the
+// tempo and note value it played at, and the taps.
+type PlannedGuideTone struct {
+	// Bars Every bar of the progression, in order, played once a take.
+	Bars []struct {
+		// Chord The bar's chord symbol in music_key, spelled as the chord catalog spells roots. It
+		// is shown and sounded.
+		Chord string `json:"chord"`
+
+		// Numeral The bar's numeral in the progression catalog; a 7 marks a dominant seventh.
+		Numeral string `json:"numeral"`
+	} `json:"bars"`
+
+	// FretWindow The frets a fretboard drill is asked within, so its board is drawn at full tap size without
+	// scrolling sideways. Five frets, plus the open string when the window starts at the nut: a
+	// from_fret of 0 covers the open string and frets 1 to 5; any other from_fret covers it and the
+	// next four frets, such as 3 to 7. Only the window's places can be tapped, and the question
+	// names it. Every cell of the same drill and layout in a plan carries the same window, and the
+	// cell's fret is always inside it.
+	FretWindow FretWindow `json:"fret_window"`
+
+	// LayoutInstrumentId The instrument whose fretboard layout is tapped on: guitar or electric bass. On electric
+	// bass each chord's root also plays under it in the bass voice.
+	LayoutInstrumentId openapi_types.UUID `json:"layout_instrument_id"`
+
+	// MusicKey A major key. In a response, the key a question was asked in or a take was played in when
+	// its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
+	// tone or a progression key tour; absent in a response to any other item. A planned question
+	// always names its key.
+	MusicKey MusicKey `json:"music_key"`
+
+	// Progression The progression played.
+	Progression struct {
+		// Key The progression's key in the progression catalog, such as ii-V-I.
+		Key string `json:"key"`
+
+		// Name The progression's name in the student's language, such as "ii–V–I".
+		Name string `json:"name"`
+	} `json:"progression"`
+
+	// Takes The most takes of the item this session plays.
+	Takes int `json:"takes"`
+
+	// TargetTempoBpm The tempo a right take's effective speed is measured against for fluency, in quarters,
+	// the same for every progression and layout.
+	TargetTempoBpm int `json:"target_tempo_bpm"`
+
+	// TempoBpm The tempo the first take starts at, in quarter notes per minute, by the student's level
+	// on the item: 60 while new or learning, 72 once accurate, 90 once fluent. The student may
+	// change it, and the note value, before any take.
+	TempoBpm int `json:"tempo_bpm"`
+
+	// Tone The chord tone asked of every chord: 3 = its third, until the student is accurate on the
+	// item; 7 = its seventh in the key from then on (the major seventh of I and IV, the minor
+	// seventh of every other chord and of a dominant seventh).
+	Tone PlannedGuideToneTone `json:"tone"`
+
+	// Voicings One voicing per distinct chord of bars.
+	Voicings []struct {
+		// Chord The chord symbol, as it appears in bars.
+		Chord string `json:"chord"`
+
+		// DiagramId The chord catalog voicing the playback sounds: the chord's open voicing if the
+		// catalog has one, else its lowest-difficulty voicing.
+		DiagramId openapi_types.UUID `json:"diagram_id"`
+	} `json:"voicings"`
+}
+
+// PlannedGuideToneTone The chord tone asked of every chord: 3 = its third, until the student is accurate on the
+// item; 7 = its seventh in the key from then on (the major seventh of I and IV, the minor
+// seventh of every other chord and of a dominant seventh).
+type PlannedGuideToneTone string
+
 // PlannedProgressionKeys A progression played along with, key after key around the cycle of fourths (kind
 // progression_keys), self-rated take by take. The plan lists the whole tour, so the client
 // moves to the next key without asking again: after a clean take at an effective speed at
@@ -7163,8 +7258,8 @@ type PracticeRung string
 
 // PracticeSessionItem One item of a composed session, with what the client needs to present it. Exactly
 // one of fretboard_cell, exercise, play_along, diagram_shape, generated_choice,
-// chord_voicing, chord_change, root_fifth, root_change and progression_keys is present,
-// matching kind:
+// chord_voicing, chord_change, root_fifth, root_change, progression_keys and guide_tone is
+// present, matching kind:
 // generated_choice for a diatonic chord, a chord function, a chart progression, a heard
 // chord or a heard progression.
 type PracticeSessionItem struct {
@@ -7266,6 +7361,14 @@ type PracticeSessionItem struct {
 	// progression, a heard chord or a heard progression. A question asked by ear also carries
 	// the playback the client sounds before the options can be picked.
 	GeneratedChoice *GeneratedChoiceQuestion `json:"generated_choice,omitempty"`
+
+	// GuideTone A progression played once in a key, one chord a bar after a bar of count-in, while the
+	// student taps the asked tone of each chord on an empty fretboard as it sounds (kind
+	// guide_tone), graded by timed_taps.v1. It names the chords, the key and the tone, never the
+	// notes to tap or their places. The item ends after a right take or after takes takes, all in
+	// music_key; each take is answered with a timed_taps response sending music_key, tone, the
+	// tempo and note value it played at, and the taps.
+	GuideTone *PlannedGuideTone `json:"guide_tone,omitempty"`
 
 	// ItemKey Stable, readable identifier of a practice item: the smallest thing whose knowledge is
 	// tracked. Every answer, rating and review points at one. The prefix is the item kind:
