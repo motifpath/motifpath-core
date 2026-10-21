@@ -175,8 +175,8 @@ type PracticeResponse struct {
 
 	// Rating (self_rating) is always set; TempoBPM for a play-along take (and on
 	// timed_taps), ChangesPerMinute for a chord-change or root-change minute. NoteValue
-	// is the note value a play-along take was played at, kept as given; nil when the
-	// client sent none.
+	// is the note value a play-along or guide-tone take was played at, kept as given;
+	// nil when the client sent none.
 	Rating           SelfRating
 	TempoBPM         *int
 	NoteValue        *NoteValue

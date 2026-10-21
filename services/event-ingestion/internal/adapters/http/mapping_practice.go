@@ -467,7 +467,7 @@ func checkOptions(options []string) string {
 }
 
 func toTimedTapsResponse(r rawPracticeResponse) (domain.PracticeResponse, error) {
-	if property := r.strayProperty("music_key", "tone", "tempo_bpm", "taps"); property != "" {
+	if property := r.strayProperty("music_key", "tone", "tempo_bpm", "note_value", "taps"); property != "" {
 		return invalidResponse(property + " is not a property of timed_taps")
 	}
 	if r.MusicKey == nil || !musicKeys[*r.MusicKey] {
@@ -479,12 +479,29 @@ func toTimedTapsResponse(r rawPracticeResponse) (domain.PracticeResponse, error)
 	if r.TempoBPM == nil || *r.TempoBPM < 1 || *r.TempoBPM > maxTempoBPM {
 		return invalidResponse(fmt.Sprintf("tempo_bpm must be between 1 and %d", maxTempoBPM))
 	}
+	noteValue, ok := toNoteValue(r.NoteValue)
+	if !ok {
+		return invalidResponse(noteValueRule)
+	}
 	taps, why := toTimedTaps(r.Taps)
 	if why != "" {
 		return invalidResponse(why)
 	}
 	return domain.PracticeResponse{Type: domain.PracticeResponseTimedTaps, MusicKey: *r.MusicKey, Tone: *r.Tone,
-		TempoBPM: r.TempoBPM, Taps: taps}, nil
+		TempoBPM: r.TempoBPM, NoteValue: noteValue, Taps: taps}, nil
+}
+
+// noteValueRule is why a note value is refused.
+const noteValueRule = "note_value must be a note value, such as quarters or eighths"
+
+// toNoteValue reads a take's note value: nil when none was sent, and false when the
+// one sent isn't a note value.
+func toNoteValue(raw *string) (*domain.NoteValue, bool) {
+	if raw == nil {
+		return nil, true
+	}
+	v := domain.NoteValue(*raw)
+	return &v, v.Valid()
 }
 
 // toTimedTaps reads a take's taps, or says why they are refused.
@@ -637,13 +654,9 @@ func toSelfRatingResponse(r rawPracticeResponse) (domain.PracticeResponse, error
 	if r.ChangesPerMinute != nil && (*r.ChangesPerMinute < 0 || *r.ChangesPerMinute > maxChangesPerMin) {
 		return invalidResponse(fmt.Sprintf("changes_per_minute must be between 0 and %d", maxChangesPerMin))
 	}
-	var noteValue *domain.NoteValue
-	if r.NoteValue != nil {
-		v := domain.NoteValue(*r.NoteValue)
-		if !v.Valid() {
-			return invalidResponse("note_value must be a note value, such as quarters or eighths")
-		}
-		noteValue = &v
+	noteValue, ok := toNoteValue(r.NoteValue)
+	if !ok {
+		return invalidResponse(noteValueRule)
 	}
 	// A progression key tour take names the key it was played in.
 	var musicKey string

@@ -183,6 +183,13 @@ func TestToDomainEvent_PracticeItemAnsweredResponses(t *testing.T) {
 			want:     domain.PracticeResponse{Type: domain.PracticeResponseTimedTaps, MusicKey: "A", Tone: "7", TempoBPM: intPtr(90), Taps: []domain.TimedTap{}},
 		},
 		{
+			name:     "timed taps at a note value",
+			itemKey:  "guide_tone:" + testInstrumentID + ":ii-V-I",
+			response: `{"response_type":"timed_taps","music_key":"C","tone":"3","tempo_bpm":60,"note_value":"eighths","taps":[]}`,
+			want: domain.PracticeResponse{Type: domain.PracticeResponseTimedTaps, MusicKey: "C", Tone: "3", TempoBPM: intPtr(60),
+				NoteValue: noteValuePtr(domain.NoteValueEighths), Taps: []domain.TimedTap{}},
+		},
+		{
 			name:     "multi tap",
 			itemKey:  "fretboard_note:" + testInstrumentID + ":G",
 			response: `{"response_type":"multi_tap","fret_window":{"from_fret":0},"cells":[{"string":6,"fret":3},{"string":1,"fret":3}],"latency_ms":5200}`,
@@ -401,6 +408,8 @@ func TestToDomainEvent_PracticeValidationFailures(t *testing.T) {
 			answeredFields("guide_tone:"+testInstrumentID+":ii-V-I", `{"response_type":"timed_taps","music_key":"C","tone":"3","tempo_bpm":120,"taps":[{"at_ms":100,"string":0,"fret":1}]}`), domain.ErrInvalidField, "response"},
 		{"tapped along before the first bar", "practice.item_answered",
 			answeredFields("guide_tone:"+testInstrumentID+":ii-V-I", `{"response_type":"timed_taps","music_key":"C","tone":"3","tempo_bpm":120,"taps":[{"at_ms":-1,"string":1,"fret":1}]}`), domain.ErrInvalidField, "response"},
+		{"tapped along at a note value that isn't one", "practice.item_answered",
+			answeredFields("guide_tone:"+testInstrumentID+":ii-V-I", `{"response_type":"timed_taps","music_key":"C","tone":"3","tempo_bpm":60,"note_value":"fifths","taps":[]}`), domain.ErrInvalidField, "response"},
 		{"tapped along with a latency", "practice.item_answered",
 			answeredFields("guide_tone:"+testInstrumentID+":ii-V-I", `{"response_type":"timed_taps","music_key":"C","tone":"3","tempo_bpm":120,"taps":[],"latency_ms":10}`), domain.ErrInvalidField, "response"},
 		{"tapped every place in a window starting at fret 1", "practice.item_answered",
