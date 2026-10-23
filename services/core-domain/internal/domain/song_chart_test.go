@@ -163,6 +163,10 @@ func TestSongChartDraft_Validate(t *testing.T) {
 		{name: "a tempo under 20", change: func(d *domain.SongChartDraft) { d.TempoBPM = tempo(19) }, wantField: "tempo_bpm"},
 		{name: "a tempo over 300", change: func(d *domain.SongChartDraft) { d.TempoBPM = tempo(301) }, wantField: "tempo_bpm"},
 		{name: "a meter of 4/3", change: func(d *domain.SongChartDraft) { d.TimeSignature = &domain.TimeSignature{Beats: 4, BeatValue: 3} }, wantField: "time_signature"},
+		{name: "a progression tagged twice", change: func(d *domain.SongChartDraft) { d.ProgressionKeys = []string{"I-IV-V-I", "ii-V-I", "I-IV-V-I"} }, wantField: "progression_keys"},
+		{name: "more than 10 progressions", change: func(d *domain.SongChartDraft) {
+			d.ProgressionKeys = []string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k"}
+		}, wantField: "progression_keys"},
 	}
 	for _, tt := range tests {
 		t.Run("refuses "+tt.name, func(t *testing.T) {
@@ -270,6 +274,29 @@ func TestSongChart_Publish(t *testing.T) {
 		require.ErrorAs(t, err, &notPublishable)
 		assert.Equal(t, []domain.NotPublishableReason{domain.UnresolvedChords}, notPublishable.Reasons)
 		assert.Equal(t, []domain.AnchorWarning{blocking}, notPublishable.AnchorWarnings)
+	})
+
+	t.Run("the revision keeps the progressions the draft is tagged with", func(t *testing.T) {
+		chart := confirmedChart()
+		chart.Draft.ProgressionKeys = []string{"I-IV-I-V"}
+
+		_, rev, err := chart.Publish("ana", publishedAt)
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{"I-IV-I-V"}, rev.ProgressionKeys)
+	})
+
+	t.Run("a tagged progression the chart doesn't play blocks publication, and is listed", func(t *testing.T) {
+		chart := confirmedChart()
+		chart.Draft.ProgressionKeys = []string{"I-IV-I-V", "I-V-vi-IV"}
+		chart.Draft.UnplayedProgressionKeys = []string{"I-V-vi-IV"}
+
+		_, _, err := chart.Publish("ana", publishedAt)
+
+		var notPublishable *domain.SongChartNotPublishableError
+		require.ErrorAs(t, err, &notPublishable)
+		assert.Equal(t, []domain.NotPublishableReason{domain.ProgressionsNotPlayed}, notPublishable.Reasons)
+		assert.Equal(t, []string{"I-V-vi-IV"}, notPublishable.UnplayedProgressionKeys)
 	})
 
 	t.Run("every reason is reported at once", func(t *testing.T) {
