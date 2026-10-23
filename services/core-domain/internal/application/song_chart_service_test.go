@@ -2,6 +2,7 @@ package application_test
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -383,6 +384,31 @@ func TestSongChartService_Publish(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, []string{chart.ID}, f.refs.songChartIDs())
+	})
+
+	t.Run("the practice reference is written even when the request ends right after the publication", func(t *testing.T) {
+		f := newSongChartFixture()
+		chart, _ := f.service.Create(ctx, adminCaller(), asaBranca())
+		ended, cancel := context.WithCancel(ctx)
+		cancel()
+
+		_, err := f.service.Publish(ended, adminCaller(), chart.ID)
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{chart.ID}, f.refs.songChartIDs(), "a client leaving after the commit must not cost the snapshot its write")
+	})
+
+	t.Run("a failed practice reference write doesn't fail the publication", func(t *testing.T) {
+		f := newSongChartFixture()
+		f.refs.err = errors.New("mongo down")
+		chart, _ := f.service.Create(ctx, adminCaller(), asaBranca())
+
+		rev, err := f.service.Publish(ctx, adminCaller(), chart.ID)
+
+		require.NoError(t, err)
+		assert.Equal(t, 1, rev.Number)
+		stored, _ := f.charts.GetByID(ctx, chart.ID)
+		assert.Equal(t, domain.SongChartPublished, stored.Status)
 	})
 
 	t.Run("a refused publication writes no practice reference", func(t *testing.T) {

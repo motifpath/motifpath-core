@@ -12,6 +12,7 @@ import (
 
 	"github.com/motifpath/core-domain/internal/application"
 	"github.com/motifpath/core-domain/internal/domain"
+	"github.com/motifpath/core-domain/internal/ports"
 )
 
 // The practice graders read diagrams only from the reference snapshot
@@ -399,20 +400,59 @@ func TestPracticeReferenceService_SyncProgressions(t *testing.T) {
 // keep their evidence, and a chart never published has no songs.
 func TestPracticeReferenceService_SyncSongCharts(t *testing.T) {
 	ctx := context.Background()
-	charts := newFakeSongChartRepository()
-	for id, status := range map[string]domain.SongChartStatus{
-		"amazing-grace": domain.SongChartPublished, "oh-susanna": domain.SongChartWithdrawn, "ciranda": domain.SongChartDraftStatus,
-	} {
-		require.NoError(t, charts.Create(ctx, domain.SongChart{ID: id, Status: status}))
+	seed := func(t *testing.T) *fakeSongChartRepository {
+		charts := newFakeSongChartRepository()
+		for id, status := range map[string]domain.SongChartStatus{
+			"amazing-grace": domain.SongChartPublished, "oh-susanna": domain.SongChartWithdrawn, "ciranda": domain.SongChartDraftStatus,
+		} {
+			require.NoError(t, charts.Create(ctx, domain.SongChart{ID: id, Status: status}))
+		}
+		return charts
 	}
-	references := newFakePracticeReferenceWriter()
-	svc := application.NewPracticeReferenceService(newFakeDiagramRepository(), newFakeExerciseRepository(), newFakeInstrumentRepository(), fakeDrillThresholds(nil), fakeProgressions(nil), fakeChordDrills{}, charts, references)
+	newService := func(charts ports.SongChartRepository, references *fakePracticeReferenceWriter) *application.PracticeReferenceService {
+		return application.NewPracticeReferenceService(newFakeDiagramRepository(), newFakeExerciseRepository(), newFakeInstrumentRepository(), fakeDrillThresholds(nil), fakeProgressions(nil), fakeChordDrills{}, charts, references)
+	}
 
-	synced, err := svc.SyncSongCharts(ctx)
+	t.Run("writes every published and withdrawn chart, never a draft", func(t *testing.T) {
+		references := newFakePracticeReferenceWriter()
 
-	require.NoError(t, err)
-	assert.Equal(t, 2, synced)
-	assert.ElementsMatch(t, []string{"amazing-grace", "oh-susanna"}, references.songChartIDs())
+		synced, err := newService(seed(t), references).SyncSongCharts(ctx)
+
+		require.NoError(t, err)
+		assert.Equal(t, 2, synced)
+		assert.ElementsMatch(t, []string{"amazing-grace", "oh-susanna"}, references.songChartIDs())
+	})
+
+	t.Run("reports a failed write", func(t *testing.T) {
+		references := newFakePracticeReferenceWriter()
+		references.err = errors.New("mongo down")
+
+		synced, err := newService(seed(t), references).SyncSongCharts(ctx)
+
+		require.Error(t, err)
+		assert.Equal(t, 0, synced)
+	})
+
+	t.Run("a failed listing of one status still writes the other, and is reported", func(t *testing.T) {
+		references := newFakePracticeReferenceWriter()
+
+		synced, err := newService(failingPublishedCharts{seed(t)}, references).SyncSongCharts(ctx)
+
+		require.Error(t, err)
+		assert.Equal(t, 1, synced)
+		assert.Equal(t, []string{"oh-susanna"}, references.songChartIDs())
+	})
+}
+
+// failingPublishedCharts is a song chart repository whose listing of published
+// charts always fails.
+type failingPublishedCharts struct{ *fakeSongChartRepository }
+
+func (f failingPublishedCharts) List(ctx context.Context, filter domain.SongChartFilter, page domain.PageRequest) (domain.Page[domain.SongChart], error) {
+	if filter.Status != nil && *filter.Status == domain.SongChartPublished {
+		return domain.Page[domain.SongChart]{}, errors.New("postgres down")
+	}
+	return f.fakeSongChartRepository.List(ctx, filter, page)
 }
 
 // failingExercises is an exercise repository whose listing always fails.
