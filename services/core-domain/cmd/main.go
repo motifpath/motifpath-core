@@ -320,7 +320,7 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 		WithGuideTones(instrumentRepo)
 	practiceSummaryService := application.NewPracticeSummaryService(instrumentRepo, studentPathRepo, courseEnrollmentRepo, pathRepo, courseVersionRepo, nodeRepo, rollupService, practiceActivity, songChartRepo, now)
 	chordCatalogService := application.NewChordCatalogService(chordCatalogRepo)
-	songChartService := application.NewSongChartService(songChartRepo, chordCatalogRepo, diagramRepo, languageRepo, practiceReferences, newID, now)
+	songChartService := application.NewSongChartService(songChartRepo, chordCatalogRepo, diagramRepo, languageRepo, repo.NewEntProgressionRepository(entClient), practiceReferences, newID, now)
 
 	appConfigRepo := repo.NewEntAppConfigRepository(entClient)
 	appConfigService := application.NewAppConfigService(appConfigRepo, now, application.NewStartingPointsKey(instrumentRepo, languageRepo, pathRepo, courseRepo))

@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"slices"
 	"time"
 	"unicode/utf8"
 
@@ -15,13 +17,14 @@ import (
 // chords anchored to the words they fall on. Only admins author and publish
 // charts; any signed-in user reads a published one.
 type SongChartService struct {
-	charts    ports.SongChartRepository
-	chords    ports.ChordCatalogRepository
-	diagrams  ports.DiagramRepository
-	languages ports.LanguageRepository
-	refs      ports.PracticeReferenceWriter
-	newID     func() string
-	now       func() time.Time
+	charts       ports.SongChartRepository
+	chords       ports.ChordCatalogRepository
+	diagrams     ports.DiagramRepository
+	languages    ports.LanguageRepository
+	progressions ports.ProgressionRepository
+	refs         ports.PracticeReferenceWriter
+	newID        func() string
+	now          func() time.Time
 }
 
 func NewSongChartService(
@@ -29,11 +32,12 @@ func NewSongChartService(
 	chords ports.ChordCatalogRepository,
 	diagrams ports.DiagramRepository,
 	languages ports.LanguageRepository,
+	progressions ports.ProgressionRepository,
 	refs ports.PracticeReferenceWriter,
 	newID func() string,
 	now func() time.Time,
 ) *SongChartService {
-	return &SongChartService{charts: charts, chords: chords, diagrams: diagrams, languages: languages, refs: refs, newID: newID, now: now}
+	return &SongChartService{charts: charts, chords: chords, diagrams: diagrams, languages: languages, progressions: progressions, refs: refs, newID: newID, now: now}
 }
 
 // SongChartInput is what an author writes in a chart's draft. Anchors'
@@ -47,6 +51,9 @@ type SongChartInput struct {
 	TempoBPM        *int
 	TimeSignature   *domain.TimeSignature
 	RightsConfirmed bool
+	// ProgressionKeys are the progressions the author tags the song with,
+	// by their key in the progression catalog.
+	ProgressionKeys []string
 	Body            domain.SongChartDocument
 }
 
@@ -114,13 +121,14 @@ func (s *SongChartService) UpdateDraft(ctx context.Context, caller domain.User, 
 	return chart, nil
 }
 
-// buildDraft validates in, resolves its anchors and carries the previous
-// rights confirmation over, so confirming again doesn't change who did.
+// buildDraft validates in, resolves its anchors, checks the progressions it
+// is tagged with and carries the previous rights confirmation over, so
+// confirming again doesn't change who did.
 func (s *SongChartService) buildDraft(ctx context.Context, caller domain.User, confirmation *domain.RightsConfirmation, in SongChartInput, now time.Time) (domain.SongChartDraft, error) {
 	draft := domain.SongChartDraft{
 		Title: in.Title, Artist: in.Artist, Language: in.Language, ConcertKey: in.ConcertKey,
 		CapoFret: in.CapoFret, TempoBPM: in.TempoBPM, TimeSignature: in.TimeSignature,
-		RightsConfirmation: confirmation, UpdatedBy: caller.ID, UpdatedAt: now,
+		RightsConfirmation: confirmation, ProgressionKeys: slices.Clone(in.ProgressionKeys), UpdatedBy: caller.ID, UpdatedAt: now,
 	}
 	if err := draft.Validate(); err != nil {
 		return domain.SongChartDraft{}, err
@@ -135,6 +143,16 @@ func (s *SongChartService) buildDraft(ctx context.Context, caller domain.User, c
 		return domain.SongChartDraft{}, err
 	}
 	draft.Body, draft.Warnings = body, warnings
+	catalog, err := s.progressions.List(ctx)
+	if err != nil {
+		return domain.SongChartDraft{}, err
+	}
+	for _, key := range draft.ProgressionKeys {
+		if !slices.ContainsFunc(catalog, func(p domain.Progression) bool { return p.Key == key }) {
+			return domain.SongChartDraft{}, domain.NewValidationError("progression_keys", fmt.Sprintf("%q is not a progression of the catalog", key))
+		}
+	}
+	draft.UnplayedProgressionKeys = domain.UnplayedProgressions(draft.Body, draft.ConcertKey, draft.CapoFret, draft.ProgressionKeys, catalog)
 	draft.SetRightsConfirmed(in.RightsConfirmed, caller.ID, now)
 	return draft, nil
 }
@@ -177,7 +195,7 @@ func canList(caller domain.User, filter domain.SongChartFilter) error {
 
 // Publish publishes the draft as the chart's next revision. Its chords are
 // resolved again first, since the catalog may have changed since the draft
-// was saved.
+// was saved, and its progressions are checked again against them.
 func (s *SongChartService) Publish(ctx context.Context, caller domain.User, id string) (domain.SongChartRevision, error) {
 	if err := requireAdmin(caller); err != nil {
 		return domain.SongChartRevision{}, err
@@ -191,6 +209,12 @@ func (s *SongChartService) Publish(ctx context.Context, caller domain.User, id s
 		return domain.SongChartRevision{}, err
 	}
 	chart.Draft.Body, chart.Draft.Warnings = body, warnings
+	catalog, err := s.progressions.List(ctx)
+	if err != nil {
+		return domain.SongChartRevision{}, err
+	}
+	d := chart.Draft
+	chart.Draft.UnplayedProgressionKeys = domain.UnplayedProgressions(d.Body, d.ConcertKey, d.CapoFret, d.ProgressionKeys, catalog)
 	published, rev, err := chart.Publish(caller.ID, s.now())
 	if err != nil {
 		return domain.SongChartRevision{}, err
@@ -440,7 +464,7 @@ func importedInput(draft domain.SongChartDraft, m domain.ChordProMetadata, body 
 	in := SongChartInput{
 		Title: draft.Title, Artist: draft.Artist, Language: draft.Language, ConcertKey: draft.ConcertKey,
 		CapoFret: draft.CapoFret, TempoBPM: draft.TempoBPM, TimeSignature: draft.TimeSignature,
-		RightsConfirmed: draft.RightsConfirmation != nil, Body: body,
+		RightsConfirmed: draft.RightsConfirmation != nil, ProgressionKeys: draft.ProgressionKeys, Body: body,
 	}
 	if m.Title != nil {
 		in.Title = *m.Title
