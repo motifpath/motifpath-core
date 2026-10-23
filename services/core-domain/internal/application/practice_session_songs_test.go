@@ -287,4 +287,26 @@ func TestPracticeSessionService_ComposePlanSongs(t *testing.T) {
 	})
 }
 
+// Songs are authored, so there can be many: composing reads them once, however
+// many songs there are and however many skills each serves.
+func TestPracticeSessionService_ComposePlanReadsTheSongsOnce(t *testing.T) {
+	f := newSongFixture(t)
+	for _, id := range []string{"s1", "s2", "s3", "s4", "s5"} {
+		f.song(id, id, "I-IV-V-I")
+	}
+	f.atUseRung()
+	f.exercise("ex-1", cadences, 60, practiceGuitar)
+	f.accurate(domain.ExerciseItemKey("ex-1"))
+
+	plan := f.compose(t, practiceGuitar, 20)
+
+	require.Len(t, itemsOfKind(plan, domain.PracticeItemKindSong), 1)
+	assert.Equal(t, 1, f.charts.publishedReads)
+	assert.Zero(t, f.charts.chartReads)
+
+	f.compose(t, practiceGuitar, 20)
+
+	assert.Equal(t, 2, f.charts.publishedReads, "a later session reads them again, so a newly published song is found")
+}
+
 func ptrTo(s string) *string { return &s }

@@ -352,6 +352,7 @@ func (c *composer) chained(group []domain.PracticeSessionItem) []domain.Practice
 // of their instruments in the head, and its current rung: see
 // domain.SubjectRungs. An instrumentID that doesn't exist is not found.
 func (s *PracticeSessionService) ListSubjects(ctx context.Context, caller domain.User, instrumentID *string) (domain.PracticeSubjectList, error) {
+	s = s.forComposition()
 	instrumentIDs, err := s.sessionInstruments(ctx, caller.ID, instrumentID)
 	if err != nil {
 		return domain.PracticeSubjectList{}, err

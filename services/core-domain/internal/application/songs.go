@@ -2,9 +2,9 @@ package application
 
 import (
 	"context"
-	"errors"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/motifpath/core-domain/internal/domain"
@@ -32,7 +32,56 @@ type songSource struct {
 	charts  ports.SongChartRepository
 }
 
-func (src songSource) SkillItems(ctx context.Context, skillID, _ string, inHand bool, knowledge KnowledgeMap) ([]domain.DrillItem, error) {
+func (src songSource) SkillItems(ctx context.Context, skillID, instrumentID string, inHand bool, knowledge KnowledgeMap) ([]domain.DrillItem, error) {
+	return src.forComposition().SkillItems(ctx, skillID, instrumentID, inHand, knowledge)
+}
+
+func (src songSource) Item(ctx context.Context, itemKey string) (domain.DrillItem, bool, error) {
+	return src.forComposition().Item(ctx, itemKey)
+}
+
+// forComposition reads the songs once for a composition, however many of them
+// its skills find: they are authored, so there can be many.
+func (src songSource) forComposition() DrillSource {
+	return &composingSongs{source: src}
+}
+
+// composingSongs is the songs one composition plays, read on first need.
+type composingSongs struct {
+	source  songSource
+	once    sync.Once
+	library songLibrary
+	err     error
+}
+
+// songLibrary is what a song is played from: the latest published revision of
+// every published chart, by chart, the progression catalog, and the guitar
+// layout.
+type songLibrary struct {
+	revisions map[string]domain.SongChartRevision
+	catalog   []domain.Progression
+	guitar    string
+}
+
+func (c *composingSongs) read(ctx context.Context) (songLibrary, error) {
+	c.once.Do(func() {
+		var revisions []domain.SongChartRevision
+		if revisions, c.err = c.source.charts.PublishedRevisions(ctx); c.err != nil {
+			return
+		}
+		c.library.revisions = make(map[string]domain.SongChartRevision, len(revisions))
+		for _, rev := range revisions {
+			c.library.revisions[rev.SongChartID] = rev
+		}
+		if c.library.catalog, c.err = c.source.harmony.progressions.List(ctx); c.err != nil {
+			return
+		}
+		c.library.guitar, c.err = c.source.harmony.guitarLayoutID(ctx)
+	})
+	return c.library, c.err
+}
+
+func (c *composingSongs) SkillItems(ctx context.Context, skillID, _ string, inHand bool, knowledge KnowledgeMap) ([]domain.DrillItem, error) {
 	if !inHand {
 		return nil, nil
 	}
@@ -41,7 +90,7 @@ func (src songSource) SkillItems(ctx context.Context, skillID, _ string, inHand 
 		if !slices.Contains(classified.NodeIDs, skillID) {
 			continue
 		}
-		item, ok, err := src.Item(ctx, classified.ItemKey)
+		item, ok, err := c.Item(ctx, classified.ItemKey)
 		if err != nil {
 			return nil, err
 		}
@@ -57,7 +106,7 @@ func (src songSource) SkillItems(ctx context.Context, skillID, _ string, inHand 
 // published, or tagged with no progression the catalog has, is no song. The
 // layout the chord catalog's voicings are on is the guitar one; any other is a
 // bass, whose student plays the roots.
-func (src songSource) Item(ctx context.Context, itemKey string) (domain.DrillItem, bool, error) {
+func (c *composingSongs) Item(ctx context.Context, itemKey string) (domain.DrillItem, bool, error) {
 	rest, ok := strings.CutPrefix(itemKey, string(domain.PracticeItemKindSong)+":")
 	if !ok {
 		return nil, false, nil
@@ -66,39 +115,25 @@ func (src songSource) Item(ctx context.Context, itemKey string) (domain.DrillIte
 	if !ok {
 		return nil, false, nil
 	}
-	chart, err := src.charts.GetByID(ctx, chartID)
-	if errors.Is(err, domain.ErrNotFound) {
+	library, err := c.read(ctx)
+	if err != nil {
+		return nil, false, err
+	}
+	rev, published := library.revisions[chartID]
+	if !published {
 		return nil, false, nil
-	}
-	if err != nil {
-		return nil, false, err
-	}
-	if chart.Status != domain.SongChartPublished || chart.PublishedRevision == nil {
-		return nil, false, nil
-	}
-	rev, err := src.charts.GetRevision(ctx, chartID, chart.PublishedRevision.Number)
-	if err != nil {
-		return nil, false, err
-	}
-	catalog, err := src.harmony.progressions.List(ctx)
-	if err != nil {
-		return nil, false, err
 	}
 	var progressions []domain.Progression
 	for _, key := range rev.ProgressionKeys {
-		if i := slices.IndexFunc(catalog, func(p domain.Progression) bool { return p.Key == key }); i >= 0 {
-			progressions = append(progressions, catalog[i])
+		if i := slices.IndexFunc(library.catalog, func(p domain.Progression) bool { return p.Key == key }); i >= 0 {
+			progressions = append(progressions, library.catalog[i])
 		}
 	}
 	if len(progressions) == 0 {
 		return nil, false, nil
 	}
-	guitar, err := src.harmony.guitarLayoutID(ctx)
-	if err != nil {
-		return nil, false, err
-	}
 	return domain.SongItem{
-		LayoutInstrumentID: layoutID, Bass: layoutID != guitar, ChartID: chartID,
+		LayoutInstrumentID: layoutID, Bass: layoutID != library.guitar, ChartID: chartID,
 		Title: rev.Title, Artist: rev.Artist, Progressions: progressions,
 	}, true, nil
 }

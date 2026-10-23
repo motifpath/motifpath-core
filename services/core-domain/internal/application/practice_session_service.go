@@ -113,6 +113,27 @@ func (s *PracticeSessionService) WithDrillSources(sources ...DrillSource) *Pract
 	return s
 }
 
+// composingSource is a drill source that keeps what it reads for one
+// composition, read afresh for the next.
+type composingSource interface {
+	DrillSource
+	forComposition() DrillSource
+}
+
+// forComposition is s with a fresh copy of each source that keeps what it
+// reads, for one composition or one list of subjects.
+func (s *PracticeSessionService) forComposition() *PracticeSessionService {
+	composing := *s
+	composing.sources = make([]DrillSource, len(s.sources))
+	for i, src := range s.sources {
+		if c, ok := src.(composingSource); ok {
+			src = c.forComposition()
+		}
+		composing.sources[i] = src
+	}
+	return &composing
+}
+
 // WithShuffle replaces how equally urgent candidates are put in random
 // order, so a test can tell what is picked without chance.
 func (s *PracticeSessionService) WithShuffle(shuffle func(n int, swap func(i, j int))) *PracticeSessionService {
@@ -232,6 +253,7 @@ func (s *PracticeSessionService) ComposePlan(ctx context.Context, caller domain.
 	if err := domain.ValidatePracticeMinutes(minutes); err != nil {
 		return domain.PracticeSessionPlan{}, err
 	}
+	s = s.forComposition()
 	instrumentIDs, err := s.sessionInstruments(ctx, caller.ID, instrumentID)
 	if err != nil {
 		return domain.PracticeSessionPlan{}, err
