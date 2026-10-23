@@ -7543,8 +7543,9 @@ type PracticeSessionPlan struct {
 	// PracticeSessionId New identifier for this session, carried by every practice.* event it produces.
 	PracticeSessionId openapi_types.UUID `json:"practice_session_id"`
 
-	// TapCheckDue True when the plan has a fretboard cell or a diagram shape and the student has
-	// done no tap check in the last 30 days, or never. The client then offers the tap
+	// TapCheckDue True when the plan has a timed fretboard drill (a fretboard cell named or found,
+	// or a diagram shape) and the student has done no tap check in the last 30 days, or
+	// never. A cell asked to find every instance isn't timed, so it needs none. The client then offers the tap
 	// check before the first item; the student may skip it, and their answers are then
 	// judged on the whole latency.
 	TapCheckDue bool `json:"tap_check_due"`
