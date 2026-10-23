@@ -70,3 +70,26 @@ func keys[V any](m map[string]V) []string {
 	}
 	return out
 }
+
+// A seeded chart's progressions must be ones it plays, or publishing it fails
+// the seeding run; Amazing Grace, published, is the song of the use rung.
+func TestSeededSongChartsPlayTheProgressionsTheyAreTaggedWith(t *testing.T) {
+	catalog := []domain.Progression{{Key: "I-IV-I-V", Mode: "major", Bars: []string{"I", "IV", "I", "V"}}}
+	tags := map[string][]string{}
+	for _, s := range songChartSpecs() {
+		tags[s.title] = s.progressions
+		if len(s.progressions) == 0 {
+			continue
+		}
+		imported := domain.ImportChordPro(s.chordPro)
+		assert.Empty(t, domain.UnplayedProgressions(imported.Body, imported.Metadata.ConcertKey, 0, s.progressions, catalog), s.title)
+		if s.correction != "" {
+			corrected := domain.ImportChordPro(s.correction)
+			assert.Empty(t, domain.UnplayedProgressions(corrected.Body, corrected.Metadata.ConcertKey, 0, s.progressions, catalog), s.title+", corrected")
+		}
+	}
+
+	assert.Equal(t, []string{"I-IV-I-V"}, tags["Amazing Grace"])
+	assert.Equal(t, []string{"I-IV-I-V"}, tags["Oh! Susanna"], "withdrawn, so never planned though tagged")
+	assert.Empty(t, tags["Ciranda, Cirandinha"])
+}

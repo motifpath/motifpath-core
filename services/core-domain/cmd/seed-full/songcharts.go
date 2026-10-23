@@ -32,6 +32,9 @@ type songChartSpec struct {
 	// correction is the draft's text after publishing, for
 	// publishedThenCorrected.
 	correction string
+	// progressions are the progressions of the catalog the chart plays,
+	// which make it a song practice can end a session with.
+	progressions []string
 }
 
 //go:embed songcharts/*.cho
@@ -56,6 +59,7 @@ func songChartSpecs() []songChartSpec {
 			chordPro:        chordProFile("amazing-grace.cho"),
 			fate:            publishedThenCorrected,
 			correction:      chordProFile("amazing-grace-corrected.cho"),
+			progressions:    []string{"I-IV-I-V"},
 		},
 		{
 			title:           "Oh! Susanna",
@@ -63,6 +67,7 @@ func songChartSpecs() []songChartSpec {
 			rightsConfirmed: true,
 			chordPro:        chordProFile("oh-susanna.cho"),
 			fate:            publishedThenWithdrawn,
+			progressions:    []string{"I-IV-I-V"},
 		},
 		{
 			// A draft with every kind of chord that doesn't fully resolve:
@@ -94,7 +99,7 @@ func seedSongCharts(ctx context.Context, charts *application.SongChartService, a
 func seedSongChart(ctx context.Context, charts *application.SongChartService, author domain.User, spec songChartSpec) (domain.SongChart, error) {
 	chart, err := charts.Create(ctx, author, application.SongChartInput{
 		Title: spec.title, Artist: "—", Language: spec.language, RightsConfirmed: spec.rightsConfirmed,
-		Body: domain.ImportChordPro("[C]—\n").Body,
+		ProgressionKeys: spec.progressions, Body: domain.ImportChordPro("[C]—\n").Body,
 	})
 	if err != nil {
 		return domain.SongChart{}, fmt.Errorf("create: %w", err)
