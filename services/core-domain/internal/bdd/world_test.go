@@ -363,7 +363,7 @@ func newWorld() *world {
 	alphaObservation := application.NewAlphaObservationService(w.users, w.studentPaths, w.nodes, w.completion, w.alpha.activity, func() time.Time { return w.alpha.now })
 
 	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, knowledgeNode, knowledgeEdge, media, path, application.NewPathCatalogService(w.paths, w.users, w.knowledge), studentPath, course, courseEnrollment, instrument, voice, diagram, practiceSession, practiceSummary, application.NewChordCatalogService(w.chords), application.NewProgressionCatalogService(catalogProgressions{}),
-		application.NewSongChartService(w.songChartRepo, w.chords, w.diagrams, newFakeLanguageRepo(), newID, now),
+		application.NewSongChartService(w.songChartRepo, w.chords, w.diagrams, newFakeLanguageRepo(), discardPracticeReferences{}, newID, now),
 		application.NewAppConfigService(w.appConfig, now, application.NewStartingPointsKey(w.instruments, newFakeLanguageRepo(), w.paths, w.courses)),
 		application.NewStartingPointsService(w.appConfig, newFakeLanguageRepo(), w.paths, w.courses),
 		alphaObservation,

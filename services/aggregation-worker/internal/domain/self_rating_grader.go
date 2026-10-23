@@ -4,8 +4,8 @@ import "slices"
 
 // selfRatingV1 grades takes the student rates themselves: a play-along at a tempo,
 // a progression in one key of its tour at a tempo, chord or root changes counted
-// over a minute, or a chord voicing or a chord's root and fifth played cleanly,
-// untimed. It checks the take fits the item and keeps the
+// over a minute, a chord voicing or a chord's root and fifth played cleanly,
+// untimed, or a whole song, rated once with no measure. It checks the take fits the item and keeps the
 // rating and its measure as given, except a minute of changes, whose rating follows
 // from its count (golden/practice-graders/self_rating.v1.json).
 type selfRatingV1 struct{}
@@ -37,15 +37,21 @@ var measureOf = map[PracticeItemKind]selfRatedMeasure{
 	PracticeItemKindChordVoicing:    measureNone,
 	PracticeItemKindRootFifth:       measureNone,
 	PracticeItemKindProgressionKeys: measureTempo,
+	PracticeItemKindSong:            measureNone,
 }
 
 // playedInAKey are the self-rated kinds whose take names the key it was played
 // in: the item holds every key, so the take says which one.
 var playedInAKey = map[PracticeItemKind]bool{PracticeItemKindProgressionKeys: true}
 
-// referencesExist reports whether the diagrams, the layout and the progression the
-// key points at are in ref.
+// referencesExist reports whether the diagrams, the layout, the progression and the
+// song chart the key points at are in ref.
 func referencesExist(key PracticeItemKey, ref PracticeReference) bool {
+	if id := key.SongChartID(); id != "" {
+		if _, ok := ref.SongCharts[id]; !ok {
+			return false
+		}
+	}
 	if progression := key.ProgressionKey(); progression != "" {
 		if _, ok := ref.Progressions[progression]; !ok {
 			return false

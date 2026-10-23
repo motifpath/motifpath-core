@@ -21,6 +21,7 @@ var practiceItemKeyPattern = regexp.MustCompile(`^(` +
 	`|root_change:` + uuidPattern + `:` + chordPattern + `:` + chordPattern +
 	`|guide_tone:` + uuidPattern + `:` + progressionKeyPattern +
 	`|progression_keys:` + uuidPattern + `:` + progressionKeyPattern +
+	`|song:` + uuidPattern + `:` + uuidPattern +
 	`)$`)
 
 const (

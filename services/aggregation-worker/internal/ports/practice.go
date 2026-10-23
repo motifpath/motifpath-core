@@ -23,6 +23,9 @@ type PracticeReferenceReader interface {
 	// progression question's options are checked against all of them.
 	Progressions(ctx context.Context) (map[string]domain.ProgressionReference, error)
 
+	// SongCharts returns the song charts among ids that exist, by id.
+	SongCharts(ctx context.Context, ids []string) (map[string]domain.SongChartReference, error)
+
 	// FluentTimes returns every version of a drill template's fluent time, none
 	// when the template has none yet.
 	FluentTimes(ctx context.Context, templateKey string) ([]domain.FluentTime, error)

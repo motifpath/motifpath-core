@@ -1591,6 +1591,8 @@ type PlannedPracticeItem struct {
 	// - progression_keys:<layout instrument id>:<progression key> — playing a progression along
 	//   with its backing, key after key around the cycle of fourths. The key is the tour's next
 	//   one, sent back with each take.
+	// - song:<layout instrument id>:<song chart id> — playing a published song chart whole, as
+	//   written, on an instrument of the layout: its chords on guitar, their roots on bass.
 	//
 	// In these keys, <key> is a major key spelled as one of C Db D Eb E F F# G Ab A Bb B;
 	// <numeral> is one of I ii iii IV V vi viio (viio is vii°); <chord> is a root spelled the
@@ -1606,9 +1608,10 @@ type PlannedPracticeItem struct {
 	// practised, is not due, and is not yet fluent; new = it has not been practised yet;
 	// warm_up = something already known, played first with the instrument in hand, below the
 	// student's edge and outside the evidence: its takes are not sent as practice.item_answered;
-	// application = one play-along at the end of a session of 10 minutes or more, applying a
-	// skill the session's focus items practised (or, with none, another skill of the student's
-	// paths), and evidence like any other take; review_ahead = a known item coming due within the
+	// application = one play-along or song at the end of a session of 10 minutes or more,
+	// applying a skill the session's focus items practised (or, with none, another skill of the
+	// student's paths), and evidence like any other take; it is a song when one of the session's
+	// subjects is at the use rung and a song practises it; review_ahead = a known item coming due within the
 	// week, reviewed before it falls due, when nothing else is due; stretch = an unseen item of a
 	// node the student is ready to start, the skills of their paths first, when nothing else is due
 	// or past the new share.
@@ -1661,6 +1664,8 @@ type PracticeItemAnsweredEvent struct {
 	// - progression_keys:<layout instrument id>:<progression key> — playing a progression along
 	//   with its backing, key after key around the cycle of fourths. The key is the tour's next
 	//   one, sent back with each take.
+	// - song:<layout instrument id>:<song chart id> — playing a published song chart whole, as
+	//   written, on an instrument of the layout: its chords on guitar, their roots on bass.
 	//
 	// In these keys, <key> is a major key spelled as one of C Db D Eb E F F# G Ab A Bb B;
 	// <numeral> is one of I ii iii IV V vi viio (viio is vii°); <chord> is a root spelled the
@@ -1771,6 +1776,9 @@ type PracticeItemAnsweredEvent1 = interface{}
 //     with its backing, key after key around the cycle of fourths. The key is the tour's next
 //     one, sent back with each take.
 //
+//   - song:<layout instrument id>:<song chart id> — playing a published song chart whole, as
+//     written, on an instrument of the layout: its chords on guitar, their roots on bass.
+//
 // In these keys, <key> is a major key spelled as one of C Db D Eb E F F# G Ab A Bb B;
 // <numeral> is one of I ii iii IV V vi viio (viio is vii°); <chord> is a root spelled the
 // same way, followed by m (minor), dim (diminished), 7 (dominant seventh) or nothing
@@ -1785,9 +1793,10 @@ type PracticeItemKey = string
 // practised, is not due, and is not yet fluent; new = it has not been practised yet;
 // warm_up = something already known, played first with the instrument in hand, below the
 // student's edge and outside the evidence: its takes are not sent as practice.item_answered;
-// application = one play-along at the end of a session of 10 minutes or more, applying a
-// skill the session's focus items practised (or, with none, another skill of the student's
-// paths), and evidence like any other take; review_ahead = a known item coming due within the
+// application = one play-along or song at the end of a session of 10 minutes or more,
+// applying a skill the session's focus items practised (or, with none, another skill of the
+// student's paths), and evidence like any other take; it is a song when one of the session's
+// subjects is at the use rung and a song practises it; review_ahead = a known item coming due within the
 // week, reviewed before it falls due, when nothing else is due; stretch = an unseen item of a
 // node the student is ready to start, the skills of their paths first, when nothing else is due
 // or past the new share.
@@ -1951,12 +1960,13 @@ type ResolvePublishOutboxEntryRequest struct {
 }
 
 // SelfRatingResponse The student's own rating of a take they played: a play-along at a tempo, chord changes
-// counted over a minute, one chord played cleanly, or a progression in one key of its tour. A
+// counted over a minute, one chord played cleanly, a progression in one key of its tour, or a
+// whole song. A
 // play-along rating carries tempo_bpm and no changes_per_minute, and may carry the note_value
 // it was played at (quarters when absent); a progression key tour take carries the same and
 // the music_key it was played in; a chord-change or root-change take carries both tempo_bpm and changes_per_minute,
-// and its rating is derived from them (see rating); a single chord voicing or a chord's root
-// and fifth (play clean) carries neither.
+// and its rating is derived from them (see rating); a single chord voicing, a chord's root
+// and fifth (play clean) or a song carries neither.
 type SelfRatingResponse struct {
 	// ChangesPerMinute The number of chord changes in one minute that rang clean, counted by the student. Present
 	// for a chord change and a root change, and never more than tempo_bpm.

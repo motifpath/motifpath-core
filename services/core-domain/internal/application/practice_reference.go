@@ -47,22 +47,33 @@ func putExerciseReference(ctx context.Context, references ports.PracticeReferenc
 	}
 }
 
+// putSongChartReference writes the chart's practice reference after it is
+// published, under the same rules as putDiagramReference.
+func putSongChartReference(ctx context.Context, references ports.PracticeReferenceWriter, chartID string) {
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), referenceWriteTimeout)
+	defer cancel()
+	if err := references.PutSongCharts(ctx, []domain.SongChartReference{{ID: chartID}}); err != nil {
+		slog.ErrorContext(ctx, "write the song chart's practice reference", "song_chart_id", chartID, "error", err)
+	}
+}
+
 // PracticeReferenceService rebuilds the practice reference snapshot from
 // PostgreSQL (ADR-047). It runs on start and from a maintenance command,
 // repairing any write lost after a commit and covering rows installed by
 // migrations.
 type PracticeReferenceService struct {
-	diagrams    ports.DiagramRepository
-	exercises   ports.ExerciseRepository
-	instruments ports.InstrumentRepository
+	diagrams     ports.DiagramRepository
+	exercises    ports.ExerciseRepository
+	instruments  ports.InstrumentRepository
 	thresholds   ports.DrillThresholdRepository
 	progressions ports.ProgressionRepository
 	chordDrills  ports.ChordDrillRepository
+	songCharts   ports.SongChartRepository
 	references   ports.PracticeReferenceWriter
 }
 
-func NewPracticeReferenceService(diagrams ports.DiagramRepository, exercises ports.ExerciseRepository, instruments ports.InstrumentRepository, thresholds ports.DrillThresholdRepository, progressions ports.ProgressionRepository, chordDrills ports.ChordDrillRepository, references ports.PracticeReferenceWriter) *PracticeReferenceService {
-	return &PracticeReferenceService{diagrams: diagrams, exercises: exercises, instruments: instruments, thresholds: thresholds, progressions: progressions, chordDrills: chordDrills, references: references}
+func NewPracticeReferenceService(diagrams ports.DiagramRepository, exercises ports.ExerciseRepository, instruments ports.InstrumentRepository, thresholds ports.DrillThresholdRepository, progressions ports.ProgressionRepository, chordDrills ports.ChordDrillRepository, songCharts ports.SongChartRepository, references ports.PracticeReferenceWriter) *PracticeReferenceService {
+	return &PracticeReferenceService{diagrams: diagrams, exercises: exercises, instruments: instruments, thresholds: thresholds, progressions: progressions, chordDrills: chordDrills, songCharts: songCharts, references: references}
 }
 
 // PracticeReferenceSynced counts the references a Sync wrote, by kind.
@@ -73,6 +84,7 @@ type PracticeReferenceSynced struct {
 	DrillThresholds int
 	ChangeTargets   int
 	Progressions    int
+	SongCharts      int
 }
 
 // Sync rebuilds the whole snapshot. The fluent times go first and every part
@@ -81,13 +93,14 @@ type PracticeReferenceSynced struct {
 // part that failed.
 func (s *PracticeReferenceService) Sync(ctx context.Context) (PracticeReferenceSynced, error) {
 	var synced PracticeReferenceSynced
-	var errs [6]error
+	var errs [7]error
 	synced.DrillThresholds, errs[0] = s.SyncDrillThresholds(ctx)
 	synced.ChangeTargets, errs[1] = s.SyncChangeTargets(ctx)
 	synced.Instruments, errs[2] = s.SyncInstruments(ctx)
 	synced.Progressions, errs[3] = s.SyncProgressions(ctx)
 	synced.Diagrams, errs[4] = s.SyncDiagrams(ctx)
 	synced.Exercises, errs[5] = s.SyncExercises(ctx)
+	synced.SongCharts, errs[6] = s.SyncSongCharts(ctx)
 	return synced, errors.Join(errs[:]...)
 }
 
@@ -173,6 +186,25 @@ func (s *PracticeReferenceService) SyncExercises(ctx context.Context) (int, erro
 		},
 		domain.NewExerciseReference,
 		s.references.PutExercises)
+}
+
+// SyncSongCharts writes the reference of every chart ever published, those
+// withdrawn since included, one bulk write per page, and returns how many it
+// wrote. A chart never published has none: it has no songs.
+func (s *PracticeReferenceService) SyncSongCharts(ctx context.Context) (int, error) {
+	synced := 0
+	var errs []error
+	for _, status := range []domain.SongChartStatus{domain.SongChartPublished, domain.SongChartWithdrawn} {
+		n, err := syncPages(ctx,
+			func(page domain.PageRequest) (domain.Page[domain.SongChart], error) {
+				return s.songCharts.List(ctx, domain.SongChartFilter{Status: &status}, page)
+			},
+			func(c domain.SongChart) domain.SongChartReference { return domain.SongChartReference{ID: c.ID} },
+			s.references.PutSongCharts)
+		synced += n
+		errs = append(errs, err)
+	}
+	return synced, errors.Join(errs...)
 }
 
 // syncPages walks every page list returns, writing the references of each

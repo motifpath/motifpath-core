@@ -219,7 +219,7 @@ func TimedDrillTemplate(key PracticeItemKey, response PracticeResponse, ref Prac
 			return e.DrillTemplateKey()
 		}
 	case PracticeItemKindPlayAlong, PracticeItemKindChordChange, PracticeItemKindChordVoicing,
-		PracticeItemKindRootFifth, PracticeItemKindRootChange, PracticeItemKindProgressionKeys:
+		PracticeItemKindRootFifth, PracticeItemKindRootChange, PracticeItemKindProgressionKeys, PracticeItemKindSong:
 	}
 	return ""
 }
@@ -231,6 +231,12 @@ type ProgressionReference struct {
 	Bars []string
 }
 
+// SongChartReference is a song chart a song can be played from. Grading needs
+// only that it exists.
+type SongChartReference struct {
+	ID string
+}
+
 // PracticeReference is the reference data a grade runs against. Anything an item key
 // points at that is missing here is unknown.
 type PracticeReference struct {
@@ -238,6 +244,7 @@ type PracticeReference struct {
 	Exercises    map[string]ExerciseReference
 	Instruments  map[string]InstrumentReference
 	Progressions map[string]ProgressionReference
+	SongCharts   map[string]SongChartReference
 }
 
 // Grader grades raw responses to one or more item kinds under one versioned rule
@@ -257,6 +264,7 @@ var graderByKind = map[PracticeItemKind]Grader{
 	PracticeItemKindRootFifth:        selfRatingV1{},
 	PracticeItemKindRootChange:       selfRatingV1{},
 	PracticeItemKindProgressionKeys:  selfRatingV1{},
+	PracticeItemKindSong:             selfRatingV1{},
 	PracticeItemKindExercise:         exerciseOptionV1{},
 	PracticeItemKindFretboardCell:    fretboardCellV2{},
 	PracticeItemKindDiagramShape:     diagramShapeV1{},

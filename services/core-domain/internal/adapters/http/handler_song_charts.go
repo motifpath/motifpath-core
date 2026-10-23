@@ -407,7 +407,7 @@ func (h *Handler) toGeneratedSongChart(ctx context.Context, chart domain.SongCha
 			Title: d.Title, Artist: d.Artist, Language: d.Language, ConcertKey: d.ConcertKey,
 			CapoFret: d.CapoFret, TempoBpm: d.TempoBPM, TimeSignature: toGeneratedTimeSignature(d.TimeSignature),
 			RightsConfirmed: d.RightsConfirmation != nil, Body: body,
-			Warnings:  toGeneratedAnchorWarnings(d.Warnings),
+			Warnings: toGeneratedAnchorWarnings(d.Warnings), UnplayedProgressionKeys: []string{},
 			UpdatedBy: names.ref(d.UpdatedBy), UpdatedAt: d.UpdatedAt,
 		},
 	}
@@ -465,7 +465,7 @@ func toGeneratedNotPublishable(e *domain.SongChartNotPublishableError) generated
 	}
 	return generated.SongChartNotPublishableError{
 		Message: "the song chart can't be published as it stands", Reasons: reasons,
-		AnchorWarnings: toGeneratedAnchorWarnings(e.AnchorWarnings),
+		AnchorWarnings: toGeneratedAnchorWarnings(e.AnchorWarnings), UnplayedProgressionKeys: []string{},
 	}
 }
 
@@ -478,7 +478,7 @@ func toGeneratedSongChartRevision(r domain.SongChartRevision, names userNames) (
 		SongChartId: mustUUID(r.SongChartID), RevisionNumber: r.Number,
 		Title: r.Title, Artist: r.Artist, Language: r.Language, ConcertKey: r.ConcertKey,
 		CapoFret: r.CapoFret, TempoBpm: r.TempoBPM, TimeSignature: toGeneratedTimeSignature(r.TimeSignature),
-		TuningFingerprint: r.TuningFingerprint, Body: body,
+		TuningFingerprint: r.TuningFingerprint, ProgressionKeys: []string{}, Body: body,
 		RightsConfirmation: generated.RightsConfirmation{ConfirmedBy: names.ref(r.RightsConfirmation.ConfirmedBy), ConfirmedAt: r.RightsConfirmation.ConfirmedAt},
 		PublishedBy:        names.ref(r.PublishedBy), PublishedAt: r.PublishedAt,
 	}, nil

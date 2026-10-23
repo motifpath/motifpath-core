@@ -140,6 +140,11 @@ func (s *PracticeEvidenceService) referenceFor(ctx context.Context, key domain.P
 			return domain.PracticeReference{}, err
 		}
 	}
+	if id := key.SongChartID(); id != "" {
+		if ref.SongCharts, err = s.reference.SongCharts(ctx, []string{id}); err != nil {
+			return domain.PracticeReference{}, err
+		}
+	}
 	if key.ProgressionKey() != "" {
 		if ref.Progressions, err = s.reference.Progressions(ctx); err != nil {
 			return domain.PracticeReference{}, err
@@ -235,7 +240,7 @@ func toEvidence(answer domain.PracticeAnswer, graderID string, graded domain.Gra
 // generated drill against the fluent times of each way it is asked, a chord or
 // root change against the change target in force when it was played, and a
 // progression key tour or a guide tone against its target tempo. A chord played
-// clean has no measure at all.
+// clean and a song have no measure at all.
 func (s *PracticeEvidenceService) goalOf(ctx context.Context, key domain.PracticeItemKey, ref domain.PracticeReference) (domain.ItemGoal, error) {
 	switch key.Kind {
 	case domain.PracticeItemKindPlayAlong:
@@ -259,7 +264,7 @@ func (s *PracticeEvidenceService) goalOf(ctx context.Context, key domain.Practic
 	case domain.PracticeItemKindChordChange, domain.PracticeItemKindRootChange:
 		targets, err := s.reference.ChangeTargets(ctx)
 		return domain.ItemGoal{ChangeTargets: targets}, err
-	case domain.PracticeItemKindChordVoicing, domain.PracticeItemKindRootFifth:
+	case domain.PracticeItemKindChordVoicing, domain.PracticeItemKindRootFifth, domain.PracticeItemKindSong:
 	}
 	return domain.ItemGoal{}, nil
 }

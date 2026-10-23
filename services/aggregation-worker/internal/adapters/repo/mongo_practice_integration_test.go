@@ -126,6 +126,30 @@ func TestMongoPracticeReferenceReader_Instruments(t *testing.T) {
 	})
 }
 
+func TestMongoPracticeReferenceReader_SongCharts(t *testing.T) {
+	ctx := context.Background()
+	db := mongoDatabase(t)
+	const amazingGrace, ohSusanna = "c0000000-0000-4000-8000-0000000000c1", "c0000000-0000-4000-8000-0000000000c2"
+	// The documents as core writes them; a diagram with the same id is another kind.
+	_, err := db.Collection("practice_reference").InsertMany(ctx, []bson.D{
+		{{Key: "kind", Value: "song_chart"}, {Key: "id", Value: amazingGrace}, {Key: "updated_at", Value: time.Now()}, {Key: "snapshot_version", Value: 5}},
+		{{Key: "kind", Value: "diagram"}, {Key: "id", Value: ohSusanna}, {Key: "instrument_ids", Value: bson.A{}}, {Key: "snapshot_version", Value: 1}},
+	})
+	require.NoError(t, err)
+	reader := NewMongoPracticeReferenceReader(db)
+
+	got, err := reader.SongCharts(ctx, []string{amazingGrace, ohSusanna})
+	require.NoError(t, err)
+
+	assert.Equal(t, map[string]domain.SongChartReference{amazingGrace: {ID: amazingGrace}}, got)
+
+	t.Run("no ids reads nothing", func(t *testing.T) {
+		got, err := reader.SongCharts(ctx, nil)
+		require.NoError(t, err)
+		assert.Empty(t, got)
+	})
+}
+
 func TestMongoPracticeReferenceReader_Progressions(t *testing.T) {
 	ctx := context.Background()
 	db := mongoDatabase(t)

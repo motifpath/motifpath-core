@@ -2174,6 +2174,10 @@ func (f *fakeDiagramRepo) put(d domain.Diagram) {
 // nothing: no feature reads the practice reference snapshot through core.
 type discardPracticeReferences struct{}
 
+func (discardPracticeReferences) PutSongCharts(context.Context, []domain.SongChartReference) error {
+	return nil
+}
+
 func (discardPracticeReferences) PutDiagrams(context.Context, []domain.DiagramReference) error {
 	return nil
 }

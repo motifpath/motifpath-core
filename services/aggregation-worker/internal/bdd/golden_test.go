@@ -45,6 +45,9 @@ type goldenCaseFile struct {
 		Progressions map[string]struct {
 			Bars []string `json:"bars"`
 		} `json:"progressions"`
+		SongCharts map[string]struct {
+			Name string `json:"name"`
+		} `json:"song_charts"`
 	} `json:"reference"`
 	Cases []struct {
 		Name     string          `json:"name"`
@@ -119,7 +122,8 @@ func TestGraderGoldenCases(t *testing.T) {
 			require.Equal(t, grader.ID(), file.Grader)
 
 			ref := domain.PracticeReference{Diagrams: map[string]domain.DiagramReference{}, Exercises: map[string]domain.ExerciseReference{},
-				Instruments: map[string]domain.InstrumentReference{}, Progressions: map[string]domain.ProgressionReference{}}
+				Instruments: map[string]domain.InstrumentReference{}, Progressions: map[string]domain.ProgressionReference{},
+				SongCharts: map[string]domain.SongChartReference{}}
 			for id, d := range file.Reference.Diagrams {
 				diagram := domain.DiagramReference{ID: id, LayoutInstrumentID: d.LayoutInstrumentID, ShapeFamily: d.ShapeFamily, Shape: d.Shape}
 				if d.ShapeFamily != "" {
@@ -142,6 +146,9 @@ func TestGraderGoldenCases(t *testing.T) {
 			}
 			for key, p := range file.Reference.Progressions {
 				ref.Progressions[key] = domain.ProgressionReference{Key: key, Bars: p.Bars}
+			}
+			for id := range file.Reference.SongCharts {
+				ref.SongCharts[id] = domain.SongChartReference{ID: id}
 			}
 
 			for _, c := range file.Cases {

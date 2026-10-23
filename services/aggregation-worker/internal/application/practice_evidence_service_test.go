@@ -36,6 +36,7 @@ type fakeReference struct {
 	exercises    map[string]domain.ExerciseReference
 	instruments  map[string]domain.InstrumentReference
 	progressions map[string]domain.ProgressionReference
+	songCharts   map[string]domain.SongChartReference
 	fluentTimes  map[string][]domain.FluentTime
 	targets      []domain.ChangeTarget
 	err          error
@@ -53,6 +54,19 @@ func (f *fakeReference) Progressions(_ context.Context) (map[string]domain.Progr
 		return nil, f.err
 	}
 	return f.progressions, nil
+}
+
+func (f *fakeReference) SongCharts(_ context.Context, ids []string) (map[string]domain.SongChartReference, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	found := map[string]domain.SongChartReference{}
+	for _, id := range ids {
+		if c, ok := f.songCharts[id]; ok {
+			found[id] = c
+		}
+	}
+	return found, nil
 }
 
 func (f *fakeReference) Instruments(_ context.Context, ids []string) (map[string]domain.InstrumentReference, error) {
@@ -208,7 +222,8 @@ func newPracticeFixture() *practiceFixture {
 				"diagram_shape:find_the_degree":           {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 2000}},
 				"heard_progression:progression_by_number": {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 4000}},
 			},
-			targets: []domain.ChangeTarget{{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), ChangesPerMinute: 60}},
+			targets:    []domain.ChangeTarget{{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), ChangesPerMinute: 60}},
+			songCharts: map[string]domain.SongChartReference{amazingGraceChart: {ID: amazingGraceChart}},
 			progressions: map[string]domain.ProgressionReference{
 				"I-V-vi-IV": {Key: "I-V-vi-IV", Bars: []string{"I", "V", "vi", "IV"}},
 				"I-vi-IV-V": {Key: "I-vi-IV-V", Bars: []string{"I", "vi", "IV", "V"}},
@@ -321,6 +336,27 @@ func TestPracticeEvidenceService_GradesAndFoldsAProgressionKeyTourTake(t *testin
 	assert.Equal(t, []string{"C"}, fold.TourCleanKeys)
 	// Fluency is measured against the tour target: 60 of 100.
 	assert.InDelta(t, 0.6, fold.Fluency, 1e-9)
+}
+
+const amazingGraceChart = "c0000000-0000-4000-8000-0000000000c1"
+
+func TestPracticeEvidenceService_GradesAndFoldsASong(t *testing.T) {
+	f := newPracticeFixture()
+	key := "song:" + guitarLayout + ":" + amazingGraceChart
+	answer := domain.PracticeAnswer{
+		EventID: "e0000000-0000-4000-8000-000000000051", StudentID: alice, OccurredAt: monday, ItemKey: key,
+		Response: domain.PracticeResponse{Type: domain.PracticeResponseSelfRating, Rating: domain.SelfRatingClean},
+	}
+
+	require.NoError(t, f.service.Process(context.Background(), answer))
+
+	require.Len(t, f.evidence.stored, 1)
+	assert.Equal(t, domain.SelfRatingClean, f.evidence.stored[0].Rating)
+	assert.Nil(t, f.evidence.stored[0].TempoBPM)
+	fold, ok := f.fold(t, key)
+	require.True(t, ok)
+	// A song has no measure, so a clean rating is fully fluent.
+	assert.InDelta(t, 1.0, fold.Fluency, 1e-9)
 }
 
 func TestPracticeEvidenceService_GradesAndFoldsAGuideToneTake(t *testing.T) {
@@ -645,6 +681,12 @@ func TestPracticeEvidenceService_StoresNothingWhenItCannotGrade(t *testing.T) {
 			a.ItemKey = "heard_progression:ii-V-I"
 			a.Response = domain.PracticeResponse{Type: domain.PracticeResponseGeneratedChoice, Way: "progression_by_number", MusicKey: "C",
 				Options: []string{"ii-V-I", "IV-V-I"}, Choice: "ii-V-I", LatencyMs: &latency}
+			return a
+		}},
+		{"the song chart isn't in the reference", func() domain.PracticeAnswer {
+			a := ratedTake("e0000000-0000-4000-8000-000000000001", monday, domain.SelfRatingClean, 90)
+			a.ItemKey = "song:" + guitarLayout + ":" + missingDiag
+			a.Response.TempoBPM = nil
 			return a
 		}},
 		{"the item key is malformed", func() domain.PracticeAnswer {
