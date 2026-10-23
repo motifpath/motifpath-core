@@ -2,6 +2,7 @@ package schema
 
 import (
 	"entgo.io/ent"
+	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
@@ -55,6 +56,13 @@ func (SongChartRevision) Fields() []ent.Field {
 			Immutable(),
 
 		field.String("tuning_fingerprint").
+			Immutable(),
+		// progression_keys are the progressions the revision was published
+		// tagged with; empty, never null, for an untagged one.
+		field.JSON("progression_keys", []string{}).
+			Default([]string{}).
+			// The database default fills the rows stored before the column.
+			Annotations(entsql.Default("[]")).
 			Immutable(),
 
 		// body is the revision's ProseMirror JSON.

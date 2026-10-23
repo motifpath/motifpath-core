@@ -33,6 +33,8 @@ const (
 	FieldTimeSignature = "time_signature"
 	// FieldTuningFingerprint holds the string denoting the tuning_fingerprint field in the database.
 	FieldTuningFingerprint = "tuning_fingerprint"
+	// FieldProgressionKeys holds the string denoting the progression_keys field in the database.
+	FieldProgressionKeys = "progression_keys"
 	// FieldBody holds the string denoting the body field in the database.
 	FieldBody = "body"
 	// FieldRightsConfirmedBy holds the string denoting the rights_confirmed_by field in the database.
@@ -69,6 +71,7 @@ var Columns = []string{
 	FieldTempoBpm,
 	FieldTimeSignature,
 	FieldTuningFingerprint,
+	FieldProgressionKeys,
 	FieldBody,
 	FieldRightsConfirmedBy,
 	FieldRightsConfirmedAt,
@@ -89,6 +92,8 @@ func ValidColumn(column string) bool {
 var (
 	// RevisionNumberValidator is a validator for the "revision_number" field. It is called by the builders before save.
 	RevisionNumberValidator func(int) error
+	// DefaultProgressionKeys holds the default value on creation for the "progression_keys" field.
+	DefaultProgressionKeys []string
 	// DefaultID holds the default value on creation for the "id" field.
 	DefaultID func() uuid.UUID
 )

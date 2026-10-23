@@ -234,6 +234,30 @@ func (_u *SongChartUpdate) AppendWarnings(v []schema.SongChartWarning) *SongChar
 	return _u
 }
 
+// SetProgressionKeys sets the "progression_keys" field.
+func (_u *SongChartUpdate) SetProgressionKeys(v []string) *SongChartUpdate {
+	_u.mutation.SetProgressionKeys(v)
+	return _u
+}
+
+// AppendProgressionKeys appends value to the "progression_keys" field.
+func (_u *SongChartUpdate) AppendProgressionKeys(v []string) *SongChartUpdate {
+	_u.mutation.AppendProgressionKeys(v)
+	return _u
+}
+
+// SetUnplayedProgressionKeys sets the "unplayed_progression_keys" field.
+func (_u *SongChartUpdate) SetUnplayedProgressionKeys(v []string) *SongChartUpdate {
+	_u.mutation.SetUnplayedProgressionKeys(v)
+	return _u
+}
+
+// AppendUnplayedProgressionKeys appends value to the "unplayed_progression_keys" field.
+func (_u *SongChartUpdate) AppendUnplayedProgressionKeys(v []string) *SongChartUpdate {
+	_u.mutation.AppendUnplayedProgressionKeys(v)
+	return _u
+}
+
 // SetUpdatedBy sets the "updated_by" field.
 func (_u *SongChartUpdate) SetUpdatedBy(v uuid.UUID) *SongChartUpdate {
 	_u.mutation.SetUpdatedBy(v)
@@ -641,6 +665,22 @@ func (_u *SongChartUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			sqljson.Append(u, songchart.FieldWarnings, value)
 		})
 	}
+	if value, ok := _u.mutation.ProgressionKeys(); ok {
+		_spec.SetField(songchart.FieldProgressionKeys, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedProgressionKeys(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, songchart.FieldProgressionKeys, value)
+		})
+	}
+	if value, ok := _u.mutation.UnplayedProgressionKeys(); ok {
+		_spec.SetField(songchart.FieldUnplayedProgressionKeys, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedUnplayedProgressionKeys(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, songchart.FieldUnplayedProgressionKeys, value)
+		})
+	}
 	if value, ok := _u.mutation.UpdatedBy(); ok {
 		_spec.SetField(songchart.FieldUpdatedBy, field.TypeUUID, value)
 	}
@@ -974,6 +1014,30 @@ func (_u *SongChartUpdateOne) SetWarnings(v []schema.SongChartWarning) *SongChar
 // AppendWarnings appends value to the "warnings" field.
 func (_u *SongChartUpdateOne) AppendWarnings(v []schema.SongChartWarning) *SongChartUpdateOne {
 	_u.mutation.AppendWarnings(v)
+	return _u
+}
+
+// SetProgressionKeys sets the "progression_keys" field.
+func (_u *SongChartUpdateOne) SetProgressionKeys(v []string) *SongChartUpdateOne {
+	_u.mutation.SetProgressionKeys(v)
+	return _u
+}
+
+// AppendProgressionKeys appends value to the "progression_keys" field.
+func (_u *SongChartUpdateOne) AppendProgressionKeys(v []string) *SongChartUpdateOne {
+	_u.mutation.AppendProgressionKeys(v)
+	return _u
+}
+
+// SetUnplayedProgressionKeys sets the "unplayed_progression_keys" field.
+func (_u *SongChartUpdateOne) SetUnplayedProgressionKeys(v []string) *SongChartUpdateOne {
+	_u.mutation.SetUnplayedProgressionKeys(v)
+	return _u
+}
+
+// AppendUnplayedProgressionKeys appends value to the "unplayed_progression_keys" field.
+func (_u *SongChartUpdateOne) AppendUnplayedProgressionKeys(v []string) *SongChartUpdateOne {
+	_u.mutation.AppendUnplayedProgressionKeys(v)
 	return _u
 }
 
@@ -1412,6 +1476,22 @@ func (_u *SongChartUpdateOne) sqlSave(ctx context.Context) (_node *SongChart, er
 	if value, ok := _u.mutation.AppendedWarnings(); ok {
 		_spec.AddModifier(func(u *sql.UpdateBuilder) {
 			sqljson.Append(u, songchart.FieldWarnings, value)
+		})
+	}
+	if value, ok := _u.mutation.ProgressionKeys(); ok {
+		_spec.SetField(songchart.FieldProgressionKeys, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedProgressionKeys(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, songchart.FieldProgressionKeys, value)
+		})
+	}
+	if value, ok := _u.mutation.UnplayedProgressionKeys(); ok {
+		_spec.SetField(songchart.FieldUnplayedProgressionKeys, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedUnplayedProgressionKeys(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, songchart.FieldUnplayedProgressionKeys, value)
 		})
 	}
 	if value, ok := _u.mutation.UpdatedBy(); ok {

@@ -36,10 +36,11 @@ func newSongChart(title string, updatedAt time.Time) domain.SongChart {
 		ID: uuid.NewString(), Status: domain.SongChartDraftStatus, CreatedBy: uuid.NewString(), CreatedAt: fixedAt,
 		Draft: domain.SongChartDraft{
 			Title: title, Artist: "Luiz Gonzaga", Language: "pt_BR", ConcertKey: &key, CapoFret: 2, TempoBPM: &tempo,
-			TimeSignature: &domain.TimeSignature{Beats: 2, BeatValue: 4},
-			Body:          songChartDocument(uuid.NewString()),
-			Warnings:      []domain.AnchorWarning{{AnchorID: "a1", Position: domain.AnchorPosition{SectionIndex: 0, LineIndex: 0}, WrittenSymbol: "G", Kind: domain.AnchorBassNotInCatalog}},
-			UpdatedBy:     uuid.NewString(), UpdatedAt: updatedAt,
+			TimeSignature:   &domain.TimeSignature{Beats: 2, BeatValue: 4},
+			Body:            songChartDocument(uuid.NewString()),
+			Warnings:        []domain.AnchorWarning{{AnchorID: "a1", Position: domain.AnchorPosition{SectionIndex: 0, LineIndex: 0}, WrittenSymbol: "G", Kind: domain.AnchorBassNotInCatalog}},
+			ProgressionKeys: []string{"I-IV-I-V"},
+			UpdatedBy:       uuid.NewString(), UpdatedAt: updatedAt,
 		},
 	}
 }
@@ -71,6 +72,7 @@ func TestEntSongChartRepository(t *testing.T) {
 
 	t.Run("a chart round-trips with its whole draft", func(t *testing.T) {
 		chart := newSongChart("Asa Branca", fixedAt)
+		chart.Draft.ProgressionKeys, chart.Draft.UnplayedProgressionKeys = []string{"I-IV-I-V", "I-V-vi-IV"}, []string{"I-V-vi-IV"}
 
 		require.NoError(t, charts.Create(ctx, chart))
 		got, err := charts.GetByID(ctx, chart.ID)
@@ -82,6 +84,7 @@ func TestEntSongChartRepository(t *testing.T) {
 	t.Run("a draft with only its required fields round-trips", func(t *testing.T) {
 		chart := newSongChart("Minimal", fixedAt)
 		chart.Draft.ConcertKey, chart.Draft.TempoBPM, chart.Draft.TimeSignature, chart.Draft.Warnings = nil, nil, nil, nil
+		chart.Draft.ProgressionKeys, chart.Draft.UnplayedProgressionKeys = nil, nil
 
 		require.NoError(t, charts.Create(ctx, chart))
 		got, err := charts.GetByID(ctx, chart.ID)
@@ -123,6 +126,7 @@ func TestEntSongChartRepository(t *testing.T) {
 		require.NoError(t, charts.Create(ctx, chart))
 		chart.Draft.RightsConfirmation = &domain.RightsConfirmation{ConfirmedBy: uuid.NewString(), ConfirmedAt: fixedAt}
 		published, rev, err := chart.Publish(uuid.NewString(), fixedAt.Add(time.Hour))
+		require.Equal(t, []string{"I-IV-I-V"}, rev.ProgressionKeys)
 		require.NoError(t, err)
 
 		require.NoError(t, charts.Publish(ctx, published, rev))
