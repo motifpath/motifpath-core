@@ -214,7 +214,7 @@ func wireServices(res resources) (services, seedDeps) {
 		knowledge:   knowledgeRepo,
 		instrument:  application.NewInstrumentService(instrumentRepo, voiceRepo, languageRepo, repo.NewMongoPracticeReferenceWriter(res.mongoDB, now), newID),
 		diagram:     application.NewDiagramService(diagramRepo, instrumentRepo, knowledgeRepo, languageRepo, userRepo, repo.NewMongoPracticeReferenceWriter(res.mongoDB, now), repo.NewEntChordCatalogRepository(entClient), exerciseRepo, newID, now),
-		songChart:   application.NewSongChartService(repo.NewEntSongChartRepository(entClient), repo.NewEntChordCatalogRepository(entClient), diagramRepo, languageRepo, repo.NewMongoPracticeReferenceWriter(res.mongoDB, now), newID, now),
+		songChart:   application.NewSongChartService(repo.NewEntSongChartRepository(entClient), repo.NewEntChordCatalogRepository(entClient), diagramRepo, languageRepo, repo.NewEntProgressionRepository(entClient), repo.NewMongoPracticeReferenceWriter(res.mongoDB, now), newID, now),
 		chords:      application.NewChordCatalogService(repo.NewEntChordCatalogRepository(entClient)),
 	}
 

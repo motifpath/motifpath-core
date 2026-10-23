@@ -46,6 +46,8 @@ func (r *EntSongChartRepository) Create(ctx context.Context, chart domain.SongCh
 		SetNillableTempoBpm(chart.Draft.TempoBPM).
 		SetBody(string(body)).
 		SetWarnings(toSchemaWarnings(chart.Draft.Warnings)).
+		SetProgressionKeys(nonNil(chart.Draft.ProgressionKeys)).
+		SetUnplayedProgressionKeys(nonNil(chart.Draft.UnplayedProgressionKeys)).
 		SetUpdatedBy(ids.updatedBy).
 		SetUpdatedAt(chart.Draft.UpdatedAt).
 		SetNillableRightsConfirmedBy(ids.rightsConfirmedBy).
@@ -161,6 +163,8 @@ func (r *EntSongChartRepository) save(ctx context.Context, client *ent.Client, c
 		SetCapoFret(chart.Draft.CapoFret).
 		SetBody(string(body)).
 		SetWarnings(toSchemaWarnings(chart.Draft.Warnings)).
+		SetProgressionKeys(nonNil(chart.Draft.ProgressionKeys)).
+		SetUnplayedProgressionKeys(nonNil(chart.Draft.UnplayedProgressionKeys)).
 		SetUpdatedBy(ids.updatedBy).
 		SetUpdatedAt(chart.Draft.UpdatedAt)
 	setDraftOptionals(update, chart.Draft)
@@ -289,6 +293,7 @@ func createRevision(ctx context.Context, client *ent.Client, rev domain.SongChar
 		SetCapoFret(rev.CapoFret).
 		SetNillableTempoBpm(rev.TempoBPM).
 		SetTuningFingerprint(rev.TuningFingerprint).
+		SetProgressionKeys(nonNil(rev.ProgressionKeys)).
 		SetBody(string(body)).
 		SetRightsConfirmedBy(confirmedBy).
 		SetRightsConfirmedAt(rev.RightsConfirmation.ConfirmedAt).
@@ -398,6 +403,15 @@ func toSchemaWarnings(warnings []domain.AnchorWarning) []schema.SongChartWarning
 	return out
 }
 
+// emptyAsNil reads a stored list back as the domain keeps it: nil when empty,
+// as for the warnings.
+func emptyAsNil(values []string) []string {
+	if len(values) == 0 {
+		return nil
+	}
+	return values
+}
+
 func toDomainWarnings(warnings []schema.SongChartWarning) []domain.AnchorWarning {
 	if len(warnings) == 0 {
 		return nil
@@ -424,6 +438,7 @@ func toDomainSongChart(row *ent.SongChart) (domain.SongChart, error) {
 			Title: row.Title, Artist: row.Artist, Language: row.Language, ConcertKey: row.ConcertKey,
 			CapoFret: row.CapoFret, TempoBPM: row.TempoBpm, TimeSignature: toDomainTimeSignature(row.TimeSignature),
 			Body: body, Warnings: toDomainWarnings(row.Warnings),
+			ProgressionKeys: emptyAsNil(row.ProgressionKeys), UnplayedProgressionKeys: emptyAsNil(row.UnplayedProgressionKeys),
 			UpdatedBy: row.UpdatedBy.String(), UpdatedAt: row.UpdatedAt,
 		},
 	}
@@ -454,7 +469,7 @@ func toDomainSongChartRevision(row *ent.SongChartRevision) (domain.SongChartRevi
 		SongChartID: row.SongChartID.String(), Number: row.RevisionNumber,
 		Title: row.Title, Artist: row.Artist, Language: row.Language, ConcertKey: row.ConcertKey,
 		CapoFret: row.CapoFret, TempoBPM: row.TempoBpm, TimeSignature: toDomainTimeSignature(row.TimeSignature),
-		TuningFingerprint: row.TuningFingerprint, Body: body,
+		TuningFingerprint: row.TuningFingerprint, ProgressionKeys: emptyAsNil(row.ProgressionKeys), Body: body,
 		RightsConfirmation: domain.RightsConfirmation{ConfirmedBy: row.RightsConfirmedBy.String(), ConfirmedAt: row.RightsConfirmedAt},
 		PublishedBy:        row.PublishedBy.String(), PublishedAt: row.PublishedAt,
 	}, nil

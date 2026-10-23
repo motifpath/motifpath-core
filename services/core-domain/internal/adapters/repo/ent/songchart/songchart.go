@@ -42,6 +42,10 @@ const (
 	FieldBody = "body"
 	// FieldWarnings holds the string denoting the warnings field in the database.
 	FieldWarnings = "warnings"
+	// FieldProgressionKeys holds the string denoting the progression_keys field in the database.
+	FieldProgressionKeys = "progression_keys"
+	// FieldUnplayedProgressionKeys holds the string denoting the unplayed_progression_keys field in the database.
+	FieldUnplayedProgressionKeys = "unplayed_progression_keys"
 	// FieldUpdatedBy holds the string denoting the updated_by field in the database.
 	FieldUpdatedBy = "updated_by"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
@@ -96,6 +100,8 @@ var Columns = []string{
 	FieldRightsConfirmedAt,
 	FieldBody,
 	FieldWarnings,
+	FieldProgressionKeys,
+	FieldUnplayedProgressionKeys,
 	FieldUpdatedBy,
 	FieldUpdatedAt,
 	FieldPublishedRevisionNumber,
@@ -129,6 +135,10 @@ var (
 	LanguageValidator func(string) error
 	// CapoFretValidator is a validator for the "capo_fret" field. It is called by the builders before save.
 	CapoFretValidator func(int) error
+	// DefaultProgressionKeys holds the default value on creation for the "progression_keys" field.
+	DefaultProgressionKeys []string
+	// DefaultUnplayedProgressionKeys holds the default value on creation for the "unplayed_progression_keys" field.
+	DefaultUnplayedProgressionKeys []string
 )
 
 // Status defines the type for the "status" enum field.

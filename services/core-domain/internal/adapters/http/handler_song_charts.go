@@ -343,10 +343,15 @@ func toSongChartInput(in generated.SongChartDraftInput) (application.SongChartIn
 	if in.TimeSignature != nil {
 		ts = &domain.TimeSignature{Beats: in.TimeSignature.Beats, BeatValue: int(in.TimeSignature.BeatValue)}
 	}
+	// Absent progressions mean none.
+	var progressions []string
+	if in.ProgressionKeys != nil {
+		progressions = *in.ProgressionKeys
+	}
 	return application.SongChartInput{
 		Title: in.Title, Artist: in.Artist, Language: in.Language, ConcertKey: in.ConcertKey,
 		CapoFret: in.CapoFret, TempoBPM: in.TempoBpm, TimeSignature: ts,
-		RightsConfirmed: in.RightsConfirmed, Body: body,
+		RightsConfirmed: in.RightsConfirmed, ProgressionKeys: progressions, Body: body,
 	}, nil
 }
 
@@ -398,6 +403,7 @@ func (h *Handler) toGeneratedSongChart(ctx context.Context, chart domain.SongCha
 	if err != nil {
 		return generated.SongChart{}, err
 	}
+	progressions := nonNilStrings(d.ProgressionKeys)
 	out := generated.SongChart{
 		SongChartId: mustUUID(chart.ID),
 		Status:      generated.SongChartStatus(chart.Status),
@@ -407,8 +413,9 @@ func (h *Handler) toGeneratedSongChart(ctx context.Context, chart domain.SongCha
 			Title: d.Title, Artist: d.Artist, Language: d.Language, ConcertKey: d.ConcertKey,
 			CapoFret: d.CapoFret, TempoBpm: d.TempoBPM, TimeSignature: toGeneratedTimeSignature(d.TimeSignature),
 			RightsConfirmed: d.RightsConfirmation != nil, Body: body,
-			Warnings: toGeneratedAnchorWarnings(d.Warnings), UnplayedProgressionKeys: []string{},
-			UpdatedBy: names.ref(d.UpdatedBy), UpdatedAt: d.UpdatedAt,
+			ProgressionKeys: &progressions, Warnings: toGeneratedAnchorWarnings(d.Warnings),
+			UnplayedProgressionKeys: nonNilStrings(d.UnplayedProgressionKeys),
+			UpdatedBy:               names.ref(d.UpdatedBy), UpdatedAt: d.UpdatedAt,
 		},
 	}
 	if c := d.RightsConfirmation; c != nil {
@@ -465,7 +472,8 @@ func toGeneratedNotPublishable(e *domain.SongChartNotPublishableError) generated
 	}
 	return generated.SongChartNotPublishableError{
 		Message: "the song chart can't be published as it stands", Reasons: reasons,
-		AnchorWarnings: toGeneratedAnchorWarnings(e.AnchorWarnings), UnplayedProgressionKeys: []string{},
+		AnchorWarnings:          toGeneratedAnchorWarnings(e.AnchorWarnings),
+		UnplayedProgressionKeys: nonNilStrings(e.UnplayedProgressionKeys),
 	}
 }
 
@@ -478,7 +486,7 @@ func toGeneratedSongChartRevision(r domain.SongChartRevision, names userNames) (
 		SongChartId: mustUUID(r.SongChartID), RevisionNumber: r.Number,
 		Title: r.Title, Artist: r.Artist, Language: r.Language, ConcertKey: r.ConcertKey,
 		CapoFret: r.CapoFret, TempoBpm: r.TempoBPM, TimeSignature: toGeneratedTimeSignature(r.TimeSignature),
-		TuningFingerprint: r.TuningFingerprint, ProgressionKeys: []string{}, Body: body,
+		TuningFingerprint: r.TuningFingerprint, ProgressionKeys: nonNilStrings(r.ProgressionKeys), Body: body,
 		RightsConfirmation: generated.RightsConfirmation{ConfirmedBy: names.ref(r.RightsConfirmation.ConfirmedBy), ConfirmedAt: r.RightsConfirmation.ConfirmedAt},
 		PublishedBy:        names.ref(r.PublishedBy), PublishedAt: r.PublishedAt,
 	}, nil

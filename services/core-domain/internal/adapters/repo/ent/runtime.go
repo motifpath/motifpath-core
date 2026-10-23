@@ -731,12 +731,24 @@ func init() {
 	songchartDescCapoFret := songchartFields[8].Descriptor()
 	// songchart.CapoFretValidator is a validator for the "capo_fret" field. It is called by the builders before save.
 	songchart.CapoFretValidator = songchartDescCapoFret.Validators[0].(func(int) error)
+	// songchartDescProgressionKeys is the schema descriptor for progression_keys field.
+	songchartDescProgressionKeys := songchartFields[15].Descriptor()
+	// songchart.DefaultProgressionKeys holds the default value on creation for the progression_keys field.
+	songchart.DefaultProgressionKeys = songchartDescProgressionKeys.Default.([]string)
+	// songchartDescUnplayedProgressionKeys is the schema descriptor for unplayed_progression_keys field.
+	songchartDescUnplayedProgressionKeys := songchartFields[16].Descriptor()
+	// songchart.DefaultUnplayedProgressionKeys holds the default value on creation for the unplayed_progression_keys field.
+	songchart.DefaultUnplayedProgressionKeys = songchartDescUnplayedProgressionKeys.Default.([]string)
 	songchartrevisionFields := schema.SongChartRevision{}.Fields()
 	_ = songchartrevisionFields
 	// songchartrevisionDescRevisionNumber is the schema descriptor for revision_number field.
 	songchartrevisionDescRevisionNumber := songchartrevisionFields[2].Descriptor()
 	// songchartrevision.RevisionNumberValidator is a validator for the "revision_number" field. It is called by the builders before save.
 	songchartrevision.RevisionNumberValidator = songchartrevisionDescRevisionNumber.Validators[0].(func(int) error)
+	// songchartrevisionDescProgressionKeys is the schema descriptor for progression_keys field.
+	songchartrevisionDescProgressionKeys := songchartrevisionFields[11].Descriptor()
+	// songchartrevision.DefaultProgressionKeys holds the default value on creation for the progression_keys field.
+	songchartrevision.DefaultProgressionKeys = songchartrevisionDescProgressionKeys.Default.([]string)
 	// songchartrevisionDescID is the schema descriptor for id field.
 	songchartrevisionDescID := songchartrevisionFields[0].Descriptor()
 	// songchartrevision.DefaultID holds the default value on creation for the id field.

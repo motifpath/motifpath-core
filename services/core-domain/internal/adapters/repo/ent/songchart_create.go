@@ -139,6 +139,18 @@ func (_c *SongChartCreate) SetWarnings(v []schema.SongChartWarning) *SongChartCr
 	return _c
 }
 
+// SetProgressionKeys sets the "progression_keys" field.
+func (_c *SongChartCreate) SetProgressionKeys(v []string) *SongChartCreate {
+	_c.mutation.SetProgressionKeys(v)
+	return _c
+}
+
+// SetUnplayedProgressionKeys sets the "unplayed_progression_keys" field.
+func (_c *SongChartCreate) SetUnplayedProgressionKeys(v []string) *SongChartCreate {
+	_c.mutation.SetUnplayedProgressionKeys(v)
+	return _c
+}
+
 // SetUpdatedBy sets the "updated_by" field.
 func (_c *SongChartCreate) SetUpdatedBy(v uuid.UUID) *SongChartCreate {
 	_c.mutation.SetUpdatedBy(v)
@@ -319,6 +331,7 @@ func (_c *SongChartCreate) Mutation() *SongChartMutation {
 
 // Save creates the SongChart in the database.
 func (_c *SongChartCreate) Save(ctx context.Context) (*SongChart, error) {
+	_c.defaults()
 	return withHooks(ctx, _c.sqlSave, _c.mutation, _c.hooks)
 }
 
@@ -341,6 +354,18 @@ func (_c *SongChartCreate) Exec(ctx context.Context) error {
 func (_c *SongChartCreate) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
+	}
+}
+
+// defaults sets the default values of the builder before save.
+func (_c *SongChartCreate) defaults() {
+	if _, ok := _c.mutation.ProgressionKeys(); !ok {
+		v := songchart.DefaultProgressionKeys
+		_c.mutation.SetProgressionKeys(v)
+	}
+	if _, ok := _c.mutation.UnplayedProgressionKeys(); !ok {
+		v := songchart.DefaultUnplayedProgressionKeys
+		_c.mutation.SetUnplayedProgressionKeys(v)
 	}
 }
 
@@ -397,6 +422,12 @@ func (_c *SongChartCreate) check() error {
 	}
 	if _, ok := _c.mutation.Warnings(); !ok {
 		return &ValidationError{Name: "warnings", err: errors.New(`ent: missing required field "SongChart.warnings"`)}
+	}
+	if _, ok := _c.mutation.ProgressionKeys(); !ok {
+		return &ValidationError{Name: "progression_keys", err: errors.New(`ent: missing required field "SongChart.progression_keys"`)}
+	}
+	if _, ok := _c.mutation.UnplayedProgressionKeys(); !ok {
+		return &ValidationError{Name: "unplayed_progression_keys", err: errors.New(`ent: missing required field "SongChart.unplayed_progression_keys"`)}
 	}
 	if _, ok := _c.mutation.UpdatedBy(); !ok {
 		return &ValidationError{Name: "updated_by", err: errors.New(`ent: missing required field "SongChart.updated_by"`)}
@@ -495,6 +526,14 @@ func (_c *SongChartCreate) createSpec() (*SongChart, *sqlgraph.CreateSpec) {
 		_spec.SetField(songchart.FieldWarnings, field.TypeJSON, value)
 		_node.Warnings = value
 	}
+	if value, ok := _c.mutation.ProgressionKeys(); ok {
+		_spec.SetField(songchart.FieldProgressionKeys, field.TypeJSON, value)
+		_node.ProgressionKeys = value
+	}
+	if value, ok := _c.mutation.UnplayedProgressionKeys(); ok {
+		_spec.SetField(songchart.FieldUnplayedProgressionKeys, field.TypeJSON, value)
+		_node.UnplayedProgressionKeys = value
+	}
 	if value, ok := _c.mutation.UpdatedBy(); ok {
 		_spec.SetField(songchart.FieldUpdatedBy, field.TypeUUID, value)
 		_node.UpdatedBy = value
@@ -580,6 +619,7 @@ func (_c *SongChartCreateBulk) Save(ctx context.Context) ([]*SongChart, error) {
 	for i := range _c.builders {
 		func(i int, root context.Context) {
 			builder := _c.builders[i]
+			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 				mutation, ok := m.(*SongChartMutation)
 				if !ok {
