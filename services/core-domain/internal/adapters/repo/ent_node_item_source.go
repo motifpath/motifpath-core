@@ -13,6 +13,8 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/songchart"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/songchartrevision"
 	"github.com/motifpath/core-domain/internal/domain"
 )
 
@@ -96,7 +98,63 @@ func (s *EntNodeItemSource) ClassifiedItems(ctx context.Context, instrumentID st
 	if err != nil {
 		return nil, err
 	}
-	return slices.Concat(items, cells, shapes, harmony, chords, tours, guideTones), nil
+	songs, err := s.songItems(ctx, parsed)
+	if err != nil {
+		return nil, err
+	}
+	return slices.Concat(items, cells, shapes, harmony, chords, tours, guideTones, songs), nil
+}
+
+// songItems generates a song of every published chart tagged with
+// progressions, on the fretboard layout instrumentID shares, so instruments of
+// one fretboard share them. Each rolls up to the nodes of the progressions its
+// latest revision is tagged with; a tag the catalog no longer has adds none.
+// An instrument with no fretboard layout has none.
+func (s *EntNodeItemSource) songItems(ctx context.Context, instrumentID uuid.UUID) ([]domain.ClassifiedItem, error) {
+	layouts, err := s.FretboardLayouts(ctx, instrumentID.String())
+	if err != nil || len(layouts) == 0 {
+		return nil, err
+	}
+	published, err := s.client.SongChart.Query().
+		Where(songchart.StatusEQ(songchart.StatusPublished), songchart.PublishedRevisionNumberNotNil()).
+		All(ctx)
+	if err != nil || len(published) == 0 {
+		return nil, err
+	}
+	latest := make(map[uuid.UUID]int, len(published))
+	ids := make([]uuid.UUID, len(published))
+	for i, c := range published {
+		latest[c.ID], ids[i] = *c.PublishedRevisionNumber, c.ID
+	}
+	revisions, err := s.client.SongChartRevision.Query().
+		Where(songchartrevision.SongChartIDIn(ids...)).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	progressions, err := NewEntProgressionRepository(s.client).List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	nodesOf := make(map[string][]string, len(progressions))
+	for _, p := range progressions {
+		nodesOf[p.Key] = p.NodeIDs
+	}
+	var items []domain.ClassifiedItem
+	for _, rev := range revisions {
+		if rev.RevisionNumber != latest[rev.SongChartID] {
+			continue
+		}
+		var nodes []string
+		for _, key := range rev.ProgressionKeys {
+			nodes = withNodes(nodes, nodesOf[key])
+		}
+		if len(nodes) == 0 {
+			continue
+		}
+		items = append(items, domain.ClassifiedItem{ItemKey: domain.SongItemKey(layouts[0].ID, rev.SongChartID.String()), NodeIDs: nodes})
+	}
+	return items, nil
 }
 
 // The guide tones' nodes: every guide tone targets chord tones over changes,
