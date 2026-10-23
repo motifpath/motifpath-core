@@ -248,10 +248,8 @@ func (s *PracticeSessionService) ComposePlan(ctx context.Context, caller domain.
 	if c.newTurn, err = s.newCellTurn(ctx, caller.ID, instrumentID != nil); err != nil {
 		return domain.PracticeSessionPlan{}, err
 	}
-	if instrumentID != nil && s.lastInHand != nil {
-		if c.lastInHand, err = s.lastInHand.LastInHandSessionItemKeys(ctx, caller.ID); err != nil {
-			return domain.PracticeSessionPlan{}, err
-		}
+	if c.lastInHand, err = s.lastInHandItems(ctx, caller.ID, instrumentID != nil); err != nil {
+		return domain.PracticeSessionPlan{}, err
 	}
 	tunings := s.layoutTunings(ctx)
 	c.tuningOf = tunings.of
@@ -277,6 +275,16 @@ func (s *PracticeSessionService) ComposePlan(ctx context.Context, caller domain.
 		return domain.PracticeSessionPlan{}, err
 	}
 	return plan, nil
+}
+
+// lastInHandItems are the items of the student's last in-hand session, which an
+// in-hand session reads for its song; none in the head or with no songs
+// installed.
+func (s *PracticeSessionService) lastInHandItems(ctx context.Context, studentID string, inHand bool) ([]string, error) {
+	if !inHand || s.lastInHand == nil {
+		return nil, nil
+	}
+	return s.lastInHand.LastInHandSessionItemKeys(ctx, studentID)
 }
 
 // firstError is the first of errs that isn't nil: a composition's own error

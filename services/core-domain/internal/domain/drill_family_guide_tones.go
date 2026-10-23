@@ -175,10 +175,10 @@ func fixedRung(kind PracticeItemKind) (PracticeRung, bool) {
 	if rung, rated := selfRatedChordKinds[kind]; rated {
 		return rung, true
 	}
-	switch kind {
-	case PracticeItemKindGuideTone:
+	if kind == PracticeItemKindGuideTone {
 		return PracticeRungTarget, true
-	case PracticeItemKindSong:
+	}
+	if kind == PracticeItemKindSong {
 		return PracticeRungUse, true
 	}
 	return "", false
@@ -190,10 +190,10 @@ func kindSessionCap(kind PracticeItemKind) (int, bool) {
 	if most, ok := chordSessionCaps[kind]; ok {
 		return most, true
 	}
-	switch kind {
-	case PracticeItemKindGuideTone:
+	if kind == PracticeItemKindGuideTone {
 		return MaxGuideTonesPerSession, true
-	case PracticeItemKindSong:
+	}
+	if kind == PracticeItemKindSong {
 		return MaxSongsPerSession, true
 	}
 	return 0, false
