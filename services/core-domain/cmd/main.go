@@ -317,7 +317,8 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 		WithHarmonyDrills(repo.NewEntProgressionRepository(entClient), chordCatalogRepo, nodeItemSource).
 		WithChordDrills(repo.NewEntChordDrillRepository(entClient), instrumentRepo).
 		WithProgressionKeyTours(instrumentRepo).
-		WithGuideTones(instrumentRepo)
+		WithGuideTones(instrumentRepo).
+		WithSongs(songChartRepo, practiceActivity)
 	practiceSummaryService := application.NewPracticeSummaryService(instrumentRepo, studentPathRepo, courseEnrollmentRepo, pathRepo, courseVersionRepo, nodeRepo, rollupService, practiceActivity, songChartRepo, now)
 	chordCatalogService := application.NewChordCatalogService(chordCatalogRepo)
 	songChartService := application.NewSongChartService(songChartRepo, chordCatalogRepo, diagramRepo, languageRepo, repo.NewEntProgressionRepository(entClient), practiceReferences, newID, now)
