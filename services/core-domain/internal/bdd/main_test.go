@@ -43,6 +43,7 @@ func TestFeatures(t *testing.T) {
 				featuresBase + "/practice/focused-session.feature",
 				featuresBase + "/practice/fretboard-map.feature",
 				featuresBase + "/practice/guide-tones.feature",
+				featuresBase + "/practice/songs.feature",
 				featuresBase + "/practice/node-levels.feature",
 				featuresBase + "/practice/practice-summary.feature",
 				featuresBase + "/practice/practice-overview.feature",
@@ -94,6 +95,7 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	registerChordSteps(sc, w)
 	registerSongChartSteps(sc, w)
 	registerSongChartProgressionSteps(sc, w)
+	registerSongSteps(sc, w)
 	registerSongChartChordProSteps(sc, w)
 	registerSongChartEmbedSteps(sc, w)
 	registerDiagramPlaybackSteps(sc, w)

@@ -669,7 +669,12 @@ func (catalogProgressions) List(context.Context) ([]domain.Progression, error) {
 	}
 	progressions := make([]domain.Progression, len(file.Progressions))
 	for i, p := range file.Progressions {
-		progressions[i] = domain.Progression{ID: p.ID, Key: p.Key, Mode: "major", Bars: p.Bars, Confusable: p.Confusable, Names: domain.LocalizedText(p.Names)}
+		// A node is a skill named by its key, as the world puts skills.
+		nodes := make([]string, len(p.Nodes))
+		for j, key := range p.Nodes {
+			nodes[j] = deterministicUUID(string(domain.KnowledgeNodeKindSkill), key).String()
+		}
+		progressions[i] = domain.Progression{ID: p.ID, Key: p.Key, Mode: "major", Bars: p.Bars, NodeIDs: nodes, Confusable: p.Confusable, Names: domain.LocalizedText(p.Names)}
 	}
 	return progressions, nil
 }
