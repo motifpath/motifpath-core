@@ -19,6 +19,7 @@ type SongChartService struct {
 	chords    ports.ChordCatalogRepository
 	diagrams  ports.DiagramRepository
 	languages ports.LanguageRepository
+	refs      ports.PracticeReferenceWriter
 	newID     func() string
 	now       func() time.Time
 }
@@ -28,10 +29,11 @@ func NewSongChartService(
 	chords ports.ChordCatalogRepository,
 	diagrams ports.DiagramRepository,
 	languages ports.LanguageRepository,
+	refs ports.PracticeReferenceWriter,
 	newID func() string,
 	now func() time.Time,
 ) *SongChartService {
-	return &SongChartService{charts: charts, chords: chords, diagrams: diagrams, languages: languages, newID: newID, now: now}
+	return &SongChartService{charts: charts, chords: chords, diagrams: diagrams, languages: languages, refs: refs, newID: newID, now: now}
 }
 
 // SongChartInput is what an author writes in a chart's draft. Anchors'
@@ -196,6 +198,7 @@ func (s *SongChartService) Publish(ctx context.Context, caller domain.User, id s
 	if err := s.charts.Publish(ctx, published, rev); err != nil {
 		return domain.SongChartRevision{}, err
 	}
+	putSongChartReference(ctx, s.refs, id)
 	return rev, nil
 }
 

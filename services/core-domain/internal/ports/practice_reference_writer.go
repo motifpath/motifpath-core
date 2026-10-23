@@ -33,4 +33,8 @@ type PracticeReferenceWriter interface {
 	// PutProgressions creates or replaces each progression's reference, in
 	// one round trip to the store.
 	PutProgressions(ctx context.Context, progressions []domain.Progression) error
+
+	// PutSongCharts creates or replaces each published song chart's
+	// reference, in one round trip to the store.
+	PutSongCharts(ctx context.Context, refs []domain.SongChartReference) error
 }

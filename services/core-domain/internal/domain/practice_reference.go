@@ -71,6 +71,12 @@ type InstrumentReference struct {
 	Tuning []string
 }
 
+// SongChartReference is what the song grader may know about a song chart:
+// only that it was published, so a song played from it can be graded.
+type SongChartReference struct {
+	ID string
+}
+
 // NewInstrumentReference returns i's reference.
 func NewInstrumentReference(i Instrument) InstrumentReference {
 	return InstrumentReference{ID: i.ID, Family: i.Family, StringCount: i.StringCount, Tuning: slices.Clone(i.Tuning)}

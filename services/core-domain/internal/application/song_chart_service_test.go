@@ -21,6 +21,7 @@ type songChartFixture struct {
 	charts   *fakeSongChartRepository
 	catalog  *fakeChordCatalogRepository
 	diagrams *fakeDiagramRepository
+	refs     *fakePracticeReferenceWriter
 	now      time.Time
 }
 
@@ -60,11 +61,12 @@ func newSongChartFixture() *songChartFixture {
 		charts:   newFakeSongChartRepository(),
 		catalog:  catalog,
 		diagrams: diagrams,
+		refs:     newFakePracticeReferenceWriter(),
 		now:      time.Date(2026, 10, 7, 12, 0, 0, 0, time.UTC),
 	}
 	ids := 0
 	newID := func() string { ids++; return "chart-" + string(rune('0'+ids)) }
-	f.service = application.NewSongChartService(f.charts, catalog, diagrams, newFakeLanguageRepository(), newID, func() time.Time { return f.now })
+	f.service = application.NewSongChartService(f.charts, catalog, diagrams, newFakeLanguageRepository(), f.refs, newID, func() time.Time { return f.now })
 	return f
 }
 
@@ -370,6 +372,29 @@ func TestSongChartService_Publish(t *testing.T) {
 		assert.Equal(t, 1, stored.PublishedRevision.Number)
 		revs, _ := f.charts.ListRevisions(ctx, chart.ID)
 		assert.Equal(t, []domain.SongChartRevision{rev}, revs)
+	})
+
+	t.Run("a published chart is written to the practice reference, so its songs can be graded", func(t *testing.T) {
+		f := newSongChartFixture()
+		chart, _ := f.service.Create(ctx, adminCaller(), asaBranca())
+		require.Empty(t, f.refs.songChartIDs(), "a draft is never practised")
+
+		_, err := f.service.Publish(ctx, adminCaller(), chart.ID)
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{chart.ID}, f.refs.songChartIDs())
+	})
+
+	t.Run("a refused publication writes no practice reference", func(t *testing.T) {
+		f := newSongChartFixture()
+		in := asaBranca()
+		in.RightsConfirmed = false
+		chart, _ := f.service.Create(ctx, adminCaller(), in)
+
+		_, err := f.service.Publish(ctx, adminCaller(), chart.ID)
+
+		require.Error(t, err)
+		assert.Empty(t, f.refs.songChartIDs())
 	})
 
 	t.Run("a draft whose rights aren't confirmed isn't published", func(t *testing.T) {

@@ -200,15 +200,15 @@ func syncPracticeReference(ctx context.Context, logger *slog.Logger, entClient *
 		logger.Error("ensure the practice reference indexes", "error", err)
 		return
 	}
-	sync := application.NewPracticeReferenceService(repo.NewEntDiagramRepository(entClient), repo.NewEntExerciseRepository(entClient), repo.NewEntInstrumentRepository(entClient), repo.NewEntDrillThresholdRepository(entClient), repo.NewEntProgressionRepository(entClient), repo.NewEntChordDrillRepository(entClient), writer)
+	sync := application.NewPracticeReferenceService(repo.NewEntDiagramRepository(entClient), repo.NewEntExerciseRepository(entClient), repo.NewEntInstrumentRepository(entClient), repo.NewEntDrillThresholdRepository(entClient), repo.NewEntProgressionRepository(entClient), repo.NewEntChordDrillRepository(entClient), repo.NewEntSongChartRepository(entClient), writer)
 	synced, err := sync.Sync(ctx)
 	if err != nil {
 		logger.Error("sync the practice reference snapshot", "diagrams", synced.Diagrams, "exercises", synced.Exercises,
-			"instruments", synced.Instruments, "drill_thresholds", synced.DrillThresholds, "progressions", synced.Progressions, "error", err)
+			"instruments", synced.Instruments, "drill_thresholds", synced.DrillThresholds, "progressions", synced.Progressions, "song_charts", synced.SongCharts, "error", err)
 		return
 	}
 	logger.Info("practice reference snapshot synced", "diagrams", synced.Diagrams, "exercises", synced.Exercises,
-		"instruments", synced.Instruments, "drill_thresholds", synced.DrillThresholds, "progressions", synced.Progressions)
+		"instruments", synced.Instruments, "drill_thresholds", synced.DrillThresholds, "progressions", synced.Progressions, "song_charts", synced.SongCharts)
 }
 
 // applyMigrations shells out to the Atlas CLI (bundled into the service
@@ -320,7 +320,7 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 		WithGuideTones(instrumentRepo)
 	practiceSummaryService := application.NewPracticeSummaryService(instrumentRepo, studentPathRepo, courseEnrollmentRepo, pathRepo, courseVersionRepo, nodeRepo, rollupService, practiceActivity, songChartRepo, now)
 	chordCatalogService := application.NewChordCatalogService(chordCatalogRepo)
-	songChartService := application.NewSongChartService(songChartRepo, chordCatalogRepo, diagramRepo, languageRepo, newID, now)
+	songChartService := application.NewSongChartService(songChartRepo, chordCatalogRepo, diagramRepo, languageRepo, practiceReferences, newID, now)
 
 	appConfigRepo := repo.NewEntAppConfigRepository(entClient)
 	appConfigService := application.NewAppConfigService(appConfigRepo, now, application.NewStartingPointsKey(instrumentRepo, languageRepo, pathRepo, courseRepo))

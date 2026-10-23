@@ -67,13 +67,13 @@ func run() error {
 	if err := writer.EnsureIndexes(ctx); err != nil {
 		return fmt.Errorf("ensure the practice reference indexes: %w", err)
 	}
-	sync := application.NewPracticeReferenceService(repo.NewEntDiagramRepository(entClient), repo.NewEntExerciseRepository(entClient), repo.NewEntInstrumentRepository(entClient), repo.NewEntDrillThresholdRepository(entClient), repo.NewEntProgressionRepository(entClient), repo.NewEntChordDrillRepository(entClient), writer)
+	sync := application.NewPracticeReferenceService(repo.NewEntDiagramRepository(entClient), repo.NewEntExerciseRepository(entClient), repo.NewEntInstrumentRepository(entClient), repo.NewEntDrillThresholdRepository(entClient), repo.NewEntProgressionRepository(entClient), repo.NewEntChordDrillRepository(entClient), repo.NewEntSongChartRepository(entClient), writer)
 	synced, err := sync.Sync(ctx)
 	if err != nil {
-		return fmt.Errorf("sync the snapshot (%d diagrams, %d exercises, %d instruments, %d drill thresholds, %d progressions written): %w",
-			synced.Diagrams, synced.Exercises, synced.Instruments, synced.DrillThresholds, synced.Progressions, err)
+		return fmt.Errorf("sync the snapshot (%d diagrams, %d exercises, %d instruments, %d drill thresholds, %d progressions, %d song charts written): %w",
+			synced.Diagrams, synced.Exercises, synced.Instruments, synced.DrillThresholds, synced.Progressions, synced.SongCharts, err)
 	}
-	log.Printf("practice reference snapshot synced: %d diagrams, %d exercises, %d instruments, %d drill thresholds, %d progressions",
-		synced.Diagrams, synced.Exercises, synced.Instruments, synced.DrillThresholds, synced.Progressions)
+	log.Printf("practice reference snapshot synced: %d diagrams, %d exercises, %d instruments, %d drill thresholds, %d progressions, %d song charts",
+		synced.Diagrams, synced.Exercises, synced.Instruments, synced.DrillThresholds, synced.Progressions, synced.SongCharts)
 	return nil
 }

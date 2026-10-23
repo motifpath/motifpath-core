@@ -2006,6 +2006,7 @@ type fakePracticeReferenceWriter struct {
 	threshold []domain.DrillThreshold
 	targets   []domain.ChangeTarget
 	progs     []domain.Progression
+	songs     []string
 	writes    int
 	err       error
 }
@@ -2082,6 +2083,28 @@ func (f *fakePracticeReferenceWriter) PutProgressions(ctx context.Context, progr
 	f.writes++
 	f.progs = append(f.progs, progressions...)
 	return nil
+}
+
+func (f *fakePracticeReferenceWriter) PutSongCharts(ctx context.Context, refs []domain.SongChartReference) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if f.err != nil {
+		return f.err
+	}
+	f.writes++
+	for _, ref := range refs {
+		f.songs = append(f.songs, ref.ID)
+	}
+	return nil
+}
+
+func (f *fakePracticeReferenceWriter) songChartIDs() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.songs
 }
 
 func (f *fakePracticeReferenceWriter) progressions() []domain.Progression {

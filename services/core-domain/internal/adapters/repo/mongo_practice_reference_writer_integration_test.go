@@ -40,7 +40,7 @@ func TestMongoPracticeReferenceWriter_DiagramShape(t *testing.T) {
 		"instrument_ids":   bson.A{"guitar", "electric"},
 		"tempo_bpm":        int32(90),
 		"updated_at":       bson.NewDateTimeFromTime(at),
-		"snapshot_version": int32(4),
+		"snapshot_version": int32(5),
 	}, doc)
 
 	t.Run("every reference in one write is stored", func(t *testing.T) {
@@ -84,7 +84,7 @@ func TestMongoPracticeReferenceWriter_DiagramShape(t *testing.T) {
 			bson.D{{Key: "string", Value: int32(5)}, {Key: "fret", Value: int32(3)}, {Key: "interval", Value: "R"}},
 			bson.D{{Key: "string", Value: int32(2)}, {Key: "fret", Value: int32(5)}, {Key: "interval", Value: "3"}},
 		}, got["positions"])
-		assert.Equal(t, int32(4), got["snapshot_version"])
+		assert.Equal(t, int32(5), got["snapshot_version"])
 	})
 
 	t.Run("a diagram that isn't a drill shape leaves the shape fields out", func(t *testing.T) {
@@ -128,7 +128,7 @@ func TestMongoPracticeReferenceWriter_ExerciseShape(t *testing.T) {
 		"instrument_ids":     bson.A{"guitar"},
 		"options":            bson.A{},
 		"updated_at":         bson.NewDateTimeFromTime(at),
-		"snapshot_version":   int32(4),
+		"snapshot_version":   int32(5),
 	}, doc)
 
 	t.Run("an exercise for every instrument stores an empty list", func(t *testing.T) {
@@ -182,7 +182,7 @@ func TestMongoPracticeReferenceWriter_DrillThresholdShape(t *testing.T) {
 		"fluent_net_ms":    int32(6000),
 		"source":           "default",
 		"updated_at":       bson.NewDateTimeFromTime(at),
-		"snapshot_version": int32(4),
+		"snapshot_version": int32(5),
 	}, doc)
 
 	t.Run("an empty write stores nothing and succeeds", func(t *testing.T) {
@@ -213,7 +213,7 @@ func TestMongoPracticeReferenceWriter_ChangeTargetShape(t *testing.T) {
 		"changes_per_minute": int32(60),
 		"source":             "default",
 		"updated_at":         bson.NewDateTimeFromTime(at),
-		"snapshot_version":   int32(4),
+		"snapshot_version":   int32(5),
 	}, doc)
 
 	t.Run("an empty write stores nothing and succeeds", func(t *testing.T) {
@@ -282,7 +282,7 @@ func TestMongoPracticeReferenceWriter_InstrumentShape(t *testing.T) {
 		"string_count":     int32(6),
 		"tuning":           bson.A{"E2", "A2", "D3", "G3", "B3", "E4"},
 		"updated_at":       bson.NewDateTimeFromTime(at),
-		"snapshot_version": int32(4),
+		"snapshot_version": int32(5),
 	}, doc)
 
 	t.Run("an instrument without strings stores none and an empty tuning", func(t *testing.T) {
@@ -322,7 +322,7 @@ func TestMongoPracticeReferenceWriter_ProgressionShape(t *testing.T) {
 		"bars":             bson.A{"ii", "V", "I", "I"},
 		"confusable":       bson.A{"IV-V-I"},
 		"updated_at":       bson.NewDateTimeFromTime(at),
-		"snapshot_version": int32(4),
+		"snapshot_version": int32(5),
 	}, doc)
 
 	t.Run("a progression confusable with none stores an empty list", func(t *testing.T) {
@@ -334,5 +334,34 @@ func TestMongoPracticeReferenceWriter_ProgressionShape(t *testing.T) {
 
 	t.Run("an empty write stores nothing and succeeds", func(t *testing.T) {
 		require.NoError(t, writer.PutProgressions(ctx, nil))
+	})
+}
+
+// TestMongoPracticeReferenceWriter_SongChartShape pins a song chart's
+// document: the song grader reads only that the chart was published.
+func TestMongoPracticeReferenceWriter_SongChartShape(t *testing.T) {
+	ctx := context.Background()
+	db := mongoDatabase(t)
+	at := time.Date(2026, 10, 23, 12, 0, 0, 0, time.UTC)
+	writer := NewMongoPracticeReferenceWriter(db, func() time.Time { return at })
+	require.NoError(t, writer.EnsureIndexes(ctx))
+
+	require.NoError(t, writer.PutSongCharts(ctx, []domain.SongChartReference{{ID: "chart-1"}}))
+
+	var doc bson.M
+	require.NoError(t, db.Collection("practice_reference").FindOne(ctx, bson.D{{Key: "kind", Value: "song_chart"}, {Key: "id", Value: "chart-1"}}).Decode(&doc))
+	delete(doc, "_id")
+	assert.Equal(t, bson.M{
+		"kind":             "song_chart",
+		"id":               "chart-1",
+		"updated_at":       bson.NewDateTimeFromTime(at),
+		"snapshot_version": int32(5),
+	}, doc)
+
+	t.Run("publishing again replaces the document", func(t *testing.T) {
+		require.NoError(t, writer.PutSongCharts(ctx, []domain.SongChartReference{{ID: "chart-1"}}))
+		n, err := db.Collection("practice_reference").CountDocuments(ctx, bson.D{{Key: "kind", Value: "song_chart"}})
+		require.NoError(t, err)
+		assert.Equal(t, int64(1), n)
 	})
 }
