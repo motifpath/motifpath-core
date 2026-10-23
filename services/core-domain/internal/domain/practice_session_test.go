@@ -123,6 +123,8 @@ func TestTapCheckDue(t *testing.T) {
 	cell := domain.PracticeSessionItem{Kind: domain.PracticeItemKindFretboardCell}
 	exercise := domain.PracticeSessionItem{Kind: domain.PracticeItemKindExercise}
 	playAlong := domain.PracticeSessionItem{Kind: domain.PracticeItemKindPlayAlong}
+	everyInstance := domain.PracticeSessionItem{Kind: domain.PracticeItemKindFretboardCell, FretboardCell: &domain.PlannedFretboardCell{Drill: domain.FretboardDrillFindEveryInstance}}
+	named := domain.PracticeSessionItem{Kind: domain.PracticeItemKindFretboardCell, FretboardCell: &domain.PlannedFretboardCell{Drill: domain.FretboardDrillNameTheNote}}
 
 	for _, tc := range []struct {
 		name     string
@@ -136,6 +138,8 @@ func TestTapCheckDue(t *testing.T) {
 		{"a tap check 31 days ago is asked for again", []domain.PracticeSessionItem{cell}, daysAgo(31), true},
 		{"a plan without a cell never asks", []domain.PracticeSessionItem{exercise, playAlong}, nil, false},
 		{"an empty plan never asks", nil, nil, false},
+		{"finding every instance isn't timed, so a plan with only that never asks", []domain.PracticeSessionItem{everyInstance, exercise}, nil, false},
+		{"a cell named beside one found everywhere still asks", []domain.PracticeSessionItem{everyInstance, named}, nil, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			assert.Equal(t, tc.want, domain.TapCheckDue(tc.items, tc.lastDone, now))

@@ -385,15 +385,23 @@ type PracticeSessionPlan struct {
 const TapCheckValidity = 30 * 24 * time.Hour
 
 // TapCheckDue reports whether a plan of items asks for a tap check: when
-// it has a fretboard cell or a diagram shape and the student's newest tap
-// check, lastDone, is older than TapCheckValidity, or there is none.
+// it has a timed fretboard drill (a cell named or found, or a diagram shape)
+// and the student's newest tap check, lastDone, is older than
+// TapCheckValidity, or there is none. A tap time only offsets a timed
+// answer, and finding every instance of a cell's note isn't timed.
 func TapCheckDue(items []PracticeSessionItem, lastDone *time.Time, now time.Time) bool {
-	if !slices.ContainsFunc(items, func(item PracticeSessionItem) bool {
-		return item.Kind == PracticeItemKindFretboardCell || item.Kind == PracticeItemKindDiagramShape
-	}) {
+	if !slices.ContainsFunc(items, isTimedFretboardDrill) {
 		return false
 	}
 	return lastDone == nil || lastDone.Before(now.Add(-TapCheckValidity))
+}
+
+func isTimedFretboardDrill(item PracticeSessionItem) bool {
+	if item.Kind == PracticeItemKindDiagramShape {
+		return true
+	}
+	return item.Kind == PracticeItemKindFretboardCell &&
+		(item.FretboardCell == nil || item.FretboardCell.Drill != FretboardDrillFindEveryInstance)
 }
 
 // The bounds of a session's length, in minutes.
