@@ -169,14 +169,17 @@ func (p plannedGuideTone) AttachTo(item *PracticeSessionItem) {
 }
 
 // fixedRung is the rung of a kind that isn't timed, so its rung doesn't come
-// from a timed template: the self-rated chord drills and tours, and a guide
-// tone, measured by tempo. False for any other kind.
+// from a timed template: the self-rated chord drills, tours and songs, and a
+// guide tone, measured by tempo. False for any other kind.
 func fixedRung(kind PracticeItemKind) (PracticeRung, bool) {
 	if rung, rated := selfRatedChordKinds[kind]; rated {
 		return rung, true
 	}
 	if kind == PracticeItemKindGuideTone {
 		return PracticeRungTarget, true
+	}
+	if kind == PracticeItemKindSong {
+		return PracticeRungUse, true
 	}
 	return "", false
 }
@@ -189,6 +192,9 @@ func kindSessionCap(kind PracticeItemKind) (int, bool) {
 	}
 	if kind == PracticeItemKindGuideTone {
 		return MaxGuideTonesPerSession, true
+	}
+	if kind == PracticeItemKindSong {
+		return MaxSongsPerSession, true
 	}
 	return 0, false
 }

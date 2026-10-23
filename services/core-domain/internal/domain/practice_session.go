@@ -256,6 +256,7 @@ type PracticeSessionItem struct {
 	RootChange      *PlannedRootChange
 	ProgressionKeys *PlannedProgressionKeys
 	GuideTone       *PlannedGuideTone
+	Song            *PlannedSong
 }
 
 // DrillTemplateKey is the timed drill template answering the item

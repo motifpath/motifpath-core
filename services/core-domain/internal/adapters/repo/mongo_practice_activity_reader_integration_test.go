@@ -146,6 +146,41 @@ func TestMongoPracticeActivityReader_ReadsAggregationWorkerShape(t *testing.T) {
 		assert.Zero(t, none)
 	})
 
+	t.Run("the last in-hand session's planned items are those of the latest one started with an instrument", func(t *testing.T) {
+		session := func(id string, instrumentID *string, startedAt *time.Time, itemKeys ...string) bson.D {
+			items := bson.A{}
+			for _, k := range itemKeys {
+				items = append(items, bson.D{{Key: "item_key", Value: k}, {Key: "reason", Value: "application"}})
+			}
+			doc := bson.D{
+				{Key: "student_id", Value: "fay"}, {Key: "practice_session_id", Value: id},
+				{Key: "started_at", Value: startedAt}, {Key: "minutes", Value: 20}, {Key: "planned_items", Value: items},
+				{Key: "last_event_at", Value: at(4, 9)}, {Key: "end", Value: nil}, {Key: "updated_at", Value: at(4, 9)},
+			}
+			if instrumentID != nil {
+				doc = append(doc, bson.E{Key: "instrument_id", Value: *instrumentID})
+			}
+			return doc
+		}
+		older, newer, newest := at(2, 9), at(3, 9), at(4, 9)
+		guitar := "guitar"
+		_, err := db.Collection("practice_sessions").InsertMany(ctx, []any{
+			session("older", &guitar, &older, "song:a"),
+			session("newer", &guitar, &newer, "play_along:x", "song:b"),
+			session("in-the-head", nil, &newest, "heard_chord:ii"),
+			session("start-not-arrived", &guitar, nil, "song:c"),
+		})
+		require.NoError(t, err)
+
+		got, err := reader.LastInHandSessionItemKeys(ctx, "fay")
+		require.NoError(t, err)
+		assert.Equal(t, []string{"play_along:x", "song:b"}, got)
+
+		none, err := reader.LastInHandSessionItemKeys(ctx, "nobody")
+		require.NoError(t, err)
+		assert.Empty(t, none)
+	})
+
 	t.Run("completion times are each completion since", func(t *testing.T) {
 		completion := func(eventID, studentID string, completedAt time.Time) bson.D {
 			return bson.D{{Key: "event_id", Value: eventID}, {Key: "student_id", Value: studentID}, {Key: "content_node_id", Value: "node-1"}, {Key: "completed_at", Value: completedAt}}

@@ -59,8 +59,11 @@ type PracticeSessionService struct {
 	// harmony is what the harmony drills read; nil when they aren't
 	// installed.
 	harmony *harmonyDrills
-	newID   func() string
-	now     func() time.Time
+	// lastInHand tells the items of a student's last in-hand session; nil
+	// when no songs are installed.
+	lastInHand ports.LastInHandSessionReader
+	newID      func() string
+	now        func() time.Time
 	// shuffle puts equally urgent candidates in random order.
 	shuffle func(n int, swap func(i, j int))
 }
@@ -108,6 +111,27 @@ func NewPracticeSessionService(
 func (s *PracticeSessionService) WithDrillSources(sources ...DrillSource) *PracticeSessionService {
 	s.sources = append(s.sources, sources...)
 	return s
+}
+
+// composingSource is a drill source that keeps what it reads for one
+// composition, read afresh for the next.
+type composingSource interface {
+	DrillSource
+	forComposition() DrillSource
+}
+
+// forComposition is s with a fresh copy of each source that keeps what it
+// reads, for one composition or one list of subjects.
+func (s *PracticeSessionService) forComposition() *PracticeSessionService {
+	composing := *s
+	composing.sources = make([]DrillSource, len(s.sources))
+	for i, src := range s.sources {
+		if c, ok := src.(composingSource); ok {
+			src = c.forComposition()
+		}
+		composing.sources[i] = src
+	}
+	return &composing
 }
 
 // WithShuffle replaces how equally urgent candidates are put in random
@@ -229,6 +253,7 @@ func (s *PracticeSessionService) ComposePlan(ctx context.Context, caller domain.
 	if err := domain.ValidatePracticeMinutes(minutes); err != nil {
 		return domain.PracticeSessionPlan{}, err
 	}
+	s = s.forComposition()
 	instrumentIDs, err := s.sessionInstruments(ctx, caller.ID, instrumentID)
 	if err != nil {
 		return domain.PracticeSessionPlan{}, err
@@ -243,6 +268,9 @@ func (s *PracticeSessionService) ComposePlan(ctx context.Context, caller domain.
 	}
 	c := newComposer(s.now(), minutes, s.shuffle, templates)
 	if c.newTurn, err = s.newCellTurn(ctx, caller.ID, instrumentID != nil); err != nil {
+		return domain.PracticeSessionPlan{}, err
+	}
+	if c.lastInHand, err = s.lastInHandItems(ctx, caller.ID, instrumentID != nil); err != nil {
 		return domain.PracticeSessionPlan{}, err
 	}
 	tunings := s.layoutTunings(ctx)
@@ -269,6 +297,16 @@ func (s *PracticeSessionService) ComposePlan(ctx context.Context, caller domain.
 		return domain.PracticeSessionPlan{}, err
 	}
 	return plan, nil
+}
+
+// lastInHandItems are the items of the student's last in-hand session, which an
+// in-hand session reads for its song; none in the head or with no songs
+// installed.
+func (s *PracticeSessionService) lastInHandItems(ctx context.Context, studentID string, inHand bool) ([]string, error) {
+	if !inHand || s.lastInHand == nil {
+		return nil, nil
+	}
+	return s.lastInHand.LastInHandSessionItemKeys(ctx, studentID)
 }
 
 // firstError is the first of errs that isn't nil: a composition's own error
@@ -636,7 +674,7 @@ func (s *PracticeSessionService) stretchCandidates(ctx context.Context, knowledg
 			return nil, err
 		}
 		c.nodeID = &pick.nodeID
-		if ok && c.suitsSession(inHand) && (c.drill == nil || readyFor(knowledge, c.drill)) && fits(c) {
+		if ok && c.suitsSession(inHand) && !c.endsSessionOnly() && (c.drill == nil || readyFor(knowledge, c.drill)) && fits(c) {
 			c.instrumentID = instrumentID
 			stretch = append(stretch, c)
 			found += c.seconds()
@@ -860,6 +898,12 @@ type composer struct {
 	// notes already asked to find every instance, keyed layout:note.
 	tuningOf      func(layoutInstrumentID string) []string
 	everyInstance map[string]bool
+	// chosenNode is the one subject a session the student chose practises;
+	// empty in Today's mix.
+	chosenNode string
+	// lastInHand are the items of the student's last in-hand session, whose
+	// song isn't played again while another fits.
+	lastInHand []string
 }
 
 // drillWindowKey is a fretboard drill of a layout, which takes one window.
@@ -964,7 +1008,7 @@ func (c *composer) split(candidates []practiceCandidate) pools {
 	var p pools
 	for _, cand := range candidates {
 		switch {
-		case c.picked[cand.key()]:
+		case c.picked[cand.key()] || cand.endsSessionOnly():
 		case !cand.practised():
 			if c.atNewRung(cand) {
 				p.fresh = append(p.fresh, cand)
@@ -1211,15 +1255,23 @@ func betterWarmUp(a, b practiceCandidate, now time.Time) bool {
 	return compareDueAt(a.state.LastAt, b.state.LastAt) > 0
 }
 
-// application reserves the session's ending: one play-along applying one
-// of subjects (see subjectEnding), or, with no subjects, any play-along of
-// onPath; if it takes no more than a quarter of the session. Like the
-// warm-up, a due play-along is never the ending: its review belongs in the
-// focus block.
+// application reserves the session's ending: a song or a play-along applying
+// one of subjects (see subjectEnding); in a chosen session, a song of its
+// subject at the use rung, else any play-along of onPath; with no subjects,
+// any play-along of onPath; if it takes no more than a quarter of the
+// session. Like the warm-up, a due play-along is never the ending: its review
+// belongs in the focus block.
 func (c *composer) application(onPath []practiceCandidate, subjects []string, focus []practiceCandidate) {
-	pick := c.endingFor(onPath, "")
-	if subjects != nil {
+	var pick *practiceCandidate
+	switch {
+	case c.chosenNode != "":
+		if pick = c.songEnding(onPath, "", c.chosenNode); pick == nil {
+			pick = c.endingFor(onPath, "")
+		}
+	case subjects != nil:
 		pick = c.subjectEnding(onPath, subjects, focus)
+	default:
+		pick = c.endingFor(onPath, "")
 	}
 	if pick == nil {
 		return
@@ -1232,13 +1284,17 @@ func (c *composer) application(onPath []practiceCandidate, subjects []string, fo
 	c.ending = &item
 }
 
-// subjectEnding finds a play-along applying the first of subjects that has
-// one and that another item of focus practises, or else the first that has
-// one, as for endingFor; its node is that subject.
+// subjectEnding finds the ending of the first of subjects that has one and
+// that another item of focus practises, or else the first that has one: a
+// song when the subject is at the use rung (see songEnding), otherwise a
+// play-along applying it, as for endingFor. Its node is that subject.
 func (c *composer) subjectEnding(onPath []practiceCandidate, subjects []string, focus []practiceCandidate) *practiceCandidate {
 	for _, besides := range []bool{true, false} {
 		for _, subject := range subjects {
-			pick := c.endingFor(onPath, subject)
+			pick := c.songEnding(onPath, subject, subject)
+			if pick == nil {
+				pick = c.endingFor(onPath, subject)
+			}
 			if pick == nil || besides && !practisedBesides(focus, subject, pick.key()) {
 				continue
 			}

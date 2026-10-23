@@ -26,6 +26,10 @@ type SongChartRepository interface {
 	// Publish saves chart and stores rev, its new revision, together: either
 	// both happen or neither does.
 	Publish(ctx context.Context, chart domain.SongChart, rev domain.SongChartRevision) error
+	// PublishedRevisions returns the latest revision of every published
+	// chart, in no set order, without its body: what practice needs of the
+	// songs learners can play.
+	PublishedRevisions(ctx context.Context) ([]domain.SongChartRevision, error)
 	// ListRevisions returns a chart's revisions, newest first.
 	ListRevisions(ctx context.Context, chartID string) ([]domain.SongChartRevision, error)
 	// GetRevision returns one revision of a chart, or domain.ErrNotFound.

@@ -2281,6 +2281,9 @@ type fakeSongChartRepository struct {
 	mu        sync.Mutex
 	charts    map[string]domain.SongChart
 	revisions map[string][]domain.SongChartRevision
+	// publishedReads and chartReads count the reads of every published
+	// revision and of one chart or revision.
+	publishedReads, chartReads int
 }
 
 func newFakeSongChartRepository() *fakeSongChartRepository {
@@ -2297,6 +2300,7 @@ func (f *fakeSongChartRepository) Create(_ context.Context, chart domain.SongCha
 func (f *fakeSongChartRepository) GetByID(_ context.Context, id string) (domain.SongChart, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.chartReads++
 	chart, ok := f.charts[id]
 	if !ok {
 		return domain.SongChart{}, domain.ErrNotFound
@@ -2372,9 +2376,29 @@ func (f *fakeSongChartRepository) ListRevisions(_ context.Context, chartID strin
 	return append([]domain.SongChartRevision(nil), f.revisions[chartID]...), nil
 }
 
+func (f *fakeSongChartRepository) PublishedRevisions(_ context.Context) ([]domain.SongChartRevision, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.publishedReads++
+	var revisions []domain.SongChartRevision
+	for id, chart := range f.charts {
+		if chart.Status != domain.SongChartPublished || chart.PublishedRevision == nil {
+			continue
+		}
+		for _, rev := range f.revisions[id] {
+			if rev.Number == chart.PublishedRevision.Number {
+				rev.Body = domain.SongChartDocument{}
+				revisions = append(revisions, rev)
+			}
+		}
+	}
+	return revisions, nil
+}
+
 func (f *fakeSongChartRepository) GetRevision(_ context.Context, chartID string, number int) (domain.SongChartRevision, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.chartReads++
 	for _, rev := range f.revisions[chartID] {
 		if rev.Number == number {
 			return rev, nil

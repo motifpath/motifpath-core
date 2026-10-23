@@ -353,7 +353,8 @@ func newWorld() *world {
 		WithHarmonyDrills(catalogProgressions{}, &catalogChordRepository{newFakeChordCatalog()}, harmonyLayouts{}).
 		WithChordDrills(chordDrillCatalog{}, w.instruments).
 		WithProgressionKeyTours(w.instruments).
-		WithGuideTones(w.instruments)
+		WithGuideTones(w.instruments).
+		WithSongs(w.songChartRepo, w.practiceActivity)
 	w.summaryNow = fixedNow
 	summaryNow := func() time.Time { return w.summaryNow }
 	summaryRollup := application.NewKnowledgeRollupService(w.knowledge, w.knowledgeEdges, w.practiceItems, w.practiceStates, summaryNow)

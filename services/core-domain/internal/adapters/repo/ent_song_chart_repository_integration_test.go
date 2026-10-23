@@ -4,6 +4,7 @@ package repo
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -235,4 +236,40 @@ func TestEntSongChartRepository_List(t *testing.T) {
 			assert.Equal(t, []string{published.ID}, ids(page), q)
 		}
 	})
+}
+
+func TestEntSongChartRepository_PublishedRevisions(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	charts := NewEntSongChartRepository(client)
+	publish := func(title string, revisions int) domain.SongChart {
+		chart := newSongChart(title, fixedAt)
+		chart.Draft.RightsConfirmation = &domain.RightsConfirmation{ConfirmedBy: uuid.NewString(), ConfirmedAt: fixedAt}
+		require.NoError(t, charts.Create(ctx, chart))
+		for i := range revisions {
+			chart.Draft.ProgressionKeys = []string{fmt.Sprintf("tag-%d", i+1)}
+			published, rev, err := chart.Publish(uuid.NewString(), fixedAt.Add(time.Duration(i)*time.Hour))
+			require.NoError(t, err)
+			require.NoError(t, charts.Publish(ctx, published, rev))
+			chart = published
+		}
+		return chart
+	}
+	corrected := publish("Amazing Grace", 2)
+	withdrawn, err := publish("Oh! Susanna", 1).Withdraw(uuid.NewString(), fixedAt, "Rights disputed")
+	require.NoError(t, err)
+	require.NoError(t, charts.Save(ctx, withdrawn))
+	require.NoError(t, charts.Create(ctx, newSongChart("Draft", fixedAt)))
+
+	got, err := charts.PublishedRevisions(ctx)
+
+	require.NoError(t, err)
+	require.Len(t, got, 1, "only a chart learners can read, at its latest revision")
+	rev := got[0]
+	assert.Equal(t, corrected.ID, rev.SongChartID)
+	assert.Equal(t, 2, rev.Number)
+	assert.Equal(t, "Amazing Grace", rev.Title)
+	assert.Equal(t, "Luiz Gonzaga", rev.Artist)
+	assert.Equal(t, []string{"tag-2"}, rev.ProgressionKeys)
+	assert.Empty(t, rev.Body.Sections, "the body isn't read")
 }

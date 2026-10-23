@@ -495,3 +495,39 @@ func uuidString(u *uuid.UUID) string {
 	}
 	return u.String()
 }
+
+func (r *EntSongChartRepository) PublishedRevisions(ctx context.Context) ([]domain.SongChartRevision, error) {
+	published, err := r.client.SongChart.Query().
+		Where(songchart.StatusEQ(songchart.StatusPublished), songchart.PublishedRevisionNumberNotNil()).
+		Select(songchart.FieldID, songchart.FieldPublishedRevisionNumber).
+		All(ctx)
+	if err != nil || len(published) == 0 {
+		return nil, err
+	}
+	latest := make(map[uuid.UUID]int, len(published))
+	ids := make([]uuid.UUID, len(published))
+	for i, c := range published {
+		latest[c.ID], ids[i] = *c.PublishedRevisionNumber, c.ID
+	}
+	// Every revision of those charts, but only the few columns kept: a chart's
+	// body is the bulk of a row.
+	rows, err := r.client.SongChartRevision.Query().
+		Where(songchartrevision.SongChartIDIn(ids...)).
+		Select(songchartrevision.FieldSongChartID, songchartrevision.FieldRevisionNumber, songchartrevision.FieldTitle,
+			songchartrevision.FieldArtist, songchartrevision.FieldProgressionKeys).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	revisions := make([]domain.SongChartRevision, 0, len(published))
+	for _, row := range rows {
+		if row.RevisionNumber != latest[row.SongChartID] {
+			continue
+		}
+		revisions = append(revisions, domain.SongChartRevision{
+			SongChartID: row.SongChartID.String(), Number: row.RevisionNumber, Title: row.Title, Artist: row.Artist,
+			ProgressionKeys: emptyAsNil(row.ProgressionKeys),
+		})
+	}
+	return revisions, nil
+}

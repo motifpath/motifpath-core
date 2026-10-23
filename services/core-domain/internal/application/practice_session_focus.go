@@ -48,15 +48,16 @@ func (c *composer) setNewRungs(candidates []practiceCandidate) {
 	material := map[string]map[domain.PracticeRung][]string{}
 	states := map[string]domain.PracticeItemState{}
 	for _, cand := range candidates {
-		subject := c.subjectOf(cand)
-		if _, found := c.newRungs[subject]; found || subject == "" {
-			continue
+		for _, subject := range c.rungSubjects(cand) {
+			if _, found := c.newRungs[subject]; found || subject == "" {
+				continue
+			}
+			if material[subject] == nil {
+				material[subject] = map[domain.PracticeRung][]string{}
+			}
+			rung := c.rungOf(cand)
+			material[subject][rung] = append(material[subject][rung], cand.key())
 		}
-		if material[subject] == nil {
-			material[subject] = map[domain.PracticeRung][]string{}
-		}
-		rung := c.rungOf(cand)
-		material[subject][rung] = append(material[subject][rung], cand.key())
 		if cand.state != nil {
 			states[cand.key()] = *cand.state
 		}
@@ -203,6 +204,7 @@ func (s *PracticeSessionService) composeChosen(ctx context.Context, c *composer,
 
 	c.subjects = []string{nodeID}
 	c.subjectOf = func(practiceCandidate) string { return nodeID }
+	c.chosenNode = nodeID
 	c.aheadAnyTime = true
 	c.setNewRungs(candidates)
 	p := c.fretWindows(c.split(candidates))
@@ -350,6 +352,7 @@ func (c *composer) chained(group []domain.PracticeSessionItem) []domain.Practice
 // of their instruments in the head, and its current rung: see
 // domain.SubjectRungs. An instrumentID that doesn't exist is not found.
 func (s *PracticeSessionService) ListSubjects(ctx context.Context, caller domain.User, instrumentID *string) (domain.PracticeSubjectList, error) {
+	s = s.forComposition()
 	instrumentIDs, err := s.sessionInstruments(ctx, caller.ID, instrumentID)
 	if err != nil {
 		return domain.PracticeSubjectList{}, err

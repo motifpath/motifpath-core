@@ -378,6 +378,12 @@ func toGeneratedPracticeSessionItem(item domain.PracticeSessionItem, names userN
 	if g := item.GuideTone; g != nil {
 		out.GuideTone = toGeneratedGuideTone(*g, locale)
 	}
+	if song := item.Song; song != nil {
+		out.Song = &generated.PlannedSong{
+			SongChartId: mustUUID(song.SongChartID), LayoutInstrumentId: mustUUID(song.LayoutInstrumentID),
+			Title: song.Title, Artist: song.Artist, ProgressionKey: song.ProgressionKey, Plays: generated.PlannedSongPlays(song.Plays),
+		}
+	}
 	return out
 }
 
