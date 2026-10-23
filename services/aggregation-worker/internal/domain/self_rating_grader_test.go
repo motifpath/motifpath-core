@@ -22,6 +22,7 @@ func TestGraderFor(t *testing.T) {
 		{PracticeItemKindRootFifth, PracticeResponseSelfRating, "self_rating.v1"},
 		{PracticeItemKindRootChange, PracticeResponseSelfRating, "self_rating.v1"},
 		{PracticeItemKindProgressionKeys, PracticeResponseSelfRating, "self_rating.v1"},
+		{PracticeItemKindSong, PracticeResponseSelfRating, "self_rating.v1"},
 		{PracticeItemKindExercise, PracticeResponseOptionChoice, "exercise_option.v1"},
 		{PracticeItemKindFretboardCell, PracticeResponseNameTheNote, "fretboard_cell.v2"},
 		{PracticeItemKindFretboardCell, PracticeResponseFindTheNote, "fretboard_cell.v2"},

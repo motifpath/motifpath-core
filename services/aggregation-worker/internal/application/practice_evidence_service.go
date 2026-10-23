@@ -140,6 +140,11 @@ func (s *PracticeEvidenceService) referenceFor(ctx context.Context, key domain.P
 			return domain.PracticeReference{}, err
 		}
 	}
+	if id := key.SongChartID(); id != "" {
+		if ref.SongCharts, err = s.reference.SongCharts(ctx, []string{id}); err != nil {
+			return domain.PracticeReference{}, err
+		}
+	}
 	if key.ProgressionKey() != "" {
 		if ref.Progressions, err = s.reference.Progressions(ctx); err != nil {
 			return domain.PracticeReference{}, err
