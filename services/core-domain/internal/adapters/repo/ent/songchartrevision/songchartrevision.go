@@ -6,6 +6,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/google/uuid"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/schema"
 )
 
 const (
@@ -33,8 +34,8 @@ const (
 	FieldTimeSignature = "time_signature"
 	// FieldTuningFingerprint holds the string denoting the tuning_fingerprint field in the database.
 	FieldTuningFingerprint = "tuning_fingerprint"
-	// FieldProgressionKeys holds the string denoting the progression_keys field in the database.
-	FieldProgressionKeys = "progression_keys"
+	// FieldSectionProgressions holds the string denoting the section_progressions field in the database.
+	FieldSectionProgressions = "section_progressions"
 	// FieldBody holds the string denoting the body field in the database.
 	FieldBody = "body"
 	// FieldRightsConfirmedBy holds the string denoting the rights_confirmed_by field in the database.
@@ -71,7 +72,7 @@ var Columns = []string{
 	FieldTempoBpm,
 	FieldTimeSignature,
 	FieldTuningFingerprint,
-	FieldProgressionKeys,
+	FieldSectionProgressions,
 	FieldBody,
 	FieldRightsConfirmedBy,
 	FieldRightsConfirmedAt,
@@ -92,8 +93,8 @@ func ValidColumn(column string) bool {
 var (
 	// RevisionNumberValidator is a validator for the "revision_number" field. It is called by the builders before save.
 	RevisionNumberValidator func(int) error
-	// DefaultProgressionKeys holds the default value on creation for the "progression_keys" field.
-	DefaultProgressionKeys []string
+	// DefaultSectionProgressions holds the default value on creation for the "section_progressions" field.
+	DefaultSectionProgressions []schema.SongChartSectionProgression
 	// DefaultID holds the default value on creation for the "id" field.
 	DefaultID func() uuid.UUID
 )

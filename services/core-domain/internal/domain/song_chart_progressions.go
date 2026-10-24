@@ -5,8 +5,41 @@ import (
 	"strings"
 )
 
-// MaxSongChartProgressions is how many progressions a chart can be tagged with.
+// MaxSongChartProgressions is how many progressions a section can be tagged
+// with.
 const MaxSongChartProgressions = 10
+
+// SectionProgression is a progression a chart's section is tagged with: the
+// section by its index in document order, the progression by its key in the
+// progression catalog.
+type SectionProgression struct {
+	SectionIndex   int
+	ProgressionKey string
+}
+
+// SectionProgressions are every section's tags, in document order, then in
+// tagged order.
+func (d SongChartDocument) SectionProgressions() []SectionProgression {
+	var tags []SectionProgression
+	for si, section := range d.Sections {
+		for _, key := range section.ProgressionKeys {
+			tags = append(tags, SectionProgression{SectionIndex: si, ProgressionKey: key})
+		}
+	}
+	return tags
+}
+
+// ProgressionKeysOf are the progressions of tags, each once, in the order
+// they first appear: the progressions a chart plays.
+func ProgressionKeysOf(tags []SectionProgression) []string {
+	var keys []string
+	for _, t := range tags {
+		if !slices.Contains(keys, t.ProgressionKey) {
+			keys = append(keys, t.ProgressionKey)
+		}
+	}
+	return keys
+}
 
 // triad is the triad a chord is heard as: major, minor or diminished. A chord
 // without one of them (a power chord, a suspended or augmented chord) has none.
@@ -42,30 +75,32 @@ type heardChord struct {
 	triad triad
 }
 
-// UnplayedProgressions lists the tagged progressions the chart doesn't play,
-// in tagged order. A progression is played when its chords appear in a row in
-// the chart, in its concert key:
-//   - the chart's chords are taken in document order, as they sound: moved up
-//     by the capo, each counted by its root and triad. N.C. is skipped, and a
-//     chord repeated in a row counts once;
+// UnplayedProgressions lists the sections' tags their section doesn't play,
+// by section, then in tagged order. A progression is played by a section when
+// its chords appear in a row in that section, in the chart's concert key:
+//   - the section's chords are taken in document order, as they sound: moved
+//     up by the capo, each counted by its root and triad. N.C. is skipped, and
+//     a chord repeated in a row counts once. Another section's chords never
+//     count;
 //   - the progression's numerals are spelled in the concert key, a dominant
 //     seventh counting as major, and a numeral repeated in a row counts once;
 //   - the concert key must be stated and major, as every progression of the
 //     catalog is in a major key; otherwise every tag is unplayed.
 //
 // A tag missing from catalog is unplayed.
-func UnplayedProgressions(doc SongChartDocument, concertKey *string, capoFret int, tagged []string, catalog []Progression) []string {
-	unplayed := []string{}
+func UnplayedProgressions(doc SongChartDocument, concertKey *string, capoFret int, catalog []Progression) []SectionProgression {
+	unplayed := []SectionProgression{}
 	tonic, major := majorTonic(concertKey)
-	chart := chartChords(doc, capoFret)
-	for _, key := range tagged {
-		i := slices.IndexFunc(catalog, func(p Progression) bool { return p.Key == key })
-		if !major || i < 0 {
-			unplayed = append(unplayed, key)
-			continue
-		}
-		if run := progressionChords(catalog[i].Bars, tonic); len(run) == 0 || !containsRun(chart, run) {
-			unplayed = append(unplayed, key)
+	for si, section := range doc.Sections {
+		chords := sectionChords(section, capoFret)
+		for _, key := range section.ProgressionKeys {
+			i := slices.IndexFunc(catalog, func(p Progression) bool { return p.Key == key })
+			if major && i >= 0 {
+				if run := progressionChords(catalog[i].Bars, tonic); len(run) > 0 && containsRun(chords, run) {
+					continue
+				}
+			}
+			unplayed = append(unplayed, SectionProgression{SectionIndex: si, ProgressionKey: key})
 		}
 	}
 	return unplayed
@@ -81,11 +116,11 @@ func majorTonic(concertKey *string) (int, bool) {
 	return pc, ok && rest == ""
 }
 
-// chartChords is the chart's chords as they sound, in document order, with
-// N.C. skipped and a chord repeated in a row kept once.
-func chartChords(doc SongChartDocument, capoFret int) []heardChord {
+// sectionChords is the section's chords as they sound, in document order,
+// with N.C. skipped and a chord repeated in a row kept once.
+func sectionChords(section SongChartSection, capoFret int) []heardChord {
 	var chords []heardChord
-	for _, a := range doc.Anchors() {
+	for _, a := range (SongChartDocument{Sections: []SongChartSection{section}}).Anchors() {
 		reading := ParseChordSymbol(a.Anchor.WrittenSymbol)
 		if reading.Status == ChordSymbolNoChord {
 			continue

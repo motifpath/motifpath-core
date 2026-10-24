@@ -99,9 +99,9 @@ func (_c *SongChartRevisionCreate) SetTuningFingerprint(v string) *SongChartRevi
 	return _c
 }
 
-// SetProgressionKeys sets the "progression_keys" field.
-func (_c *SongChartRevisionCreate) SetProgressionKeys(v []string) *SongChartRevisionCreate {
-	_c.mutation.SetProgressionKeys(v)
+// SetSectionProgressions sets the "section_progressions" field.
+func (_c *SongChartRevisionCreate) SetSectionProgressions(v []schema.SongChartSectionProgression) *SongChartRevisionCreate {
+	_c.mutation.SetSectionProgressions(v)
 	return _c
 }
 
@@ -189,9 +189,9 @@ func (_c *SongChartRevisionCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *SongChartRevisionCreate) defaults() {
-	if _, ok := _c.mutation.ProgressionKeys(); !ok {
-		v := songchartrevision.DefaultProgressionKeys
-		_c.mutation.SetProgressionKeys(v)
+	if _, ok := _c.mutation.SectionProgressions(); !ok {
+		v := songchartrevision.DefaultSectionProgressions
+		_c.mutation.SetSectionProgressions(v)
 	}
 	if _, ok := _c.mutation.ID(); !ok {
 		v := songchartrevision.DefaultID()
@@ -227,8 +227,8 @@ func (_c *SongChartRevisionCreate) check() error {
 	if _, ok := _c.mutation.TuningFingerprint(); !ok {
 		return &ValidationError{Name: "tuning_fingerprint", err: errors.New(`ent: missing required field "SongChartRevision.tuning_fingerprint"`)}
 	}
-	if _, ok := _c.mutation.ProgressionKeys(); !ok {
-		return &ValidationError{Name: "progression_keys", err: errors.New(`ent: missing required field "SongChartRevision.progression_keys"`)}
+	if _, ok := _c.mutation.SectionProgressions(); !ok {
+		return &ValidationError{Name: "section_progressions", err: errors.New(`ent: missing required field "SongChartRevision.section_progressions"`)}
 	}
 	if _, ok := _c.mutation.Body(); !ok {
 		return &ValidationError{Name: "body", err: errors.New(`ent: missing required field "SongChartRevision.body"`)}
@@ -319,9 +319,9 @@ func (_c *SongChartRevisionCreate) createSpec() (*SongChartRevision, *sqlgraph.C
 		_spec.SetField(songchartrevision.FieldTuningFingerprint, field.TypeString, value)
 		_node.TuningFingerprint = value
 	}
-	if value, ok := _c.mutation.ProgressionKeys(); ok {
-		_spec.SetField(songchartrevision.FieldProgressionKeys, field.TypeJSON, value)
-		_node.ProgressionKeys = value
+	if value, ok := _c.mutation.SectionProgressions(); ok {
+		_spec.SetField(songchartrevision.FieldSectionProgressions, field.TypeJSON, value)
+		_node.SectionProgressions = value
 	}
 	if value, ok := _c.mutation.Body(); ok {
 		_spec.SetField(songchartrevision.FieldBody, field.TypeString, value)

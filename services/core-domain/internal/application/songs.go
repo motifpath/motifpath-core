@@ -11,8 +11,8 @@ import (
 	"github.com/motifpath/core-domain/internal/ports"
 )
 
-// WithSongs installs the songs: each published song chart tagged with the
-// progressions it plays, played whole on a fretboard layout as a session's
+// WithSongs installs the songs: each published song chart whose sections are
+// tagged with the progressions they play, played whole on a fretboard layout as a session's
 // application ending. It reads the progressions and the chord catalog the
 // harmony drills were installed with, so it does nothing without them.
 // lastInHand tells the song of the student's last in-hand session, which isn't
@@ -102,8 +102,9 @@ func (c *composingSongs) SkillItems(ctx context.Context, skillID, _ string, inHa
 }
 
 // Item reads itemKey as a song: its layout and the latest published revision
-// of its chart, with the progressions it is tagged with. A chart no longer
-// published, or tagged with no progression the catalog has, is no song. The
+// of its chart, with the progressions its sections are tagged with, each with
+// the first section tagged with it. A chart no longer published, or tagged
+// with no progression the catalog has, is no song. The
 // layout the chord catalog's voicings are on is the guitar one; any other is a
 // bass, whose student plays the roots.
 func (c *composingSongs) Item(ctx context.Context, itemKey string) (domain.DrillItem, bool, error) {
@@ -123,10 +124,13 @@ func (c *composingSongs) Item(ctx context.Context, itemKey string) (domain.Drill
 	if !published {
 		return nil, false, nil
 	}
-	var progressions []domain.Progression
-	for _, key := range rev.ProgressionKeys {
-		if i := slices.IndexFunc(library.catalog, func(p domain.Progression) bool { return p.Key == key }); i >= 0 {
-			progressions = append(progressions, library.catalog[i])
+	var progressions []domain.SongProgression
+	for _, tag := range rev.SectionProgressions {
+		if slices.ContainsFunc(progressions, func(p domain.SongProgression) bool { return p.Key == tag.ProgressionKey }) {
+			continue
+		}
+		if i := slices.IndexFunc(library.catalog, func(p domain.Progression) bool { return p.Key == tag.ProgressionKey }); i >= 0 {
+			progressions = append(progressions, domain.SongProgression{Progression: library.catalog[i], SectionIndex: tag.SectionIndex})
 		}
 	}
 	if len(progressions) == 0 {

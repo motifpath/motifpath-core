@@ -55,11 +55,24 @@ func newSongFixture(t *testing.T) *songFixture {
 	return f
 }
 
-// song publishes a chart tagged with progressions and classifies its songs on
-// both layouts under their nodes.
+// song publishes a chart whose first section is tagged with progressions and
+// classifies its songs on both layouts under their nodes.
 func (f *songFixture) song(id, title string, progressions ...string) {
+	f.songOfSections(id, title, progressions)
+}
+
+// songOfSections publishes a chart with a section per entry of sections, each
+// tagged with its progressions, and classifies its songs on both layouts
+// under their nodes.
+func (f *songFixture) songOfSections(id, title string, sections ...[]string) {
+	var body domain.SongChartDocument
+	var progressions []string
+	for _, tags := range sections {
+		body.Sections = append(body.Sections, domain.SongChartSection{Kind: domain.SectionVerse, ProgressionKeys: tags})
+		progressions = append(progressions, tags...)
+	}
 	chart := domain.SongChart{ID: id, Status: domain.SongChartDraftStatus, Draft: domain.SongChartDraft{
-		Title: title, Artist: "Traditional", ProgressionKeys: progressions,
+		Title: title, Artist: "Traditional", Body: body,
 		RightsConfirmation: &domain.RightsConfirmation{ConfirmedBy: "admin-1", ConfirmedAt: f.now},
 	}}
 	require.NoError(f.t, f.charts.Create(context.Background(), chart))
@@ -117,8 +130,21 @@ func TestPracticeSessionService_ComposePlanSongs(t *testing.T) {
 		require.NotNil(t, last.Song)
 		assert.Equal(t, domain.PlannedSong{
 			SongChartID: "amazing-grace", LayoutInstrumentID: practiceGuitar, Title: "Amazing Grace", Artist: "Traditional",
-			ProgressionKey: "I-IV-I-V", Plays: domain.SongPlaysChords,
+			ProgressionKey: "I-IV-I-V", SectionIndex: 0, Plays: domain.SongPlaysChords,
 		}, *last.Song)
+	})
+
+	t.Run("the song names the first section that plays the subject's progression", func(t *testing.T) {
+		f := newSongFixture(t)
+		f.songOfSections("home-on-the-range", "Home on the Range", nil, []string{"I-IV-I-V"}, []string{"I-IV-I-V"})
+		f.atUseRung()
+
+		plan := f.choose(t, ptrTo(practiceGuitar), commonProgressions, 20)
+
+		last := lastItem(t, plan)
+		require.NotNil(t, last.Song)
+		assert.Equal(t, "I-IV-I-V", last.Song.ProgressionKey)
+		assert.Equal(t, 1, last.Song.SectionIndex)
 	})
 
 	t.Run("today's mix ends with a song of its main subject at the use rung", func(t *testing.T) {
