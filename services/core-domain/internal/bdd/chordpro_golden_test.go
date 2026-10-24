@@ -74,9 +74,11 @@ func TestChordProGoldenCases(t *testing.T) {
 			}
 			assert.Equal(t, wantWarnings, got.Warnings)
 
-			body, err := json.Marshal(got.Body)
+			// Compared as documents, not JSON: the body as written also says
+			// each section's progressions, which an import never tags.
+			wantBody, err := domain.ParseSongChartDocument(c.Expected.Body)
 			require.NoError(t, err)
-			assert.JSONEq(t, string(c.Expected.Body), string(body))
+			assert.Equal(t, wantBody, got.Body)
 
 			assert.Equal(t, c.Export, domain.ExportChordPro(draftOf(got)))
 		})

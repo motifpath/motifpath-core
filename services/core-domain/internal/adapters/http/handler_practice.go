@@ -381,7 +381,8 @@ func toGeneratedPracticeSessionItem(item domain.PracticeSessionItem, names userN
 	if song := item.Song; song != nil {
 		out.Song = &generated.PlannedSong{
 			SongChartId: mustUUID(song.SongChartID), LayoutInstrumentId: mustUUID(song.LayoutInstrumentID),
-			Title: song.Title, Artist: song.Artist, ProgressionKey: song.ProgressionKey, Plays: generated.PlannedSongPlays(song.Plays),
+			Title: song.Title, Artist: song.Artist, ProgressionKey: song.ProgressionKey, SectionIndex: song.SectionIndex,
+			Plays: generated.PlannedSongPlays(song.Plays),
 		}
 	}
 	return out

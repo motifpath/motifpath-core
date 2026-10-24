@@ -14,8 +14,9 @@ import (
 	"github.com/motifpath/core-domain/internal/domain"
 )
 
-// A song is a published chart tagged with the progressions it plays, played
-// whole as the application ending of an in-hand session on a progression.
+// A song is a published chart whose sections are tagged with the progressions
+// they play, played whole as the application ending of an in-hand session on a
+// progression.
 func registerSongSteps(sc *godog.ScenarioContext, w *world) {
 	tagged := func(title, progression string) error { return w.publishedTaggedChart(title, progression) }
 	sc.Step(`^the published song chart "([^"]+)" is tagged with the progression "([^"]+)"$`, tagged)
@@ -35,6 +36,9 @@ func registerSongSteps(sc *godog.ScenarioContext, w *world) {
 		return nil
 	})
 	sc.Step(`^the published song chart "([^"]+)" has no progressions$`, func(title string) error { return w.publishedTaggedChart(title) })
+	sc.Step(`^the published song chart "([^"]+)" has its chorus tagged with the progression "([^"]+)"$`, func(title, progression string) error {
+		return w.publishedChartOfSections(title, nil, []string{progression})
+	})
 	sc.Step(`^"([^"]+)" rolls up to "([^"]+)" in the progression catalog$`, func(progression, node string) error {
 		return w.progressionRollsUpTo(progression, node)
 	})
@@ -96,6 +100,7 @@ func registerSongSteps(sc *godog.ScenarioContext, w *world) {
 		return w.songPlays(title, "guitar", generated.Chords, false)
 	})
 	sc.Step(`^the song is at the use rung, for the progression "([^"]+)"$`, w.songIsAtTheUseRungFor)
+	sc.Step(`^the song names its chorus as the section that plays "([^"]+)"$`, w.songNamesChorus)
 	sc.Step(`^the song is estimated at (\d+) seconds, outside the focus time$`, w.songEstimatedAt)
 	sc.Step(`^"([^"]+)", whose progression doesn't roll up to "[^"]+", is not in the session$`, w.songNotInSession)
 	sc.Step(`^no item in the session is the song "([^"]+)"$`, w.songNotInSession)
@@ -111,14 +116,36 @@ func songKey(instrument, title string) string {
 	return domain.SongItemKey(instrumentID(instrument).String(), songChartID(title))
 }
 
-// publishedTaggedChart publishes a chart tagged with progressions and, as the
-// classifier does, makes it a song on the guitar and bass layouts under the
-// progressions' nodes; an untagged chart is no song.
+// publishedTaggedChart publishes a chart whose first section, a verse, is
+// tagged with progressions; see publishedChartOfSections.
 func (w *world) publishedTaggedChart(title string, progressions ...string) error {
+	return w.publishedChartOfSections(title, progressions)
+}
+
+// chorusIndex is the section publishedChartOfSections makes a chorus.
+const chorusIndex = 1
+
+// publishedChartOfSections publishes a chart with a section per entry of
+// sections, a verse then a chorus, each tagged with its progressions and, as
+// the classifier does, makes it a song on the guitar and bass layouts under
+// the progressions' nodes; an untagged chart is no song.
+func (w *world) publishedChartOfSections(title string, sections ...[]string) error {
+	var body domain.SongChartDocument
+	var progressions []string
+	for i, tags := range sections {
+		kind := domain.SectionVerse
+		if i == chorusIndex {
+			kind = domain.SectionChorus
+		}
+		body.Sections = append(body.Sections, domain.SongChartSection{
+			Kind: kind, ProgressionKeys: tags, Lines: []domain.SongChartLine{{Runs: chartLine("[G]la")}},
+		})
+		progressions = append(progressions, tags...)
+	}
 	chart := domain.SongChart{
 		ID: songChartID(title), Status: domain.SongChartDraftStatus, CreatedBy: w.curatorID(), CreatedAt: fixedNow,
 		Draft: domain.SongChartDraft{
-			Title: title, Artist: "Traditional", Language: "en", ProgressionKeys: progressions,
+			Title: title, Artist: "Traditional", Language: "en", Body: body,
 			RightsConfirmation: &domain.RightsConfirmation{ConfirmedBy: w.curatorID(), ConfirmedAt: fixedNow},
 			UpdatedBy:          w.curatorID(), UpdatedAt: fixedNow,
 		},
@@ -325,6 +352,18 @@ func (w *world) songIsAtTheUseRungFor(progression string) error {
 	}
 	return expectChord(last.Rung == generated.Use && last.Song.ProgressionKey == progression,
 		"the song is at the %s rung, for %s", last.Rung, last.Song.ProgressionKey)
+}
+
+func (w *world) songNamesChorus(progression string) error {
+	last, err := w.lastItem()
+	if err != nil {
+		return err
+	}
+	if last.Song == nil {
+		return fmt.Errorf("the last item %s is no song", last.ItemKey)
+	}
+	return expectChord(last.Song.ProgressionKey == progression && last.Song.SectionIndex == chorusIndex,
+		"the song names section %d as playing %s", last.Song.SectionIndex, last.Song.ProgressionKey)
 }
 
 func (w *world) songEstimatedAt(seconds int) error {

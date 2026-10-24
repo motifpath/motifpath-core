@@ -48,10 +48,8 @@ type SongChart struct {
 	Body string `json:"body,omitempty"`
 	// Warnings holds the value of the "warnings" field.
 	Warnings []schema.SongChartWarning `json:"warnings,omitempty"`
-	// ProgressionKeys holds the value of the "progression_keys" field.
-	ProgressionKeys []string `json:"progression_keys,omitempty"`
-	// UnplayedProgressionKeys holds the value of the "unplayed_progression_keys" field.
-	UnplayedProgressionKeys []string `json:"unplayed_progression_keys,omitempty"`
+	// UnplayedProgressions holds the value of the "unplayed_progressions" field.
+	UnplayedProgressions []schema.SongChartSectionProgression `json:"unplayed_progressions,omitempty"`
 	// UpdatedBy holds the value of the "updated_by" field.
 	UpdatedBy uuid.UUID `json:"updated_by,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
@@ -107,7 +105,7 @@ func (*SongChart) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case songchart.FieldRightsConfirmedBy, songchart.FieldPublishedBy, songchart.FieldWithdrawnBy:
 			values[i] = &sql.NullScanner{S: new(uuid.UUID)}
-		case songchart.FieldTimeSignature, songchart.FieldWarnings, songchart.FieldProgressionKeys, songchart.FieldUnplayedProgressionKeys:
+		case songchart.FieldTimeSignature, songchart.FieldWarnings, songchart.FieldUnplayedProgressions:
 			values[i] = new([]byte)
 		case songchart.FieldCapoFret, songchart.FieldTempoBpm, songchart.FieldPublishedRevisionNumber:
 			values[i] = new(sql.NullInt64)
@@ -230,20 +228,12 @@ func (_m *SongChart) assignValues(columns []string, values []any) error {
 					return fmt.Errorf("unmarshal field warnings: %w", err)
 				}
 			}
-		case songchart.FieldProgressionKeys:
+		case songchart.FieldUnplayedProgressions:
 			if value, ok := values[i].(*[]byte); !ok {
-				return fmt.Errorf("unexpected type %T for field progression_keys", values[i])
+				return fmt.Errorf("unexpected type %T for field unplayed_progressions", values[i])
 			} else if value != nil && len(*value) > 0 {
-				if err := json.Unmarshal(*value, &_m.ProgressionKeys); err != nil {
-					return fmt.Errorf("unmarshal field progression_keys: %w", err)
-				}
-			}
-		case songchart.FieldUnplayedProgressionKeys:
-			if value, ok := values[i].(*[]byte); !ok {
-				return fmt.Errorf("unexpected type %T for field unplayed_progression_keys", values[i])
-			} else if value != nil && len(*value) > 0 {
-				if err := json.Unmarshal(*value, &_m.UnplayedProgressionKeys); err != nil {
-					return fmt.Errorf("unmarshal field unplayed_progression_keys: %w", err)
+				if err := json.Unmarshal(*value, &_m.UnplayedProgressions); err != nil {
+					return fmt.Errorf("unmarshal field unplayed_progressions: %w", err)
 				}
 			}
 		case songchart.FieldUpdatedBy:
@@ -419,11 +409,8 @@ func (_m *SongChart) String() string {
 	builder.WriteString("warnings=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Warnings))
 	builder.WriteString(", ")
-	builder.WriteString("progression_keys=")
-	builder.WriteString(fmt.Sprintf("%v", _m.ProgressionKeys))
-	builder.WriteString(", ")
-	builder.WriteString("unplayed_progression_keys=")
-	builder.WriteString(fmt.Sprintf("%v", _m.UnplayedProgressionKeys))
+	builder.WriteString("unplayed_progressions=")
+	builder.WriteString(fmt.Sprintf("%v", _m.UnplayedProgressions))
 	builder.WriteString(", ")
 	builder.WriteString("updated_by=")
 	builder.WriteString(fmt.Sprintf("%v", _m.UpdatedBy))

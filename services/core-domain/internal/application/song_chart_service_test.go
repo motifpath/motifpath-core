@@ -81,14 +81,24 @@ func songProgressions() fakeProgressions {
 	}
 }
 
-// amazingGrace is "[G]A[C]ma[G]zing [D]grace" in G, with confirmed rights,
-// tagged with the progressions given.
+// amazingGrace is a verse "[G]A[C]ma[G]zing [D]grace" in G, with confirmed
+// rights, the verse tagged with the progressions given.
 func amazingGrace(progressions ...string) application.SongChartInput {
 	key := "G"
 	in := chartInput(chartBody(run("a1", "G", "A"), run("a2", "C", "ma"), run("a3", "G", "zing "), run("a4", "D", "grace")))
 	in.Title, in.Artist, in.Language, in.ConcertKey = "Amazing Grace", "John Newton", "en", &key
-	in.RightsConfirmed, in.ProgressionKeys = true, progressions
+	in.RightsConfirmed = true
+	in.Body.Sections[0].ProgressionKeys = progressions
 	return in
+}
+
+// verseTags are the verse's tags, as the draft lists them unplayed.
+func verseTags(keys ...string) []domain.SectionProgression {
+	tags := []domain.SectionProgression{}
+	for _, k := range keys {
+		tags = append(tags, domain.SectionProgression{SectionIndex: 0, ProgressionKey: k})
+	}
+	return tags
 }
 
 // run is a lyric run with a chord: anchor id, written symbol, text.
@@ -984,36 +994,52 @@ func TestSongChartService_ReadChordPro(t *testing.T) {
 func TestSongChartService_Progressions(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("a chart is untagged until its author tags it", func(t *testing.T) {
+	t.Run("a chart's sections are untagged until its author tags them", func(t *testing.T) {
 		f := newSongChartFixture()
 
 		chart, err := f.service.Create(ctx, adminCaller(), amazingGrace())
 
 		require.NoError(t, err)
-		assert.Empty(t, chart.Draft.ProgressionKeys)
-		assert.Empty(t, chart.Draft.UnplayedProgressionKeys)
+		assert.Empty(t, chart.Draft.Body.Sections[0].ProgressionKeys)
+		assert.Empty(t, chart.Draft.UnplayedProgressions)
 	})
 
-	t.Run("a tag the chart plays is saved and lists nothing unplayed", func(t *testing.T) {
+	t.Run("a tag the section plays is saved and lists nothing unplayed", func(t *testing.T) {
 		f := newSongChartFixture()
 
 		chart, err := f.service.Create(ctx, adminCaller(), amazingGrace("I-IV-I-V"))
 
 		require.NoError(t, err)
 		stored, _ := f.charts.GetByID(ctx, chart.ID)
-		assert.Equal(t, []string{"I-IV-I-V"}, stored.Draft.ProgressionKeys)
-		assert.Empty(t, stored.Draft.UnplayedProgressionKeys)
+		assert.Equal(t, []string{"I-IV-I-V"}, stored.Draft.Body.Sections[0].ProgressionKeys)
+		assert.Empty(t, stored.Draft.UnplayedProgressions)
 	})
 
-	t.Run("a tag the chart doesn't play is saved and listed as unplayed", func(t *testing.T) {
+	t.Run("a tag the section doesn't play is saved and listed as unplayed on that section", func(t *testing.T) {
 		f := newSongChartFixture()
 		chart, _ := f.service.Create(ctx, adminCaller(), amazingGrace())
 
 		got, err := f.service.UpdateDraft(ctx, adminCaller(), chart.ID, amazingGrace("I-IV-I-V", "I-V-vi-IV"))
 
 		require.NoError(t, err)
-		assert.Equal(t, []string{"I-IV-I-V", "I-V-vi-IV"}, got.Draft.ProgressionKeys)
-		assert.Equal(t, []string{"I-V-vi-IV"}, got.Draft.UnplayedProgressionKeys)
+		assert.Equal(t, []string{"I-IV-I-V", "I-V-vi-IV"}, got.Draft.Body.Sections[0].ProgressionKeys)
+		assert.Equal(t, verseTags("I-V-vi-IV"), got.Draft.UnplayedProgressions)
+	})
+
+	t.Run("another section's chords never play a section's progression", func(t *testing.T) {
+		f := newSongChartFixture()
+		in := amazingGrace()
+		in.Body = domain.SongChartDocument{Sections: []domain.SongChartSection{
+			chartBody(run("a1", "G", "A"), run("a2", "C", "ma")).Sections[0],
+			chartBody(run("b1", "G", "zing "), run("b2", "D", "grace")).Sections[0],
+		}}
+		in.Body.Sections[1].Kind = domain.SectionChorus
+		in.Body.Sections[0].ProgressionKeys = []string{"I-IV-I-V"}
+
+		chart, err := f.service.Create(ctx, adminCaller(), in)
+
+		require.NoError(t, err)
+		assert.Equal(t, verseTags("I-IV-I-V"), chart.Draft.UnplayedProgressions)
 	})
 
 	t.Run("a progression the catalog doesn't have can't be tagged", func(t *testing.T) {
@@ -1024,9 +1050,9 @@ func TestSongChartService_Progressions(t *testing.T) {
 
 		var valErr *domain.ValidationError
 		require.ErrorAs(t, err, &valErr)
-		assert.Equal(t, "progression_keys", valErr.Fields[0].Field)
+		assert.Equal(t, "body/content/0/attrs/progression_keys", valErr.Fields[0].Field)
 		stored, _ := f.charts.GetByID(ctx, chart.ID)
-		assert.Empty(t, stored.Draft.ProgressionKeys)
+		assert.Empty(t, stored.Draft.Body.Sections[0].ProgressionKeys)
 	})
 
 	t.Run("a chart with an unplayed progression cannot be published", func(t *testing.T) {
@@ -1038,7 +1064,7 @@ func TestSongChartService_Progressions(t *testing.T) {
 		var refusal *domain.SongChartNotPublishableError
 		require.ErrorAs(t, err, &refusal)
 		assert.Equal(t, []domain.NotPublishableReason{domain.ProgressionsNotPlayed}, refusal.Reasons)
-		assert.Equal(t, []string{"I-V-vi-IV"}, refusal.UnplayedProgressionKeys)
+		assert.Equal(t, verseTags("I-V-vi-IV"), refusal.UnplayedProgressions)
 	})
 
 	t.Run("the progressions are checked again at publication", func(t *testing.T) {
@@ -1046,14 +1072,14 @@ func TestSongChartService_Progressions(t *testing.T) {
 		chart, _ := f.service.Create(ctx, adminCaller(), amazingGrace())
 		stored, _ := f.charts.GetByID(ctx, chart.ID)
 		// A draft saved before its tags were checked lists none as unplayed.
-		stored.Draft.ProgressionKeys = []string{"I-V-vi-IV"}
+		stored.Draft.Body.Sections[0].ProgressionKeys = []string{"I-V-vi-IV"}
 		require.NoError(t, f.charts.Save(ctx, stored))
 
 		_, err := f.service.Publish(ctx, adminCaller(), chart.ID)
 
 		var refusal *domain.SongChartNotPublishableError
 		require.ErrorAs(t, err, &refusal)
-		assert.Equal(t, []string{"I-V-vi-IV"}, refusal.UnplayedProgressionKeys)
+		assert.Equal(t, verseTags("I-V-vi-IV"), refusal.UnplayedProgressions)
 	})
 
 	t.Run("a revision keeps the progressions it was published with", func(t *testing.T) {
@@ -1067,17 +1093,17 @@ func TestSongChartService_Progressions(t *testing.T) {
 
 		revs, _ := f.charts.ListRevisions(ctx, chart.ID)
 		require.Len(t, revs, 1)
-		assert.Equal(t, []string{"I-IV-I-V"}, revs[0].ProgressionKeys)
+		assert.Equal(t, verseTags("I-IV-I-V"), revs[0].SectionProgressions)
 	})
 
-	t.Run("a ChordPro import keeps the draft's progressions", func(t *testing.T) {
+	t.Run("a ChordPro import brings untagged sections", func(t *testing.T) {
 		f := newSongChartFixture()
 		chart, _ := f.service.Create(ctx, adminCaller(), amazingGrace("I-IV-I-V"))
 
-		got, err := f.service.ImportChordPro(ctx, adminCaller(), chart.ID, "{start_of_verse}\n[G]A[C]ma[G]zing [Em]grace\n{end_of_verse}\n")
+		got, err := f.service.ImportChordPro(ctx, adminCaller(), chart.ID, "{start_of_verse}\n[G]A[C]ma[G]zing [D]grace\n{end_of_verse}\n")
 
 		require.NoError(t, err)
-		assert.Equal(t, []string{"I-IV-I-V"}, got.Chart.Draft.ProgressionKeys)
-		assert.Equal(t, []string{"I-IV-I-V"}, got.Chart.Draft.UnplayedProgressionKeys, "checked against the imported chords")
+		assert.Empty(t, got.Chart.Draft.Body.Sections[0].ProgressionKeys)
+		assert.Empty(t, got.Chart.Draft.UnplayedProgressions)
 	})
 }

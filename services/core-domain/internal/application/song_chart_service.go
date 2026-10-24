@@ -51,10 +51,8 @@ type SongChartInput struct {
 	TempoBPM        *int
 	TimeSignature   *domain.TimeSignature
 	RightsConfirmed bool
-	// ProgressionKeys are the progressions the author tags the song with,
-	// by their key in the progression catalog.
-	ProgressionKeys []string
-	Body            domain.SongChartDocument
+	// Body holds the sections, each tagged with the progressions it plays.
+	Body domain.SongChartDocument
 }
 
 // LearnerSongChart is a chart as a learner reads it: the lyrics with their
@@ -121,14 +119,14 @@ func (s *SongChartService) UpdateDraft(ctx context.Context, caller domain.User, 
 	return chart, nil
 }
 
-// buildDraft validates in, resolves its anchors, checks the progressions it
-// is tagged with and carries the previous rights confirmation over, so
+// buildDraft validates in, resolves its anchors, checks the progressions its
+// sections are tagged with and carries the previous rights confirmation over, so
 // confirming again doesn't change who did.
 func (s *SongChartService) buildDraft(ctx context.Context, caller domain.User, confirmation *domain.RightsConfirmation, in SongChartInput, now time.Time) (domain.SongChartDraft, error) {
 	draft := domain.SongChartDraft{
 		Title: in.Title, Artist: in.Artist, Language: in.Language, ConcertKey: in.ConcertKey,
 		CapoFret: in.CapoFret, TempoBPM: in.TempoBPM, TimeSignature: in.TimeSignature,
-		RightsConfirmation: confirmation, ProgressionKeys: slices.Clone(in.ProgressionKeys), UpdatedBy: caller.ID, UpdatedAt: now,
+		RightsConfirmation: confirmation, UpdatedBy: caller.ID, UpdatedAt: now,
 	}
 	if err := draft.Validate(); err != nil {
 		return domain.SongChartDraft{}, err
@@ -147,12 +145,13 @@ func (s *SongChartService) buildDraft(ctx context.Context, caller domain.User, c
 	if err != nil {
 		return domain.SongChartDraft{}, err
 	}
-	for _, key := range draft.ProgressionKeys {
-		if !slices.ContainsFunc(catalog, func(p domain.Progression) bool { return p.Key == key }) {
-			return domain.SongChartDraft{}, domain.NewValidationError("progression_keys", fmt.Sprintf("%q is not a progression of the catalog", key))
+	for _, tag := range draft.Body.SectionProgressions() {
+		if !slices.ContainsFunc(catalog, func(p domain.Progression) bool { return p.Key == tag.ProgressionKey }) {
+			field := fmt.Sprintf("body/content/%d/attrs/progression_keys", tag.SectionIndex)
+			return domain.SongChartDraft{}, domain.NewValidationError(field, fmt.Sprintf("%q is not a progression of the catalog", tag.ProgressionKey))
 		}
 	}
-	draft.UnplayedProgressionKeys = domain.UnplayedProgressions(draft.Body, draft.ConcertKey, draft.CapoFret, draft.ProgressionKeys, catalog)
+	draft.UnplayedProgressions = domain.UnplayedProgressions(draft.Body, draft.ConcertKey, draft.CapoFret, catalog)
 	draft.SetRightsConfirmed(in.RightsConfirmed, caller.ID, now)
 	return draft, nil
 }
@@ -214,7 +213,7 @@ func (s *SongChartService) Publish(ctx context.Context, caller domain.User, id s
 		return domain.SongChartRevision{}, err
 	}
 	d := chart.Draft
-	chart.Draft.UnplayedProgressionKeys = domain.UnplayedProgressions(d.Body, d.ConcertKey, d.CapoFret, d.ProgressionKeys, catalog)
+	chart.Draft.UnplayedProgressions = domain.UnplayedProgressions(d.Body, d.ConcertKey, d.CapoFret, catalog)
 	published, rev, err := chart.Publish(caller.ID, s.now())
 	if err != nil {
 		return domain.SongChartRevision{}, err
@@ -464,7 +463,7 @@ func importedInput(draft domain.SongChartDraft, m domain.ChordProMetadata, body 
 	in := SongChartInput{
 		Title: draft.Title, Artist: draft.Artist, Language: draft.Language, ConcertKey: draft.ConcertKey,
 		CapoFret: draft.CapoFret, TempoBPM: draft.TempoBPM, TimeSignature: draft.TimeSignature,
-		RightsConfirmed: draft.RightsConfirmation != nil, ProgressionKeys: draft.ProgressionKeys, Body: body,
+		RightsConfirmed: draft.RightsConfirmation != nil, Body: body,
 	}
 	if m.Title != nil {
 		in.Title = *m.Title

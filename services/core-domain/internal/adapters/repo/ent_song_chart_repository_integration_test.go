@@ -40,10 +40,15 @@ func newSongChart(title string, updatedAt time.Time) domain.SongChart {
 			TimeSignature:   &domain.TimeSignature{Beats: 2, BeatValue: 4},
 			Body:            songChartDocument(uuid.NewString()),
 			Warnings:        []domain.AnchorWarning{{AnchorID: "a1", Position: domain.AnchorPosition{SectionIndex: 0, LineIndex: 0}, WrittenSymbol: "G", Kind: domain.AnchorBassNotInCatalog}},
-			ProgressionKeys: []string{"I-IV-I-V"},
 			UpdatedBy:       uuid.NewString(), UpdatedAt: updatedAt,
 		},
 	}
+}
+
+// tagged is chart with its first section tagged with progressions.
+func tagged(chart domain.SongChart, progressions ...string) domain.SongChart {
+	chart.Draft.Body.Sections[0].ProgressionKeys = progressions
+	return chart
 }
 
 func TestEntSongChartRepository(t *testing.T) {
@@ -72,8 +77,8 @@ func TestEntSongChartRepository(t *testing.T) {
 	})
 
 	t.Run("a chart round-trips with its whole draft", func(t *testing.T) {
-		chart := newSongChart("Asa Branca", fixedAt)
-		chart.Draft.ProgressionKeys, chart.Draft.UnplayedProgressionKeys = []string{"I-IV-I-V", "I-V-vi-IV"}, []string{"I-V-vi-IV"}
+		chart := tagged(newSongChart("Asa Branca", fixedAt), "I-IV-I-V", "I-V-vi-IV")
+		chart.Draft.UnplayedProgressions = []domain.SectionProgression{{SectionIndex: 0, ProgressionKey: "I-V-vi-IV"}}
 
 		require.NoError(t, charts.Create(ctx, chart))
 		got, err := charts.GetByID(ctx, chart.ID)
@@ -85,7 +90,7 @@ func TestEntSongChartRepository(t *testing.T) {
 	t.Run("a draft with only its required fields round-trips", func(t *testing.T) {
 		chart := newSongChart("Minimal", fixedAt)
 		chart.Draft.ConcertKey, chart.Draft.TempoBPM, chart.Draft.TimeSignature, chart.Draft.Warnings = nil, nil, nil, nil
-		chart.Draft.ProgressionKeys, chart.Draft.UnplayedProgressionKeys = nil, nil
+		chart.Draft.UnplayedProgressions = nil
 
 		require.NoError(t, charts.Create(ctx, chart))
 		got, err := charts.GetByID(ctx, chart.ID)
@@ -123,11 +128,11 @@ func TestEntSongChartRepository(t *testing.T) {
 	})
 
 	t.Run("publishing stores the revision and the chart's summary of it", func(t *testing.T) {
-		chart := newSongChart("Asa Branca", fixedAt)
+		chart := tagged(newSongChart("Asa Branca", fixedAt), "I-IV-I-V")
 		require.NoError(t, charts.Create(ctx, chart))
 		chart.Draft.RightsConfirmation = &domain.RightsConfirmation{ConfirmedBy: uuid.NewString(), ConfirmedAt: fixedAt}
 		published, rev, err := chart.Publish(uuid.NewString(), fixedAt.Add(time.Hour))
-		require.Equal(t, []string{"I-IV-I-V"}, rev.ProgressionKeys)
+		require.Equal(t, []domain.SectionProgression{{SectionIndex: 0, ProgressionKey: "I-IV-I-V"}}, rev.SectionProgressions)
 		require.NoError(t, err)
 
 		require.NoError(t, charts.Publish(ctx, published, rev))
@@ -247,7 +252,7 @@ func TestEntSongChartRepository_PublishedRevisions(t *testing.T) {
 		chart.Draft.RightsConfirmation = &domain.RightsConfirmation{ConfirmedBy: uuid.NewString(), ConfirmedAt: fixedAt}
 		require.NoError(t, charts.Create(ctx, chart))
 		for i := range revisions {
-			chart.Draft.ProgressionKeys = []string{fmt.Sprintf("tag-%d", i+1)}
+			chart = tagged(chart, fmt.Sprintf("tag-%d", i+1))
 			published, rev, err := chart.Publish(uuid.NewString(), fixedAt.Add(time.Duration(i)*time.Hour))
 			require.NoError(t, err)
 			require.NoError(t, charts.Publish(ctx, published, rev))
@@ -270,6 +275,6 @@ func TestEntSongChartRepository_PublishedRevisions(t *testing.T) {
 	assert.Equal(t, 2, rev.Number)
 	assert.Equal(t, "Amazing Grace", rev.Title)
 	assert.Equal(t, "Luiz Gonzaga", rev.Artist)
-	assert.Equal(t, []string{"tag-2"}, rev.ProgressionKeys)
+	assert.Equal(t, []domain.SectionProgression{{SectionIndex: 0, ProgressionKey: "tag-2"}}, rev.SectionProgressions)
 	assert.Empty(t, rev.Body.Sections, "the body isn't read")
 }

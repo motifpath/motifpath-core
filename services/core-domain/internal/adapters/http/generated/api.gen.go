@@ -7020,6 +7020,10 @@ type PlannedSong struct {
 	// the session's subject, shown as why this song was picked.
 	ProgressionKey string `json:"progression_key"`
 
+	// SectionIndex The first section, numbered from 0 in document order, tagged with progression_key: the
+	// section shown as playing it ("Its verse plays I–IV–I–V"). The whole song is played.
+	SectionIndex int `json:"section_index"`
+
 	// SongChartId The published song chart to play.
 	SongChartId openapi_types.UUID `json:"song_chart_id"`
 
@@ -8259,13 +8263,6 @@ type SongChartDraft struct {
 	// Language The Language.code of the lyrics (not "any").
 	Language string `json:"language"`
 
-	// ProgressionKeys The progressions the song plays, by their key in the progression
-	// catalog (e.g. "I-IV-V-I"), as its author tagged them. A tagged
-	// chart is practised as a song on those progressions' knowledge
-	// nodes; an untagged chart never is. On input, absent means none,
-	// and a key the catalog doesn't have is refused.
-	ProgressionKeys *SongChartProgressionKeys `json:"progression_keys,omitempty"`
-
 	// RightsConfirmation Who confirmed the rights and when; null exactly when rights_confirmed is false.
 	RightsConfirmation *RightsConfirmation `json:"rights_confirmation"`
 
@@ -8284,18 +8281,19 @@ type SongChartDraft struct {
 	// Title The song's title as shown to learners.
 	Title string `json:"title"`
 
-	// UnplayedProgressionKeys The draft's progression_keys the chart doesn't play, in the
-	// order they were tagged; empty when it plays every one. A
-	// progression is played when its chords appear in a row in the
-	// chart, in the chart's concert key: the chart's chords as they
-	// sound (each written chord moved up by the capo), each counted
-	// by its root and triad (major, minor or diminished), N.C.
-	// skipped and a chord repeated in a row counted once, against
-	// the progression's numerals spelled in the concert key, a
-	// dominant seventh counting as major and a repeated numeral
-	// counted once. With no stated major concert key, every tagged
-	// progression is unplayed. Any entry blocks publication.
-	UnplayedProgressionKeys []string `json:"unplayed_progression_keys"`
+	// UnplayedProgressions The sections' tagged progressions the section doesn't play, by
+	// section in document order, then in the order they were tagged;
+	// empty when every section plays its tags. A progression is played
+	// by a section when its chords appear in a row in that section, in
+	// the chart's concert key: the section's chords as they sound
+	// (each written chord moved up by the capo), each counted by its
+	// root and triad (major, minor or diminished), N.C. skipped and a
+	// chord repeated in a row counted once, against the progression's
+	// numerals spelled in the concert key, a dominant seventh counting
+	// as major and a repeated numeral counted once. The chords of
+	// another section never count. With no stated major concert key,
+	// every tag is unplayed. Any entry blocks publication.
+	UnplayedProgressions []SongChartUnplayedProgression `json:"unplayed_progressions"`
 
 	// UpdatedAt When the draft was last changed.
 	UpdatedAt time.Time `json:"updated_at"`
@@ -8337,13 +8335,6 @@ type SongChartDraftInput struct {
 
 	// Language The Language.code of the lyrics (not "any").
 	Language string `json:"language"`
-
-	// ProgressionKeys The progressions the song plays, by their key in the progression
-	// catalog (e.g. "I-IV-V-I"), as its author tagged them. A tagged
-	// chart is practised as a song on those progressions' knowledge
-	// nodes; an untagged chart never is. On input, absent means none,
-	// and a key the catalog doesn't have is refused.
-	ProgressionKeys *SongChartProgressionKeys `json:"progression_keys,omitempty"`
 
 	// RightsConfirmed Whether an admin confirms that the song's rights were checked.
 	// Rights are cleared outside MotifPath; this only records that
@@ -8387,22 +8378,24 @@ type SongChartNotPublishableError struct {
 	// Reasons rights_not_confirmed: no admin has confirmed the song's rights
 	// were checked. unresolved_chords: at least one anchor has a
 	// warning that blocks publication (see anchor_warnings).
-	// progressions_not_played: the chart doesn't play at least one
-	// progression it is tagged with (see unplayed_progression_keys).
+	// progressions_not_played: a section doesn't play at least one
+	// progression it is tagged with (see unplayed_progressions).
 	Reasons []SongChartNotPublishableErrorReasons `json:"reasons"`
 
-	// UnplayedProgressionKeys The tagged progressions the chart doesn't play; empty unless reasons has progressions_not_played.
-	UnplayedProgressionKeys []string `json:"unplayed_progression_keys"`
+	// UnplayedProgressions The sections' tags the section doesn't play; empty unless reasons has progressions_not_played.
+	UnplayedProgressions []SongChartUnplayedProgression `json:"unplayed_progressions"`
 }
 
 // SongChartNotPublishableErrorReasons defines model for SongChartNotPublishableError.Reasons.
 type SongChartNotPublishableErrorReasons string
 
-// SongChartProgressionKeys The progressions the song plays, by their key in the progression
-// catalog (e.g. "I-IV-V-I"), as its author tagged them. A tagged
-// chart is practised as a song on those progressions' knowledge
-// nodes; an untagged chart never is. On input, absent means none,
-// and a key the catalog doesn't have is refused.
+// SongChartProgressionKeys The progressions a section plays, by their key in the progression
+// catalog (e.g. "I-IV-V-I"), as its author tagged them. A chart with
+// a tagged section is practised as a song on those progressions'
+// knowledge nodes, played whole; an untagged chart never is. On
+// input, absent means none, and a key the catalog doesn't have is
+// refused. The server always writes it, empty for an untagged
+// section.
 type SongChartProgressionKeys = []string
 
 // SongChartRevision A published revision of a song chart. A revision never changes: a
@@ -8429,12 +8422,9 @@ type SongChartRevision struct {
 	// Language The Language.code of this revision's lyrics.
 	Language string `json:"language"`
 
-	// ProgressionKeys The progressions the song plays, by their key in the progression
-	// catalog (e.g. "I-IV-V-I"), as its author tagged them. A tagged
-	// chart is practised as a song on those progressions' knowledge
-	// nodes; an untagged chart never is. On input, absent means none,
-	// and a key the catalog doesn't have is refused.
-	ProgressionKeys SongChartProgressionKeys `json:"progression_keys"`
+	// ProgressionKeys Every progression the revision's sections are tagged with, each
+	// once, in document order: read from the body, never written.
+	ProgressionKeys []string `json:"progression_keys"`
 
 	// PublishedAt When the revision was published.
 	PublishedAt time.Time `json:"published_at"`
@@ -8512,6 +8502,15 @@ type SongChartSection struct {
 		// Label The section's heading as the author wrote it (e.g. "Verse 2",
 		// "Refrão"); null shows no heading.
 		Label *string `json:"label"`
+
+		// ProgressionKeys The progressions a section plays, by their key in the progression
+		// catalog (e.g. "I-IV-V-I"), as its author tagged them. A chart with
+		// a tagged section is practised as a song on those progressions'
+		// knowledge nodes, played whole; an untagged chart never is. On
+		// input, absent means none, and a key the catalog doesn't have is
+		// refused. The server always writes it, empty for an untagged
+		// section.
+		ProgressionKeys *SongChartProgressionKeys `json:"progression_keys,omitempty"`
 	} `json:"attrs"`
 
 	// Content The section's lines and comments, in order.
@@ -8594,6 +8593,15 @@ type SongChartText struct {
 
 // SongChartTextType Discriminates this node as text.
 type SongChartTextType string
+
+// SongChartUnplayedProgression A progression a section is tagged with but doesn't play.
+type SongChartUnplayedProgression struct {
+	// ProgressionKey The tagged progression, by its key in the progression catalog.
+	ProgressionKey string `json:"progression_key"`
+
+	// SectionIndex The section, numbered from 0 in document order.
+	SectionIndex int `json:"section_index"`
+}
 
 // SongChartWithdrawal Who withdrew a song chart, when and why.
 type SongChartWithdrawal struct {
