@@ -10,9 +10,9 @@ import (
 func amazingGraceSong(bass bool) SongItem {
 	return SongItem{
 		LayoutInstrumentID: "layout-1", Bass: bass, ChartID: "chart-1", Title: "Amazing Grace", Artist: "John Newton",
-		Progressions: []Progression{
-			{Key: "I-IV-I-V", NodeIDs: []string{"node-cp"}},
-			{Key: "I-IV-V-I", NodeIDs: []string{"node-cp", "node-cad"}},
+		Progressions: []SongProgression{
+			{Progression: Progression{Key: "I-IV-I-V", NodeIDs: []string{"node-cp"}}, SectionIndex: 0},
+			{Progression: Progression{Key: "I-IV-V-I", NodeIDs: []string{"node-cp", "node-cad"}}, SectionIndex: 2},
 		},
 	}
 }
@@ -48,7 +48,7 @@ func TestSongItem_Plan(t *testing.T) {
 		assert.Equal(t, PracticeItemKindSong, item.Kind)
 		assert.Equal(t, PlannedSong{
 			SongChartID: "chart-1", LayoutInstrumentID: "layout-1", Title: "Amazing Grace", Artist: "John Newton",
-			ProgressionKey: "I-IV-V-I", Plays: SongPlaysChords,
+			ProgressionKey: "I-IV-V-I", SectionIndex: 2, Plays: SongPlaysChords,
 		}, *item.Song)
 		assert.Equal(t, PracticeRungUse, ItemRung(item, nil))
 	})
@@ -59,6 +59,7 @@ func TestSongItem_Plan(t *testing.T) {
 
 		assert.Equal(t, SongPlaysRoots, item.Song.Plays)
 		assert.Equal(t, "I-IV-I-V", item.Song.ProgressionKey, "the first progression in tagged order that practises the subject")
+		assert.Equal(t, 0, item.Song.SectionIndex, "the first section tagged with it")
 	})
 
 	t.Run("a subject none of its progressions practises takes the first", func(t *testing.T) {
@@ -66,6 +67,7 @@ func TestSongItem_Plan(t *testing.T) {
 		item.Ask(amazingGraceSong(false).ForSubject("node-other").Plan("self_rating", DrillPlanning{}))
 
 		assert.Equal(t, "I-IV-I-V", item.Song.ProgressionKey)
+		assert.Equal(t, 0, item.Song.SectionIndex)
 	})
 }
 

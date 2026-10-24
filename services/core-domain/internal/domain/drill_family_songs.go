@@ -39,8 +39,10 @@ type PlannedSong struct {
 	Title              string
 	Artist             string
 	// ProgressionKey is the progression the chart plays that practises the
-	// session's subject.
+	// session's subject, and SectionIndex the first section tagged with it,
+	// shown as playing it. The whole song is played.
 	ProgressionKey string
+	SectionIndex   int
 	Plays          SongPlays
 }
 
@@ -52,12 +54,19 @@ type SongItem struct {
 	ChartID            string
 	Title              string
 	Artist             string
-	// Progressions are the progressions the chart's latest published revision
-	// is tagged with, in tagged order.
-	Progressions []Progression
+	// Progressions are the progressions the sections of the chart's latest
+	// published revision are tagged with, each once, in document order.
+	Progressions []SongProgression
 	// subject is the node the session practises through the song; empty
 	// until ForSubject sets it.
 	subject string
+}
+
+// SongProgression is a progression a song plays, with the first section
+// tagged with it.
+type SongProgression struct {
+	Progression
+	SectionIndex int
 }
 
 func (i SongItem) ItemKey() string { return SongItemKey(i.LayoutInstrumentID, i.ChartID) }
@@ -101,18 +110,18 @@ func (i SongItem) ForSubject(nodeID string) SongItem {
 	return i
 }
 
-// progressionKey is the first progression, in tagged order, that practises
-// the subject; with none, the first.
-func (i SongItem) progressionKey() string {
+// subjectProgression is the first progression, in order, that practises the
+// subject; with none, the first.
+func (i SongItem) subjectProgression() SongProgression {
 	for _, p := range i.Progressions {
 		if slices.Contains(p.NodeIDs, i.subject) {
-			return p.Key
+			return p
 		}
 	}
 	if len(i.Progressions) == 0 {
-		return ""
+		return SongProgression{}
 	}
-	return i.Progressions[0].Key
+	return i.Progressions[0]
 }
 
 // Plan plays the chart as written: its chords on guitar, their roots on bass.
@@ -121,9 +130,10 @@ func (i SongItem) Plan(_ string, _ DrillPlanning) PlannedDrill {
 	if i.Bass {
 		plays = SongPlaysRoots
 	}
+	progression := i.subjectProgression()
 	return plannedSong{planned: &PlannedSong{
 		SongChartID: i.ChartID, LayoutInstrumentID: i.LayoutInstrumentID, Title: i.Title, Artist: i.Artist,
-		ProgressionKey: i.progressionKey(), Plays: plays,
+		ProgressionKey: progression.Key, SectionIndex: progression.SectionIndex, Plays: plays,
 	}}
 }
 

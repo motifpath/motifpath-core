@@ -71,8 +71,9 @@ func keys[V any](m map[string]V) []string {
 	return out
 }
 
-// A seeded chart's progressions must be ones it plays, or publishing it fails
-// the seeding run; Amazing Grace, published, is the song of the use rung.
+// A seeded chart's progressions, tagged on its first section, must be ones
+// that section plays, or publishing it fails the seeding run; Amazing Grace,
+// published, is the song of the use rung.
 func TestSeededSongChartsPlayTheProgressionsTheyAreTaggedWith(t *testing.T) {
 	catalog := []domain.Progression{{Key: "I-IV-I-V", Mode: "major", Bars: []string{"I", "IV", "I", "V"}}}
 	tags := map[string][]string{}
@@ -82,14 +83,14 @@ func TestSeededSongChartsPlayTheProgressionsTheyAreTaggedWith(t *testing.T) {
 			continue
 		}
 		imported := domain.ImportChordPro(s.chordPro)
-		assert.Empty(t, domain.UnplayedProgressions(imported.Body, imported.Metadata.ConcertKey, 0, s.progressions, catalog), s.title)
+		assert.Empty(t, domain.UnplayedProgressions(tagFirstSection(imported.Body, s.progressions), imported.Metadata.ConcertKey, 0, catalog), s.title)
 		if s.correction != "" {
 			corrected := domain.ImportChordPro(s.correction)
-			assert.Empty(t, domain.UnplayedProgressions(corrected.Body, corrected.Metadata.ConcertKey, 0, s.progressions, catalog), s.title+", corrected")
+			assert.Empty(t, domain.UnplayedProgressions(tagFirstSection(corrected.Body, s.progressions), corrected.Metadata.ConcertKey, 0, catalog), s.title+", corrected")
 		}
 	}
 
 	assert.Equal(t, []string{"I-IV-I-V"}, tags["Amazing Grace"])
-	assert.Equal(t, []string{"I-IV-I-V"}, tags["Oh! Susanna"], "withdrawn, so never planned though tagged")
+	assert.Empty(t, tags["Oh! Susanna"], "its I-IV-I-V meets only across the verse and the chorus")
 	assert.Empty(t, tags["Ciranda, Cirandinha"])
 }

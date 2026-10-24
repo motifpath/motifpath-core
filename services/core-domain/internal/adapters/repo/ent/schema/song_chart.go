@@ -32,6 +32,13 @@ type SongChartWarning struct {
 	Kind          string `json:"kind"`
 }
 
+// SongChartSectionProgression is a progression a chart's section is tagged
+// with, stored in a JSON column.
+type SongChartSectionProgression struct {
+	SectionIndex   int    `json:"section_index"`
+	ProgressionKey string `json:"progression_key"`
+}
+
 func (SongChart) Fields() []ent.Field {
 	return []ent.Field{
 		field.UUID("id", uuid.UUID{}).
@@ -86,16 +93,11 @@ func (SongChart) Fields() []ent.Field {
 		field.Text("body"),
 
 		field.JSON("warnings", []SongChartWarning{}),
-		// progression_keys are the progressions of the progression catalog the
-		// author tagged the song with; unplayed_progression_keys those of them
-		// the chart didn't play when the draft was last saved. Both are empty,
-		// never null, for an untagged chart.
-		field.JSON("progression_keys", []string{}).
-			Default([]string{}).
-			// The database default fills the rows stored before the column.
-			Annotations(entsql.Default("[]")),
-		field.JSON("unplayed_progression_keys", []string{}).
-			Default([]string{}).
+		// unplayed_progressions are the sections' tags (kept in the body) their
+		// section didn't play when the draft was last saved; empty, never
+		// null, when every section plays its tags.
+		field.JSON("unplayed_progressions", []SongChartSectionProgression{}).
+			Default([]SongChartSectionProgression{}).
 			// The database default fills the rows stored before the column.
 			Annotations(entsql.Default("[]")),
 

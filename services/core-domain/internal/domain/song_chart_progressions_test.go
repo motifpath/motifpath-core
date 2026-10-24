@@ -7,13 +7,28 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// chordsBody is a one-line chart whose runs carry the given chord symbols, in order.
-func chordsBody(symbols string) SongChartDocument {
+// chordsSection is a one-line section whose runs carry the given chord
+// symbols, in order, tagged with tagged.
+func chordsSection(kind SectionKind, symbols string, tagged ...string) SongChartSection {
 	var runs []SongChartRun
 	for i, s := range strings.Fields(symbols) {
-		runs = append(runs, SongChartRun{Text: "la ", Anchor: &ChordAnchor{ID: string(rune('a' + i)), WrittenSymbol: s}})
+		runs = append(runs, SongChartRun{Text: "la ", Anchor: &ChordAnchor{ID: string(kind) + string(rune('a'+i)), WrittenSymbol: s}})
 	}
-	return SongChartDocument{Sections: []SongChartSection{{Kind: "verse", Lines: []SongChartLine{{Runs: runs}}}}}
+	return SongChartSection{Kind: kind, Lines: []SongChartLine{{Runs: runs}}, ProgressionKeys: tagged}
+}
+
+// chordsBody is a chart of one verse with the given chord symbols, tagged with tagged.
+func chordsBody(symbols string, tagged ...string) SongChartDocument {
+	return SongChartDocument{Sections: []SongChartSection{chordsSection(SectionVerse, symbols, tagged...)}}
+}
+
+// verse is the first section's unplayed progressions.
+func verse(keys ...string) []SectionProgression {
+	unplayed := []SectionProgression{}
+	for _, k := range keys {
+		unplayed = append(unplayed, SectionProgression{SectionIndex: 0, ProgressionKey: k})
+	}
+	return unplayed
 }
 
 func progressionCatalog() []Progression {
@@ -58,8 +73,65 @@ func TestUnplayedProgressions(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			got := UnplayedProgressions(chordsBody(c.chords), c.concertKey, c.capo, c.tagged, progressionCatalog())
+			got := UnplayedProgressions(chordsBody(c.chords, c.tagged...), c.concertKey, c.capo, progressionCatalog())
+			assert.Equal(t, verse(c.unplayed...), got)
+		})
+	}
+}
+
+func TestUnplayedProgressions_BySection(t *testing.T) {
+	g := "G"
+	cases := []struct {
+		name     string
+		sections []SongChartSection
+		unplayed []SectionProgression
+	}{
+		{
+			name:     "another section's chords never play a section's progression",
+			sections: []SongChartSection{chordsSection(SectionVerse, "G C", "I-IV-I-V"), chordsSection(SectionChorus, "G D")},
+			unplayed: []SectionProgression{{SectionIndex: 0, ProgressionKey: "I-IV-I-V"}},
+		},
+		{
+			name:     "each section plays its own tags",
+			sections: []SongChartSection{chordsSection(SectionVerse, "G C G D", "I-IV-I-V"), chordsSection(SectionChorus, "G D Em C", "I-V-vi-IV")},
+			unplayed: []SectionProgression{},
+		},
+		{
+			name: "unplayed tags are listed by section, then in tagged order",
+			sections: []SongChartSection{
+				chordsSection(SectionVerse, "G C G D", "I-V-vi-IV", "I-IV-I-V", "ii-V-I"),
+				chordsSection(SectionChorus, "G D Em C", "I-IV-V-I"),
+			},
+			unplayed: []SectionProgression{
+				{SectionIndex: 0, ProgressionKey: "I-V-vi-IV"}, {SectionIndex: 0, ProgressionKey: "ii-V-I"},
+				{SectionIndex: 1, ProgressionKey: "I-IV-V-I"},
+			},
+		},
+		{
+			name:     "a tag the catalog doesn't have is unplayed",
+			sections: []SongChartSection{chordsSection(SectionVerse, "G C G D", "I-II-III")},
+			unplayed: []SectionProgression{{SectionIndex: 0, ProgressionKey: "I-II-III"}},
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got := UnplayedProgressions(SongChartDocument{Sections: c.sections}, &g, 0, progressionCatalog())
 			assert.Equal(t, c.unplayed, got)
 		})
 	}
+}
+
+func TestSongChartDocument_SectionProgressions(t *testing.T) {
+	doc := SongChartDocument{Sections: []SongChartSection{
+		chordsSection(SectionIntro, "G"),
+		chordsSection(SectionVerse, "G C G D", "I-IV-I-V", "I-IV-V-I"),
+		chordsSection(SectionChorus, "G D Em C", "I-V-vi-IV", "I-IV-I-V"),
+	}}
+	assert.Equal(t, []SectionProgression{
+		{SectionIndex: 1, ProgressionKey: "I-IV-I-V"}, {SectionIndex: 1, ProgressionKey: "I-IV-V-I"},
+		{SectionIndex: 2, ProgressionKey: "I-V-vi-IV"}, {SectionIndex: 2, ProgressionKey: "I-IV-I-V"},
+	}, doc.SectionProgressions())
+	assert.Equal(t, []string{"I-IV-I-V", "I-IV-V-I", "I-V-vi-IV"}, ProgressionKeysOf(doc.SectionProgressions()),
+		"the chart's progressions are its sections' tags, each once, in document order")
+	assert.Empty(t, SongChartDocument{Sections: []SongChartSection{chordsSection(SectionVerse, "G")}}.SectionProgressions())
 }

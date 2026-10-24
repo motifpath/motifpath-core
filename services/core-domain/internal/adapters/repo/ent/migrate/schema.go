@@ -1368,8 +1368,7 @@ var (
 		{Name: "rights_confirmed_at", Type: field.TypeTime, Nullable: true},
 		{Name: "body", Type: field.TypeString, Size: 2147483647},
 		{Name: "warnings", Type: field.TypeJSON},
-		{Name: "progression_keys", Type: field.TypeJSON, Default: "[]"},
-		{Name: "unplayed_progression_keys", Type: field.TypeJSON, Default: "[]"},
+		{Name: "unplayed_progressions", Type: field.TypeJSON, Default: "[]"},
 		{Name: "updated_by", Type: field.TypeUUID},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "published_revision_number", Type: field.TypeInt, Nullable: true},
@@ -1392,7 +1391,7 @@ var (
 			{
 				Name:    "songchart_updated_at",
 				Unique:  false,
-				Columns: []*schema.Column{SongChartsColumns[18]},
+				Columns: []*schema.Column{SongChartsColumns[17]},
 			},
 		},
 	}
@@ -1408,7 +1407,7 @@ var (
 		{Name: "tempo_bpm", Type: field.TypeInt, Nullable: true},
 		{Name: "time_signature", Type: field.TypeJSON, Nullable: true},
 		{Name: "tuning_fingerprint", Type: field.TypeString},
-		{Name: "progression_keys", Type: field.TypeJSON, Default: "[]"},
+		{Name: "section_progressions", Type: field.TypeJSON, Default: "[]"},
 		{Name: "body", Type: field.TypeString, Size: 2147483647},
 		{Name: "rights_confirmed_by", Type: field.TypeUUID},
 		{Name: "rights_confirmed_at", Type: field.TypeTime},

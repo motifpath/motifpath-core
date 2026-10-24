@@ -18,7 +18,7 @@ func TestToGeneratedPracticeSessionItem_Song(t *testing.T) {
 		Reason: domain.PracticePickApplication, EstimatedSeconds: 130,
 		Song: &domain.PlannedSong{
 			SongChartID: chart, LayoutInstrumentID: bass, Title: "Amazing Grace", Artist: "John Newton",
-			ProgressionKey: "I-IV-I-V", Plays: domain.SongPlaysRoots,
+			ProgressionKey: "I-IV-I-V", SectionIndex: 2, Plays: domain.SongPlaysRoots,
 		},
 	}, nil, "en")
 
@@ -26,6 +26,6 @@ func TestToGeneratedPracticeSessionItem_Song(t *testing.T) {
 	require.NotNil(t, got.Song)
 	assert.Equal(t, generated.PlannedSong{
 		SongChartId: mustUUID(chart), LayoutInstrumentId: mustUUID(bass), Title: "Amazing Grace", Artist: "John Newton",
-		ProgressionKey: "I-IV-I-V", Plays: generated.Roots,
+		ProgressionKey: "I-IV-I-V", SectionIndex: 2, Plays: generated.Roots,
 	}, *got.Song)
 }

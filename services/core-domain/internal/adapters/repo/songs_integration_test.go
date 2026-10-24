@@ -38,10 +38,10 @@ func TestSongItems(t *testing.T) {
 		t.Helper()
 		chart := newSongChart("Song "+uuid.NewString()[:8], fixedAt)
 		chart.Draft.RightsConfirmation = &domain.RightsConfirmation{ConfirmedBy: uuid.NewString(), ConfirmedAt: fixedAt}
-		chart.Draft.ProgressionKeys = tags[0]
+		chart = tagged(chart, tags[0]...)
 		require.NoError(t, charts.Create(ctx, chart))
 		for i, revisionTags := range tags {
-			chart.Draft.ProgressionKeys = revisionTags
+			chart = tagged(chart, revisionTags...)
 			published, rev, err := chart.Publish(uuid.NewString(), fixedAt.Add(time.Duration(i)*time.Hour))
 			require.NoError(t, err)
 			require.NoError(t, charts.Publish(ctx, published, rev))
@@ -65,13 +65,22 @@ func TestSongItems(t *testing.T) {
 
 	amazingGrace := publish(t, []string{"I-IV-I-V", "I-IV-V-I"})
 	untagged := publish(t, nil)
+	twoSections := newSongChart("Two sections", fixedAt)
+	twoSections.Draft.RightsConfirmation = &domain.RightsConfirmation{ConfirmedBy: uuid.NewString(), ConfirmedAt: fixedAt}
+	chorus := twoSections.Draft.Body.Sections[0]
+	chorus.Kind, chorus.ProgressionKeys = domain.SectionChorus, []string{"12-bar-blues", "I-IV-I-V"}
+	twoSections = tagged(twoSections, "I-IV-I-V")
+	twoSections.Draft.Body.Sections = append(twoSections.Draft.Body.Sections, chorus)
+	require.NoError(t, charts.Create(ctx, twoSections))
+	twoSectionsPublished, twoSectionsRev, err := twoSections.Publish(uuid.NewString(), fixedAt)
+	require.NoError(t, err)
+	require.NoError(t, charts.Publish(ctx, twoSectionsPublished, twoSectionsRev))
 	retagged := publish(t, []string{"I-IV-I-V"}, []string{"12-bar-blues"})
 	withdrawn := publish(t, []string{"I-IV-I-V"})
-	withdrawn, err := withdrawn.Withdraw(uuid.NewString(), fixedAt.Add(time.Hour), "Rights disputed")
+	withdrawn, err = withdrawn.Withdraw(uuid.NewString(), fixedAt.Add(time.Hour), "Rights disputed")
 	require.NoError(t, err)
 	require.NoError(t, charts.Save(ctx, withdrawn))
-	draft := newSongChart("Draft", fixedAt)
-	draft.Draft.ProgressionKeys = []string{"I-IV-I-V"}
+	draft := tagged(newSongChart("Draft", fixedAt), "I-IV-I-V")
 	require.NoError(t, charts.Create(ctx, draft))
 
 	guitar := songs(acousticGuitarID)
@@ -79,6 +88,11 @@ func TestSongItems(t *testing.T) {
 	t.Run("a published chart is a song on the guitar layout, under its progressions' nodes", func(t *testing.T) {
 		assert.Equal(t, []string{node("common-progressions"), node("cadences")},
 			guitar["song:"+acousticGuitarID+":"+amazingGrace.ID])
+	})
+
+	t.Run("a song is under the nodes of every progression its sections are tagged with", func(t *testing.T) {
+		assert.Equal(t, []string{node("common-progressions"), node("blues-form")},
+			guitar["song:"+acousticGuitarID+":"+twoSections.ID])
 	})
 
 	t.Run("a song takes the progressions of the chart's latest revision", func(t *testing.T) {

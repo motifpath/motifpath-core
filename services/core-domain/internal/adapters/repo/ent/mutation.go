@@ -41309,50 +41309,48 @@ func (m *ProgressionMutation) ResetEdge(name string) error {
 // SongChartMutation represents an operation that mutates the SongChart nodes in the graph.
 type SongChartMutation struct {
 	config
-	op                              Op
-	typ                             string
-	id                              *uuid.UUID
-	status                          *songchart.Status
-	created_by                      *uuid.UUID
-	created_at                      *time.Time
-	title                           *string
-	artist                          *string
-	language                        *string
-	concert_key                     *string
-	capo_fret                       *int
-	addcapo_fret                    *int
-	tempo_bpm                       *int
-	addtempo_bpm                    *int
-	time_signature                  **schema.SongChartTimeSignature
-	rights_confirmed_by             *uuid.UUID
-	rights_confirmed_at             *time.Time
-	body                            *string
-	warnings                        *[]schema.SongChartWarning
-	appendwarnings                  []schema.SongChartWarning
-	progression_keys                *[]string
-	appendprogression_keys          []string
-	unplayed_progression_keys       *[]string
-	appendunplayed_progression_keys []string
-	updated_by                      *uuid.UUID
-	updated_at                      *time.Time
-	published_revision_number       *int
-	addpublished_revision_number    *int
-	published_title                 *string
-	published_artist                *string
-	published_language              *string
-	published_concert_key           *string
-	published_by                    *uuid.UUID
-	published_at                    *time.Time
-	withdrawn_by                    *uuid.UUID
-	withdrawn_at                    *time.Time
-	withdrawal_reason               *string
-	clearedFields                   map[string]struct{}
-	revisions                       map[uuid.UUID]struct{}
-	removedrevisions                map[uuid.UUID]struct{}
-	clearedrevisions                bool
-	done                            bool
-	oldValue                        func(context.Context) (*SongChart, error)
-	predicates                      []predicate.SongChart
+	op                           Op
+	typ                          string
+	id                           *uuid.UUID
+	status                       *songchart.Status
+	created_by                   *uuid.UUID
+	created_at                   *time.Time
+	title                        *string
+	artist                       *string
+	language                     *string
+	concert_key                  *string
+	capo_fret                    *int
+	addcapo_fret                 *int
+	tempo_bpm                    *int
+	addtempo_bpm                 *int
+	time_signature               **schema.SongChartTimeSignature
+	rights_confirmed_by          *uuid.UUID
+	rights_confirmed_at          *time.Time
+	body                         *string
+	warnings                     *[]schema.SongChartWarning
+	appendwarnings               []schema.SongChartWarning
+	unplayed_progressions        *[]schema.SongChartSectionProgression
+	appendunplayed_progressions  []schema.SongChartSectionProgression
+	updated_by                   *uuid.UUID
+	updated_at                   *time.Time
+	published_revision_number    *int
+	addpublished_revision_number *int
+	published_title              *string
+	published_artist             *string
+	published_language           *string
+	published_concert_key        *string
+	published_by                 *uuid.UUID
+	published_at                 *time.Time
+	withdrawn_by                 *uuid.UUID
+	withdrawn_at                 *time.Time
+	withdrawal_reason            *string
+	clearedFields                map[string]struct{}
+	revisions                    map[uuid.UUID]struct{}
+	removedrevisions             map[uuid.UUID]struct{}
+	clearedrevisions             bool
+	done                         bool
+	oldValue                     func(context.Context) (*SongChart, error)
+	predicates                   []predicate.SongChart
 }
 
 var _ ent.Mutation = (*SongChartMutation)(nil)
@@ -42084,106 +42082,55 @@ func (m *SongChartMutation) ResetWarnings() {
 	m.appendwarnings = nil
 }
 
-// SetProgressionKeys sets the "progression_keys" field.
-func (m *SongChartMutation) SetProgressionKeys(s []string) {
-	m.progression_keys = &s
-	m.appendprogression_keys = nil
+// SetUnplayedProgressions sets the "unplayed_progressions" field.
+func (m *SongChartMutation) SetUnplayedProgressions(scsp []schema.SongChartSectionProgression) {
+	m.unplayed_progressions = &scsp
+	m.appendunplayed_progressions = nil
 }
 
-// ProgressionKeys returns the value of the "progression_keys" field in the mutation.
-func (m *SongChartMutation) ProgressionKeys() (r []string, exists bool) {
-	v := m.progression_keys
+// UnplayedProgressions returns the value of the "unplayed_progressions" field in the mutation.
+func (m *SongChartMutation) UnplayedProgressions() (r []schema.SongChartSectionProgression, exists bool) {
+	v := m.unplayed_progressions
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldProgressionKeys returns the old "progression_keys" field's value of the SongChart entity.
+// OldUnplayedProgressions returns the old "unplayed_progressions" field's value of the SongChart entity.
 // If the SongChart object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *SongChartMutation) OldProgressionKeys(ctx context.Context) (v []string, err error) {
+func (m *SongChartMutation) OldUnplayedProgressions(ctx context.Context) (v []schema.SongChartSectionProgression, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldProgressionKeys is only allowed on UpdateOne operations")
+		return v, errors.New("OldUnplayedProgressions is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldProgressionKeys requires an ID field in the mutation")
+		return v, errors.New("OldUnplayedProgressions requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldProgressionKeys: %w", err)
+		return v, fmt.Errorf("querying old value for OldUnplayedProgressions: %w", err)
 	}
-	return oldValue.ProgressionKeys, nil
+	return oldValue.UnplayedProgressions, nil
 }
 
-// AppendProgressionKeys adds s to the "progression_keys" field.
-func (m *SongChartMutation) AppendProgressionKeys(s []string) {
-	m.appendprogression_keys = append(m.appendprogression_keys, s...)
+// AppendUnplayedProgressions adds scsp to the "unplayed_progressions" field.
+func (m *SongChartMutation) AppendUnplayedProgressions(scsp []schema.SongChartSectionProgression) {
+	m.appendunplayed_progressions = append(m.appendunplayed_progressions, scsp...)
 }
 
-// AppendedProgressionKeys returns the list of values that were appended to the "progression_keys" field in this mutation.
-func (m *SongChartMutation) AppendedProgressionKeys() ([]string, bool) {
-	if len(m.appendprogression_keys) == 0 {
+// AppendedUnplayedProgressions returns the list of values that were appended to the "unplayed_progressions" field in this mutation.
+func (m *SongChartMutation) AppendedUnplayedProgressions() ([]schema.SongChartSectionProgression, bool) {
+	if len(m.appendunplayed_progressions) == 0 {
 		return nil, false
 	}
-	return m.appendprogression_keys, true
+	return m.appendunplayed_progressions, true
 }
 
-// ResetProgressionKeys resets all changes to the "progression_keys" field.
-func (m *SongChartMutation) ResetProgressionKeys() {
-	m.progression_keys = nil
-	m.appendprogression_keys = nil
-}
-
-// SetUnplayedProgressionKeys sets the "unplayed_progression_keys" field.
-func (m *SongChartMutation) SetUnplayedProgressionKeys(s []string) {
-	m.unplayed_progression_keys = &s
-	m.appendunplayed_progression_keys = nil
-}
-
-// UnplayedProgressionKeys returns the value of the "unplayed_progression_keys" field in the mutation.
-func (m *SongChartMutation) UnplayedProgressionKeys() (r []string, exists bool) {
-	v := m.unplayed_progression_keys
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldUnplayedProgressionKeys returns the old "unplayed_progression_keys" field's value of the SongChart entity.
-// If the SongChart object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *SongChartMutation) OldUnplayedProgressionKeys(ctx context.Context) (v []string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldUnplayedProgressionKeys is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldUnplayedProgressionKeys requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldUnplayedProgressionKeys: %w", err)
-	}
-	return oldValue.UnplayedProgressionKeys, nil
-}
-
-// AppendUnplayedProgressionKeys adds s to the "unplayed_progression_keys" field.
-func (m *SongChartMutation) AppendUnplayedProgressionKeys(s []string) {
-	m.appendunplayed_progression_keys = append(m.appendunplayed_progression_keys, s...)
-}
-
-// AppendedUnplayedProgressionKeys returns the list of values that were appended to the "unplayed_progression_keys" field in this mutation.
-func (m *SongChartMutation) AppendedUnplayedProgressionKeys() ([]string, bool) {
-	if len(m.appendunplayed_progression_keys) == 0 {
-		return nil, false
-	}
-	return m.appendunplayed_progression_keys, true
-}
-
-// ResetUnplayedProgressionKeys resets all changes to the "unplayed_progression_keys" field.
-func (m *SongChartMutation) ResetUnplayedProgressionKeys() {
-	m.unplayed_progression_keys = nil
-	m.appendunplayed_progression_keys = nil
+// ResetUnplayedProgressions resets all changes to the "unplayed_progressions" field.
+func (m *SongChartMutation) ResetUnplayedProgressions() {
+	m.unplayed_progressions = nil
+	m.appendunplayed_progressions = nil
 }
 
 // SetUpdatedBy sets the "updated_by" field.
@@ -42857,7 +42804,7 @@ func (m *SongChartMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *SongChartMutation) Fields() []string {
-	fields := make([]string, 0, 28)
+	fields := make([]string, 0, 27)
 	if m.status != nil {
 		fields = append(fields, songchart.FieldStatus)
 	}
@@ -42900,11 +42847,8 @@ func (m *SongChartMutation) Fields() []string {
 	if m.warnings != nil {
 		fields = append(fields, songchart.FieldWarnings)
 	}
-	if m.progression_keys != nil {
-		fields = append(fields, songchart.FieldProgressionKeys)
-	}
-	if m.unplayed_progression_keys != nil {
-		fields = append(fields, songchart.FieldUnplayedProgressionKeys)
+	if m.unplayed_progressions != nil {
+		fields = append(fields, songchart.FieldUnplayedProgressions)
 	}
 	if m.updated_by != nil {
 		fields = append(fields, songchart.FieldUpdatedBy)
@@ -42978,10 +42922,8 @@ func (m *SongChartMutation) Field(name string) (ent.Value, bool) {
 		return m.Body()
 	case songchart.FieldWarnings:
 		return m.Warnings()
-	case songchart.FieldProgressionKeys:
-		return m.ProgressionKeys()
-	case songchart.FieldUnplayedProgressionKeys:
-		return m.UnplayedProgressionKeys()
+	case songchart.FieldUnplayedProgressions:
+		return m.UnplayedProgressions()
 	case songchart.FieldUpdatedBy:
 		return m.UpdatedBy()
 	case songchart.FieldUpdatedAt:
@@ -43043,10 +42985,8 @@ func (m *SongChartMutation) OldField(ctx context.Context, name string) (ent.Valu
 		return m.OldBody(ctx)
 	case songchart.FieldWarnings:
 		return m.OldWarnings(ctx)
-	case songchart.FieldProgressionKeys:
-		return m.OldProgressionKeys(ctx)
-	case songchart.FieldUnplayedProgressionKeys:
-		return m.OldUnplayedProgressionKeys(ctx)
+	case songchart.FieldUnplayedProgressions:
+		return m.OldUnplayedProgressions(ctx)
 	case songchart.FieldUpdatedBy:
 		return m.OldUpdatedBy(ctx)
 	case songchart.FieldUpdatedAt:
@@ -43178,19 +43118,12 @@ func (m *SongChartMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetWarnings(v)
 		return nil
-	case songchart.FieldProgressionKeys:
-		v, ok := value.([]string)
+	case songchart.FieldUnplayedProgressions:
+		v, ok := value.([]schema.SongChartSectionProgression)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetProgressionKeys(v)
-		return nil
-	case songchart.FieldUnplayedProgressionKeys:
-		v, ok := value.([]string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetUnplayedProgressionKeys(v)
+		m.SetUnplayedProgressions(v)
 		return nil
 	case songchart.FieldUpdatedBy:
 		v, ok := value.(uuid.UUID)
@@ -43499,11 +43432,8 @@ func (m *SongChartMutation) ResetField(name string) error {
 	case songchart.FieldWarnings:
 		m.ResetWarnings()
 		return nil
-	case songchart.FieldProgressionKeys:
-		m.ResetProgressionKeys()
-		return nil
-	case songchart.FieldUnplayedProgressionKeys:
-		m.ResetUnplayedProgressionKeys()
+	case songchart.FieldUnplayedProgressions:
+		m.ResetUnplayedProgressions()
 		return nil
 	case songchart.FieldUpdatedBy:
 		m.ResetUpdatedBy()
@@ -43632,34 +43562,34 @@ func (m *SongChartMutation) ResetEdge(name string) error {
 // SongChartRevisionMutation represents an operation that mutates the SongChartRevision nodes in the graph.
 type SongChartRevisionMutation struct {
 	config
-	op                     Op
-	typ                    string
-	id                     *uuid.UUID
-	revision_number        *int
-	addrevision_number     *int
-	title                  *string
-	artist                 *string
-	language               *string
-	concert_key            *string
-	capo_fret              *int
-	addcapo_fret           *int
-	tempo_bpm              *int
-	addtempo_bpm           *int
-	time_signature         **schema.SongChartTimeSignature
-	tuning_fingerprint     *string
-	progression_keys       *[]string
-	appendprogression_keys []string
-	body                   *string
-	rights_confirmed_by    *uuid.UUID
-	rights_confirmed_at    *time.Time
-	published_by           *uuid.UUID
-	published_at           *time.Time
-	clearedFields          map[string]struct{}
-	song_chart             *uuid.UUID
-	clearedsong_chart      bool
-	done                   bool
-	oldValue               func(context.Context) (*SongChartRevision, error)
-	predicates             []predicate.SongChartRevision
+	op                         Op
+	typ                        string
+	id                         *uuid.UUID
+	revision_number            *int
+	addrevision_number         *int
+	title                      *string
+	artist                     *string
+	language                   *string
+	concert_key                *string
+	capo_fret                  *int
+	addcapo_fret               *int
+	tempo_bpm                  *int
+	addtempo_bpm               *int
+	time_signature             **schema.SongChartTimeSignature
+	tuning_fingerprint         *string
+	section_progressions       *[]schema.SongChartSectionProgression
+	appendsection_progressions []schema.SongChartSectionProgression
+	body                       *string
+	rights_confirmed_by        *uuid.UUID
+	rights_confirmed_at        *time.Time
+	published_by               *uuid.UUID
+	published_at               *time.Time
+	clearedFields              map[string]struct{}
+	song_chart                 *uuid.UUID
+	clearedsong_chart          bool
+	done                       bool
+	oldValue                   func(context.Context) (*SongChartRevision, error)
+	predicates                 []predicate.SongChartRevision
 }
 
 var _ ent.Mutation = (*SongChartRevisionMutation)(nil)
@@ -44226,55 +44156,55 @@ func (m *SongChartRevisionMutation) ResetTuningFingerprint() {
 	m.tuning_fingerprint = nil
 }
 
-// SetProgressionKeys sets the "progression_keys" field.
-func (m *SongChartRevisionMutation) SetProgressionKeys(s []string) {
-	m.progression_keys = &s
-	m.appendprogression_keys = nil
+// SetSectionProgressions sets the "section_progressions" field.
+func (m *SongChartRevisionMutation) SetSectionProgressions(scsp []schema.SongChartSectionProgression) {
+	m.section_progressions = &scsp
+	m.appendsection_progressions = nil
 }
 
-// ProgressionKeys returns the value of the "progression_keys" field in the mutation.
-func (m *SongChartRevisionMutation) ProgressionKeys() (r []string, exists bool) {
-	v := m.progression_keys
+// SectionProgressions returns the value of the "section_progressions" field in the mutation.
+func (m *SongChartRevisionMutation) SectionProgressions() (r []schema.SongChartSectionProgression, exists bool) {
+	v := m.section_progressions
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldProgressionKeys returns the old "progression_keys" field's value of the SongChartRevision entity.
+// OldSectionProgressions returns the old "section_progressions" field's value of the SongChartRevision entity.
 // If the SongChartRevision object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *SongChartRevisionMutation) OldProgressionKeys(ctx context.Context) (v []string, err error) {
+func (m *SongChartRevisionMutation) OldSectionProgressions(ctx context.Context) (v []schema.SongChartSectionProgression, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldProgressionKeys is only allowed on UpdateOne operations")
+		return v, errors.New("OldSectionProgressions is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldProgressionKeys requires an ID field in the mutation")
+		return v, errors.New("OldSectionProgressions requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldProgressionKeys: %w", err)
+		return v, fmt.Errorf("querying old value for OldSectionProgressions: %w", err)
 	}
-	return oldValue.ProgressionKeys, nil
+	return oldValue.SectionProgressions, nil
 }
 
-// AppendProgressionKeys adds s to the "progression_keys" field.
-func (m *SongChartRevisionMutation) AppendProgressionKeys(s []string) {
-	m.appendprogression_keys = append(m.appendprogression_keys, s...)
+// AppendSectionProgressions adds scsp to the "section_progressions" field.
+func (m *SongChartRevisionMutation) AppendSectionProgressions(scsp []schema.SongChartSectionProgression) {
+	m.appendsection_progressions = append(m.appendsection_progressions, scsp...)
 }
 
-// AppendedProgressionKeys returns the list of values that were appended to the "progression_keys" field in this mutation.
-func (m *SongChartRevisionMutation) AppendedProgressionKeys() ([]string, bool) {
-	if len(m.appendprogression_keys) == 0 {
+// AppendedSectionProgressions returns the list of values that were appended to the "section_progressions" field in this mutation.
+func (m *SongChartRevisionMutation) AppendedSectionProgressions() ([]schema.SongChartSectionProgression, bool) {
+	if len(m.appendsection_progressions) == 0 {
 		return nil, false
 	}
-	return m.appendprogression_keys, true
+	return m.appendsection_progressions, true
 }
 
-// ResetProgressionKeys resets all changes to the "progression_keys" field.
-func (m *SongChartRevisionMutation) ResetProgressionKeys() {
-	m.progression_keys = nil
-	m.appendprogression_keys = nil
+// ResetSectionProgressions resets all changes to the "section_progressions" field.
+func (m *SongChartRevisionMutation) ResetSectionProgressions() {
+	m.section_progressions = nil
+	m.appendsection_progressions = nil
 }
 
 // SetBody sets the "body" field.
@@ -44549,8 +44479,8 @@ func (m *SongChartRevisionMutation) Fields() []string {
 	if m.tuning_fingerprint != nil {
 		fields = append(fields, songchartrevision.FieldTuningFingerprint)
 	}
-	if m.progression_keys != nil {
-		fields = append(fields, songchartrevision.FieldProgressionKeys)
+	if m.section_progressions != nil {
+		fields = append(fields, songchartrevision.FieldSectionProgressions)
 	}
 	if m.body != nil {
 		fields = append(fields, songchartrevision.FieldBody)
@@ -44595,8 +44525,8 @@ func (m *SongChartRevisionMutation) Field(name string) (ent.Value, bool) {
 		return m.TimeSignature()
 	case songchartrevision.FieldTuningFingerprint:
 		return m.TuningFingerprint()
-	case songchartrevision.FieldProgressionKeys:
-		return m.ProgressionKeys()
+	case songchartrevision.FieldSectionProgressions:
+		return m.SectionProgressions()
 	case songchartrevision.FieldBody:
 		return m.Body()
 	case songchartrevision.FieldRightsConfirmedBy:
@@ -44636,8 +44566,8 @@ func (m *SongChartRevisionMutation) OldField(ctx context.Context, name string) (
 		return m.OldTimeSignature(ctx)
 	case songchartrevision.FieldTuningFingerprint:
 		return m.OldTuningFingerprint(ctx)
-	case songchartrevision.FieldProgressionKeys:
-		return m.OldProgressionKeys(ctx)
+	case songchartrevision.FieldSectionProgressions:
+		return m.OldSectionProgressions(ctx)
 	case songchartrevision.FieldBody:
 		return m.OldBody(ctx)
 	case songchartrevision.FieldRightsConfirmedBy:
@@ -44727,12 +44657,12 @@ func (m *SongChartRevisionMutation) SetField(name string, value ent.Value) error
 		}
 		m.SetTuningFingerprint(v)
 		return nil
-	case songchartrevision.FieldProgressionKeys:
-		v, ok := value.([]string)
+	case songchartrevision.FieldSectionProgressions:
+		v, ok := value.([]schema.SongChartSectionProgression)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetProgressionKeys(v)
+		m.SetSectionProgressions(v)
 		return nil
 	case songchartrevision.FieldBody:
 		v, ok := value.(string)
@@ -44908,8 +44838,8 @@ func (m *SongChartRevisionMutation) ResetField(name string) error {
 	case songchartrevision.FieldTuningFingerprint:
 		m.ResetTuningFingerprint()
 		return nil
-	case songchartrevision.FieldProgressionKeys:
-		m.ResetProgressionKeys()
+	case songchartrevision.FieldSectionProgressions:
+		m.ResetSectionProgressions()
 		return nil
 	case songchartrevision.FieldBody:
 		m.ResetBody()

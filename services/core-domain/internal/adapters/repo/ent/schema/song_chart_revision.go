@@ -57,10 +57,11 @@ func (SongChartRevision) Fields() []ent.Field {
 
 		field.String("tuning_fingerprint").
 			Immutable(),
-		// progression_keys are the progressions the revision was published
-		// tagged with; empty, never null, for an untagged one.
-		field.JSON("progression_keys", []string{}).
-			Default([]string{}).
+		// section_progressions are the progressions the body's sections were
+		// published tagged with, copied out of the body so the songs can be
+		// read without it; empty, never null, for an untagged revision.
+		field.JSON("section_progressions", []SongChartSectionProgression{}).
+			Default([]SongChartSectionProgression{}).
 			// The database default fills the rows stored before the column.
 			Annotations(entsql.Default("[]")).
 			Immutable(),

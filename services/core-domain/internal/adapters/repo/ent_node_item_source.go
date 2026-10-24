@@ -128,7 +128,7 @@ func (s *EntNodeItemSource) songItems(ctx context.Context, instrumentID uuid.UUI
 	var items []domain.ClassifiedItem
 	for _, rev := range revisions {
 		var nodes []string
-		for _, key := range rev.ProgressionKeys {
+		for _, key := range domain.ProgressionKeysOf(rev.SectionProgressions) {
 			nodes = withNodes(nodes, nodesOf[key])
 		}
 		if len(nodes) == 0 {

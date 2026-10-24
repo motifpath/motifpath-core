@@ -51,18 +51,15 @@ type SongChartDraft struct {
 	// RightsConfirmation is an admin's statement that the song's rights
 	// were checked, outside MotifPath; nil when nobody has confirmed them.
 	RightsConfirmation *RightsConfirmation
-	// ProgressionKeys are the progressions of the progression catalog the
-	// author says the song plays; an untagged chart is never practised.
-	ProgressionKeys []string
-	Body            SongChartDocument
+	Body               SongChartDocument
 	// Warnings are the chord anchors that didn't fully resolve when the
 	// draft was last saved, in document order.
 	Warnings []AnchorWarning
-	// UnplayedProgressionKeys are the tagged progressions the chart didn't
-	// play when the draft was last saved, in tagged order.
-	UnplayedProgressionKeys []string
-	UpdatedBy               string
-	UpdatedAt               time.Time
+	// UnplayedProgressions are the sections' tags their section didn't play
+	// when the draft was last saved, by section, then in tagged order.
+	UnplayedProgressions []SectionProgression
+	UpdatedBy            string
+	UpdatedAt            time.Time
 }
 
 // RightsConfirmation records who confirmed a song's rights were checked,
@@ -96,17 +93,17 @@ func (d SongChartDraft) Validate() error {
 	if d.TimeSignature != nil && !d.TimeSignature.valid() {
 		return NewValidationError("time_signature", "must have 1 to 16 beats of a 1, 2, 4, 8, 16 or 32 note")
 	}
-	return validateProgressionKeys(d.ProgressionKeys)
+	return nil
 }
 
-// validateProgressionKeys checks a chart names at most a few progressions, each
-// once. Whether the catalog has them is the caller's to check.
-func validateProgressionKeys(keys []string) error {
+// validateProgressionKeys checks a section names at most a few progressions,
+// each once. Whether the catalog has them is the caller's to check.
+func validateProgressionKeys(field string, keys []string) error {
 	if len(keys) > MaxSongChartProgressions {
-		return NewValidationError("progression_keys", fmt.Sprintf("must have at most %d progressions", MaxSongChartProgressions))
+		return NewValidationError(field, fmt.Sprintf("must have at most %d progressions", MaxSongChartProgressions))
 	}
 	if len(slices.Compact(slices.Sorted(slices.Values(keys)))) != len(keys) {
-		return NewValidationError("progression_keys", "must not name a progression twice")
+		return NewValidationError(field, "must not name a progression twice")
 	}
 	return nil
 }
@@ -202,21 +199,23 @@ type SongChartFilter struct {
 // SongChartRevision is a published revision. It never changes: a correction
 // is published as a new revision.
 type SongChartRevision struct {
-	SongChartID        string
-	Number             int
-	Title              string
-	Artist             string
-	Language           string
-	ConcertKey         *string
-	CapoFret           int
-	TempoBPM           *int
-	TimeSignature      *TimeSignature
-	TuningFingerprint  string
-	ProgressionKeys    []string
-	Body               SongChartDocument
-	RightsConfirmation RightsConfirmation
-	PublishedBy        string
-	PublishedAt        time.Time
+	SongChartID       string
+	Number            int
+	Title             string
+	Artist            string
+	Language          string
+	ConcertKey        *string
+	CapoFret          int
+	TempoBPM          *int
+	TimeSignature     *TimeSignature
+	TuningFingerprint string
+	// SectionProgressions are the progressions the body's sections are
+	// tagged with, read from the body when it was published.
+	SectionProgressions []SectionProgression
+	Body                SongChartDocument
+	RightsConfirmation  RightsConfirmation
+	PublishedBy         string
+	PublishedAt         time.Time
 }
 
 // NotPublishableReason is one thing that stops a draft from being published.
@@ -232,9 +231,9 @@ const (
 // being published. It is an ErrConflict: the request is well formed, but the
 // draft isn't ready.
 type SongChartNotPublishableError struct {
-	Reasons                 []NotPublishableReason
-	AnchorWarnings          []AnchorWarning
-	UnplayedProgressionKeys []string
+	Reasons              []NotPublishableReason
+	AnchorWarnings       []AnchorWarning
+	UnplayedProgressions []SectionProgression
 }
 
 func (e *SongChartNotPublishableError) Error() string {
@@ -267,9 +266,9 @@ func (c SongChart) Publish(by string, at time.Time) (SongChart, SongChartRevisio
 	if len(refusal.AnchorWarnings) > 0 {
 		refusal.Reasons = append(refusal.Reasons, UnresolvedChords)
 	}
-	if len(c.Draft.UnplayedProgressionKeys) > 0 {
+	if len(c.Draft.UnplayedProgressions) > 0 {
 		refusal.Reasons = append(refusal.Reasons, ProgressionsNotPlayed)
-		refusal.UnplayedProgressionKeys = c.Draft.UnplayedProgressionKeys
+		refusal.UnplayedProgressions = c.Draft.UnplayedProgressions
 	}
 	if len(refusal.Reasons) > 0 {
 		return c, SongChartRevision{}, &refusal
@@ -284,7 +283,7 @@ func (c SongChart) Publish(by string, at time.Time) (SongChart, SongChartRevisio
 		SongChartID: c.ID, Number: number,
 		Title: d.Title, Artist: d.Artist, Language: d.Language, ConcertKey: d.ConcertKey,
 		CapoFret: d.CapoFret, TempoBPM: d.TempoBPM, TimeSignature: d.TimeSignature,
-		TuningFingerprint: StandardGuitarTuningFingerprint, ProgressionKeys: d.ProgressionKeys, Body: d.Body,
+		TuningFingerprint: StandardGuitarTuningFingerprint, SectionProgressions: d.Body.SectionProgressions(), Body: d.Body,
 		RightsConfirmation: *d.RightsConfirmation, PublishedBy: by, PublishedAt: at,
 	}
 	c.Status = SongChartPublished
