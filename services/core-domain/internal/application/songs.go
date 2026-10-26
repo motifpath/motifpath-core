@@ -40,6 +40,10 @@ func (src songSource) Item(ctx context.Context, itemKey string) (domain.DrillIte
 	return src.forComposition().Item(ctx, itemKey)
 }
 
+func (src songSource) composing(*PracticeSessionService) DrillSource {
+	return src.forComposition()
+}
+
 // forComposition reads the songs once for a composition, however many of them
 // its skills find: they are authored, so there can be many.
 func (src songSource) forComposition() DrillSource {

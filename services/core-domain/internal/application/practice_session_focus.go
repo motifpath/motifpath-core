@@ -361,6 +361,12 @@ func (s *PracticeSessionService) ListSubjects(ctx context.Context, caller domain
 	if err != nil {
 		return domain.PracticeSubjectList{}, err
 	}
+	if err := s.composingDiagrams.readAll(ctx, maps); err != nil {
+		return domain.PracticeSubjectList{}, err
+	}
+	if err := s.composingExercises.readAll(ctx, maps); err != nil {
+		return domain.PracticeSubjectList{}, err
+	}
 	templates, err := s.drillTemplates(ctx)
 	if err != nil {
 		return domain.PracticeSubjectList{}, err

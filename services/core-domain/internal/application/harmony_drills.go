@@ -18,6 +18,9 @@ type harmonyDrills struct {
 	progressions ports.ProgressionRepository
 	chords       ports.ChordCatalogRepository
 	layouts      ports.FretboardLayoutReader
+	// guitar keeps the guitar layout for one composition; nil reads it each
+	// time.
+	guitar *guitarLayoutRead
 }
 
 // WithHarmonyDrills installs the harmony and ear drills: diatonic chords,
@@ -33,6 +36,10 @@ func (s *PracticeSessionService) WithHarmonyDrills(progressions ports.Progressio
 // under a skill, the new keys in the order they are introduced.
 type harmonySource struct {
 	progressions ports.ProgressionRepository
+}
+
+func (src harmonySource) composing(s *PracticeSessionService) DrillSource {
+	return harmonySource{progressions: s.harmony.progressions}
 }
 
 func (src harmonySource) SkillItems(ctx context.Context, skillID, _ string, _ bool, knowledge KnowledgeMap) ([]domain.DrillItem, error) {
@@ -141,6 +148,14 @@ func (h *harmonyDrills) reading(ctx context.Context, instrumentIDs []string, odd
 // guitarLayoutID is the layout the chord catalog's voicings are on, read
 // from C major's; empty when the catalog has none.
 func (h *harmonyDrills) guitarLayoutID(ctx context.Context) (string, error) {
+	if h.guitar == nil {
+		return h.readGuitarLayoutID(ctx)
+	}
+	h.guitar.once.Do(func() { h.guitar.id, h.guitar.err = h.readGuitarLayoutID(ctx) })
+	return h.guitar.id, h.guitar.err
+}
+
+func (h *harmonyDrills) readGuitarLayoutID(ctx context.Context) (string, error) {
 	c, err := h.chords.FindChord(ctx, 0, domain.ChordQualityMajor, nil)
 	if errors.Is(err, domain.ErrNotFound) {
 		return "", nil

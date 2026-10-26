@@ -16,6 +16,10 @@ type ExerciseRepository interface {
 	// reflect its current links.
 	GetByID(ctx context.Context, id string) (domain.Exercise, error)
 
+	// GetByIDs returns the exercises with these ids, as GetByID would, keyed
+	// by id. An id with no exercise is simply absent.
+	GetByIDs(ctx context.Context, ids []string) (map[string]domain.Exercise, error)
+
 	// LinkChallenge links exerciseID into challengeID. Callers are
 	// responsible for checking both ids exist and are not already linked
 	// before calling — this method assumes the link is new.
