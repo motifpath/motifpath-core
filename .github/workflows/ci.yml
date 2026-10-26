@@ -99,6 +99,23 @@ jobs:
   # The reference-data generators (scripts/) are where a catalog that breaks
   # its rules is refused before it becomes a frozen migration, so their tests
   # gate CI like the Go suites, against the specs catalogs they compile.
+  # Production runs main's migrations, and Atlas never runs an applied
+  # migration again: a branch may add migrations, never change or delete one
+  # main already has.
+  applied-migrations:
+    name: Applied migrations unchanged
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Test the check
+        run: prove scripts/applied-migrations.t
+
+      - name: Fail if a migration on main changed
+        run: scripts/applied-migrations.sh origin/main
+
   test-catalogs:
     name: Catalog generator tests (Python)
     runs-on: ubuntu-latest
