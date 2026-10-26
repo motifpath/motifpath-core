@@ -33,6 +33,7 @@ func TestFeatures(t *testing.T) {
 				featuresBase + "/content-management",
 				featuresBase + "/learning-paths",
 				featuresBase + "/core-domain",
+				featuresBase + "/engagement",
 				// Only the practice features whose steps run here; grading and
 				// knowledge state run in the Aggregation Worker.
 				featuresBase + "/practice/compose-practice-session.feature",
@@ -84,6 +85,7 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	registerUserRegistrationSteps(sc, w)
 	registerDisplayNameSteps(sc, w)
 	registerLocaleSteps(sc, w)
+	registerUserEmailPreferencesSteps(sc, w)
 	registerContentNodeSteps(sc, w)
 	registerAuthoringListSteps(sc, w)
 	registerKnowledgeNodeSteps(sc, w)

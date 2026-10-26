@@ -35,3 +35,31 @@ func TestSessionCustomClaims_Name(t *testing.T) {
 		})
 	}
 }
+
+// TestSessionCustomClaims_Email covers the "email" claim the same way: a
+// misconfigured address must only ever cost the address, never the login,
+// and must not disturb the name read beside it.
+func TestSessionCustomClaims_Email(t *testing.T) {
+	tests := []struct {
+		name     string
+		payload  string
+		want     string
+		wantName string
+	}{
+		{name: "a string email is read beside the name", payload: `{"name":"Ana Souza","email":"ana@example.com"}`, want: "ana@example.com", wantName: "Ana Souza"},
+		{name: "a missing email reads as no email", payload: `{"name":"Ana Souza"}`, want: "", wantName: "Ana Souza"},
+		{name: "a null email reads as no email", payload: `{"email":null}`, want: ""},
+		{name: "a list is ignored, not a decode failure", payload: `{"name":"Ana Souza","email":["ana@example.com"]}`, want: "", wantName: "Ana Souza"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var claims sessionCustomClaims
+
+			err := json.Unmarshal([]byte(tt.payload), &claims)
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, claims.Email)
+			assert.Equal(t, tt.wantName, claims.Name)
+		})
+	}
+}

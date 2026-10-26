@@ -20,9 +20,16 @@ type UserRepository interface {
 	// domain.ErrNotFound if none exists.
 	GetByID(ctx context.Context, id string) (domain.User, error)
 
-	// UpdateLocale sets the locale (a Language.Code) on the user with the
-	// given id. Returns domain.ErrNotFound if no such user exists.
-	UpdateLocale(ctx context.Context, id, locale string) error
+	// UpdatePreferences applies update to the user with the given id in one
+	// write: each field that is set replaces the stored one, and Locale is a
+	// Language.Code. update is already validated. Returns domain.ErrNotFound
+	// if no such user exists.
+	UpdatePreferences(ctx context.Context, id string, update domain.ProfileUpdate) error
+
+	// UpdateEmail sets the email address of the user with the given id.
+	// email is already normalized. Returns domain.ErrNotFound if no such
+	// user exists.
+	UpdateEmail(ctx context.Context, id, email string) error
 
 	// UpdateDisplayName sets the display name of the user with the given
 	// id. displayName is already normalized. Returns domain.ErrNotFound if

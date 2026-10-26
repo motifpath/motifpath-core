@@ -777,8 +777,16 @@ func init() {
 	userDescDisplayName := userFields[3].Descriptor()
 	// user.DisplayNameValidator is a validator for the "display_name" field. It is called by the builders before save.
 	user.DisplayNameValidator = userDescDisplayName.Validators[0].(func(string) error)
+	// userDescEmailProgressReport is the schema descriptor for email_progress_report field.
+	userDescEmailProgressReport := userFields[7].Descriptor()
+	// user.DefaultEmailProgressReport holds the default value on creation for the email_progress_report field.
+	user.DefaultEmailProgressReport = userDescEmailProgressReport.Default.(bool)
+	// userDescEmailReminders is the schema descriptor for email_reminders field.
+	userDescEmailReminders := userFields[8].Descriptor()
+	// user.DefaultEmailReminders holds the default value on creation for the email_reminders field.
+	user.DefaultEmailReminders = userDescEmailReminders.Default.(bool)
 	// userDescRegisteredAt is the schema descriptor for registered_at field.
-	userDescRegisteredAt := userFields[5].Descriptor()
+	userDescRegisteredAt := userFields[9].Descriptor()
 	// user.DefaultRegisteredAt holds the default value on creation for the registered_at field.
 	user.DefaultRegisteredAt = userDescRegisteredAt.Default.(func() time.Time)
 	// userDescID is the schema descriptor for id field.

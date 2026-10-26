@@ -48116,19 +48116,23 @@ func (m *StudentPathItemMutation) ResetEdge(name string) error {
 // UserMutation represents an operation that mutates the User nodes in the graph.
 type UserMutation struct {
 	config
-	op            Op
-	typ           string
-	id            *uuid.UUID
-	clerk_user_id *string
-	role          *user.Role
-	display_name  *string
-	registered_at *time.Time
-	clearedFields map[string]struct{}
-	locale        *uuid.UUID
-	clearedlocale bool
-	done          bool
-	oldValue      func(context.Context) (*User, error)
-	predicates    []predicate.User
+	op                    Op
+	typ                   string
+	id                    *uuid.UUID
+	clerk_user_id         *string
+	role                  *user.Role
+	display_name          *string
+	email                 *string
+	time_zone             *string
+	email_progress_report *bool
+	email_reminders       *bool
+	registered_at         *time.Time
+	clearedFields         map[string]struct{}
+	locale                *uuid.UUID
+	clearedlocale         bool
+	done                  bool
+	oldValue              func(context.Context) (*User, error)
+	predicates            []predicate.User
 }
 
 var _ ent.Mutation = (*UserMutation)(nil)
@@ -48379,6 +48383,176 @@ func (m *UserMutation) ResetLocaleID() {
 	m.locale = nil
 }
 
+// SetEmail sets the "email" field.
+func (m *UserMutation) SetEmail(s string) {
+	m.email = &s
+}
+
+// Email returns the value of the "email" field in the mutation.
+func (m *UserMutation) Email() (r string, exists bool) {
+	v := m.email
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEmail returns the old "email" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldEmail(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEmail is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEmail requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEmail: %w", err)
+	}
+	return oldValue.Email, nil
+}
+
+// ClearEmail clears the value of the "email" field.
+func (m *UserMutation) ClearEmail() {
+	m.email = nil
+	m.clearedFields[user.FieldEmail] = struct{}{}
+}
+
+// EmailCleared returns if the "email" field was cleared in this mutation.
+func (m *UserMutation) EmailCleared() bool {
+	_, ok := m.clearedFields[user.FieldEmail]
+	return ok
+}
+
+// ResetEmail resets all changes to the "email" field.
+func (m *UserMutation) ResetEmail() {
+	m.email = nil
+	delete(m.clearedFields, user.FieldEmail)
+}
+
+// SetTimeZone sets the "time_zone" field.
+func (m *UserMutation) SetTimeZone(s string) {
+	m.time_zone = &s
+}
+
+// TimeZone returns the value of the "time_zone" field in the mutation.
+func (m *UserMutation) TimeZone() (r string, exists bool) {
+	v := m.time_zone
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTimeZone returns the old "time_zone" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldTimeZone(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTimeZone is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTimeZone requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTimeZone: %w", err)
+	}
+	return oldValue.TimeZone, nil
+}
+
+// ClearTimeZone clears the value of the "time_zone" field.
+func (m *UserMutation) ClearTimeZone() {
+	m.time_zone = nil
+	m.clearedFields[user.FieldTimeZone] = struct{}{}
+}
+
+// TimeZoneCleared returns if the "time_zone" field was cleared in this mutation.
+func (m *UserMutation) TimeZoneCleared() bool {
+	_, ok := m.clearedFields[user.FieldTimeZone]
+	return ok
+}
+
+// ResetTimeZone resets all changes to the "time_zone" field.
+func (m *UserMutation) ResetTimeZone() {
+	m.time_zone = nil
+	delete(m.clearedFields, user.FieldTimeZone)
+}
+
+// SetEmailProgressReport sets the "email_progress_report" field.
+func (m *UserMutation) SetEmailProgressReport(b bool) {
+	m.email_progress_report = &b
+}
+
+// EmailProgressReport returns the value of the "email_progress_report" field in the mutation.
+func (m *UserMutation) EmailProgressReport() (r bool, exists bool) {
+	v := m.email_progress_report
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEmailProgressReport returns the old "email_progress_report" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldEmailProgressReport(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEmailProgressReport is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEmailProgressReport requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEmailProgressReport: %w", err)
+	}
+	return oldValue.EmailProgressReport, nil
+}
+
+// ResetEmailProgressReport resets all changes to the "email_progress_report" field.
+func (m *UserMutation) ResetEmailProgressReport() {
+	m.email_progress_report = nil
+}
+
+// SetEmailReminders sets the "email_reminders" field.
+func (m *UserMutation) SetEmailReminders(b bool) {
+	m.email_reminders = &b
+}
+
+// EmailReminders returns the value of the "email_reminders" field in the mutation.
+func (m *UserMutation) EmailReminders() (r bool, exists bool) {
+	v := m.email_reminders
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEmailReminders returns the old "email_reminders" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldEmailReminders(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEmailReminders is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEmailReminders requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEmailReminders: %w", err)
+	}
+	return oldValue.EmailReminders, nil
+}
+
+// ResetEmailReminders resets all changes to the "email_reminders" field.
+func (m *UserMutation) ResetEmailReminders() {
+	m.email_reminders = nil
+}
+
 // SetRegisteredAt sets the "registered_at" field.
 func (m *UserMutation) SetRegisteredAt(t time.Time) {
 	m.registered_at = &t
@@ -48476,7 +48650,7 @@ func (m *UserMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UserMutation) Fields() []string {
-	fields := make([]string, 0, 5)
+	fields := make([]string, 0, 9)
 	if m.clerk_user_id != nil {
 		fields = append(fields, user.FieldClerkUserID)
 	}
@@ -48488,6 +48662,18 @@ func (m *UserMutation) Fields() []string {
 	}
 	if m.locale != nil {
 		fields = append(fields, user.FieldLocaleID)
+	}
+	if m.email != nil {
+		fields = append(fields, user.FieldEmail)
+	}
+	if m.time_zone != nil {
+		fields = append(fields, user.FieldTimeZone)
+	}
+	if m.email_progress_report != nil {
+		fields = append(fields, user.FieldEmailProgressReport)
+	}
+	if m.email_reminders != nil {
+		fields = append(fields, user.FieldEmailReminders)
 	}
 	if m.registered_at != nil {
 		fields = append(fields, user.FieldRegisteredAt)
@@ -48508,6 +48694,14 @@ func (m *UserMutation) Field(name string) (ent.Value, bool) {
 		return m.DisplayName()
 	case user.FieldLocaleID:
 		return m.LocaleID()
+	case user.FieldEmail:
+		return m.Email()
+	case user.FieldTimeZone:
+		return m.TimeZone()
+	case user.FieldEmailProgressReport:
+		return m.EmailProgressReport()
+	case user.FieldEmailReminders:
+		return m.EmailReminders()
 	case user.FieldRegisteredAt:
 		return m.RegisteredAt()
 	}
@@ -48527,6 +48721,14 @@ func (m *UserMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldDisplayName(ctx)
 	case user.FieldLocaleID:
 		return m.OldLocaleID(ctx)
+	case user.FieldEmail:
+		return m.OldEmail(ctx)
+	case user.FieldTimeZone:
+		return m.OldTimeZone(ctx)
+	case user.FieldEmailProgressReport:
+		return m.OldEmailProgressReport(ctx)
+	case user.FieldEmailReminders:
+		return m.OldEmailReminders(ctx)
 	case user.FieldRegisteredAt:
 		return m.OldRegisteredAt(ctx)
 	}
@@ -48566,6 +48768,34 @@ func (m *UserMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetLocaleID(v)
 		return nil
+	case user.FieldEmail:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEmail(v)
+		return nil
+	case user.FieldTimeZone:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTimeZone(v)
+		return nil
+	case user.FieldEmailProgressReport:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEmailProgressReport(v)
+		return nil
+	case user.FieldEmailReminders:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEmailReminders(v)
+		return nil
 	case user.FieldRegisteredAt:
 		v, ok := value.(time.Time)
 		if !ok {
@@ -48602,7 +48832,14 @@ func (m *UserMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *UserMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(user.FieldEmail) {
+		fields = append(fields, user.FieldEmail)
+	}
+	if m.FieldCleared(user.FieldTimeZone) {
+		fields = append(fields, user.FieldTimeZone)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -48615,6 +48852,14 @@ func (m *UserMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *UserMutation) ClearField(name string) error {
+	switch name {
+	case user.FieldEmail:
+		m.ClearEmail()
+		return nil
+	case user.FieldTimeZone:
+		m.ClearTimeZone()
+		return nil
+	}
 	return fmt.Errorf("unknown User nullable field %s", name)
 }
 
@@ -48633,6 +48878,18 @@ func (m *UserMutation) ResetField(name string) error {
 		return nil
 	case user.FieldLocaleID:
 		m.ResetLocaleID()
+		return nil
+	case user.FieldEmail:
+		m.ResetEmail()
+		return nil
+	case user.FieldTimeZone:
+		m.ResetTimeZone()
+		return nil
+	case user.FieldEmailProgressReport:
+		m.ResetEmailProgressReport()
+		return nil
+	case user.FieldEmailReminders:
+		m.ResetEmailReminders()
 		return nil
 	case user.FieldRegisteredAt:
 		m.ResetRegisteredAt()

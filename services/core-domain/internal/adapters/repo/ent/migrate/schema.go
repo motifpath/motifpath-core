@@ -1535,6 +1535,10 @@ var (
 		{Name: "clerk_user_id", Type: field.TypeString, Unique: true},
 		{Name: "role", Type: field.TypeEnum, Enums: []string{"student", "teacher", "admin"}},
 		{Name: "display_name", Type: field.TypeString},
+		{Name: "email", Type: field.TypeString, Nullable: true},
+		{Name: "time_zone", Type: field.TypeString, Nullable: true},
+		{Name: "email_progress_report", Type: field.TypeBool, Default: true},
+		{Name: "email_reminders", Type: field.TypeBool, Default: true},
 		{Name: "registered_at", Type: field.TypeTime},
 		{Name: "locale_id", Type: field.TypeUUID},
 	}
@@ -1546,7 +1550,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "users_languages_locale",
-				Columns:    []*schema.Column{UsersColumns[5]},
+				Columns:    []*schema.Column{UsersColumns[9]},
 				RefColumns: []*schema.Column{LanguagesColumns[0]},
 				OnDelete:   schema.NoAction,
 			},

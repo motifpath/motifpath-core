@@ -109,14 +109,35 @@ func (f *fakeUserRepo) put(u domain.User) {
 	f.byID[u.ID] = u
 }
 
-func (f *fakeUserRepo) UpdateLocale(_ context.Context, id, locale string) error {
+func (f *fakeUserRepo) UpdatePreferences(_ context.Context, id string, update domain.ProfileUpdate) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	u, ok := f.byID[id]
 	if !ok {
 		return domain.ErrNotFound
 	}
-	u.Locale = domain.Language{Code: locale}
+	if update.Locale != nil {
+		u.Locale = domain.Language{Code: *update.Locale}
+	}
+	if update.TimeZone != nil {
+		u.TimeZone = *update.TimeZone
+	}
+	if update.EmailPreferences != nil {
+		u.EmailPreferences = update.EmailPreferences.Apply(u.EmailPreferences)
+	}
+	f.byID[id] = u
+	f.byClerkID[u.ClerkUserID] = u
+	return nil
+}
+
+func (f *fakeUserRepo) UpdateEmail(_ context.Context, id, email string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	u, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	u.Email = email
 	f.byID[id] = u
 	f.byClerkID[u.ClerkUserID] = u
 	return nil

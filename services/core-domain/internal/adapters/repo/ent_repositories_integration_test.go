@@ -102,21 +102,105 @@ func TestEntUserRepository_Create_UnknownLocaleRejected(t *testing.T) {
 	assert.Equal(t, "locale", valErr.Fields[0].Field)
 }
 
-func TestEntUserRepository_UpdateLocale(t *testing.T) {
+func TestEntUserRepository_CreateAndGet_ContactAndPreferences(t *testing.T) {
 	client := setupPostgres(t)
 	ctx := context.Background()
 	repo := NewEntUserRepository(client)
 
-	user := domain.User{ID: uuid.NewString(), ClerkUserID: "clerk-carol", Role: domain.RoleStudent, DisplayName: "Carol Test", Locale: domain.Language{Code: "en"}, RegisteredAt: fixedAt}
+	user := domain.User{
+		ID: uuid.NewString(), ClerkUserID: "clerk-erin", Role: domain.RoleStudent, DisplayName: "Erin Test",
+		Locale: domain.Language{Code: "en", Name: "English"}, Email: "erin@example.com", TimeZone: "Europe/Lisbon",
+		EmailPreferences: domain.EmailPreferences{ProgressReport: true, Reminders: false}, RegisteredAt: fixedAt,
+	}
 	require.NoError(t, repo.Create(ctx, user))
-
-	require.NoError(t, repo.UpdateLocale(ctx, user.ID, "pt_BR"))
 
 	got, err := repo.GetByID(ctx, user.ID)
 	require.NoError(t, err)
-	assert.Equal(t, domain.Language{Code: "pt_BR", Name: "Portuguese (Brazil)"}, got.Locale)
+	assert.Equal(t, user, got)
+}
 
-	err = repo.UpdateLocale(ctx, uuid.NewString(), "en")
+func TestEntUserRepository_UpdatePreferences(t *testing.T) {
+	ptr := func(s string) *string { return &s }
+	off := false
+
+	tests := []struct {
+		name   string
+		update domain.ProfileUpdate
+		want   func(domain.User) domain.User
+	}{
+		{
+			name:   "sets the locale",
+			update: domain.ProfileUpdate{Locale: ptr("pt_BR")},
+			want: func(u domain.User) domain.User {
+				u.Locale = domain.Language{Code: "pt_BR", Name: "Portuguese (Brazil)"}
+				return u
+			},
+		},
+		{
+			name:   "sets the time zone",
+			update: domain.ProfileUpdate{TimeZone: ptr("Europe/Lisbon")},
+			want:   func(u domain.User) domain.User { u.TimeZone = "Europe/Lisbon"; return u },
+		},
+		{
+			name:   "turns one email preference off and keeps the other",
+			update: domain.ProfileUpdate{EmailPreferences: &domain.EmailPreferencesUpdate{Reminders: &off}},
+			want:   func(u domain.User) domain.User { u.EmailPreferences.Reminders = false; return u },
+		},
+		{
+			name:   "sets every field in one write",
+			update: domain.ProfileUpdate{Locale: ptr("pt_BR"), TimeZone: ptr("Europe/Lisbon"), EmailPreferences: &domain.EmailPreferencesUpdate{ProgressReport: &off}},
+			want: func(u domain.User) domain.User {
+				u.Locale = domain.Language{Code: "pt_BR", Name: "Portuguese (Brazil)"}
+				u.TimeZone = "Europe/Lisbon"
+				u.EmailPreferences.ProgressReport = false
+				return u
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := setupPostgres(t)
+			ctx := context.Background()
+			repo := NewEntUserRepository(client)
+			user := domain.User{
+				ID: uuid.NewString(), ClerkUserID: "clerk-carol", Role: domain.RoleStudent, DisplayName: "Carol Test",
+				Locale: domain.Language{Code: "en", Name: "English"}, TimeZone: "America/Sao_Paulo",
+				EmailPreferences: domain.DefaultEmailPreferences(), RegisteredAt: fixedAt,
+			}
+			require.NoError(t, repo.Create(ctx, user))
+
+			require.NoError(t, repo.UpdatePreferences(ctx, user.ID, tt.update))
+
+			got, err := repo.GetByID(ctx, user.ID)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want(user), got)
+		})
+	}
+
+	t.Run("an unknown user is not found", func(t *testing.T) {
+		repo := NewEntUserRepository(setupPostgres(t))
+
+		err := repo.UpdatePreferences(context.Background(), uuid.NewString(), domain.ProfileUpdate{TimeZone: ptr("Europe/Lisbon")})
+
+		assert.ErrorIs(t, err, domain.ErrNotFound)
+	})
+}
+
+func TestEntUserRepository_UpdateEmail(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	repo := NewEntUserRepository(client)
+
+	user := domain.User{ID: uuid.NewString(), ClerkUserID: "clerk-fabi", Role: domain.RoleStudent, DisplayName: "Fabi Test", Locale: domain.Language{Code: "en"}, RegisteredAt: fixedAt}
+	require.NoError(t, repo.Create(ctx, user))
+
+	require.NoError(t, repo.UpdateEmail(ctx, user.ID, "fabi@example.com"))
+
+	got, err := repo.GetByClerkUserID(ctx, "clerk-fabi")
+	require.NoError(t, err)
+	assert.Equal(t, "fabi@example.com", got.Email)
+
+	err = repo.UpdateEmail(ctx, uuid.NewString(), "nobody@example.com")
 	assert.ErrorIs(t, err, domain.ErrNotFound)
 }
 

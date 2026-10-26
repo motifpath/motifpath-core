@@ -357,7 +357,7 @@ func (w *world) requestRefusedNotFound() error {
 		generated.DeleteExpandedContent404JSONResponse,
 		generated.ReplaceLearningPath404JSONResponse,
 		generated.DeleteLearningPath404JSONResponse,
-		generated.UpdateMyLocale404JSONResponse,
+		generated.UpdateMyProfile404JSONResponse,
 		generated.GetDiagram404JSONResponse,
 		generated.UpdateDiagram404JSONResponse,
 		generated.PublishContentNode404JSONResponse,
@@ -459,7 +459,7 @@ func (w *world) requestRefusedAuthError() error {
 		generated.ListLearningPaths401JSONResponse,
 		generated.ReplaceLearningPath401JSONResponse,
 		generated.DeleteLearningPath401JSONResponse,
-		generated.UpdateMyLocale401JSONResponse,
+		generated.UpdateMyProfile401JSONResponse,
 		generated.ListKnowledgeNodes401JSONResponse,
 		generated.CreateKnowledgeNode401JSONResponse,
 		generated.ListKnowledgeEdges401JSONResponse,
@@ -571,7 +571,9 @@ func (w *world) validationErrors() ([]struct {
 		return resp.Errors, nil
 	case generated.ReplaceLearningPath400JSONResponse:
 		return resp.Errors, nil
-	case generated.UpdateMyLocale400JSONResponse:
+	case generated.UpdateMyProfile400JSONResponse:
+		return resp.Errors, nil
+	case generated.UnsubscribeFromEmails400JSONResponse:
 		return resp.Errors, nil
 	case generated.CreateKnowledgeNode400JSONResponse:
 		return resp.Errors, nil
