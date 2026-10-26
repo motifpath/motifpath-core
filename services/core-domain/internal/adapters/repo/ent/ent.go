@@ -59,7 +59,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathitem"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/position"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/practicecatalogsignal"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/practicecontentversion"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/practicesubjectcatalog"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/progression"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/songchart"
@@ -176,7 +176,7 @@ func checkColumn(t, c string) error {
 			learningpathinstrument.Table:  learningpathinstrument.ValidColumn,
 			learningpathitem.Table:        learningpathitem.ValidColumn,
 			position.Table:                position.ValidColumn,
-			practicecatalogsignal.Table:   practicecatalogsignal.ValidColumn,
+			practicecontentversion.Table:  practicecontentversion.ValidColumn,
 			practicesubjectcatalog.Table:  practicesubjectcatalog.ValidColumn,
 			progression.Table:             progression.ValidColumn,
 			songchart.Table:               songchart.ValidColumn,

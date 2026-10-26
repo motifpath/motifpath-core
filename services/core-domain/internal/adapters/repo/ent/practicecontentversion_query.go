@@ -11,68 +11,68 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/practicecatalogsignal"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/practicecontentversion"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 )
 
-// PracticeCatalogSignalQuery is the builder for querying PracticeCatalogSignal entities.
-type PracticeCatalogSignalQuery struct {
+// PracticeContentVersionQuery is the builder for querying PracticeContentVersion entities.
+type PracticeContentVersionQuery struct {
 	config
 	ctx        *QueryContext
-	order      []practicecatalogsignal.OrderOption
+	order      []practicecontentversion.OrderOption
 	inters     []Interceptor
-	predicates []predicate.PracticeCatalogSignal
+	predicates []predicate.PracticeContentVersion
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
 }
 
-// Where adds a new predicate for the PracticeCatalogSignalQuery builder.
-func (_q *PracticeCatalogSignalQuery) Where(ps ...predicate.PracticeCatalogSignal) *PracticeCatalogSignalQuery {
+// Where adds a new predicate for the PracticeContentVersionQuery builder.
+func (_q *PracticeContentVersionQuery) Where(ps ...predicate.PracticeContentVersion) *PracticeContentVersionQuery {
 	_q.predicates = append(_q.predicates, ps...)
 	return _q
 }
 
 // Limit the number of records to be returned by this query.
-func (_q *PracticeCatalogSignalQuery) Limit(limit int) *PracticeCatalogSignalQuery {
+func (_q *PracticeContentVersionQuery) Limit(limit int) *PracticeContentVersionQuery {
 	_q.ctx.Limit = &limit
 	return _q
 }
 
 // Offset to start from.
-func (_q *PracticeCatalogSignalQuery) Offset(offset int) *PracticeCatalogSignalQuery {
+func (_q *PracticeContentVersionQuery) Offset(offset int) *PracticeContentVersionQuery {
 	_q.ctx.Offset = &offset
 	return _q
 }
 
 // Unique configures the query builder to filter duplicate records on query.
 // By default, unique is set to true, and can be disabled using this method.
-func (_q *PracticeCatalogSignalQuery) Unique(unique bool) *PracticeCatalogSignalQuery {
+func (_q *PracticeContentVersionQuery) Unique(unique bool) *PracticeContentVersionQuery {
 	_q.ctx.Unique = &unique
 	return _q
 }
 
 // Order specifies how the records should be ordered.
-func (_q *PracticeCatalogSignalQuery) Order(o ...practicecatalogsignal.OrderOption) *PracticeCatalogSignalQuery {
+func (_q *PracticeContentVersionQuery) Order(o ...practicecontentversion.OrderOption) *PracticeContentVersionQuery {
 	_q.order = append(_q.order, o...)
 	return _q
 }
 
-// First returns the first PracticeCatalogSignal entity from the query.
-// Returns a *NotFoundError when no PracticeCatalogSignal was found.
-func (_q *PracticeCatalogSignalQuery) First(ctx context.Context) (*PracticeCatalogSignal, error) {
+// First returns the first PracticeContentVersion entity from the query.
+// Returns a *NotFoundError when no PracticeContentVersion was found.
+func (_q *PracticeContentVersionQuery) First(ctx context.Context) (*PracticeContentVersion, error) {
 	nodes, err := _q.Limit(1).All(setContextOp(ctx, _q.ctx, ent.OpQueryFirst))
 	if err != nil {
 		return nil, err
 	}
 	if len(nodes) == 0 {
-		return nil, &NotFoundError{practicecatalogsignal.Label}
+		return nil, &NotFoundError{practicecontentversion.Label}
 	}
 	return nodes[0], nil
 }
 
 // FirstX is like First, but panics if an error occurs.
-func (_q *PracticeCatalogSignalQuery) FirstX(ctx context.Context) *PracticeCatalogSignal {
+func (_q *PracticeContentVersionQuery) FirstX(ctx context.Context) *PracticeContentVersion {
 	node, err := _q.First(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -80,22 +80,22 @@ func (_q *PracticeCatalogSignalQuery) FirstX(ctx context.Context) *PracticeCatal
 	return node
 }
 
-// FirstID returns the first PracticeCatalogSignal ID from the query.
-// Returns a *NotFoundError when no PracticeCatalogSignal ID was found.
-func (_q *PracticeCatalogSignalQuery) FirstID(ctx context.Context) (id int, err error) {
+// FirstID returns the first PracticeContentVersion ID from the query.
+// Returns a *NotFoundError when no PracticeContentVersion ID was found.
+func (_q *PracticeContentVersionQuery) FirstID(ctx context.Context) (id int, err error) {
 	var ids []int
 	if ids, err = _q.Limit(1).IDs(setContextOp(ctx, _q.ctx, ent.OpQueryFirstID)); err != nil {
 		return
 	}
 	if len(ids) == 0 {
-		err = &NotFoundError{practicecatalogsignal.Label}
+		err = &NotFoundError{practicecontentversion.Label}
 		return
 	}
 	return ids[0], nil
 }
 
 // FirstIDX is like FirstID, but panics if an error occurs.
-func (_q *PracticeCatalogSignalQuery) FirstIDX(ctx context.Context) int {
+func (_q *PracticeContentVersionQuery) FirstIDX(ctx context.Context) int {
 	id, err := _q.FirstID(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -103,10 +103,10 @@ func (_q *PracticeCatalogSignalQuery) FirstIDX(ctx context.Context) int {
 	return id
 }
 
-// Only returns a single PracticeCatalogSignal entity found by the query, ensuring it only returns one.
-// Returns a *NotSingularError when more than one PracticeCatalogSignal entity is found.
-// Returns a *NotFoundError when no PracticeCatalogSignal entities are found.
-func (_q *PracticeCatalogSignalQuery) Only(ctx context.Context) (*PracticeCatalogSignal, error) {
+// Only returns a single PracticeContentVersion entity found by the query, ensuring it only returns one.
+// Returns a *NotSingularError when more than one PracticeContentVersion entity is found.
+// Returns a *NotFoundError when no PracticeContentVersion entities are found.
+func (_q *PracticeContentVersionQuery) Only(ctx context.Context) (*PracticeContentVersion, error) {
 	nodes, err := _q.Limit(2).All(setContextOp(ctx, _q.ctx, ent.OpQueryOnly))
 	if err != nil {
 		return nil, err
@@ -115,14 +115,14 @@ func (_q *PracticeCatalogSignalQuery) Only(ctx context.Context) (*PracticeCatalo
 	case 1:
 		return nodes[0], nil
 	case 0:
-		return nil, &NotFoundError{practicecatalogsignal.Label}
+		return nil, &NotFoundError{practicecontentversion.Label}
 	default:
-		return nil, &NotSingularError{practicecatalogsignal.Label}
+		return nil, &NotSingularError{practicecontentversion.Label}
 	}
 }
 
 // OnlyX is like Only, but panics if an error occurs.
-func (_q *PracticeCatalogSignalQuery) OnlyX(ctx context.Context) *PracticeCatalogSignal {
+func (_q *PracticeContentVersionQuery) OnlyX(ctx context.Context) *PracticeContentVersion {
 	node, err := _q.Only(ctx)
 	if err != nil {
 		panic(err)
@@ -130,10 +130,10 @@ func (_q *PracticeCatalogSignalQuery) OnlyX(ctx context.Context) *PracticeCatalo
 	return node
 }
 
-// OnlyID is like Only, but returns the only PracticeCatalogSignal ID in the query.
-// Returns a *NotSingularError when more than one PracticeCatalogSignal ID is found.
+// OnlyID is like Only, but returns the only PracticeContentVersion ID in the query.
+// Returns a *NotSingularError when more than one PracticeContentVersion ID is found.
 // Returns a *NotFoundError when no entities are found.
-func (_q *PracticeCatalogSignalQuery) OnlyID(ctx context.Context) (id int, err error) {
+func (_q *PracticeContentVersionQuery) OnlyID(ctx context.Context) (id int, err error) {
 	var ids []int
 	if ids, err = _q.Limit(2).IDs(setContextOp(ctx, _q.ctx, ent.OpQueryOnlyID)); err != nil {
 		return
@@ -142,15 +142,15 @@ func (_q *PracticeCatalogSignalQuery) OnlyID(ctx context.Context) (id int, err e
 	case 1:
 		id = ids[0]
 	case 0:
-		err = &NotFoundError{practicecatalogsignal.Label}
+		err = &NotFoundError{practicecontentversion.Label}
 	default:
-		err = &NotSingularError{practicecatalogsignal.Label}
+		err = &NotSingularError{practicecontentversion.Label}
 	}
 	return
 }
 
 // OnlyIDX is like OnlyID, but panics if an error occurs.
-func (_q *PracticeCatalogSignalQuery) OnlyIDX(ctx context.Context) int {
+func (_q *PracticeContentVersionQuery) OnlyIDX(ctx context.Context) int {
 	id, err := _q.OnlyID(ctx)
 	if err != nil {
 		panic(err)
@@ -158,18 +158,18 @@ func (_q *PracticeCatalogSignalQuery) OnlyIDX(ctx context.Context) int {
 	return id
 }
 
-// All executes the query and returns a list of PracticeCatalogSignals.
-func (_q *PracticeCatalogSignalQuery) All(ctx context.Context) ([]*PracticeCatalogSignal, error) {
+// All executes the query and returns a list of PracticeContentVersions.
+func (_q *PracticeContentVersionQuery) All(ctx context.Context) ([]*PracticeContentVersion, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryAll)
 	if err := _q.prepareQuery(ctx); err != nil {
 		return nil, err
 	}
-	qr := querierAll[[]*PracticeCatalogSignal, *PracticeCatalogSignalQuery]()
-	return withInterceptors[[]*PracticeCatalogSignal](ctx, _q, qr, _q.inters)
+	qr := querierAll[[]*PracticeContentVersion, *PracticeContentVersionQuery]()
+	return withInterceptors[[]*PracticeContentVersion](ctx, _q, qr, _q.inters)
 }
 
 // AllX is like All, but panics if an error occurs.
-func (_q *PracticeCatalogSignalQuery) AllX(ctx context.Context) []*PracticeCatalogSignal {
+func (_q *PracticeContentVersionQuery) AllX(ctx context.Context) []*PracticeContentVersion {
 	nodes, err := _q.All(ctx)
 	if err != nil {
 		panic(err)
@@ -177,20 +177,20 @@ func (_q *PracticeCatalogSignalQuery) AllX(ctx context.Context) []*PracticeCatal
 	return nodes
 }
 
-// IDs executes the query and returns a list of PracticeCatalogSignal IDs.
-func (_q *PracticeCatalogSignalQuery) IDs(ctx context.Context) (ids []int, err error) {
+// IDs executes the query and returns a list of PracticeContentVersion IDs.
+func (_q *PracticeContentVersionQuery) IDs(ctx context.Context) (ids []int, err error) {
 	if _q.ctx.Unique == nil && _q.path != nil {
 		_q.Unique(true)
 	}
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryIDs)
-	if err = _q.Select(practicecatalogsignal.FieldID).Scan(ctx, &ids); err != nil {
+	if err = _q.Select(practicecontentversion.FieldID).Scan(ctx, &ids); err != nil {
 		return nil, err
 	}
 	return ids, nil
 }
 
 // IDsX is like IDs, but panics if an error occurs.
-func (_q *PracticeCatalogSignalQuery) IDsX(ctx context.Context) []int {
+func (_q *PracticeContentVersionQuery) IDsX(ctx context.Context) []int {
 	ids, err := _q.IDs(ctx)
 	if err != nil {
 		panic(err)
@@ -199,16 +199,16 @@ func (_q *PracticeCatalogSignalQuery) IDsX(ctx context.Context) []int {
 }
 
 // Count returns the count of the given query.
-func (_q *PracticeCatalogSignalQuery) Count(ctx context.Context) (int, error) {
+func (_q *PracticeContentVersionQuery) Count(ctx context.Context) (int, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryCount)
 	if err := _q.prepareQuery(ctx); err != nil {
 		return 0, err
 	}
-	return withInterceptors[int](ctx, _q, querierCount[*PracticeCatalogSignalQuery](), _q.inters)
+	return withInterceptors[int](ctx, _q, querierCount[*PracticeContentVersionQuery](), _q.inters)
 }
 
 // CountX is like Count, but panics if an error occurs.
-func (_q *PracticeCatalogSignalQuery) CountX(ctx context.Context) int {
+func (_q *PracticeContentVersionQuery) CountX(ctx context.Context) int {
 	count, err := _q.Count(ctx)
 	if err != nil {
 		panic(err)
@@ -217,7 +217,7 @@ func (_q *PracticeCatalogSignalQuery) CountX(ctx context.Context) int {
 }
 
 // Exist returns true if the query has elements in the graph.
-func (_q *PracticeCatalogSignalQuery) Exist(ctx context.Context) (bool, error) {
+func (_q *PracticeContentVersionQuery) Exist(ctx context.Context) (bool, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryExist)
 	switch _, err := _q.FirstID(ctx); {
 	case IsNotFound(err):
@@ -230,7 +230,7 @@ func (_q *PracticeCatalogSignalQuery) Exist(ctx context.Context) (bool, error) {
 }
 
 // ExistX is like Exist, but panics if an error occurs.
-func (_q *PracticeCatalogSignalQuery) ExistX(ctx context.Context) bool {
+func (_q *PracticeContentVersionQuery) ExistX(ctx context.Context) bool {
 	exist, err := _q.Exist(ctx)
 	if err != nil {
 		panic(err)
@@ -238,18 +238,18 @@ func (_q *PracticeCatalogSignalQuery) ExistX(ctx context.Context) bool {
 	return exist
 }
 
-// Clone returns a duplicate of the PracticeCatalogSignalQuery builder, including all associated steps. It can be
+// Clone returns a duplicate of the PracticeContentVersionQuery builder, including all associated steps. It can be
 // used to prepare common query builders and use them differently after the clone is made.
-func (_q *PracticeCatalogSignalQuery) Clone() *PracticeCatalogSignalQuery {
+func (_q *PracticeContentVersionQuery) Clone() *PracticeContentVersionQuery {
 	if _q == nil {
 		return nil
 	}
-	return &PracticeCatalogSignalQuery{
+	return &PracticeContentVersionQuery{
 		config:     _q.config,
 		ctx:        _q.ctx.Clone(),
-		order:      append([]practicecatalogsignal.OrderOption{}, _q.order...),
+		order:      append([]practicecontentversion.OrderOption{}, _q.order...),
 		inters:     append([]Interceptor{}, _q.inters...),
-		predicates: append([]predicate.PracticeCatalogSignal{}, _q.predicates...),
+		predicates: append([]predicate.PracticeContentVersion{}, _q.predicates...),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -262,19 +262,19 @@ func (_q *PracticeCatalogSignalQuery) Clone() *PracticeCatalogSignalQuery {
 // Example:
 //
 //	var v []struct {
-//		Reason string `json:"reason,omitempty"`
+//		Version int64 `json:"version,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
-//	client.PracticeCatalogSignal.Query().
-//		GroupBy(practicecatalogsignal.FieldReason).
+//	client.PracticeContentVersion.Query().
+//		GroupBy(practicecontentversion.FieldVersion).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
-func (_q *PracticeCatalogSignalQuery) GroupBy(field string, fields ...string) *PracticeCatalogSignalGroupBy {
+func (_q *PracticeContentVersionQuery) GroupBy(field string, fields ...string) *PracticeContentVersionGroupBy {
 	_q.ctx.Fields = append([]string{field}, fields...)
-	grbuild := &PracticeCatalogSignalGroupBy{build: _q}
+	grbuild := &PracticeContentVersionGroupBy{build: _q}
 	grbuild.flds = &_q.ctx.Fields
-	grbuild.label = practicecatalogsignal.Label
+	grbuild.label = practicecontentversion.Label
 	grbuild.scan = grbuild.Scan
 	return grbuild
 }
@@ -285,26 +285,26 @@ func (_q *PracticeCatalogSignalQuery) GroupBy(field string, fields ...string) *P
 // Example:
 //
 //	var v []struct {
-//		Reason string `json:"reason,omitempty"`
+//		Version int64 `json:"version,omitempty"`
 //	}
 //
-//	client.PracticeCatalogSignal.Query().
-//		Select(practicecatalogsignal.FieldReason).
+//	client.PracticeContentVersion.Query().
+//		Select(practicecontentversion.FieldVersion).
 //		Scan(ctx, &v)
-func (_q *PracticeCatalogSignalQuery) Select(fields ...string) *PracticeCatalogSignalSelect {
+func (_q *PracticeContentVersionQuery) Select(fields ...string) *PracticeContentVersionSelect {
 	_q.ctx.Fields = append(_q.ctx.Fields, fields...)
-	sbuild := &PracticeCatalogSignalSelect{PracticeCatalogSignalQuery: _q}
-	sbuild.label = practicecatalogsignal.Label
+	sbuild := &PracticeContentVersionSelect{PracticeContentVersionQuery: _q}
+	sbuild.label = practicecontentversion.Label
 	sbuild.flds, sbuild.scan = &_q.ctx.Fields, sbuild.Scan
 	return sbuild
 }
 
-// Aggregate returns a PracticeCatalogSignalSelect configured with the given aggregations.
-func (_q *PracticeCatalogSignalQuery) Aggregate(fns ...AggregateFunc) *PracticeCatalogSignalSelect {
+// Aggregate returns a PracticeContentVersionSelect configured with the given aggregations.
+func (_q *PracticeContentVersionQuery) Aggregate(fns ...AggregateFunc) *PracticeContentVersionSelect {
 	return _q.Select().Aggregate(fns...)
 }
 
-func (_q *PracticeCatalogSignalQuery) prepareQuery(ctx context.Context) error {
+func (_q *PracticeContentVersionQuery) prepareQuery(ctx context.Context) error {
 	for _, inter := range _q.inters {
 		if inter == nil {
 			return fmt.Errorf("ent: uninitialized interceptor (forgotten import ent/runtime?)")
@@ -316,7 +316,7 @@ func (_q *PracticeCatalogSignalQuery) prepareQuery(ctx context.Context) error {
 		}
 	}
 	for _, f := range _q.ctx.Fields {
-		if !practicecatalogsignal.ValidColumn(f) {
+		if !practicecontentversion.ValidColumn(f) {
 			return &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
 		}
 	}
@@ -330,16 +330,16 @@ func (_q *PracticeCatalogSignalQuery) prepareQuery(ctx context.Context) error {
 	return nil
 }
 
-func (_q *PracticeCatalogSignalQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*PracticeCatalogSignal, error) {
+func (_q *PracticeContentVersionQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*PracticeContentVersion, error) {
 	var (
-		nodes = []*PracticeCatalogSignal{}
+		nodes = []*PracticeContentVersion{}
 		_spec = _q.querySpec()
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
-		return (*PracticeCatalogSignal).scanValues(nil, columns)
+		return (*PracticeContentVersion).scanValues(nil, columns)
 	}
 	_spec.Assign = func(columns []string, values []any) error {
-		node := &PracticeCatalogSignal{config: _q.config}
+		node := &PracticeContentVersion{config: _q.config}
 		nodes = append(nodes, node)
 		return node.assignValues(columns, values)
 	}
@@ -355,7 +355,7 @@ func (_q *PracticeCatalogSignalQuery) sqlAll(ctx context.Context, hooks ...query
 	return nodes, nil
 }
 
-func (_q *PracticeCatalogSignalQuery) sqlCount(ctx context.Context) (int, error) {
+func (_q *PracticeContentVersionQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := _q.querySpec()
 	_spec.Node.Columns = _q.ctx.Fields
 	if len(_q.ctx.Fields) > 0 {
@@ -364,8 +364,8 @@ func (_q *PracticeCatalogSignalQuery) sqlCount(ctx context.Context) (int, error)
 	return sqlgraph.CountNodes(ctx, _q.driver, _spec)
 }
 
-func (_q *PracticeCatalogSignalQuery) querySpec() *sqlgraph.QuerySpec {
-	_spec := sqlgraph.NewQuerySpec(practicecatalogsignal.Table, practicecatalogsignal.Columns, sqlgraph.NewFieldSpec(practicecatalogsignal.FieldID, field.TypeInt))
+func (_q *PracticeContentVersionQuery) querySpec() *sqlgraph.QuerySpec {
+	_spec := sqlgraph.NewQuerySpec(practicecontentversion.Table, practicecontentversion.Columns, sqlgraph.NewFieldSpec(practicecontentversion.FieldID, field.TypeInt))
 	_spec.From = _q.sql
 	if unique := _q.ctx.Unique; unique != nil {
 		_spec.Unique = *unique
@@ -374,9 +374,9 @@ func (_q *PracticeCatalogSignalQuery) querySpec() *sqlgraph.QuerySpec {
 	}
 	if fields := _q.ctx.Fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
-		_spec.Node.Columns = append(_spec.Node.Columns, practicecatalogsignal.FieldID)
+		_spec.Node.Columns = append(_spec.Node.Columns, practicecontentversion.FieldID)
 		for i := range fields {
-			if fields[i] != practicecatalogsignal.FieldID {
+			if fields[i] != practicecontentversion.FieldID {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
 		}
@@ -404,12 +404,12 @@ func (_q *PracticeCatalogSignalQuery) querySpec() *sqlgraph.QuerySpec {
 	return _spec
 }
 
-func (_q *PracticeCatalogSignalQuery) sqlQuery(ctx context.Context) *sql.Selector {
+func (_q *PracticeContentVersionQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	builder := sql.Dialect(_q.driver.Dialect())
-	t1 := builder.Table(practicecatalogsignal.Table)
+	t1 := builder.Table(practicecontentversion.Table)
 	columns := _q.ctx.Fields
 	if len(columns) == 0 {
-		columns = practicecatalogsignal.Columns
+		columns = practicecontentversion.Columns
 	}
 	selector := builder.Select(t1.Columns(columns...)...).From(t1)
 	if _q.sql != nil {
@@ -436,28 +436,28 @@ func (_q *PracticeCatalogSignalQuery) sqlQuery(ctx context.Context) *sql.Selecto
 	return selector
 }
 
-// PracticeCatalogSignalGroupBy is the group-by builder for PracticeCatalogSignal entities.
-type PracticeCatalogSignalGroupBy struct {
+// PracticeContentVersionGroupBy is the group-by builder for PracticeContentVersion entities.
+type PracticeContentVersionGroupBy struct {
 	selector
-	build *PracticeCatalogSignalQuery
+	build *PracticeContentVersionQuery
 }
 
 // Aggregate adds the given aggregation functions to the group-by query.
-func (_g *PracticeCatalogSignalGroupBy) Aggregate(fns ...AggregateFunc) *PracticeCatalogSignalGroupBy {
+func (_g *PracticeContentVersionGroupBy) Aggregate(fns ...AggregateFunc) *PracticeContentVersionGroupBy {
 	_g.fns = append(_g.fns, fns...)
 	return _g
 }
 
 // Scan applies the selector query and scans the result into the given value.
-func (_g *PracticeCatalogSignalGroupBy) Scan(ctx context.Context, v any) error {
+func (_g *PracticeContentVersionGroupBy) Scan(ctx context.Context, v any) error {
 	ctx = setContextOp(ctx, _g.build.ctx, ent.OpQueryGroupBy)
 	if err := _g.build.prepareQuery(ctx); err != nil {
 		return err
 	}
-	return scanWithInterceptors[*PracticeCatalogSignalQuery, *PracticeCatalogSignalGroupBy](ctx, _g.build, _g, _g.build.inters, v)
+	return scanWithInterceptors[*PracticeContentVersionQuery, *PracticeContentVersionGroupBy](ctx, _g.build, _g, _g.build.inters, v)
 }
 
-func (_g *PracticeCatalogSignalGroupBy) sqlScan(ctx context.Context, root *PracticeCatalogSignalQuery, v any) error {
+func (_g *PracticeContentVersionGroupBy) sqlScan(ctx context.Context, root *PracticeContentVersionQuery, v any) error {
 	selector := root.sqlQuery(ctx).Select()
 	aggregation := make([]string, 0, len(_g.fns))
 	for _, fn := range _g.fns {
@@ -484,28 +484,28 @@ func (_g *PracticeCatalogSignalGroupBy) sqlScan(ctx context.Context, root *Pract
 	return sql.ScanSlice(rows, v)
 }
 
-// PracticeCatalogSignalSelect is the builder for selecting fields of PracticeCatalogSignal entities.
-type PracticeCatalogSignalSelect struct {
-	*PracticeCatalogSignalQuery
+// PracticeContentVersionSelect is the builder for selecting fields of PracticeContentVersion entities.
+type PracticeContentVersionSelect struct {
+	*PracticeContentVersionQuery
 	selector
 }
 
 // Aggregate adds the given aggregation functions to the selector query.
-func (_s *PracticeCatalogSignalSelect) Aggregate(fns ...AggregateFunc) *PracticeCatalogSignalSelect {
+func (_s *PracticeContentVersionSelect) Aggregate(fns ...AggregateFunc) *PracticeContentVersionSelect {
 	_s.fns = append(_s.fns, fns...)
 	return _s
 }
 
 // Scan applies the selector query and scans the result into the given value.
-func (_s *PracticeCatalogSignalSelect) Scan(ctx context.Context, v any) error {
+func (_s *PracticeContentVersionSelect) Scan(ctx context.Context, v any) error {
 	ctx = setContextOp(ctx, _s.ctx, ent.OpQuerySelect)
 	if err := _s.prepareQuery(ctx); err != nil {
 		return err
 	}
-	return scanWithInterceptors[*PracticeCatalogSignalQuery, *PracticeCatalogSignalSelect](ctx, _s.PracticeCatalogSignalQuery, _s, _s.inters, v)
+	return scanWithInterceptors[*PracticeContentVersionQuery, *PracticeContentVersionSelect](ctx, _s.PracticeContentVersionQuery, _s, _s.inters, v)
 }
 
-func (_s *PracticeCatalogSignalSelect) sqlScan(ctx context.Context, root *PracticeCatalogSignalQuery, v any) error {
+func (_s *PracticeContentVersionSelect) sqlScan(ctx context.Context, root *PracticeContentVersionQuery, v any) error {
 	selector := root.sqlQuery(ctx)
 	aggregation := make([]string, 0, len(_s.fns))
 	for _, fn := range _s.fns {

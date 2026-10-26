@@ -108,8 +108,8 @@ type Tx struct {
 	LearningPathItem *LearningPathItemClient
 	// Position is the client for interacting with the Position builders.
 	Position *PositionClient
-	// PracticeCatalogSignal is the client for interacting with the PracticeCatalogSignal builders.
-	PracticeCatalogSignal *PracticeCatalogSignalClient
+	// PracticeContentVersion is the client for interacting with the PracticeContentVersion builders.
+	PracticeContentVersion *PracticeContentVersionClient
 	// PracticeSubjectCatalog is the client for interacting with the PracticeSubjectCatalog builders.
 	PracticeSubjectCatalog *PracticeSubjectCatalogClient
 	// Progression is the client for interacting with the Progression builders.
@@ -306,7 +306,7 @@ func (tx *Tx) init() {
 	tx.LearningPathInstrument = NewLearningPathInstrumentClient(tx.config)
 	tx.LearningPathItem = NewLearningPathItemClient(tx.config)
 	tx.Position = NewPositionClient(tx.config)
-	tx.PracticeCatalogSignal = NewPracticeCatalogSignalClient(tx.config)
+	tx.PracticeContentVersion = NewPracticeContentVersionClient(tx.config)
 	tx.PracticeSubjectCatalog = NewPracticeSubjectCatalogClient(tx.config)
 	tx.Progression = NewProgressionClient(tx.config)
 	tx.SongChart = NewSongChartClient(tx.config)

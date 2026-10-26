@@ -27,6 +27,12 @@ func (_c *PracticeSubjectCatalogCreate) SetScope(v string) *PracticeSubjectCatal
 	return _c
 }
 
+// SetContentVersion sets the "content_version" field.
+func (_c *PracticeSubjectCatalogCreate) SetContentVersion(v int64) *PracticeSubjectCatalogCreate {
+	_c.mutation.SetContentVersion(v)
+	return _c
+}
+
 // SetFormatVersion sets the "format_version" field.
 func (_c *PracticeSubjectCatalogCreate) SetFormatVersion(v int) *PracticeSubjectCatalogCreate {
 	_c.mutation.SetFormatVersion(v)
@@ -82,6 +88,9 @@ func (_c *PracticeSubjectCatalogCreate) check() error {
 	if _, ok := _c.mutation.Scope(); !ok {
 		return &ValidationError{Name: "scope", err: errors.New(`ent: missing required field "PracticeSubjectCatalog.scope"`)}
 	}
+	if _, ok := _c.mutation.ContentVersion(); !ok {
+		return &ValidationError{Name: "content_version", err: errors.New(`ent: missing required field "PracticeSubjectCatalog.content_version"`)}
+	}
 	if _, ok := _c.mutation.FormatVersion(); !ok {
 		return &ValidationError{Name: "format_version", err: errors.New(`ent: missing required field "PracticeSubjectCatalog.format_version"`)}
 	}
@@ -120,6 +129,10 @@ func (_c *PracticeSubjectCatalogCreate) createSpec() (*PracticeSubjectCatalog, *
 	if value, ok := _c.mutation.Scope(); ok {
 		_spec.SetField(practicesubjectcatalog.FieldScope, field.TypeString, value)
 		_node.Scope = value
+	}
+	if value, ok := _c.mutation.ContentVersion(); ok {
+		_spec.SetField(practicesubjectcatalog.FieldContentVersion, field.TypeInt64, value)
+		_node.ContentVersion = value
 	}
 	if value, ok := _c.mutation.FormatVersion(); ok {
 		_spec.SetField(practicesubjectcatalog.FieldFormatVersion, field.TypeInt, value)

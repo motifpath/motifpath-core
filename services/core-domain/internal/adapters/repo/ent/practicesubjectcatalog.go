@@ -21,6 +21,8 @@ type PracticeSubjectCatalog struct {
 	ID int `json:"id,omitempty"`
 	// Scope holds the value of the "scope" field.
 	Scope string `json:"scope,omitempty"`
+	// ContentVersion holds the value of the "content_version" field.
+	ContentVersion int64 `json:"content_version,omitempty"`
 	// FormatVersion holds the value of the "format_version" field.
 	FormatVersion int `json:"format_version,omitempty"`
 	// BuiltAt holds the value of the "built_at" field.
@@ -37,7 +39,7 @@ func (*PracticeSubjectCatalog) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case practicesubjectcatalog.FieldItems:
 			values[i] = new([]byte)
-		case practicesubjectcatalog.FieldID, practicesubjectcatalog.FieldFormatVersion:
+		case practicesubjectcatalog.FieldID, practicesubjectcatalog.FieldContentVersion, practicesubjectcatalog.FieldFormatVersion:
 			values[i] = new(sql.NullInt64)
 		case practicesubjectcatalog.FieldScope:
 			values[i] = new(sql.NullString)
@@ -69,6 +71,12 @@ func (_m *PracticeSubjectCatalog) assignValues(columns []string, values []any) e
 				return fmt.Errorf("unexpected type %T for field scope", values[i])
 			} else if value.Valid {
 				_m.Scope = value.String
+			}
+		case practicesubjectcatalog.FieldContentVersion:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field content_version", values[i])
+			} else if value.Valid {
+				_m.ContentVersion = value.Int64
 			}
 		case practicesubjectcatalog.FieldFormatVersion:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -128,6 +136,9 @@ func (_m *PracticeSubjectCatalog) String() string {
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("scope=")
 	builder.WriteString(_m.Scope)
+	builder.WriteString(", ")
+	builder.WriteString("content_version=")
+	builder.WriteString(fmt.Sprintf("%v", _m.ContentVersion))
 	builder.WriteString(", ")
 	builder.WriteString("format_version=")
 	builder.WriteString(fmt.Sprintf("%v", _m.FormatVersion))

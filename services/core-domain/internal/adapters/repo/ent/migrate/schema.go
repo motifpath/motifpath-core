@@ -1335,22 +1335,22 @@ var (
 			},
 		},
 	}
-	// PracticeCatalogSignalsColumns holds the columns for the "practice_catalog_signals" table.
-	PracticeCatalogSignalsColumns = []*schema.Column{
+	// PracticeContentVersionsColumns holds the columns for the "practice_content_versions" table.
+	PracticeContentVersionsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "reason", Type: field.TypeString},
-		{Name: "created_at", Type: field.TypeTime},
+		{Name: "version", Type: field.TypeInt64},
 	}
-	// PracticeCatalogSignalsTable holds the schema information for the "practice_catalog_signals" table.
-	PracticeCatalogSignalsTable = &schema.Table{
-		Name:       "practice_catalog_signals",
-		Columns:    PracticeCatalogSignalsColumns,
-		PrimaryKey: []*schema.Column{PracticeCatalogSignalsColumns[0]},
+	// PracticeContentVersionsTable holds the schema information for the "practice_content_versions" table.
+	PracticeContentVersionsTable = &schema.Table{
+		Name:       "practice_content_versions",
+		Columns:    PracticeContentVersionsColumns,
+		PrimaryKey: []*schema.Column{PracticeContentVersionsColumns[0]},
 	}
 	// PracticeSubjectCatalogsColumns holds the columns for the "practice_subject_catalogs" table.
 	PracticeSubjectCatalogsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "scope", Type: field.TypeString, Unique: true},
+		{Name: "content_version", Type: field.TypeInt64},
 		{Name: "format_version", Type: field.TypeInt},
 		{Name: "built_at", Type: field.TypeTime},
 		{Name: "items", Type: field.TypeJSON},
@@ -1615,7 +1615,7 @@ var (
 		LearningPathInstrumentsTable,
 		LearningPathItemsTable,
 		PositionsTable,
-		PracticeCatalogSignalsTable,
+		PracticeContentVersionsTable,
 		PracticeSubjectCatalogsTable,
 		ProgressionsTable,
 		SongChartsTable,

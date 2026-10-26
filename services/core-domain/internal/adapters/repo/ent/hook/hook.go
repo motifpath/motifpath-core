@@ -573,16 +573,16 @@ func (f PositionFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, er
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PositionMutation", m)
 }
 
-// The PracticeCatalogSignalFunc type is an adapter to allow the use of ordinary
-// function as PracticeCatalogSignal mutator.
-type PracticeCatalogSignalFunc func(context.Context, *ent.PracticeCatalogSignalMutation) (ent.Value, error)
+// The PracticeContentVersionFunc type is an adapter to allow the use of ordinary
+// function as PracticeContentVersion mutator.
+type PracticeContentVersionFunc func(context.Context, *ent.PracticeContentVersionMutation) (ent.Value, error)
 
 // Mutate calls f(ctx, m).
-func (f PracticeCatalogSignalFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.PracticeCatalogSignalMutation); ok {
+func (f PracticeContentVersionFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.PracticeContentVersionMutation); ok {
 		return f(ctx, mv)
 	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PracticeCatalogSignalMutation", m)
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PracticeContentVersionMutation", m)
 }
 
 // The PracticeSubjectCatalogFunc type is an adapter to allow the use of ordinary

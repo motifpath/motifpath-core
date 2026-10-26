@@ -44,6 +44,27 @@ func (_u *PracticeSubjectCatalogUpdate) SetNillableScope(v *string) *PracticeSub
 	return _u
 }
 
+// SetContentVersion sets the "content_version" field.
+func (_u *PracticeSubjectCatalogUpdate) SetContentVersion(v int64) *PracticeSubjectCatalogUpdate {
+	_u.mutation.ResetContentVersion()
+	_u.mutation.SetContentVersion(v)
+	return _u
+}
+
+// SetNillableContentVersion sets the "content_version" field if the given value is not nil.
+func (_u *PracticeSubjectCatalogUpdate) SetNillableContentVersion(v *int64) *PracticeSubjectCatalogUpdate {
+	if v != nil {
+		_u.SetContentVersion(*v)
+	}
+	return _u
+}
+
+// AddContentVersion adds value to the "content_version" field.
+func (_u *PracticeSubjectCatalogUpdate) AddContentVersion(v int64) *PracticeSubjectCatalogUpdate {
+	_u.mutation.AddContentVersion(v)
+	return _u
+}
+
 // SetFormatVersion sets the "format_version" field.
 func (_u *PracticeSubjectCatalogUpdate) SetFormatVersion(v int) *PracticeSubjectCatalogUpdate {
 	_u.mutation.ResetFormatVersion()
@@ -135,6 +156,12 @@ func (_u *PracticeSubjectCatalogUpdate) sqlSave(ctx context.Context) (_node int,
 	if value, ok := _u.mutation.Scope(); ok {
 		_spec.SetField(practicesubjectcatalog.FieldScope, field.TypeString, value)
 	}
+	if value, ok := _u.mutation.ContentVersion(); ok {
+		_spec.SetField(practicesubjectcatalog.FieldContentVersion, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedContentVersion(); ok {
+		_spec.AddField(practicesubjectcatalog.FieldContentVersion, field.TypeInt64, value)
+	}
 	if value, ok := _u.mutation.FormatVersion(); ok {
 		_spec.SetField(practicesubjectcatalog.FieldFormatVersion, field.TypeInt, value)
 	}
@@ -183,6 +210,27 @@ func (_u *PracticeSubjectCatalogUpdateOne) SetNillableScope(v *string) *Practice
 	if v != nil {
 		_u.SetScope(*v)
 	}
+	return _u
+}
+
+// SetContentVersion sets the "content_version" field.
+func (_u *PracticeSubjectCatalogUpdateOne) SetContentVersion(v int64) *PracticeSubjectCatalogUpdateOne {
+	_u.mutation.ResetContentVersion()
+	_u.mutation.SetContentVersion(v)
+	return _u
+}
+
+// SetNillableContentVersion sets the "content_version" field if the given value is not nil.
+func (_u *PracticeSubjectCatalogUpdateOne) SetNillableContentVersion(v *int64) *PracticeSubjectCatalogUpdateOne {
+	if v != nil {
+		_u.SetContentVersion(*v)
+	}
+	return _u
+}
+
+// AddContentVersion adds value to the "content_version" field.
+func (_u *PracticeSubjectCatalogUpdateOne) AddContentVersion(v int64) *PracticeSubjectCatalogUpdateOne {
+	_u.mutation.AddContentVersion(v)
 	return _u
 }
 
@@ -306,6 +354,12 @@ func (_u *PracticeSubjectCatalogUpdateOne) sqlSave(ctx context.Context) (_node *
 	}
 	if value, ok := _u.mutation.Scope(); ok {
 		_spec.SetField(practicesubjectcatalog.FieldScope, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.ContentVersion(); ok {
+		_spec.SetField(practicesubjectcatalog.FieldContentVersion, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedContentVersion(); ok {
+		_spec.AddField(practicesubjectcatalog.FieldContentVersion, field.TypeInt64, value)
 	}
 	if value, ok := _u.mutation.FormatVersion(); ok {
 		_spec.SetField(practicesubjectcatalog.FieldFormatVersion, field.TypeInt, value)

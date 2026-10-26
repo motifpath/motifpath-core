@@ -13,6 +13,8 @@ const (
 	FieldID = "id"
 	// FieldScope holds the string denoting the scope field in the database.
 	FieldScope = "scope"
+	// FieldContentVersion holds the string denoting the content_version field in the database.
+	FieldContentVersion = "content_version"
 	// FieldFormatVersion holds the string denoting the format_version field in the database.
 	FieldFormatVersion = "format_version"
 	// FieldBuiltAt holds the string denoting the built_at field in the database.
@@ -27,6 +29,7 @@ const (
 var Columns = []string{
 	FieldID,
 	FieldScope,
+	FieldContentVersion,
 	FieldFormatVersion,
 	FieldBuiltAt,
 	FieldItems,
@@ -53,6 +56,11 @@ func ByID(opts ...sql.OrderTermOption) OrderOption {
 // ByScope orders the results by the scope field.
 func ByScope(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldScope, opts...).ToFunc()
+}
+
+// ByContentVersion orders the results by the content_version field.
+func ByContentVersion(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldContentVersion, opts...).ToFunc()
 }
 
 // ByFormatVersion orders the results by the format_version field.

@@ -59,6 +59,11 @@ func Scope(v string) predicate.PracticeSubjectCatalog {
 	return predicate.PracticeSubjectCatalog(sql.FieldEQ(FieldScope, v))
 }
 
+// ContentVersion applies equality check predicate on the "content_version" field. It's identical to ContentVersionEQ.
+func ContentVersion(v int64) predicate.PracticeSubjectCatalog {
+	return predicate.PracticeSubjectCatalog(sql.FieldEQ(FieldContentVersion, v))
+}
+
 // FormatVersion applies equality check predicate on the "format_version" field. It's identical to FormatVersionEQ.
 func FormatVersion(v int) predicate.PracticeSubjectCatalog {
 	return predicate.PracticeSubjectCatalog(sql.FieldEQ(FieldFormatVersion, v))
@@ -132,6 +137,46 @@ func ScopeEqualFold(v string) predicate.PracticeSubjectCatalog {
 // ScopeContainsFold applies the ContainsFold predicate on the "scope" field.
 func ScopeContainsFold(v string) predicate.PracticeSubjectCatalog {
 	return predicate.PracticeSubjectCatalog(sql.FieldContainsFold(FieldScope, v))
+}
+
+// ContentVersionEQ applies the EQ predicate on the "content_version" field.
+func ContentVersionEQ(v int64) predicate.PracticeSubjectCatalog {
+	return predicate.PracticeSubjectCatalog(sql.FieldEQ(FieldContentVersion, v))
+}
+
+// ContentVersionNEQ applies the NEQ predicate on the "content_version" field.
+func ContentVersionNEQ(v int64) predicate.PracticeSubjectCatalog {
+	return predicate.PracticeSubjectCatalog(sql.FieldNEQ(FieldContentVersion, v))
+}
+
+// ContentVersionIn applies the In predicate on the "content_version" field.
+func ContentVersionIn(vs ...int64) predicate.PracticeSubjectCatalog {
+	return predicate.PracticeSubjectCatalog(sql.FieldIn(FieldContentVersion, vs...))
+}
+
+// ContentVersionNotIn applies the NotIn predicate on the "content_version" field.
+func ContentVersionNotIn(vs ...int64) predicate.PracticeSubjectCatalog {
+	return predicate.PracticeSubjectCatalog(sql.FieldNotIn(FieldContentVersion, vs...))
+}
+
+// ContentVersionGT applies the GT predicate on the "content_version" field.
+func ContentVersionGT(v int64) predicate.PracticeSubjectCatalog {
+	return predicate.PracticeSubjectCatalog(sql.FieldGT(FieldContentVersion, v))
+}
+
+// ContentVersionGTE applies the GTE predicate on the "content_version" field.
+func ContentVersionGTE(v int64) predicate.PracticeSubjectCatalog {
+	return predicate.PracticeSubjectCatalog(sql.FieldGTE(FieldContentVersion, v))
+}
+
+// ContentVersionLT applies the LT predicate on the "content_version" field.
+func ContentVersionLT(v int64) predicate.PracticeSubjectCatalog {
+	return predicate.PracticeSubjectCatalog(sql.FieldLT(FieldContentVersion, v))
+}
+
+// ContentVersionLTE applies the LTE predicate on the "content_version" field.
+func ContentVersionLTE(v int64) predicate.PracticeSubjectCatalog {
+	return predicate.PracticeSubjectCatalog(sql.FieldLTE(FieldContentVersion, v))
 }
 
 // FormatVersionEQ applies the EQ predicate on the "format_version" field.
