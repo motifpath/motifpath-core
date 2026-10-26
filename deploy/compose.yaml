@@ -84,6 +84,7 @@ services:
       MEDIA_S3_BUCKET: ${MEDIA_S3_BUCKET:?}
       MEDIA_S3_REGION: ${AWS_REGION:?}
       MEDIA_PUBLIC_BASE_URL: ${MEDIA_PUBLIC_BASE_URL:?}
+      EMAIL_UNSUBSCRIBE_SECRET: ${EMAIL_UNSUBSCRIBE_SECRET:?}
     ports:
       - 127.0.0.1:${CORE_DOMAIN_HOST_PORT:?}:8080
     # Migrations run before the service listens, so a long one on a cold

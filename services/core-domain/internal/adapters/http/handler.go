@@ -69,6 +69,7 @@ type Handler struct {
 	appConfig          *application.AppConfigService
 	startingPoints     *application.StartingPointsService
 	alphaObservation   *application.AlphaObservationService
+	emailPreferences   *application.EmailPreferencesService
 
 	// pingers back the readiness probe only; the health probes never touch
 	// the application services above.
@@ -102,6 +103,7 @@ func NewHandler(
 	appConfig *application.AppConfigService,
 	startingPoints *application.StartingPointsService,
 	alphaObservation *application.AlphaObservationService,
+	emailPreferences *application.EmailPreferencesService,
 	learningGraphPinger ports.Pinger,
 	completionStatePinger ports.Pinger,
 ) *Handler {
@@ -129,6 +131,7 @@ func NewHandler(
 		appConfig:             appConfig,
 		startingPoints:        startingPoints,
 		alphaObservation:      alphaObservation,
+		emailPreferences:      emailPreferences,
 		learningGraphPinger:   learningGraphPinger,
 		completionStatePinger: completionStatePinger,
 	}
@@ -148,7 +151,7 @@ func (h *Handler) resolveCaller(ctx context.Context) (domain.User, bool) {
 	if !ok {
 		return domain.User{}, false
 	}
-	user, err := h.identity.ResolveCaller(ctx, clerkUserID, NameClaimFromContext(ctx))
+	user, err := h.identity.ResolveCaller(ctx, clerkUserID, IdentityClaimsFromContext(ctx))
 	if err != nil {
 		return domain.User{}, false
 	}
@@ -162,7 +165,7 @@ func (h *Handler) RegisterUser(ctx context.Context, request generated.RegisterUs
 	}
 
 	acceptLanguageCandidate := AcceptLanguageCandidateFromContext(ctx)
-	user, err := h.identity.RegisterUser(ctx, clerkUserID, domain.Role(request.Body.Role), acceptLanguageCandidate, NameClaimFromContext(ctx))
+	user, err := h.identity.RegisterUser(ctx, clerkUserID, domain.Role(request.Body.Role), acceptLanguageCandidate, IdentityClaimsFromContext(ctx))
 	if err != nil {
 		kind, valErr := classify(err)
 		switch {
@@ -184,7 +187,7 @@ func (h *Handler) GetMyProfile(ctx context.Context, _ generated.GetMyProfileRequ
 		return generated.GetMyProfile401JSONResponse(unauthorizedError()), nil
 	}
 
-	user, err := h.identity.ResolveCaller(ctx, clerkUserID, NameClaimFromContext(ctx))
+	user, err := h.identity.ResolveCaller(ctx, clerkUserID, IdentityClaimsFromContext(ctx))
 	if err != nil {
 		if kind, _ := classify(err); kind == errKindNotFound {
 			return generated.GetMyProfile404JSONResponse(notFoundError("no user record exists for this Clerk identity")), nil
@@ -195,26 +198,40 @@ func (h *Handler) GetMyProfile(ctx context.Context, _ generated.GetMyProfileRequ
 	return generated.GetMyProfile200JSONResponse(toUserProfile(user)), nil
 }
 
-func (h *Handler) UpdateMyLocale(ctx context.Context, request generated.UpdateMyLocaleRequestObject) (generated.UpdateMyLocaleResponseObject, error) {
+func (h *Handler) UpdateMyProfile(ctx context.Context, request generated.UpdateMyProfileRequestObject) (generated.UpdateMyProfileResponseObject, error) {
 	clerkUserID, ok := ClerkUserIDFromContext(ctx)
 	if !ok {
-		return generated.UpdateMyLocale401JSONResponse(unauthorizedError()), nil
+		return generated.UpdateMyProfile401JSONResponse(unauthorizedError()), nil
 	}
 
-	user, err := h.identity.UpdateLocale(ctx, clerkUserID, request.Body.Locale)
+	user, err := h.identity.UpdateProfile(ctx, clerkUserID, toDomainProfileUpdate(request.Body))
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
 		case errKindValidation:
-			return generated.UpdateMyLocale400JSONResponse(validationErrorResponse(valErr)), nil
+			return generated.UpdateMyProfile400JSONResponse(validationErrorResponse(valErr)), nil
 		case errKindNotFound:
-			return generated.UpdateMyLocale404JSONResponse(notFoundError("no user record exists for this Clerk identity")), nil
+			return generated.UpdateMyProfile404JSONResponse(notFoundError("no user record exists for this Clerk identity")), nil
 		case errKindForbidden, errKindOther:
 			return nil, err
 		}
 	}
 
-	return generated.UpdateMyLocale200JSONResponse(toUserProfile(user)), nil
+	return generated.UpdateMyProfile200JSONResponse(toUserProfile(user)), nil
+}
+
+// UnsubscribeFromEmails takes no Bearer token: the unsubscribe token in the
+// query is the whole authorization. Its body, from a mail client's one-click
+// unsubscribe or from the web page, carries nothing the request needs.
+func (h *Handler) UnsubscribeFromEmails(ctx context.Context, request generated.UnsubscribeFromEmailsRequestObject) (generated.UnsubscribeFromEmailsResponseObject, error) {
+	kind, err := h.emailPreferences.Unsubscribe(ctx, request.Params.Token)
+	if err != nil {
+		if errKind, valErr := classify(err); errKind == errKindValidation {
+			return generated.UnsubscribeFromEmails400JSONResponse(validationErrorResponse(valErr)), nil
+		}
+		return nil, err
+	}
+	return generated.UnsubscribeFromEmails200JSONResponse{Kind: generated.EmailUnsubscribeResultKind(kind)}, nil
 }
 
 func (h *Handler) CreateContentNode(ctx context.Context, request generated.CreateContentNodeRequestObject) (generated.CreateContentNodeResponseObject, error) {

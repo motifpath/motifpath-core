@@ -333,14 +333,14 @@ const seedTeacherClerkUserID = "seed_dev_teacher"
 // the first run and reusing it on every later one, so what it authors
 // always points at a real, named user.
 func seedTeacher(ctx context.Context, identity *application.IdentityService) (domain.User, error) {
-	teacher, err := identity.ResolveCaller(ctx, seedTeacherClerkUserID, "")
+	teacher, err := identity.ResolveCaller(ctx, seedTeacherClerkUserID, domain.IdentityClaims{})
 	if err == nil {
 		return teacher, nil
 	}
 	if !errors.Is(err, domain.ErrNotFound) {
 		return domain.User{}, fmt.Errorf("look up seed teacher: %w", err)
 	}
-	teacher, err = identity.RegisterUser(ctx, seedTeacherClerkUserID, domain.RoleTeacher, "en", "Tomás Ribeiro")
+	teacher, err = identity.RegisterUser(ctx, seedTeacherClerkUserID, domain.RoleTeacher, "en", domain.IdentityClaims{Name: "Tomás Ribeiro", Email: "tomas.ribeiro@example.com"})
 	if err != nil {
 		return domain.User{}, fmt.Errorf("register seed teacher: %w", err)
 	}

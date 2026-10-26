@@ -45,12 +45,47 @@ func toGeneratedLanguages(languages []domain.Language) []generated.Language {
 
 func toUserProfile(u domain.User) generated.UserProfile {
 	return generated.UserProfile{
-		UserId:       mustUUID(u.ID),
-		Role:         generated.UserProfileRole(u.Role),
-		DisplayName:  u.DisplayName,
-		Locale:       toGeneratedLanguage(u.Locale),
+		UserId:      mustUUID(u.ID),
+		Role:        generated.UserProfileRole(u.Role),
+		DisplayName: u.DisplayName,
+		Locale:      toGeneratedLanguage(u.Locale),
+		Email:       emailOrNil(u.Email),
+		TimeZone:    stringOrNil(u.TimeZone),
+		EmailPreferences: generated.EmailPreferences{
+			ProgressReport: u.EmailPreferences.ProgressReport,
+			Reminders:      u.EmailPreferences.Reminders,
+		},
 		RegisteredAt: u.RegisteredAt,
 	}
+}
+
+func emailOrNil(email string) *openapi_types.Email {
+	if email == "" {
+		return nil
+	}
+	value := openapi_types.Email(email)
+	return &value
+}
+
+func stringOrNil(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
+func toDomainProfileUpdate(body *generated.UpdateMyProfileRequest) domain.ProfileUpdate {
+	if body == nil {
+		return domain.ProfileUpdate{}
+	}
+	update := domain.ProfileUpdate{Locale: body.Locale, TimeZone: body.TimeZone}
+	if body.EmailPreferences != nil {
+		update.EmailPreferences = &domain.EmailPreferencesUpdate{
+			ProgressReport: body.EmailPreferences.ProgressReport,
+			Reminders:      body.EmailPreferences.Reminders,
+		}
+	}
+	return update
 }
 
 func toGeneratedKnowledgeNode(n domain.KnowledgeNode) generated.KnowledgeNode {

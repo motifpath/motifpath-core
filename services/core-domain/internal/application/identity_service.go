@@ -40,19 +40,41 @@ func NewIdentityService(users ports.UserRepository, languages ports.LanguageRepo
 // locale when it names a known, non-"any" Language; falls back to
 // defaultLocale otherwise. Returns domain.ErrAlreadyExists if a user record
 // already exists for that Clerk identity — registration is callable once per
-// identity. claimedName is the name carried by the caller's identity token,
-// never a client-supplied value; a blank one is rejected on field "name".
-func (s *IdentityService) RegisterUser(ctx context.Context, clerkUserID string, role domain.Role, acceptLanguageCandidate, claimedName string) (domain.User, error) {
+// identity. claims are what the caller's identity token carries, never
+// client-supplied values: a blank name is rejected on field "name", and an
+// email that isn't a valid address on field "email", so every new user can
+// be shown by name and reached by email.
+func (s *IdentityService) RegisterUser(ctx context.Context, clerkUserID string, role domain.Role, acceptLanguageCandidate string, claims domain.IdentityClaims) (domain.User, error) {
 	locale := s.resolveRegistrationLocale(ctx, acceptLanguageCandidate)
 
-	user, err := domain.NewUser(s.newID(), clerkUserID, role, claimedName, locale, s.now())
-	if err != nil {
-		return domain.User{}, err
+	user, err := domain.NewUser(s.newID(), clerkUserID, role, claims.Name, locale, s.now())
+	email, emailOK := domain.NormalizeEmail(claims.Email)
+	if err != nil || !emailOK {
+		return domain.User{}, withEmailError(err, emailOK)
 	}
+	user.Email = email
 	if err := s.users.Create(ctx, user); err != nil {
 		return domain.User{}, err
 	}
 	return user, nil
+}
+
+// withEmailError adds the invalid-email field error to err's validation
+// errors, so a registration with several bad claims reports all of them.
+// err is nil or the error domain.NewUser returned.
+func withEmailError(err error, emailOK bool) error {
+	if emailOK {
+		return err
+	}
+	emailErr := domain.FieldError{Field: "email", Reason: "must be a valid email address"}
+	var valErr *domain.ValidationError
+	if errors.As(err, &valErr) {
+		return &domain.ValidationError{Fields: append(valErr.Fields, emailErr)}
+	}
+	if err != nil {
+		return err
+	}
+	return &domain.ValidationError{Fields: []domain.FieldError{emailErr}}
 }
 
 // resolveRegistrationLocale honors a valid Accept-Language-derived candidate
@@ -75,18 +97,25 @@ func (s *IdentityService) resolveRegistrationLocale(ctx context.Context, candida
 }
 
 // ResolveCaller returns the user registered for clerkUserID, first bringing
-// their stored display name up to date with claimedName — the name carried
-// by the identity token of the request being served. The identity provider
-// owns the name, so a rename there reaches MotifPath on the user's next
-// request. A blank claim is ignored rather than clearing the stored name,
-// and an unchanged one writes nothing. Returns domain.ErrNotFound if the
-// identity has never registered.
-func (s *IdentityService) ResolveCaller(ctx context.Context, clerkUserID, claimedName string) (domain.User, error) {
+// their stored name and email address up to date with claims — what the
+// identity token of the request being served carries. The identity
+// provider owns both, so a change there reaches MotifPath on the user's
+// next request. A blank or invalid claim is ignored rather than clearing
+// the stored value, and an unchanged one writes nothing. Returns
+// domain.ErrNotFound if the identity has never registered.
+func (s *IdentityService) ResolveCaller(ctx context.Context, clerkUserID string, claims domain.IdentityClaims) (domain.User, error) {
 	user, err := s.users.GetByClerkUserID(ctx, clerkUserID)
 	if err != nil {
 		return domain.User{}, err
 	}
-	name, ok := domain.NormalizeDisplayName(claimedName)
+	if user, err = s.refreshDisplayName(ctx, user, claims.Name); err != nil {
+		return domain.User{}, err
+	}
+	return s.refreshEmail(ctx, user, claims.Email)
+}
+
+func (s *IdentityService) refreshDisplayName(ctx context.Context, user domain.User, claimed string) (domain.User, error) {
+	name, ok := domain.NormalizeDisplayName(claimed)
 	if !ok || name == user.DisplayName {
 		return user, nil
 	}
@@ -94,6 +123,18 @@ func (s *IdentityService) ResolveCaller(ctx context.Context, clerkUserID, claime
 		return domain.User{}, err
 	}
 	user.DisplayName = name
+	return user, nil
+}
+
+func (s *IdentityService) refreshEmail(ctx context.Context, user domain.User, claimed string) (domain.User, error) {
+	email, ok := domain.NormalizeEmail(claimed)
+	if !ok || email == user.Email {
+		return user, nil
+	}
+	if err := s.users.UpdateEmail(ctx, user.ID, email); err != nil {
+		return domain.User{}, err
+	}
+	user.Email = email
 	return user, nil
 }
 
@@ -126,19 +167,20 @@ func (s *IdentityService) DisplayNames(ctx context.Context, ids []string) (map[s
 	return names, nil
 }
 
-// UpdateLocale sets the authenticated user's locale preference to locale.
-// Returns a *domain.ValidationError on field "locale" if locale does not
-// name an existing, non-"any" Language; domain.ErrNotFound if the caller has
-// never registered.
-func (s *IdentityService) UpdateLocale(ctx context.Context, clerkUserID, locale string) (domain.User, error) {
-	if locale == "" || locale == domain.LanguageCodeAny {
-		return domain.User{}, domain.NewValidationError("locale", "must be a known language code")
+// UpdateProfile applies update to the authenticated user's locale, time
+// zone and email preferences, in one write, and returns the updated user.
+// A field left out of update keeps its value. Returns a
+// *domain.ValidationError on field "body" when update changes nothing, on
+// "locale" for a locale that isn't a known, non-"any" language code, on
+// "time_zone" for an unknown IANA time zone, and on "email_preferences"
+// when it names no switch; domain.ErrNotFound if the caller has never
+// registered.
+func (s *IdentityService) UpdateProfile(ctx context.Context, clerkUserID string, update domain.ProfileUpdate) (domain.User, error) {
+	if update.IsEmpty() {
+		return domain.User{}, domain.NewValidationError("body", "must change at least one of locale, time_zone and email_preferences")
 	}
-	lang, err := s.languages.GetByCode(ctx, locale)
+	locale, err := s.validateProfileUpdate(ctx, update)
 	if err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
-			return domain.User{}, domain.NewValidationError("locale", "must be a known language code")
-		}
 		return domain.User{}, err
 	}
 
@@ -146,10 +188,56 @@ func (s *IdentityService) UpdateLocale(ctx context.Context, clerkUserID, locale 
 	if err != nil {
 		return domain.User{}, err
 	}
-
-	if err := s.users.UpdateLocale(ctx, user.ID, locale); err != nil {
+	if err := s.users.UpdatePreferences(ctx, user.ID, update); err != nil {
 		return domain.User{}, err
 	}
-	user.Locale = lang
+
+	if update.Locale != nil {
+		user.Locale = locale
+	}
+	if update.TimeZone != nil {
+		user.TimeZone = *update.TimeZone
+	}
+	if update.EmailPreferences != nil {
+		user.EmailPreferences = update.EmailPreferences.Apply(user.EmailPreferences)
+	}
 	return user, nil
+}
+
+// validateProfileUpdate checks every field update sets and returns the
+// Language its locale names, if it names one.
+func (s *IdentityService) validateProfileUpdate(ctx context.Context, update domain.ProfileUpdate) (domain.Language, error) {
+	var locale domain.Language
+	if update.Locale != nil {
+		lang, err := s.resolveLocale(ctx, *update.Locale)
+		if err != nil {
+			return domain.Language{}, err
+		}
+		locale = lang
+	}
+	if update.TimeZone != nil {
+		if err := domain.ValidateTimeZone(*update.TimeZone); err != nil {
+			return domain.Language{}, err
+		}
+	}
+	if update.EmailPreferences != nil && update.EmailPreferences.IsEmpty() {
+		return domain.Language{}, domain.NewValidationError("email_preferences", "must name at least one known switch")
+	}
+	return locale, nil
+}
+
+// resolveLocale returns the Language a user's locale may be set to: an
+// existing one, never "any".
+func (s *IdentityService) resolveLocale(ctx context.Context, code string) (domain.Language, error) {
+	if code == "" || code == domain.LanguageCodeAny {
+		return domain.Language{}, domain.NewValidationError("locale", "must be a known language code")
+	}
+	lang, err := s.languages.GetByCode(ctx, code)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return domain.Language{}, domain.NewValidationError("locale", "must be a known language code")
+		}
+		return domain.Language{}, err
+	}
+	return lang, nil
 }

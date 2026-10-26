@@ -120,6 +120,7 @@ secrets file, with its last path segment as the variable name. Use
 | `/motifpath/<env>/MEDIA_S3_BUCKET` | that environment's media bucket name |
 | `/motifpath/<env>/MEDIA_AWS_ACCESS_KEY_ID` | access key of the IAM user limited to that bucket |
 | `/motifpath/<env>/MEDIA_AWS_SECRET_ACCESS_KEY` | its secret |
+| `/motifpath/<env>/EMAIL_UNSUBSCRIBE_SECRET` | random; signs the unsubscribe links in emails, so changing it breaks every link already sent |
 | `/motifpath/edge/ACME_EMAIL` | the address Let's Encrypt sends expiry notices to |
 
 A value cannot contain a single quote or a newline; `deploy.sh` refuses it

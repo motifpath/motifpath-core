@@ -28,14 +28,14 @@ func registerLocaleSteps(sc *godog.ScenarioContext, w *world) {
 }
 
 // hasLocale sets name's locale preference directly against the repository —
-// a Given-step fixture, not an exercise of the UpdateMyLocale endpoint
+// a Given-step fixture, not an exercise of the profile update endpoint
 // itself (that's what updatesLocale is for).
 func (w *world) hasLocale(name, locale string) error {
 	studentID := w.ensureRegistered(name, domain.RoleStudent)
-	return w.users.UpdateLocale(w.ctx(), studentID.String(), locale)
+	return w.users.UpdatePreferences(w.ctx(), studentID.String(), domain.ProfileUpdate{Locale: &locale})
 }
 
-// updatesLocale authenticates as name and calls UpdateMyLocale. It backs
+// updatesLocale authenticates as name and calls UpdateMyProfile with a locale. It backs
 // every "sets/submits/attempts to set their locale" step wording: the
 // endpoint call is identical in each case, only the scenario's expected
 // outcome (success, validation failure, not-found) differs downstream.
@@ -43,8 +43,8 @@ func (w *world) updatesLocale(name, locale string) error {
 	w.hasToken = true
 	w.clerkSub = clerkSub(name)
 	w.persona = name
-	resp, err := w.handler.UpdateMyLocale(w.ctx(), generated.UpdateMyLocaleRequestObject{
-		Body: &generated.UpdateMyLocaleRequest{Locale: locale},
+	resp, err := w.handler.UpdateMyProfile(w.ctx(), generated.UpdateMyProfileRequestObject{
+		Body: &generated.UpdateMyProfileRequest{Locale: &locale},
 	})
 	w.lastResp, w.lastErr = resp, err
 	return err
@@ -52,15 +52,15 @@ func (w *world) updatesLocale(name, locale string) error {
 
 func (w *world) unauthUpdatesLocale(locale string) error {
 	w.noAuthToken() //nolint:errcheck // never errors
-	resp, err := w.handler.UpdateMyLocale(w.ctx(), generated.UpdateMyLocaleRequestObject{
-		Body: &generated.UpdateMyLocaleRequest{Locale: locale},
+	resp, err := w.handler.UpdateMyProfile(w.ctx(), generated.UpdateMyProfileRequestObject{
+		Body: &generated.UpdateMyProfileRequest{Locale: &locale},
 	})
 	w.lastResp, w.lastErr = resp, err
 	return err
 }
 
 func (w *world) localeUpdateResponseMatches(name, role, locale string) error {
-	resp, ok := w.lastResp.(generated.UpdateMyLocale200JSONResponse)
+	resp, ok := w.lastResp.(generated.UpdateMyProfile200JSONResponse)
 	if !ok {
 		return fmt.Errorf("expected a 200 response, got %#v (err=%v)", w.lastResp, w.lastErr)
 	}
