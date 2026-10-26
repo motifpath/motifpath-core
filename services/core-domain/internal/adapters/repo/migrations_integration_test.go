@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/lib/pq"
+	"github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
@@ -50,6 +50,44 @@ func TestMigrationsApplyCleanly(t *testing.T) {
 	assertColumnExists(t, ctx, db, "users", "display_name")
 	assertColumnExists(t, ctx, db, "diagrams", "playbacks")
 	assertColumnExists(t, ctx, db, "diagrams", "default_playback_id")
+}
+
+// firstProductionInstall is the last migration the first production
+// install applied. Migrations up to it are applied in production and must
+// never change; anything after it reaches production as a new migration.
+const firstProductionInstall = "20261018235357"
+
+// TestUpgradeFromTheFirstProductionInstall upgrades a database migrated as
+// production first was, and ends with what a fresh install has: the drill
+// templates added after it arrive in their own migration, since an applied
+// migration is never run again.
+func TestUpgradeFromTheFirstProductionInstall(t *testing.T) {
+	ctx := context.Background()
+	db := startMigrationPostgres(t, ctx)
+	added := []string{"fretboard_cell:find_every_instance", "guide_tone:tap_the_third"}
+	countAdded := func() int {
+		var n int
+		require.NoError(t, db.QueryRowContext(ctx, "SELECT count(*) FROM drill_templates WHERE key = ANY($1)", pq.Array(added)).Scan(&n))
+		return n
+	}
+
+	var later []string
+	for _, file := range migrationFiles(t) {
+		if filepath.Base(file) > firstProductionInstall+"_~" {
+			later = append(later, file)
+			continue
+		}
+		_, err := execMigrationFile(ctx, db, file)
+		require.NoError(t, err)
+	}
+	require.Zero(t, countAdded(), "production's install had neither template")
+	require.NotEmpty(t, later)
+	for _, file := range later {
+		_, err := execMigrationFile(ctx, db, file)
+		require.NoError(t, err)
+	}
+
+	assert.Equal(t, len(added), countAdded())
 }
 
 // TestMigrationHistoryIsTheTwoBaselines pins the one-time squash: the
