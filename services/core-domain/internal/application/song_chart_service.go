@@ -23,8 +23,19 @@ type SongChartService struct {
 	languages    ports.LanguageRepository
 	progressions ports.ProgressionRepository
 	refs         ports.PracticeReferenceWriter
-	newID        func() string
-	now          func() time.Time
+	// catalogSignals queues a practice subject catalog rebuild on a
+	// withdrawal; nil queues none.
+	catalogSignals CatalogSignaller
+	newID          func() string
+	now            func() time.Time
+}
+
+// WithCatalogSignals makes a withdrawal queue a practice subject catalog
+// rebuild through signals: a withdrawn chart is no longer a song to practise,
+// and a withdrawal writes no practice reference to queue it.
+func (s *SongChartService) WithCatalogSignals(signals CatalogSignaller) *SongChartService {
+	s.catalogSignals = signals
+	return s
 }
 
 func NewSongChartService(
@@ -240,6 +251,9 @@ func (s *SongChartService) Withdraw(ctx context.Context, caller domain.User, id,
 	}
 	if err := s.charts.Save(ctx, withdrawn); err != nil {
 		return domain.SongChart{}, err
+	}
+	if s.catalogSignals != nil {
+		s.catalogSignals.Signal(ctx, domain.PracticeCatalogSignalSongChart)
 	}
 	return withdrawn, nil
 }

@@ -50,10 +50,10 @@ func (c *composingDiagrams) GetByID(ctx context.Context, id string) (domain.Diag
 	return *d, nil
 }
 
-// readAll reads the diagrams the play-along and diagram shape items of maps
-// name, in one read, so none of them is read alone later.
-func (c *composingDiagrams) readAll(ctx context.Context, maps []KnowledgeMap) error {
-	ids := itemIDs(maps, domain.PracticeItemKindPlayAlong, domain.PracticeItemKindDiagramShape)
+// readAll reads the diagrams the play-along and diagram shape items among
+// items name, in one read, so none of them is read alone later.
+func (c *composingDiagrams) readAll(ctx context.Context, items []domain.ClassifiedItem) error {
+	ids := itemIDs(items, domain.PracticeItemKindPlayAlong, domain.PracticeItemKindDiagramShape)
 	if len(ids) == 0 {
 		return nil
 	}
@@ -107,10 +107,10 @@ func (c *composingExercises) GetByID(ctx context.Context, id string) (domain.Exe
 	return *e, nil
 }
 
-// readAll reads the exercises the items of maps name, in one read, so none of
-// them is read alone later.
-func (c *composingExercises) readAll(ctx context.Context, maps []KnowledgeMap) error {
-	ids := itemIDs(maps, domain.PracticeItemKindExercise)
+// readAll reads the exercises the items among items name, in one read, so
+// none of them is read alone later.
+func (c *composingExercises) readAll(ctx context.Context, items []domain.ClassifiedItem) error {
+	ids := itemIDs(items, domain.PracticeItemKindExercise)
 	if len(ids) == 0 {
 		return nil
 	}
@@ -130,18 +130,16 @@ func (c *composingExercises) readAll(ctx context.Context, maps []KnowledgeMap) e
 	return nil
 }
 
-// itemIDs is the ids the items of maps of kinds name, each once.
-func itemIDs(maps []KnowledgeMap, kinds ...domain.PracticeItemKind) []string {
+// itemIDs is the ids the items of kinds among items name, each once.
+func itemIDs(items []domain.ClassifiedItem, kinds ...domain.PracticeItemKind) []string {
 	seen := map[string]bool{}
 	var ids []string
-	for _, m := range maps {
-		for _, item := range m.Items {
-			for _, kind := range kinds {
-				id, ok := strings.CutPrefix(item.ItemKey, string(kind)+":")
-				if ok && !seen[id] {
-					seen[id] = true
-					ids = append(ids, id)
-				}
+	for _, item := range items {
+		for _, kind := range kinds {
+			id, ok := strings.CutPrefix(item.ItemKey, string(kind)+":")
+			if ok && !seen[id] {
+				seen[id] = true
+				ids = append(ids, id)
 			}
 		}
 	}

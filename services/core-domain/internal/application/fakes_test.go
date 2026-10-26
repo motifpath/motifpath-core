@@ -2456,9 +2456,14 @@ func (f *fakeExerciseRepository) ListSoundUses(_ context.Context, diagramID stri
 // test installs.
 type catalogDrillTemplates struct {
 	extra []domain.DrillTemplate
+	// err makes List fail, standing in for a database failure.
+	err error
 }
 
 func (c *catalogDrillTemplates) List(context.Context) ([]domain.DrillTemplate, error) {
+	if c.err != nil {
+		return nil, c.err
+	}
 	way := func(key string) *string { return &key }
 	return append([]domain.DrillTemplate{
 		{Key: "diagram_shape:find_the_degree", ItemKind: domain.PracticeItemKindDiagramShape, Rung: domain.PracticeRungKnow, SecondWay: way("diagram_shape:name_the_shape"), Timed: true},
@@ -2472,4 +2477,117 @@ func (c *catalogDrillTemplates) List(context.Context) ([]domain.DrillTemplate, e
 		{Key: "fretboard_cell:find_the_note", ItemKind: domain.PracticeItemKindFretboardCell, Rung: domain.PracticeRungKnow, SecondWay: way("fretboard_cell:name_the_note"), Timed: true},
 		{Key: "fretboard_cell:name_the_note", ItemKind: domain.PracticeItemKindFretboardCell, Rung: domain.PracticeRungKnow, SecondWay: way("fretboard_cell:find_the_note"), Timed: true},
 	}, c.extra...), nil
+}
+
+// fakePracticeSubjectCatalogs is an in-memory
+// ports.PracticeSubjectCatalogRepository: the catalog's rows by scope and
+// its queue of pending signals.
+type fakePracticeSubjectCatalogs struct {
+	mu      sync.Mutex
+	rows    map[string]domain.PracticeSubjectCatalog
+	signals []fakeCatalogSignal
+	nextID  int64
+	builds  int
+	// duringBuild runs while a rebuild builds, before its catalogs are
+	// stored.
+	duringBuild func()
+}
+
+type fakeCatalogSignal struct {
+	id     int64
+	reason domain.PracticeCatalogSignalReason
+}
+
+func newFakePracticeSubjectCatalogs() *fakePracticeSubjectCatalogs {
+	return &fakePracticeSubjectCatalogs{rows: map[string]domain.PracticeSubjectCatalog{}}
+}
+
+func (f *fakePracticeSubjectCatalogs) Catalogs(_ context.Context, scopes []string) (map[string]domain.PracticeSubjectCatalog, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	found := map[string]domain.PracticeSubjectCatalog{}
+	for _, scope := range scopes {
+		if row, ok := f.rows[scope]; ok {
+			found[scope] = row
+		}
+	}
+	return found, nil
+}
+
+func (f *fakePracticeSubjectCatalogs) Signal(_ context.Context, reason domain.PracticeCatalogSignalReason) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.nextID++
+	f.signals = append(f.signals, fakeCatalogSignal{id: f.nextID, reason: reason})
+	return nil
+}
+
+func (f *fakePracticeSubjectCatalogs) Rebuild(ctx context.Context, build func(context.Context) ([]domain.PracticeSubjectCatalog, error)) (bool, error) {
+	f.mu.Lock()
+	if len(f.signals) == 0 {
+		f.mu.Unlock()
+		return false, nil
+	}
+	upTo := f.signals[len(f.signals)-1].id
+	f.mu.Unlock()
+	if f.duringBuild != nil {
+		f.duringBuild()
+	}
+	catalogs, err := build(ctx)
+	if err != nil {
+		return false, err
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.rows = map[string]domain.PracticeSubjectCatalog{}
+	for _, c := range catalogs {
+		f.rows[c.Scope] = c
+	}
+	var left []fakeCatalogSignal
+	for _, sig := range f.signals {
+		if sig.id > upTo {
+			left = append(left, sig)
+		}
+	}
+	f.signals = left
+	f.builds++
+	return true, nil
+}
+
+// pending is the reasons of the signals not yet rebuilt for, in order.
+func (f *fakePracticeSubjectCatalogs) pending() []domain.PracticeCatalogSignalReason {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var reasons []domain.PracticeCatalogSignalReason
+	for _, sig := range f.signals {
+		reasons = append(reasons, sig.reason)
+	}
+	return reasons
+}
+
+// scopes is the scopes with a catalog.
+func (f *fakePracticeSubjectCatalogs) scopes() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var scopes []string
+	for scope := range f.rows {
+		scopes = append(scopes, scope)
+	}
+	return scopes
+}
+
+func (f *fakePracticeSubjectCatalogs) buildCount() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.builds
+}
+
+// ageFormat makes every catalog look built by an older format.
+func (f *fakePracticeSubjectCatalogs) ageFormat() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for scope, row := range f.rows {
+		row.FormatVersion--
+		f.rows[scope] = row
+	}
 }

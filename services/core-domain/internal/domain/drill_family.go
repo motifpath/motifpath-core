@@ -101,7 +101,12 @@ type PlannedDrill interface {
 // an item never answered right starts from the first, and an item guessed
 // right one way meets another. state is nil for an item never practised.
 func NextDrillWay(item DrillItem, state *PracticeItemState) string {
-	ways := item.Ways()
+	return NextWay(item.Ways(), state)
+}
+
+// NextWay is the way, among ways, a student whose state is state is asked
+// next: the one they have answered right least, the first on a tie.
+func NextWay(ways []string, state *PracticeItemState) string {
 	next := ways[0]
 	if state == nil {
 		return next
