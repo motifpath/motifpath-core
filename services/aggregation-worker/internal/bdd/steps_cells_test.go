@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"slices"
@@ -86,6 +87,8 @@ func registerCellSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^the cell moves to box (\d+) and is next due in (\d+) days?$`, w.theCellMovesToBoxDueIn)
 	sc.Step(`^the cell stays in box (\d+)$`, w.theCellStaysInBox)
 	sc.Step(`^"([^"]*)"'s level for (?:the|that) cell is (?:still )?"([^"]*)"$`, w.levelForTheCellIs)
+	sc.Step(`^"([^"]*)" names the cell among four choices, right (\d+) times and then wrong once$`, w.namesTheCellAmongFourChoices)
+	sc.Step(`^"([^"]*)"'s accuracy on the cell is (\d+(?:\.\d+)?)(?:, as after any wrong answer)?$`, w.accuracyOnTheCellIs)
 	sc.Step(`^the same practice\.item_answered event for the cell arrives twice$`, w.theSameCellAnswerArrivesTwice)
 	sc.Step(`^"([^"]*)" has one piece of evidence for the cell$`, w.hasOnePieceOfEvidenceForTheCell)
 	sc.Step(`^"([^"]*)" answered the cell correctly on Monday and Wednesday$`, w.answeredOnMondayAndWednesday)
@@ -587,6 +590,43 @@ func (w *world) theCellMovesToBoxDueIn(box, days int) error {
 
 func (w *world) theCellStaysInBox(box int) error {
 	return w.itemStaysInBox("the cell", box)
+}
+
+// namesTheCellAmongFourChoices names the cell right times times, then
+// wrongly once, each time among its note and the three above it.
+func (w *world) namesTheCellAmongFourChoices(student string, right int) error {
+	choices := make([]string, 4)
+	for i := range choices {
+		note, err := noteOf(w.currentCell(), i)
+		if err != nil {
+			return err
+		}
+		choices[i] = note
+	}
+	latency := cellLatency
+	for i := range right + 1 {
+		named := choices[0]
+		if i == right {
+			named = choices[1]
+		}
+		if err := w.sendCell(student, w.currentCell(), domain.PracticeResponse{
+			Type: domain.PracticeResponseNameTheNote, NoteName: named, Choices: choices, LatencyMs: &latency,
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (w *world) accuracyOnTheCellIs(student string, accuracy float64) error {
+	fold, err := w.cellFold(student)
+	if err != nil {
+		return err
+	}
+	if math.Abs(fold.Accuracy-accuracy) > 1e-9 {
+		return fmt.Errorf("the accuracy on the cell is %v, want %v", fold.Accuracy, accuracy)
+	}
+	return nil
 }
 
 func (w *world) levelForTheCellIs(student, level string) error {
