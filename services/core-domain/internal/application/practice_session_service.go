@@ -48,12 +48,14 @@ type PracticeSessionService struct {
 	instruments ports.InstrumentRepository
 	learning    studentLearning
 	diagrams    ports.DiagramRepository
-	exercises   ports.ExerciseRepository
-	rollup      *KnowledgeRollupService
-	templates   ports.DrillTemplateRepository
-	tapChecks   ports.TapCheckReader
-	feltRatings ports.FeltRatingReader
-	headCount   ports.HeadSessionCounter
+	// composingDiagrams is diagrams keeping what it reads, while composing.
+	composingDiagrams *composingDiagrams
+	exercises         ports.ExerciseRepository
+	rollup            *KnowledgeRollupService
+	templates         ports.DrillTemplateRepository
+	tapChecks         ports.TapCheckReader
+	feltRatings       ports.FeltRatingReader
+	headCount         ports.HeadSessionCounter
 	// sources find the generated drill items, a source per drill family.
 	sources []DrillSource
 	// harmony is what the harmony drills read; nil when they aren't
@@ -117,17 +119,22 @@ func (s *PracticeSessionService) WithDrillSources(sources ...DrillSource) *Pract
 // composition, read afresh for the next.
 type composingSource interface {
 	DrillSource
-	forComposition() DrillSource
+	composing(s *PracticeSessionService) DrillSource
 }
 
-// forComposition is s with a fresh copy of each source that keeps what it
-// reads, for one composition or one list of subjects.
+// forComposition is s keeping what it reads, with a fresh copy of each
+// source that does, for one composition or one list of subjects.
 func (s *PracticeSessionService) forComposition() *PracticeSessionService {
 	composing := *s
+	composing.composingDiagrams = newComposingDiagrams(s.diagrams)
+	composing.diagrams = composing.composingDiagrams
+	if s.harmony != nil {
+		composing.harmony = s.harmony.forComposition()
+	}
 	composing.sources = make([]DrillSource, len(s.sources))
 	for i, src := range s.sources {
 		if c, ok := src.(composingSource); ok {
-			src = c.forComposition()
+			src = c.composing(&composing)
 		}
 		composing.sources[i] = src
 	}

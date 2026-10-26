@@ -1819,10 +1819,12 @@ type fakeInstrumentRepository struct {
 	// getErrs makes GetByID fail with the given error for an id, standing in
 	// for a database failure.
 	getErrs map[string]error
+	// gets counts GetByID reads, by id.
+	gets map[string]int
 }
 
 func newFakeInstrumentRepository() *fakeInstrumentRepository {
-	return &fakeInstrumentRepository{byID: map[string]domain.Instrument{}, getErrs: map[string]error{}}
+	return &fakeInstrumentRepository{byID: map[string]domain.Instrument{}, getErrs: map[string]error{}, gets: map[string]int{}}
 }
 
 func (f *fakeInstrumentRepository) Create(_ context.Context, instrument domain.Instrument) error {
@@ -1835,6 +1837,7 @@ func (f *fakeInstrumentRepository) Create(_ context.Context, instrument domain.I
 func (f *fakeInstrumentRepository) GetByID(_ context.Context, id string) (domain.Instrument, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.gets[id]++
 	if err, ok := f.getErrs[id]; ok {
 		return domain.Instrument{}, err
 	}
@@ -1914,6 +1917,8 @@ type fakeDiagramRepository struct {
 	mu        sync.Mutex
 	byID      map[string]domain.Diagram
 	knowledge *fakeKnowledgeNodeRepository
+	// gets counts GetByID reads and batchReads GetByIDs ones.
+	gets, batchReads int
 }
 
 func newFakeDiagramRepository() *fakeDiagramRepository {
@@ -1936,6 +1941,13 @@ func (f *fakeDiagramRepository) put(diagram domain.Diagram) {
 func (f *fakeDiagramRepository) GetByID(_ context.Context, id string) (domain.Diagram, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.gets++
+	return f.stored(id)
+}
+
+// stored is the diagram with this id as GetByID returns it, without counting
+// a read; f.mu is held.
+func (f *fakeDiagramRepository) stored(id string) (domain.Diagram, error) {
 	diagram, ok := f.byID[id]
 	if !ok {
 		return domain.Diagram{}, domain.ErrNotFound
@@ -1947,10 +1959,13 @@ func (f *fakeDiagramRepository) GetByID(_ context.Context, id string) (domain.Di
 	return diagram, nil
 }
 
-func (f *fakeDiagramRepository) GetByIDs(ctx context.Context, ids []string) (map[string]domain.Diagram, error) {
+func (f *fakeDiagramRepository) GetByIDs(_ context.Context, ids []string) (map[string]domain.Diagram, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.batchReads++
 	found := map[string]domain.Diagram{}
 	for _, id := range ids {
-		if d, err := f.GetByID(ctx, id); err == nil {
+		if d, err := f.stored(id); err == nil {
 			found[id] = d
 		}
 	}
@@ -2204,6 +2219,8 @@ func (f *fakePracticeReferenceWriter) diagram(id string) (domain.DiagramReferenc
 type fakeChordCatalogRepository struct {
 	chords   []domain.ChordDefinition
 	voicings map[string]domain.ChordVoicing
+	// finds counts FindChord reads.
+	finds int
 }
 
 func (f *fakeChordCatalogRepository) GetChord(_ context.Context, id string) (domain.ChordDefinition, error) {
@@ -2266,6 +2283,7 @@ func (f *fakeChordCatalogRepository) activeOnly(c domain.ChordDefinition) domain
 }
 
 func (f *fakeChordCatalogRepository) FindChord(_ context.Context, rootPitchClass int, quality domain.ChordQuality, bassPitchClass *int) (domain.ChordDefinition, error) {
+	f.finds++
 	for _, c := range f.chords {
 		sameBass := (c.BassPitchClass == nil && bassPitchClass == nil) ||
 			(c.BassPitchClass != nil && bassPitchClass != nil && *c.BassPitchClass == *bassPitchClass)

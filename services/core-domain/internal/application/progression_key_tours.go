@@ -28,6 +28,10 @@ type tourSource struct {
 	instruments ports.InstrumentRepository
 }
 
+func (src tourSource) composing(s *PracticeSessionService) DrillSource {
+	return tourSource{harmony: s.harmony, instruments: newComposingInstruments(src.instruments)}
+}
+
 func (src tourSource) SkillItems(ctx context.Context, skillID, _ string, inHand bool, knowledge KnowledgeMap) ([]domain.DrillItem, error) {
 	if !inHand {
 		return nil, nil
