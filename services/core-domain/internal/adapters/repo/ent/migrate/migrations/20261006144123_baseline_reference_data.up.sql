@@ -1330,7 +1330,6 @@ INSERT INTO diagram_concepts (diagram_id,concept_id,linked_at) VALUES ('d59be890
 INSERT INTO "drill_templates" ("id", "key", "item_kind", "response_type", "rung", "second_way", "comes_back", "timed", "names") VALUES
   ('4c6ffb77-ee8b-5fda-b243-784f4209bc65', 'fretboard_cell:name_the_note', 'fretboard_cell', 'name_the_note', 'know', 'fretboard_cell:find_the_note', false, true, '{"en":"Name the note","pt_BR":"Diga a nota"}'),
   ('6e38da0b-df26-5aa8-ab14-3b6640582174', 'fretboard_cell:find_the_note', 'fretboard_cell', 'find_the_note', 'know', 'fretboard_cell:name_the_note', false, true, '{"en":"Find the note","pt_BR":"Ache a nota"}'),
-  ('f3e74d03-ed82-514f-99e0-8f7ed46f27d3', 'fretboard_cell:find_every_instance', 'fretboard_cell', 'multi_tap', 'know', NULL, false, false, '{"en":"Find every instance","pt_BR":"Ache todas as posições"}'),
   ('30abb724-d181-56d0-8255-889411531213', 'diagram_shape:name_the_shape', 'diagram_shape', 'name_the_shape', 'know', 'diagram_shape:find_the_degree', false, true, '{"en":"Name the shape","pt_BR":"Diga a forma"}'),
   ('c11e550e-1612-5414-ba78-298e158700d0', 'diagram_shape:find_the_degree', 'diagram_shape', 'find_the_degree', 'know', 'diagram_shape:name_the_shape', false, true, '{"en":"Find the degree","pt_BR":"Ache o grau"}'),
   ('eee88cdc-8c03-5246-b798-3ccf6941875f', 'exercise:text_response', 'exercise', 'option_choice', 'know', NULL, false, true, '{"en":"Text exercises","pt_BR":"Exercícios de texto"}'),
@@ -1346,8 +1345,7 @@ INSERT INTO "drill_templates" ("id", "key", "item_kind", "response_type", "rung"
   ('d63bfeed-3175-5b8a-a838-f543cec550ce', 'chart_progression:numbers_to_chart', 'chart_progression', 'generated_choice', 'know', 'chart_progression:chart_to_numbers', false, true, '{"en":"Pick the chart","pt_BR":"Escolher a cifra"}'),
   ('001c9d1a-6bcb-5d1b-8656-b65a9a8dddfb', 'heard_chord:cadence_then_chord', 'heard_chord', 'generated_choice', 'hear', 'heard_chord:see_then_name', true, true, '{"en":"Hear the chord","pt_BR":"Ouça o acorde"}'),
   ('91209c2d-71e8-52b2-a19b-f286d85f1c07', 'heard_chord:see_then_name', 'heard_chord', 'generated_choice', 'hear', 'heard_chord:cadence_then_chord', false, true, '{"en":"See the chord","pt_BR":"Veja o acorde"}'),
-  ('c236ecad-5bd5-5755-b012-fd1999ee46b8', 'heard_progression:progression_by_number', 'heard_progression', 'generated_choice', 'hear', NULL, true, true, '{"en":"Hear the progression","pt_BR":"Ouça a progressão"}'),
-  ('448900eb-6410-554f-9e2e-dd96621008f6', 'guide_tone:tap_the_third', 'guide_tone', 'timed_taps', 'target', NULL, false, false, '{"en":"Guide tones","pt_BR":"Notas-guia"}');
+  ('c236ecad-5bd5-5755-b012-fd1999ee46b8', 'heard_progression:progression_by_number', 'heard_progression', 'generated_choice', 'hear', NULL, true, true, '{"en":"Hear the progression","pt_BR":"Ouça a progressão"}');
 INSERT INTO "drill_thresholds" ("id", "template_id", "version", "effective_from", "fluent_net_ms", "source", "sessions", "students") VALUES
   ('bf63ad0e-f1c7-52ba-a303-230472134f6c', '4c6ffb77-ee8b-5fda-b243-784f4209bc65', 1, '2026-10-06T00:00:00Z', 3000, 'default', 0, 0),
   ('b4038212-bd6e-5749-8b39-cc8862e1974e', '6e38da0b-df26-5aa8-ab14-3b6640582174', 1, '2026-10-06T00:00:00Z', 4000, 'default', 0, 0),
