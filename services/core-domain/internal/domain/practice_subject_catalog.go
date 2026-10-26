@@ -8,6 +8,9 @@ import "time"
 // id, or empty for a student with no instruments.
 type PracticeSubjectCatalog struct {
 	Scope string
+	// ContentVersion is the content version the catalog was built from; one
+	// built from an older version is not read.
+	ContentVersion int64
 	// FormatVersion is the version of how items were tallied when the catalog
 	// was built; a catalog of another version is not read.
 	FormatVersion int
@@ -63,20 +66,3 @@ func (i PracticeSubjectCatalogItem) RungFor(state *PracticeItemState) PracticeRu
 	}
 	return i.Ways[0].Rung
 }
-
-// PracticeCatalogSignalReason is why the practice subject catalog was asked
-// to rebuild.
-type PracticeCatalogSignalReason string
-
-const (
-	PracticeCatalogSignalDiagram    PracticeCatalogSignalReason = "diagram"
-	PracticeCatalogSignalExercise   PracticeCatalogSignalReason = "exercise"
-	PracticeCatalogSignalSongChart  PracticeCatalogSignalReason = "song_chart"
-	PracticeCatalogSignalInstrument PracticeCatalogSignalReason = "instrument"
-	// PracticeCatalogSignalStart is queued when the service starts, for
-	// reference data installed by migrations and any signal lost in a crash.
-	PracticeCatalogSignalStart PracticeCatalogSignalReason = "start"
-	// PracticeCatalogSignalMissing is queued when a list finds a scope with no
-	// catalog, or one of another format.
-	PracticeCatalogSignalMissing PracticeCatalogSignalReason = "missing"
-)

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -14,8 +13,8 @@ import (
 	"github.com/motifpath/core-domain/internal/ports"
 )
 
-// subjectCatalogFixture is a practice fixture with something of every kind a list
-// tallies: know and hear exercises under progressions (the know ones
+// subjectCatalogFixture is a practice fixture with something of every kind a
+// list tallies: know and hear exercises under progressions (the know ones
 // accurate), guitar fretboard cells under notes (one of them asked the find
 // way next, which a test template puts on the hear rung), a guitar
 // play-along under riffs and a guitar diagram shape under grips. The student
@@ -52,89 +51,105 @@ func listAll(t *testing.T, f *practiceFixture) map[string]domain.PracticeSubject
 	return lists
 }
 
-// withCatalogs installs the catalog on f, its rebuilds settling and polling
-// as given.
-func withCatalogs(f *practiceFixture, settle, poll time.Duration) (*fakePracticeSubjectCatalogs, *application.PracticeSubjectCatalogService) {
+// withCatalogs installs a practice subject catalog on f.
+func withCatalogs(f *practiceFixture) *fakePracticeSubjectCatalogs {
 	catalogs := newFakePracticeSubjectCatalogs()
-	service := application.NewPracticeSubjectCatalogService(f.svc, catalogs, settle, poll)
-	f.svc.WithSubjectCatalogs(catalogs, service)
-	return catalogs, service
+	f.svc.WithSubjectCatalogs(catalogs)
+	return catalogs
+}
+
+// itemReads is how many diagram and exercise reads f has seen.
+func itemReads(f *practiceFixture) int {
+	return f.diagrams.gets + f.diagrams.batchReads + f.exercises.gets + f.exercises.batchReads
+}
+
+// resetItemReads forgets the diagram and exercise reads f has seen.
+func resetItemReads(f *practiceFixture) {
+	f.diagrams.gets, f.diagrams.batchReads, f.exercises.gets, f.exercises.batchReads = 0, 0, 0, 0
 }
 
 func TestPracticeSessionService_ListSubjectsFromCatalog(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("a built catalog lists what the live list does, reading no item", func(t *testing.T) {
+	t.Run("the first list builds and stores the catalog; later ones read it, reading no item, and list the same", func(t *testing.T) {
 		live := listAll(t, subjectCatalogFixture(t))
 		f := subjectCatalogFixture(t)
-		catalogs, service := withCatalogs(f, 0, time.Hour)
-		service.Signal(ctx, domain.PracticeCatalogSignalStart)
-		rebuilt, err := service.RebuildPending(ctx)
-		require.NoError(t, err)
-		require.True(t, rebuilt)
-		f.diagrams.gets, f.diagrams.batchReads, f.exercises.gets, f.exercises.batchReads = 0, 0, 0, 0
+		catalogs := withCatalogs(f)
 
-		lists := listAll(t, f)
+		first := listAll(t, f)
+		require.ElementsMatch(t, []string{practiceGuitar, practiceBass}, catalogs.scopes(), "a catalog for each instrument listed")
+		resetItemReads(f)
+		later := listAll(t, f)
 
-		assert.Equal(t, live, lists)
-		assert.Zero(t, f.diagrams.gets+f.diagrams.batchReads, "no diagram is read")
-		assert.Zero(t, f.exercises.gets+f.exercises.batchReads, "no exercise is read")
-		assert.Empty(t, catalogs.pending(), "nothing was missing")
+		assert.Equal(t, live, first)
+		assert.Equal(t, live, later)
+		assert.Zero(t, itemReads(f), "no diagram or exercise is read")
 	})
 
-	t.Run("a scope with no catalog is listed live and queues a rebuild", func(t *testing.T) {
-		live := listAll(t, subjectCatalogFixture(t))
+	t.Run("a content change makes the next list rebuild, showing it; the one after reads the catalog again", func(t *testing.T) {
 		f := subjectCatalogFixture(t)
-		catalogs, _ := withCatalogs(f, 0, time.Hour)
-
-		lists := listAll(t, f)
-
-		assert.Equal(t, live, lists)
-		assert.Contains(t, catalogs.pending(), domain.PracticeCatalogSignalMissing)
-	})
-
-	t.Run("a catalog built by an older format is ignored, listed live, and rebuilt", func(t *testing.T) {
-		live := listAll(t, subjectCatalogFixture(t))
-		f := subjectCatalogFixture(t)
-		catalogs, service := withCatalogs(f, 0, time.Hour)
-		service.Signal(ctx, domain.PracticeCatalogSignalStart)
-		_, err := service.RebuildPending(ctx)
-		require.NoError(t, err)
-		catalogs.ageFormat()
-
-		lists := listAll(t, f)
-
-		assert.Equal(t, live, lists)
-		assert.Contains(t, catalogs.pending(), domain.PracticeCatalogSignalMissing)
-	})
-
-	t.Run("new content shows once the catalog is rebuilt, not before", func(t *testing.T) {
-		f := subjectCatalogFixture(t)
-		_, service := withCatalogs(f, 0, time.Hour)
-		service.Signal(ctx, domain.PracticeCatalogSignalStart)
-		_, err := service.RebuildPending(ctx)
+		withCatalogs(f)
+		_, err := f.svc.ListSubjects(ctx, studentCaller(), guitar())
 		require.NoError(t, err)
 
 		f.exercisesOf("more", "progressions", domain.ExerciseTypeTextResponse, 2)
-		before, err := f.svc.ListSubjects(ctx, studentCaller(), guitar())
+		f.svc.InvalidateSubjectCatalogs(ctx)
+		resetItemReads(f)
+		changed, err := f.svc.ListSubjects(ctx, studentCaller(), guitar())
 		require.NoError(t, err)
-		service.Signal(ctx, domain.PracticeCatalogSignalExercise)
-		_, err = service.RebuildPending(ctx)
-		require.NoError(t, err)
-		after, err := f.svc.ListSubjects(ctx, studentCaller(), guitar())
+		rebuildReads := itemReads(f)
+		resetItemReads(f)
+		_, err = f.svc.ListSubjects(ctx, studentCaller(), guitar())
 		require.NoError(t, err)
 
-		progressions, _ := subjectOf(before, "progressions")
-		assert.Equal(t, 5, progressions.ItemCount)
-		progressions, _ = subjectOf(after, "progressions")
+		progressions, _ := subjectOf(changed, "progressions")
 		assert.Equal(t, 7, progressions.ItemCount)
+		assert.NotZero(t, rebuildReads, "the changed list rebuilt")
+		assert.Zero(t, itemReads(f), "the next one read the catalog")
+	})
+
+	t.Run("a catalog built from content that changed while it was built is not stored", func(t *testing.T) {
+		f := subjectCatalogFixture(t)
+		catalogs := withCatalogs(f)
+		catalogs.beforeStore = func() { require.NoError(t, catalogs.BumpContentVersion(ctx)) }
+
+		_, err := f.svc.ListSubjects(ctx, studentCaller(), guitar())
+		require.NoError(t, err)
+		assert.Empty(t, catalogs.scopes())
+
+		catalogs.beforeStore = nil
+		_, err = f.svc.ListSubjects(ctx, studentCaller(), guitar())
+		require.NoError(t, err)
+		assert.Equal(t, []string{practiceGuitar}, catalogs.scopes(), "the next list builds it again")
+	})
+
+	t.Run("a catalog built by an older format is rebuilt, and lists the same", func(t *testing.T) {
+		live := listAll(t, subjectCatalogFixture(t))
+		f := subjectCatalogFixture(t)
+		catalogs := withCatalogs(f)
+		listAll(t, f)
+		catalogs.ageFormat()
+		resetItemReads(f)
+
+		lists := listAll(t, f)
+
+		assert.Equal(t, live, lists)
+		assert.NotZero(t, itemReads(f), "rebuilt from the content")
+	})
+
+	t.Run("a catalog that fails to store still lists", func(t *testing.T) {
+		live := listAll(t, subjectCatalogFixture(t))
+		f := subjectCatalogFixture(t)
+		catalogs := withCatalogs(f)
+		catalogs.storeErr = errors.New("database down")
+
+		assert.Equal(t, live, listAll(t, f))
 	})
 
 	t.Run("a node renamed shows at once, as nodes are read live", func(t *testing.T) {
 		f := subjectCatalogFixture(t)
-		_, service := withCatalogs(f, 0, time.Hour)
-		service.Signal(ctx, domain.PracticeCatalogSignalStart)
-		_, err := service.RebuildPending(ctx)
+		withCatalogs(f)
+		_, err := f.svc.ListSubjects(ctx, studentCaller(), guitar())
 		require.NoError(t, err)
 		parent := "harmony"
 		f.knowledgeNodes.put(domain.KnowledgeNode{ID: "progressions", Kind: domain.KnowledgeNodeKindSkill, Key: "progressions", ParentID: &parent, Names: domain.LocalizedText{"en": "Common progressions"}})
@@ -146,179 +161,91 @@ func TestPracticeSessionService_ListSubjectsFromCatalog(t *testing.T) {
 		require.True(t, ok)
 		assert.Equal(t, domain.LocalizedText{"en": "Common progressions"}, progressions.Node.Names)
 	})
-}
 
-func TestPracticeSubjectCatalogService_Rebuild(t *testing.T) {
-	ctx := context.Background()
-
-	t.Run("signals pending at once cause one rebuild, which clears them", func(t *testing.T) {
+	t.Run("invalidating raises the content version by one", func(t *testing.T) {
 		f := subjectCatalogFixture(t)
-		catalogs, service := withCatalogs(f, 0, time.Hour)
-		service.Signal(ctx, domain.PracticeCatalogSignalDiagram)
-		service.Signal(ctx, domain.PracticeCatalogSignalExercise)
-		service.Signal(ctx, domain.PracticeCatalogSignalExercise)
+		catalogs := withCatalogs(f)
 
-		rebuilt, err := service.RebuildPending(ctx)
+		f.svc.InvalidateSubjectCatalogs(ctx)
+		f.svc.InvalidateSubjectCatalogs(ctx)
 
-		require.NoError(t, err)
-		assert.True(t, rebuilt)
-		assert.Equal(t, 1, catalogs.builds)
-		assert.Empty(t, catalogs.pending())
-		assert.ElementsMatch(t, []string{practiceGuitar, practiceBass, ""}, catalogs.scopes(), "a catalog for every instrument, and for none")
-	})
-
-	t.Run("with nothing pending, nothing is rebuilt", func(t *testing.T) {
-		f := subjectCatalogFixture(t)
-		catalogs, service := withCatalogs(f, 0, time.Hour)
-
-		rebuilt, err := service.RebuildPending(ctx)
-
-		require.NoError(t, err)
-		assert.False(t, rebuilt)
-		assert.Zero(t, catalogs.builds)
-	})
-
-	t.Run("a signal queued during a rebuild stays for one more", func(t *testing.T) {
-		f := subjectCatalogFixture(t)
-		catalogs, service := withCatalogs(f, 0, time.Hour)
-		service.Signal(ctx, domain.PracticeCatalogSignalStart)
-		catalogs.duringBuild = func() { service.Signal(ctx, domain.PracticeCatalogSignalDiagram) }
-
-		_, err := service.RebuildPending(ctx)
-		require.NoError(t, err)
-
-		assert.Equal(t, []domain.PracticeCatalogSignalReason{domain.PracticeCatalogSignalDiagram}, catalogs.pending())
-	})
-
-	t.Run("a failed rebuild keeps its signals and the catalogs it had", func(t *testing.T) {
-		f := subjectCatalogFixture(t)
-		catalogs, service := withCatalogs(f, 0, time.Hour)
-		service.Signal(ctx, domain.PracticeCatalogSignalStart)
-		_, err := service.RebuildPending(ctx)
-		require.NoError(t, err)
-		service.Signal(ctx, domain.PracticeCatalogSignalDiagram)
-		f.templates.err = errors.New("database down")
-
-		_, err = service.RebuildPending(ctx)
-
-		require.Error(t, err)
-		assert.Equal(t, []domain.PracticeCatalogSignalReason{domain.PracticeCatalogSignalDiagram}, catalogs.pending())
-		assert.Len(t, catalogs.scopes(), 3)
-	})
-
-	t.Run("running, it rebuilds on start, then once per burst of signals, until stopped", func(t *testing.T) {
-		f := subjectCatalogFixture(t)
-		catalogs, service := withCatalogs(f, 5*time.Millisecond, time.Hour)
-		runCtx, stop := context.WithCancel(ctx)
-		done := make(chan struct{})
-		go func() {
-			service.Run(runCtx)
-			close(done)
-		}()
-
-		require.Eventually(t, func() bool { return catalogs.buildCount() == 1 }, time.Second, time.Millisecond, "the start rebuild")
-		service.Signal(ctx, domain.PracticeCatalogSignalDiagram)
-		service.Signal(ctx, domain.PracticeCatalogSignalExercise)
-		require.Eventually(t, func() bool { return catalogs.buildCount() == 2 }, time.Second, time.Millisecond, "one rebuild for the burst")
-		stop()
-
-		select {
-		case <-done:
-		case <-time.After(time.Second):
-			t.Fatal("Run didn't stop")
-		}
-		assert.Equal(t, 2, catalogs.buildCount())
-	})
-
-	t.Run("running, it picks up a signal another instance queued at the next poll", func(t *testing.T) {
-		f := subjectCatalogFixture(t)
-		catalogs, service := withCatalogs(f, 0, 10*time.Millisecond)
-		runCtx, stop := context.WithCancel(ctx)
-		defer stop()
-		go service.Run(runCtx)
-		require.Eventually(t, func() bool { return catalogs.buildCount() == 1 }, time.Second, time.Millisecond)
-
-		require.NoError(t, catalogs.Signal(ctx, domain.PracticeCatalogSignalDiagram))
-
-		require.Eventually(t, func() bool { return catalogs.buildCount() == 2 }, time.Second, time.Millisecond)
+		assert.Equal(t, int64(2), catalogs.version)
 	})
 }
 
-// recordedSignals is an application.CatalogSignaller that records each
-// signal.
-type recordedSignals struct{ reasons []domain.PracticeCatalogSignalReason }
+// recordedInvalidations is an application.SubjectCatalogInvalidator that
+// counts its invalidations.
+type recordedInvalidations struct{ n int }
 
-func (r *recordedSignals) Signal(_ context.Context, reason domain.PracticeCatalogSignalReason) {
-	r.reasons = append(r.reasons, reason)
-}
+func (r *recordedInvalidations) InvalidateSubjectCatalogs(context.Context) { r.n++ }
 
 // Every diagram, exercise, instrument and published song chart has its
 // practice reference written after it is saved, so the reference writer
-// queues the catalog's rebuild there too.
-func TestCatalogSignallingReferences(t *testing.T) {
+// invalidates the catalog there too.
+func TestCatalogInvalidatingReferences(t *testing.T) {
 	ctx := context.Background()
 	writes := []struct {
-		name   string
-		write  func(w ports.PracticeReferenceWriter) error
-		reason []domain.PracticeCatalogSignalReason
+		name          string
+		write         func(w ports.PracticeReferenceWriter) error
+		invalidations int
 	}{
-		{"a diagram's reference queues a diagram signal", func(w ports.PracticeReferenceWriter) error {
+		{"a diagram's reference invalidates", func(w ports.PracticeReferenceWriter) error {
 			return w.PutDiagrams(ctx, []domain.DiagramReference{{ID: "d"}})
-		}, []domain.PracticeCatalogSignalReason{domain.PracticeCatalogSignalDiagram}},
-		{"an exercise's reference queues an exercise signal", func(w ports.PracticeReferenceWriter) error {
+		}, 1},
+		{"an exercise's reference invalidates", func(w ports.PracticeReferenceWriter) error {
 			return w.PutExercises(ctx, []domain.ExerciseReference{{ID: "e"}})
-		}, []domain.PracticeCatalogSignalReason{domain.PracticeCatalogSignalExercise}},
-		{"an instrument's reference queues an instrument signal", func(w ports.PracticeReferenceWriter) error {
+		}, 1},
+		{"an instrument's reference invalidates", func(w ports.PracticeReferenceWriter) error {
 			return w.PutInstruments(ctx, []domain.InstrumentReference{{ID: "i"}})
-		}, []domain.PracticeCatalogSignalReason{domain.PracticeCatalogSignalInstrument}},
-		{"a song chart's reference queues a song chart signal", func(w ports.PracticeReferenceWriter) error {
+		}, 1},
+		{"a song chart's reference invalidates", func(w ports.PracticeReferenceWriter) error {
 			return w.PutSongCharts(ctx, []domain.SongChartReference{{ID: "s"}})
-		}, []domain.PracticeCatalogSignalReason{domain.PracticeCatalogSignalSongChart}},
-		{"catalog data installed by migrations queues nothing: the start signal covers it", func(w ports.PracticeReferenceWriter) error {
+		}, 1},
+		{"catalog data installed by migrations doesn't: the invalidation on start covers it", func(w ports.PracticeReferenceWriter) error {
 			return w.PutProgressions(ctx, []domain.Progression{{Key: "I-IV-V-I"}})
-		}, nil},
+		}, 0},
 	}
 	for _, tc := range writes {
 		t.Run(tc.name, func(t *testing.T) {
 			refs := newFakePracticeReferenceWriter()
-			signals := &recordedSignals{}
+			invalidations := &recordedInvalidations{}
 
-			require.NoError(t, tc.write(application.CatalogSignallingReferences(refs, signals)))
+			require.NoError(t, tc.write(application.CatalogInvalidatingReferences(refs, invalidations)))
 
-			assert.Equal(t, tc.reason, signals.reasons)
+			assert.Equal(t, tc.invalidations, invalidations.n)
 			assert.Equal(t, 1, refs.writes, "the reference is still written")
 		})
 	}
 
-	t.Run("a reference that failed to write queues nothing", func(t *testing.T) {
+	t.Run("a reference that failed to write doesn't invalidate", func(t *testing.T) {
 		refs := newFakePracticeReferenceWriter()
 		refs.err = errors.New("mongo down")
-		signals := &recordedSignals{}
+		invalidations := &recordedInvalidations{}
 
-		err := application.CatalogSignallingReferences(refs, signals).PutDiagrams(ctx, []domain.DiagramReference{{ID: "d"}})
+		err := application.CatalogInvalidatingReferences(refs, invalidations).PutDiagrams(ctx, []domain.DiagramReference{{ID: "d"}})
 
 		require.Error(t, err)
-		assert.Empty(t, signals.reasons)
+		assert.Zero(t, invalidations.n)
 	})
 }
 
 // A withdrawn song chart is no longer a song to practise, and a withdrawal
-// writes no practice reference, so it queues the catalog's rebuild itself.
-func TestSongChartService_WithdrawSignalsTheCatalog(t *testing.T) {
+// writes no practice reference, so it invalidates the catalog itself.
+func TestSongChartService_WithdrawInvalidatesTheCatalog(t *testing.T) {
 	ctx := context.Background()
 	f := newSongChartFixture()
-	signals := &recordedSignals{}
-	f.service.WithCatalogSignals(signals)
+	invalidations := &recordedInvalidations{}
+	f.service.WithCatalogInvalidation(invalidations)
 	chart, err := f.service.Create(ctx, adminCaller(), asaBranca())
 	require.NoError(t, err)
 	_, err = f.service.Publish(ctx, adminCaller(), chart.ID)
 	require.NoError(t, err)
-	signals.reasons = nil
+	invalidations.n = 0
 
 	_, err = f.service.Withdraw(ctx, adminCaller(), chart.ID, "Rights disputed")
 
 	require.NoError(t, err)
-	assert.Equal(t, []domain.PracticeCatalogSignalReason{domain.PracticeCatalogSignalSongChart}, signals.reasons)
+	assert.Equal(t, 1, invalidations.n)
 }
 
 func subjectOf(list domain.PracticeSubjectList, nodeID string) (domain.PracticeSubject, bool) {

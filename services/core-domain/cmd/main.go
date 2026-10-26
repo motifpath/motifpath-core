@@ -42,12 +42,6 @@ const (
 	// this leaves a remote cluster ample room.
 	practiceReferenceSyncTimeout = 10 * time.Second
 	migrationsDir                = "file://internal/adapters/repo/ent/migrate/migrations"
-	// subjectCatalogSettle is how long a burst of content changes is waited
-	// out before the practice subject catalog is rebuilt once for all of
-	// them; subjectCatalogPoll is how often signals queued by another
-	// instance are looked for.
-	subjectCatalogSettle = 2 * time.Second
-	subjectCatalogPoll   = 30 * time.Second
 )
 
 func main() {
@@ -150,13 +144,9 @@ func run(logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	// The practice subject catalog is rebuilt in the background, starting
-	// now, for whatever changed while the service was down.
-	subjectCatalogsDone := make(chan struct{})
-	go func() {
-		subjectCatalogs.Run(ctx)
-		close(subjectCatalogsDone)
-	}()
+	// Migrations may have installed reference data the practice subject
+	// catalog is built from, so it is out of date until rebuilt.
+	subjectCatalogs.InvalidateSubjectCatalogs(ctx)
 	strictHandler := generated.NewStrictHandler(handler, nil)
 
 	router := generated.HandlerWithOptions(strictHandler, generated.ChiServerOptions{
@@ -192,12 +182,6 @@ func run(logger *slog.Logger) error {
 	defer cancel()
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		return fmt.Errorf("graceful shutdown: %w", err)
-	}
-	stop()
-	select {
-	case <-subjectCatalogsDone:
-	case <-shutdownCtx.Done():
-		logger.Warn("practice subject catalog rebuild still running at shutdown")
 	}
 
 	logger.Info("core domain service stopped cleanly")
@@ -279,7 +263,7 @@ func connectStores(cfg config, logger *slog.Logger) (*sql.DB, *ent.Client, *mong
 // HTTP handler. Split out of run so the resource-lifecycle concerns there
 // (connect, defer-close, apply migrations, start the server) stay separate
 // from dependency wiring.
-func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB *sql.DB, mongoClient *mongo.Client) (*appHTTP.Handler, *application.PracticeSubjectCatalogService, error) {
+func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB *sql.DB, mongoClient *mongo.Client) (*appHTTP.Handler, application.SubjectCatalogInvalidator, error) {
 	s3Client, err := newS3Client(ctx, cfg)
 	if err != nil {
 		return nil, nil, fmt.Errorf("configure media storage client: %w", err)
@@ -321,12 +305,10 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 		WithGuideTones(instrumentRepo).
 		WithSongs(songChartRepo, practiceActivity)
 	// Every save that changes what a practice subjects list holds writes a
-	// practice reference, so the reference writer also queues the subject
-	// catalog's rebuild.
-	subjectCatalogRepo := repo.NewEntPracticeSubjectCatalogRepository(entClient, now)
-	subjectCatalogService := application.NewPracticeSubjectCatalogService(practiceSessionService, subjectCatalogRepo, subjectCatalogSettle, subjectCatalogPoll)
-	practiceSessionService.WithSubjectCatalogs(subjectCatalogRepo, subjectCatalogService)
-	practiceReferences := application.CatalogSignallingReferences(repo.NewMongoPracticeReferenceWriter(mongoClient.Database(cfg.mongoDatabase), now), subjectCatalogService)
+	// practice reference, so the reference writer also invalidates the
+	// subject catalog.
+	practiceSessionService.WithSubjectCatalogs(repo.NewEntPracticeSubjectCatalogRepository(entClient))
+	practiceReferences := application.CatalogInvalidatingReferences(repo.NewMongoPracticeReferenceWriter(mongoClient.Database(cfg.mongoDatabase), now), practiceSessionService)
 
 	identityService := application.NewIdentityService(userRepo, languageRepo, newID, now)
 	contentService := application.NewContentService(nodeRepo, expandedRepo, knowledgeNodeRepo, contentNodeVersionRepo, diagramRepo, instrumentRepo, voiceRepo, songChartRepo, userRepo, newID, now)
@@ -347,7 +329,7 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 	practiceSummaryService := application.NewPracticeSummaryService(instrumentRepo, studentPathRepo, courseEnrollmentRepo, pathRepo, courseVersionRepo, nodeRepo, rollupService, practiceActivity, songChartRepo, now)
 	chordCatalogService := application.NewChordCatalogService(chordCatalogRepo)
 	songChartService := application.NewSongChartService(songChartRepo, chordCatalogRepo, diagramRepo, languageRepo, repo.NewEntProgressionRepository(entClient), practiceReferences, newID, now).
-		WithCatalogSignals(subjectCatalogService)
+		WithCatalogInvalidation(practiceSessionService)
 
 	appConfigRepo := repo.NewEntAppConfigRepository(entClient)
 	appConfigService := application.NewAppConfigService(appConfigRepo, now, application.NewStartingPointsKey(instrumentRepo, languageRepo, pathRepo, courseRepo))
@@ -356,7 +338,7 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 		repo.NewMongoAlphaActivityReader(mongoClient.Database(cfg.mongoDatabase)), now)
 
 	return appHTTP.NewHandler(identityService, contentService, challengeService, exerciseService, knowledgeNodeService, knowledgeEdgeService, mediaService, pathService, application.NewPathCatalogService(pathRepo, userRepo, knowledgeNodeRepo), studentPathService,
-		courseService, courseEnrollmentService, instrumentService, voiceService, diagramService, practiceSessionService, practiceSummaryService, chordCatalogService, application.NewProgressionCatalogService(repo.NewEntProgressionRepository(entClient)), songChartService, appConfigService, startingPointsService, alphaObservationService, learningGraphPinger, completionReader), subjectCatalogService, nil
+		courseService, courseEnrollmentService, instrumentService, voiceService, diagramService, practiceSessionService, practiceSummaryService, chordCatalogService, application.NewProgressionCatalogService(repo.NewEntProgressionRepository(entClient)), songChartService, appConfigService, startingPointsService, alphaObservationService, learningGraphPinger, completionReader), practiceSessionService, nil
 }
 
 // newS3Client builds the client MediaService's presigned uploads go

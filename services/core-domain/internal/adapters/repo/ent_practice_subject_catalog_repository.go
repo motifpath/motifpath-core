@@ -4,58 +4,63 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/practicecatalogsignal"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/practicesubjectcatalog"
 	"github.com/motifpath/core-domain/internal/domain"
 )
 
-// practiceCatalogRebuildLock is the key of the transaction-scoped advisory
-// lock a rebuild holds, so no two instances rebuild at once.
-const practiceCatalogRebuildLock = 6_400_064
+// practiceContentVersionID is the id of the content version's one row.
+const practiceContentVersionID = 1
 
 // EntPracticeSubjectCatalogRepository keeps the practice subject catalog and
-// its rebuild queue via ent/Postgres.
+// the content version via ent/Postgres.
 type EntPracticeSubjectCatalogRepository struct {
 	client *ent.Client
-	now    func() time.Time
 }
 
-func NewEntPracticeSubjectCatalogRepository(client *ent.Client, now func() time.Time) *EntPracticeSubjectCatalogRepository {
-	return &EntPracticeSubjectCatalogRepository{client: client, now: now}
+func NewEntPracticeSubjectCatalogRepository(client *ent.Client) *EntPracticeSubjectCatalogRepository {
+	return &EntPracticeSubjectCatalogRepository{client: client}
 }
 
-func (r *EntPracticeSubjectCatalogRepository) Catalogs(ctx context.Context, scopes []string) (map[string]domain.PracticeSubjectCatalog, error) {
+func (r *EntPracticeSubjectCatalogRepository) Catalogs(ctx context.Context, scopes []string) (map[string]domain.PracticeSubjectCatalog, int64, error) {
+	version, err := contentVersion(ctx, r.client)
+	if err != nil {
+		return nil, 0, err
+	}
 	rows, err := r.client.PracticeSubjectCatalog.Query().Where(practicesubjectcatalog.ScopeIn(scopes...)).All(ctx)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	found := make(map[string]domain.PracticeSubjectCatalog, len(rows))
 	for _, row := range rows {
 		catalog, err := toDomainPracticeSubjectCatalog(row)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		found[row.Scope] = catalog
 	}
-	return found, nil
+	return found, version, nil
 }
 
-func (r *EntPracticeSubjectCatalogRepository) Signal(ctx context.Context, reason domain.PracticeCatalogSignalReason) error {
-	return r.client.PracticeCatalogSignal.Create().SetReason(string(reason)).SetCreatedAt(r.now()).Exec(ctx)
+// BumpContentVersion creates the version's row at 1 the first time.
+func (r *EntPracticeSubjectCatalogRepository) BumpContentVersion(ctx context.Context) error {
+	_, err := r.client.ExecContext(ctx,
+		`INSERT INTO practice_content_versions (id, version) VALUES ($1, 1)
+		 ON CONFLICT (id) DO UPDATE SET version = practice_content_versions.version + 1`,
+		practiceContentVersionID)
+	return err
 }
 
-// Rebuild holds a transaction-scoped advisory lock while it builds, so a
-// second instance asking at the same time finds it taken and builds nothing.
-func (r *EntPracticeSubjectCatalogRepository) Rebuild(ctx context.Context, build func(context.Context) ([]domain.PracticeSubjectCatalog, error)) (bool, error) {
+// Store reads the version under a share lock, so a raise at the same time
+// waits for its commit.
+func (r *EntPracticeSubjectCatalogRepository) Store(ctx context.Context, version int64, catalogs []domain.PracticeSubjectCatalog) (bool, error) {
 	tx, err := r.client.Tx(ctx)
 	if err != nil {
 		return false, err
 	}
-	rebuilt, err := r.rebuildIn(ctx, tx, build)
-	if err != nil || !rebuilt {
+	stored, err := storeIn(ctx, tx, version, catalogs)
+	if err != nil || !stored {
 		return false, rollback(tx, err)
 	}
 	if err := tx.Commit(); err != nil {
@@ -64,57 +69,58 @@ func (r *EntPracticeSubjectCatalogRepository) Rebuild(ctx context.Context, build
 	return true, nil
 }
 
-func (r *EntPracticeSubjectCatalogRepository) rebuildIn(ctx context.Context, tx *ent.Tx, build func(context.Context) ([]domain.PracticeSubjectCatalog, error)) (bool, error) {
-	locked, err := tryAdvisoryXactLock(ctx, tx, practiceCatalogRebuildLock)
-	if err != nil || !locked {
+func storeIn(ctx context.Context, tx *ent.Tx, version int64, catalogs []domain.PracticeSubjectCatalog) (bool, error) {
+	current, err := lockedContentVersion(ctx, tx)
+	if err != nil || current != version {
 		return false, err
 	}
-	last, err := tx.PracticeCatalogSignal.Query().Order(ent.Desc(practicecatalogsignal.FieldID)).First(ctx)
-	if ent.IsNotFound(err) {
-		return false, nil
-	}
-	if err != nil {
-		return false, err
-	}
-	catalogs, err := build(ctx)
-	if err != nil {
-		return false, err
-	}
-	if _, err := tx.PracticeSubjectCatalog.Delete().Exec(ctx); err != nil {
-		return false, err
-	}
+	scopes := make([]string, len(catalogs))
 	creates := make([]*ent.PracticeSubjectCatalogCreate, len(catalogs))
 	for i, c := range catalogs {
 		items, err := json.Marshal(toCatalogItemRows(c.Items))
 		if err != nil {
 			return false, fmt.Errorf("practice subject catalog %q items: %w", c.Scope, err)
 		}
-		creates[i] = tx.PracticeSubjectCatalog.Create().SetScope(c.Scope).SetFormatVersion(c.FormatVersion).SetBuiltAt(c.BuiltAt).SetItems(items)
+		scopes[i] = c.Scope
+		creates[i] = tx.PracticeSubjectCatalog.Create().SetScope(c.Scope).SetContentVersion(c.ContentVersion).
+			SetFormatVersion(c.FormatVersion).SetBuiltAt(c.BuiltAt).SetItems(items)
 	}
-	if err := tx.PracticeSubjectCatalog.CreateBulk(creates...).Exec(ctx); err != nil {
+	if _, err := tx.PracticeSubjectCatalog.Delete().Where(practicesubjectcatalog.ScopeIn(scopes...)).Exec(ctx); err != nil {
 		return false, err
 	}
-	if _, err := tx.PracticeCatalogSignal.Delete().Where(practicecatalogsignal.IDLTE(last.ID)).Exec(ctx); err != nil {
+	if err := tx.PracticeSubjectCatalog.CreateBulk(creates...).Exec(ctx); err != nil {
 		return false, err
 	}
 	return true, nil
 }
 
-// tryAdvisoryXactLock takes the advisory lock key for tx's transaction,
-// reporting false when another transaction holds it.
-func tryAdvisoryXactLock(ctx context.Context, tx *ent.Tx, key int64) (bool, error) {
-	rows, err := tx.QueryContext(ctx, "SELECT pg_try_advisory_xact_lock($1)", key)
+// contentVersion is the current content version, 0 before its first raise.
+func contentVersion(ctx context.Context, client *ent.Client) (int64, error) {
+	row, err := client.PracticeContentVersion.Get(ctx, practiceContentVersionID)
+	if ent.IsNotFound(err) {
+		return 0, nil
+	}
 	if err != nil {
-		return false, err
+		return 0, err
+	}
+	return row.Version, nil
+}
+
+// lockedContentVersion is the current content version, read under a share
+// lock held until tx ends; 0 before its first raise.
+func lockedContentVersion(ctx context.Context, tx *ent.Tx) (int64, error) {
+	rows, err := tx.QueryContext(ctx, "SELECT version FROM practice_content_versions WHERE id = $1 FOR SHARE", practiceContentVersionID)
+	if err != nil {
+		return 0, err
 	}
 	defer rows.Close()
-	var locked bool
+	var version int64
 	if rows.Next() {
-		if err := rows.Scan(&locked); err != nil {
-			return false, err
+		if err := rows.Scan(&version); err != nil {
+			return 0, err
 		}
 	}
-	return locked, rows.Err()
+	return version, rows.Err()
 }
 
 // catalogItemRow is how a catalog item is stored in a row's items JSON.
@@ -155,5 +161,7 @@ func toDomainPracticeSubjectCatalog(row *ent.PracticeSubjectCatalog) (domain.Pra
 			items[i].Ways = append(items[i].Ways, domain.PracticeSubjectCatalogWay{Way: w.Way, Rung: domain.PracticeRung(w.Rung)})
 		}
 	}
-	return domain.PracticeSubjectCatalog{Scope: row.Scope, FormatVersion: row.FormatVersion, BuiltAt: row.BuiltAt.UTC(), Items: items}, nil
+	return domain.PracticeSubjectCatalog{
+		Scope: row.Scope, ContentVersion: row.ContentVersion, FormatVersion: row.FormatVersion, BuiltAt: row.BuiltAt.UTC(), Items: items,
+	}, nil
 }

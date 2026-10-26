@@ -2480,29 +2480,23 @@ func (c *catalogDrillTemplates) List(context.Context) ([]domain.DrillTemplate, e
 }
 
 // fakePracticeSubjectCatalogs is an in-memory
-// ports.PracticeSubjectCatalogRepository: the catalog's rows by scope and
-// its queue of pending signals.
+// ports.PracticeSubjectCatalogRepository: the catalog's rows by scope and the
+// content version.
 type fakePracticeSubjectCatalogs struct {
 	mu      sync.Mutex
 	rows    map[string]domain.PracticeSubjectCatalog
-	signals []fakeCatalogSignal
-	nextID  int64
-	builds  int
-	// duringBuild runs while a rebuild builds, before its catalogs are
-	// stored.
-	duringBuild func()
-}
-
-type fakeCatalogSignal struct {
-	id     int64
-	reason domain.PracticeCatalogSignalReason
+	version int64
+	// beforeStore runs as Store starts, before it checks the version.
+	beforeStore func()
+	// storeErr makes Store fail, standing in for a database failure.
+	storeErr error
 }
 
 func newFakePracticeSubjectCatalogs() *fakePracticeSubjectCatalogs {
 	return &fakePracticeSubjectCatalogs{rows: map[string]domain.PracticeSubjectCatalog{}}
 }
 
-func (f *fakePracticeSubjectCatalogs) Catalogs(_ context.Context, scopes []string) (map[string]domain.PracticeSubjectCatalog, error) {
+func (f *fakePracticeSubjectCatalogs) Catalogs(_ context.Context, scopes []string) (map[string]domain.PracticeSubjectCatalog, int64, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	found := map[string]domain.PracticeSubjectCatalog{}
@@ -2511,58 +2505,32 @@ func (f *fakePracticeSubjectCatalogs) Catalogs(_ context.Context, scopes []strin
 			found[scope] = row
 		}
 	}
-	return found, nil
+	return found, f.version, nil
 }
 
-func (f *fakePracticeSubjectCatalogs) Signal(_ context.Context, reason domain.PracticeCatalogSignalReason) error {
+func (f *fakePracticeSubjectCatalogs) BumpContentVersion(context.Context) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.nextID++
-	f.signals = append(f.signals, fakeCatalogSignal{id: f.nextID, reason: reason})
+	f.version++
 	return nil
 }
 
-func (f *fakePracticeSubjectCatalogs) Rebuild(ctx context.Context, build func(context.Context) ([]domain.PracticeSubjectCatalog, error)) (bool, error) {
-	f.mu.Lock()
-	if len(f.signals) == 0 {
-		f.mu.Unlock()
-		return false, nil
-	}
-	upTo := f.signals[len(f.signals)-1].id
-	f.mu.Unlock()
-	if f.duringBuild != nil {
-		f.duringBuild()
-	}
-	catalogs, err := build(ctx)
-	if err != nil {
-		return false, err
+func (f *fakePracticeSubjectCatalogs) Store(_ context.Context, version int64, catalogs []domain.PracticeSubjectCatalog) (bool, error) {
+	if f.beforeStore != nil {
+		f.beforeStore()
 	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.rows = map[string]domain.PracticeSubjectCatalog{}
+	if f.storeErr != nil {
+		return false, f.storeErr
+	}
+	if version != f.version {
+		return false, nil
+	}
 	for _, c := range catalogs {
 		f.rows[c.Scope] = c
 	}
-	var left []fakeCatalogSignal
-	for _, sig := range f.signals {
-		if sig.id > upTo {
-			left = append(left, sig)
-		}
-	}
-	f.signals = left
-	f.builds++
 	return true, nil
-}
-
-// pending is the reasons of the signals not yet rebuilt for, in order.
-func (f *fakePracticeSubjectCatalogs) pending() []domain.PracticeCatalogSignalReason {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	var reasons []domain.PracticeCatalogSignalReason
-	for _, sig := range f.signals {
-		reasons = append(reasons, sig.reason)
-	}
-	return reasons
 }
 
 // scopes is the scopes with a catalog.
@@ -2574,12 +2542,6 @@ func (f *fakePracticeSubjectCatalogs) scopes() []string {
 		scopes = append(scopes, scope)
 	}
 	return scopes
-}
-
-func (f *fakePracticeSubjectCatalogs) buildCount() int {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	return f.builds
 }
 
 // ageFormat makes every catalog look built by an older format.

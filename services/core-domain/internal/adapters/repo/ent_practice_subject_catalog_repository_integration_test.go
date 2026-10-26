@@ -4,7 +4,6 @@ package repo
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
@@ -17,113 +16,102 @@ import (
 func TestEntPracticeSubjectCatalogRepository(t *testing.T) {
 	ctx := context.Background()
 	built := time.Date(2026, 10, 26, 12, 0, 0, 0, time.UTC)
-	guitar := domain.PracticeSubjectCatalog{Scope: "guitar-id", FormatVersion: 1, BuiltAt: built, Items: []domain.PracticeSubjectCatalogItem{
-		{ItemKey: "exercise:e1", NodeIDs: []string{"n1", "n2"}, InHand: true, InHead: true, Rung: domain.PracticeRungKnow},
-		{ItemKey: "fretboard_cell:g:1:3", NodeIDs: []string{"n3"}, InHead: true, Ways: []domain.PracticeSubjectCatalogWay{
-			{Way: "name_the_note", Rung: domain.PracticeRungKnow}, {Way: "find_the_note", Rung: domain.PracticeRungHear},
-		}},
-	}}
-	none := domain.PracticeSubjectCatalog{Scope: "", FormatVersion: 1, BuiltAt: built, Items: []domain.PracticeSubjectCatalogItem{}}
-	buildOf := func(catalogs ...domain.PracticeSubjectCatalog) func(context.Context) ([]domain.PracticeSubjectCatalog, error) {
-		return func(context.Context) ([]domain.PracticeSubjectCatalog, error) { return catalogs, nil }
+	catalogOf := func(scope string, version int64, items ...domain.PracticeSubjectCatalogItem) domain.PracticeSubjectCatalog {
+		if items == nil {
+			items = []domain.PracticeSubjectCatalogItem{}
+		}
+		return domain.PracticeSubjectCatalog{Scope: scope, ContentVersion: version, FormatVersion: 1, BuiltAt: built, Items: items}
 	}
+	exercise := domain.PracticeSubjectCatalogItem{ItemKey: "exercise:e1", NodeIDs: []string{"n1", "n2"}, InHand: true, InHead: true, Rung: domain.PracticeRungKnow}
+	cell := domain.PracticeSubjectCatalogItem{ItemKey: "fretboard_cell:g:1:3", NodeIDs: []string{"n3"}, InHead: true, Ways: []domain.PracticeSubjectCatalogWay{
+		{Way: "name_the_note", Rung: domain.PracticeRungKnow}, {Way: "find_the_note", Rung: domain.PracticeRungHear},
+	}}
 
-	t.Run("with nothing pending, a rebuild builds nothing", func(t *testing.T) {
-		catalogs := NewEntPracticeSubjectCatalogRepository(setupPostgres(t), func() time.Time { return built })
-		called := false
+	t.Run("before any change the version is 0 and there are no catalogs", func(t *testing.T) {
+		catalogs := NewEntPracticeSubjectCatalogRepository(setupPostgres(t))
 
-		rebuilt, err := catalogs.Rebuild(ctx, func(context.Context) ([]domain.PracticeSubjectCatalog, error) {
-			called = true
-			return nil, nil
-		})
+		got, version, err := catalogs.Catalogs(ctx, []string{"guitar-id", ""})
 
 		require.NoError(t, err)
-		assert.False(t, rebuilt)
-		assert.False(t, called)
+		assert.Empty(t, got)
+		assert.Zero(t, version)
 	})
 
-	t.Run("a rebuild stores what it builds, by scope, and clears the signals", func(t *testing.T) {
-		catalogs := NewEntPracticeSubjectCatalogRepository(setupPostgres(t), func() time.Time { return built })
-		require.NoError(t, catalogs.Signal(ctx, domain.PracticeCatalogSignalStart))
-		require.NoError(t, catalogs.Signal(ctx, domain.PracticeCatalogSignalDiagram))
+	t.Run("each raise adds one to the version", func(t *testing.T) {
+		catalogs := NewEntPracticeSubjectCatalogRepository(setupPostgres(t))
 
-		rebuilt, err := catalogs.Rebuild(ctx, buildOf(guitar, none))
+		require.NoError(t, catalogs.BumpContentVersion(ctx))
+		require.NoError(t, catalogs.BumpContentVersion(ctx))
+
+		_, version, err := catalogs.Catalogs(ctx, nil)
+		require.NoError(t, err)
+		assert.Equal(t, int64(2), version)
+	})
+
+	t.Run("catalogs stored for the current version are read back by scope", func(t *testing.T) {
+		catalogs := NewEntPracticeSubjectCatalogRepository(setupPostgres(t))
+		require.NoError(t, catalogs.BumpContentVersion(ctx))
+		guitar, none := catalogOf("guitar-id", 1, exercise, cell), catalogOf("", 1)
+
+		stored, err := catalogs.Store(ctx, 1, []domain.PracticeSubjectCatalog{guitar, none})
 
 		require.NoError(t, err)
-		assert.True(t, rebuilt)
-		got, err := catalogs.Catalogs(ctx, []string{"guitar-id", "", "bass-id"})
+		assert.True(t, stored)
+		got, version, err := catalogs.Catalogs(ctx, []string{"guitar-id", "", "bass-id"})
 		require.NoError(t, err)
+		assert.Equal(t, int64(1), version)
 		assert.Equal(t, map[string]domain.PracticeSubjectCatalog{"guitar-id": guitar, "": none}, got, "a scope with no catalog is absent")
-		rebuilt, err = catalogs.Rebuild(ctx, buildOf(guitar))
-		require.NoError(t, err)
-		assert.False(t, rebuilt, "nothing is pending any more")
 	})
 
-	t.Run("a rebuild replaces every catalog", func(t *testing.T) {
-		catalogs := NewEntPracticeSubjectCatalogRepository(setupPostgres(t), func() time.Time { return built })
-		require.NoError(t, catalogs.Signal(ctx, domain.PracticeCatalogSignalStart))
-		_, err := catalogs.Rebuild(ctx, buildOf(guitar, none))
+	t.Run("storing replaces only the scopes stored", func(t *testing.T) {
+		catalogs := NewEntPracticeSubjectCatalogRepository(setupPostgres(t))
+		_, err := catalogs.Store(ctx, 0, []domain.PracticeSubjectCatalog{catalogOf("guitar-id", 0, exercise), catalogOf("bass-id", 0)})
 		require.NoError(t, err)
-		require.NoError(t, catalogs.Signal(ctx, domain.PracticeCatalogSignalInstrument))
-		later := none
-		later.BuiltAt = built.Add(time.Hour)
+		require.NoError(t, catalogs.BumpContentVersion(ctx))
+		newGuitar := catalogOf("guitar-id", 1, exercise, cell)
 
-		_, err = catalogs.Rebuild(ctx, buildOf(later))
+		_, err = catalogs.Store(ctx, 1, []domain.PracticeSubjectCatalog{newGuitar})
+		require.NoError(t, err)
 
+		got, _, err := catalogs.Catalogs(ctx, []string{"guitar-id", "bass-id"})
 		require.NoError(t, err)
-		got, err := catalogs.Catalogs(ctx, []string{"guitar-id", ""})
-		require.NoError(t, err)
-		assert.Equal(t, map[string]domain.PracticeSubjectCatalog{"": later}, got)
+		assert.Equal(t, map[string]domain.PracticeSubjectCatalog{"guitar-id": newGuitar, "bass-id": catalogOf("bass-id", 0)}, got)
 	})
 
-	t.Run("a signal queued while a rebuild builds stays for the next", func(t *testing.T) {
-		catalogs := NewEntPracticeSubjectCatalogRepository(setupPostgres(t), func() time.Time { return built })
-		require.NoError(t, catalogs.Signal(ctx, domain.PracticeCatalogSignalStart))
+	t.Run("a catalog built from a version raised since is not stored", func(t *testing.T) {
+		catalogs := NewEntPracticeSubjectCatalogRepository(setupPostgres(t))
+		require.NoError(t, catalogs.BumpContentVersion(ctx))
 
-		_, err := catalogs.Rebuild(ctx, func(ctx context.Context) ([]domain.PracticeSubjectCatalog, error) {
-			require.NoError(t, catalogs.Signal(ctx, domain.PracticeCatalogSignalExercise))
-			return []domain.PracticeSubjectCatalog{none}, nil
-		})
-		require.NoError(t, err)
+		stored, err := catalogs.Store(ctx, 0, []domain.PracticeSubjectCatalog{catalogOf("guitar-id", 0, exercise)})
 
-		rebuilt, err := catalogs.Rebuild(ctx, buildOf(none))
 		require.NoError(t, err)
-		assert.True(t, rebuilt)
+		assert.False(t, stored)
+		got, _, err := catalogs.Catalogs(ctx, []string{"guitar-id"})
+		require.NoError(t, err)
+		assert.Empty(t, got)
 	})
 
-	t.Run("while one rebuild builds, another builds nothing", func(t *testing.T) {
-		catalogs := NewEntPracticeSubjectCatalogRepository(setupPostgres(t), func() time.Time { return built })
-		require.NoError(t, catalogs.Signal(ctx, domain.PracticeCatalogSignalStart))
-		var other bool
-
-		_, err := catalogs.Rebuild(ctx, func(ctx context.Context) ([]domain.PracticeSubjectCatalog, error) {
-			var err error
-			other, err = catalogs.Rebuild(ctx, buildOf(guitar))
-			require.NoError(t, err)
-			return []domain.PracticeSubjectCatalog{none}, nil
-		})
-
+	t.Run("a raise while a store holds the version waits for it, so the stored catalog ends out of date", func(t *testing.T) {
+		client := setupPostgres(t)
+		catalogs := NewEntPracticeSubjectCatalogRepository(client)
+		require.NoError(t, catalogs.BumpContentVersion(ctx))
+		tx, err := client.Tx(ctx)
 		require.NoError(t, err)
-		assert.False(t, other)
-	})
-
-	t.Run("a failed build keeps the catalogs and the signals", func(t *testing.T) {
-		catalogs := NewEntPracticeSubjectCatalogRepository(setupPostgres(t), func() time.Time { return built })
-		require.NoError(t, catalogs.Signal(ctx, domain.PracticeCatalogSignalStart))
-		_, err := catalogs.Rebuild(ctx, buildOf(guitar))
+		_, err = tx.ExecContext(ctx, "SELECT version FROM practice_content_versions WHERE id = 1 FOR SHARE")
 		require.NoError(t, err)
-		require.NoError(t, catalogs.Signal(ctx, domain.PracticeCatalogSignalDiagram))
 
-		_, err = catalogs.Rebuild(ctx, func(context.Context) ([]domain.PracticeSubjectCatalog, error) {
-			return nil, errors.New("build failed")
-		})
+		raised := make(chan error, 1)
+		go func() { raised <- catalogs.BumpContentVersion(ctx) }()
+		select {
+		case err := <-raised:
+			t.Fatalf("the raise didn't wait for the share lock: %v", err)
+		case <-time.After(200 * time.Millisecond):
+		}
+		require.NoError(t, tx.Commit())
 
-		require.Error(t, err)
-		got, err := catalogs.Catalogs(ctx, []string{"guitar-id"})
+		require.NoError(t, <-raised)
+		_, version, err := catalogs.Catalogs(ctx, nil)
 		require.NoError(t, err)
-		assert.Equal(t, map[string]domain.PracticeSubjectCatalog{"guitar-id": guitar}, got)
-		rebuilt, err := catalogs.Rebuild(ctx, buildOf(guitar))
-		require.NoError(t, err)
-		assert.True(t, rebuilt, "the signal is still pending")
+		assert.Equal(t, int64(2), version)
 	})
 }
