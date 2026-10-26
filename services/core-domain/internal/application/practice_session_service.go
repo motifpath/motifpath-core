@@ -63,6 +63,9 @@ type PracticeSessionService struct {
 	// harmony is what the harmony drills read; nil when they aren't
 	// installed.
 	harmony *harmonyDrills
+	// subjectCatalogs holds the precomputed practice subject catalog; nil
+	// when subjects are always listed live.
+	subjectCatalogs ports.PracticeSubjectCatalogRepository
 	// lastInHand tells the items of a student's last in-hand session; nil
 	// when no songs are installed.
 	lastInHand ports.LastInHandSessionReader

@@ -72,6 +72,22 @@ func (s *KnowledgeRollupService) FretboardMap(ctx context.Context, studentID, in
 // Map returns the student's standings on the knowledge map for
 // instrumentID, with the items and states they were rolled up from.
 func (s *KnowledgeRollupService) Map(ctx context.Context, studentID, instrumentID string) (KnowledgeMap, error) {
+	items, err := s.ClassifiedItems(ctx, instrumentID)
+	if err != nil {
+		return KnowledgeMap{}, err
+	}
+	return s.MapWith(ctx, studentID, instrumentID, items)
+}
+
+// ClassifiedItems lists the items classified for instrumentID, or for every
+// instrument when it is empty.
+func (s *KnowledgeRollupService) ClassifiedItems(ctx context.Context, instrumentID string) ([]domain.ClassifiedItem, error) {
+	return s.items.ClassifiedItems(ctx, instrumentID)
+}
+
+// MapWith is Map over items, the items classified for instrumentID, read
+// ahead of time.
+func (s *KnowledgeRollupService) MapWith(ctx context.Context, studentID, instrumentID string, items []domain.ClassifiedItem) (KnowledgeMap, error) {
 	nodes, err := s.nodes.List(ctx, ports.KnowledgeNodeFilter{})
 	if err != nil {
 		return KnowledgeMap{}, err
@@ -88,10 +104,6 @@ func (s *KnowledgeRollupService) Map(ctx context.Context, studentID, instrumentI
 		case domain.KnowledgeEdgeTypeApplies:
 			applies = append(applies, e)
 		}
-	}
-	items, err := s.items.ClassifiedItems(ctx, instrumentID)
-	if err != nil {
-		return KnowledgeMap{}, err
 	}
 	keys := make([]string, len(items))
 	for i, item := range items {

@@ -2456,9 +2456,14 @@ func (f *fakeExerciseRepository) ListSoundUses(_ context.Context, diagramID stri
 // test installs.
 type catalogDrillTemplates struct {
 	extra []domain.DrillTemplate
+	// err makes List fail, standing in for a database failure.
+	err error
 }
 
 func (c *catalogDrillTemplates) List(context.Context) ([]domain.DrillTemplate, error) {
+	if c.err != nil {
+		return nil, c.err
+	}
 	way := func(key string) *string { return &key }
 	return append([]domain.DrillTemplate{
 		{Key: "diagram_shape:find_the_degree", ItemKind: domain.PracticeItemKindDiagramShape, Rung: domain.PracticeRungKnow, SecondWay: way("diagram_shape:name_the_shape"), Timed: true},
@@ -2472,4 +2477,79 @@ func (c *catalogDrillTemplates) List(context.Context) ([]domain.DrillTemplate, e
 		{Key: "fretboard_cell:find_the_note", ItemKind: domain.PracticeItemKindFretboardCell, Rung: domain.PracticeRungKnow, SecondWay: way("fretboard_cell:name_the_note"), Timed: true},
 		{Key: "fretboard_cell:name_the_note", ItemKind: domain.PracticeItemKindFretboardCell, Rung: domain.PracticeRungKnow, SecondWay: way("fretboard_cell:find_the_note"), Timed: true},
 	}, c.extra...), nil
+}
+
+// fakePracticeSubjectCatalogs is an in-memory
+// ports.PracticeSubjectCatalogRepository: the catalog's rows by scope and the
+// content version.
+type fakePracticeSubjectCatalogs struct {
+	mu      sync.Mutex
+	rows    map[string]domain.PracticeSubjectCatalog
+	version int64
+	// beforeStore runs as Store starts, before it checks the version.
+	beforeStore func()
+	// storeErr makes Store fail, standing in for a database failure.
+	storeErr error
+}
+
+func newFakePracticeSubjectCatalogs() *fakePracticeSubjectCatalogs {
+	return &fakePracticeSubjectCatalogs{rows: map[string]domain.PracticeSubjectCatalog{}}
+}
+
+func (f *fakePracticeSubjectCatalogs) Catalogs(_ context.Context, scopes []string) (map[string]domain.PracticeSubjectCatalog, int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	found := map[string]domain.PracticeSubjectCatalog{}
+	for _, scope := range scopes {
+		if row, ok := f.rows[scope]; ok {
+			found[scope] = row
+		}
+	}
+	return found, f.version, nil
+}
+
+func (f *fakePracticeSubjectCatalogs) BumpContentVersion(context.Context) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.version++
+	return nil
+}
+
+func (f *fakePracticeSubjectCatalogs) Store(_ context.Context, version int64, catalogs []domain.PracticeSubjectCatalog) (bool, error) {
+	if f.beforeStore != nil {
+		f.beforeStore()
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.storeErr != nil {
+		return false, f.storeErr
+	}
+	if version != f.version {
+		return false, nil
+	}
+	for _, c := range catalogs {
+		f.rows[c.Scope] = c
+	}
+	return true, nil
+}
+
+// scopes is the scopes with a catalog.
+func (f *fakePracticeSubjectCatalogs) scopes() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var scopes []string
+	for scope := range f.rows {
+		scopes = append(scopes, scope)
+	}
+	return scopes
+}
+
+// ageFormat makes every catalog look built by an older format.
+func (f *fakePracticeSubjectCatalogs) ageFormat() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for scope, row := range f.rows {
+		row.FormatVersion--
+		f.rows[scope] = row
+	}
 }

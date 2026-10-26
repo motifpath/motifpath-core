@@ -1335,6 +1335,32 @@ var (
 			},
 		},
 	}
+	// PracticeContentVersionsColumns holds the columns for the "practice_content_versions" table.
+	PracticeContentVersionsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "version", Type: field.TypeInt64},
+	}
+	// PracticeContentVersionsTable holds the schema information for the "practice_content_versions" table.
+	PracticeContentVersionsTable = &schema.Table{
+		Name:       "practice_content_versions",
+		Columns:    PracticeContentVersionsColumns,
+		PrimaryKey: []*schema.Column{PracticeContentVersionsColumns[0]},
+	}
+	// PracticeSubjectCatalogsColumns holds the columns for the "practice_subject_catalogs" table.
+	PracticeSubjectCatalogsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "scope", Type: field.TypeString, Unique: true},
+		{Name: "content_version", Type: field.TypeInt64},
+		{Name: "format_version", Type: field.TypeInt},
+		{Name: "built_at", Type: field.TypeTime},
+		{Name: "items", Type: field.TypeJSON},
+	}
+	// PracticeSubjectCatalogsTable holds the schema information for the "practice_subject_catalogs" table.
+	PracticeSubjectCatalogsTable = &schema.Table{
+		Name:       "practice_subject_catalogs",
+		Columns:    PracticeSubjectCatalogsColumns,
+		PrimaryKey: []*schema.Column{PracticeSubjectCatalogsColumns[0]},
+	}
 	// ProgressionsColumns holds the columns for the "progressions" table.
 	ProgressionsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -1589,6 +1615,8 @@ var (
 		LearningPathInstrumentsTable,
 		LearningPathItemsTable,
 		PositionsTable,
+		PracticeContentVersionsTable,
+		PracticeSubjectCatalogsTable,
 		ProgressionsTable,
 		SongChartsTable,
 		SongChartRevisionsTable,

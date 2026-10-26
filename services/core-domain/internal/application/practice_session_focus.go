@@ -357,17 +357,7 @@ func (s *PracticeSessionService) ListSubjects(ctx context.Context, caller domain
 	if err != nil {
 		return domain.PracticeSubjectList{}, err
 	}
-	maps, err := s.knowledgeMaps(ctx, caller.ID, instrumentIDs)
-	if err != nil {
-		return domain.PracticeSubjectList{}, err
-	}
-	if err := s.composingDiagrams.readAll(ctx, maps); err != nil {
-		return domain.PracticeSubjectList{}, err
-	}
-	if err := s.composingExercises.readAll(ctx, maps); err != nil {
-		return domain.PracticeSubjectList{}, err
-	}
-	templates, err := s.drillTemplates(ctx)
+	catalogs, err := s.subjectCatalogItems(ctx, instrumentIDs)
 	if err != nil {
 		return domain.PracticeSubjectList{}, err
 	}
@@ -375,37 +365,39 @@ func (s *PracticeSessionService) ListSubjects(ctx context.Context, caller domain
 	if err != nil {
 		return domain.PracticeSubjectList{}, err
 	}
-	c := newComposer(s.now(), 0, s.shuffle, templates)
+	now := s.now()
 	tally := newSubjectTally()
-	loaded := map[string]*practiceCandidate{}
-	for _, m := range maps {
-		if err := s.tallyMap(ctx, c, m, instrumentID != nil, loaded, tally); err != nil {
+	maps := make([]KnowledgeMap, len(instrumentIDs))
+	for i, id := range instrumentIDs {
+		items := catalogs[id]
+		classified := make([]domain.ClassifiedItem, len(items))
+		for j, item := range items {
+			classified[j] = domain.ClassifiedItem{ItemKey: item.ItemKey, NodeIDs: item.NodeIDs}
+		}
+		if maps[i], err = s.rollup.MapWith(ctx, caller.ID, id, classified); err != nil {
 			return domain.PracticeSubjectList{}, err
 		}
+		tallyCatalog(maps[i], items, instrumentID != nil, tally, now)
 	}
-	return tally.list(instrumentID, allNodes(maps), pathSkillIDs, c.now), nil
+	return tally.list(instrumentID, allNodes(maps), pathSkillIDs, now), nil
 }
 
-// tallyMap tallies in tally the items of knowledge map m that suit a
-// session with the instrument in hand (inHand) or in the head, each loaded
-// once into loaded, under every node of m whose subtree holds them.
-func (s *PracticeSessionService) tallyMap(ctx context.Context, c *composer, m KnowledgeMap, inHand bool, loaded map[string]*practiceCandidate, tally subjectTally) error {
+// tallyCatalog tallies in tally the items of a catalog that suit a session
+// with the instrument in hand (inHand) or in the head, under every node of
+// m, the student's knowledge map over them, whose subtree holds them.
+func tallyCatalog(m KnowledgeMap, items []domain.PracticeSubjectCatalogItem, inHand bool, tally subjectTally, now time.Time) {
 	suits := map[string]bool{}
-	for _, item := range m.Items {
-		cand, err := s.loadOnce(ctx, loaded, item.ItemKey)
-		if err != nil {
-			return err
-		}
-		if cand == nil || !cand.suitsSession(inHand) {
+	for _, item := range items {
+		if !item.Suits(inHand) {
 			continue
 		}
 		suits[item.ItemKey] = true
-		with := *cand
-		if state, ok := m.States[item.ItemKey]; ok {
-			with.state = &state
-			tally.states[item.ItemKey] = state
+		var state *domain.PracticeItemState
+		if st, ok := m.States[item.ItemKey]; ok {
+			state = &st
+			tally.states[item.ItemKey] = st
 		}
-		tally.rungs[item.ItemKey] = c.rungOf(with)
+		tally.rungs[item.ItemKey] = item.RungFor(state)
 	}
 	for _, n := range m.Nodes {
 		var keys []string
@@ -414,9 +406,8 @@ func (s *PracticeSessionService) tallyMap(ctx context.Context, c *composer, m Kn
 				keys = append(keys, key)
 			}
 		}
-		tally.add(n.ID, keys, domain.RollUpNode(keys, m.States, c.now).Level)
+		tally.add(n.ID, keys, domain.RollUpNode(keys, m.States, now).Level)
 	}
-	return nil
 }
 
 // subjectTally gathers each node's material for a session across the

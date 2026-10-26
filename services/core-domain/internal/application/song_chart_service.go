@@ -23,8 +23,18 @@ type SongChartService struct {
 	languages    ports.LanguageRepository
 	progressions ports.ProgressionRepository
 	refs         ports.PracticeReferenceWriter
-	newID        func() string
-	now          func() time.Time
+	// catalogs is invalidated on a withdrawal; nil invalidates nothing.
+	catalogs SubjectCatalogInvalidator
+	newID    func() string
+	now      func() time.Time
+}
+
+// WithCatalogInvalidation makes a withdrawal invalidate the practice subject
+// catalog through catalogs: a withdrawn chart is no longer a song to
+// practise, and a withdrawal writes no practice reference to invalidate it.
+func (s *SongChartService) WithCatalogInvalidation(catalogs SubjectCatalogInvalidator) *SongChartService {
+	s.catalogs = catalogs
+	return s
 }
 
 func NewSongChartService(
@@ -240,6 +250,9 @@ func (s *SongChartService) Withdraw(ctx context.Context, caller domain.User, id,
 	}
 	if err := s.charts.Save(ctx, withdrawn); err != nil {
 		return domain.SongChart{}, err
+	}
+	if s.catalogs != nil {
+		s.catalogs.InvalidateSubjectCatalogs(ctx)
 	}
 	return withdrawn, nil
 }
