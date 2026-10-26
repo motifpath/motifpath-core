@@ -147,6 +147,12 @@ type LearningPathItem func(*sql.Selector)
 // Position is the predicate function for position builders.
 type Position func(*sql.Selector)
 
+// PracticeContentVersion is the predicate function for practicecontentversion builders.
+type PracticeContentVersion func(*sql.Selector)
+
+// PracticeSubjectCatalog is the predicate function for practicesubjectcatalog builders.
+type PracticeSubjectCatalog func(*sql.Selector)
+
 // Progression is the predicate function for progression builders.
 type Progression func(*sql.Selector)
 

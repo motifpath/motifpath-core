@@ -111,3 +111,21 @@ func (f *fakeSongChartRepo) ExistingIDs(_ context.Context, ids []string) ([]stri
 	}
 	return out, nil
 }
+
+func (f *fakeSongChartRepo) PublishedRevisions(_ context.Context) ([]domain.SongChartRevision, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var revisions []domain.SongChartRevision
+	for id, chart := range f.charts {
+		if chart.Status != domain.SongChartPublished || chart.PublishedRevision == nil {
+			continue
+		}
+		for _, rev := range f.revisions[id] {
+			if rev.Number == chart.PublishedRevision.Number {
+				rev.Body = domain.SongChartDocument{}
+				revisions = append(revisions, rev)
+			}
+		}
+	}
+	return revisions, nil
+}

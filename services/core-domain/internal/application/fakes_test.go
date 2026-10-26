@@ -427,6 +427,8 @@ type fakeExerciseRepository struct {
 	byChallengeOrder map[string][]string
 	byNodeOrder      map[string][]string
 	createErr        error
+	// gets counts GetByID reads and batchReads GetByIDs ones.
+	gets, batchReads int
 }
 
 func newFakeExerciseRepository() *fakeExerciseRepository {
@@ -450,11 +452,25 @@ func (f *fakeExerciseRepository) Create(_ context.Context, exercise domain.Exerc
 func (f *fakeExerciseRepository) GetByID(_ context.Context, id string) (domain.Exercise, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.gets++
 	exercise, ok := f.byID[id]
 	if !ok {
 		return domain.Exercise{}, domain.ErrNotFound
 	}
 	return exercise, nil
+}
+
+func (f *fakeExerciseRepository) GetByIDs(_ context.Context, ids []string) (map[string]domain.Exercise, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.batchReads++
+	found := map[string]domain.Exercise{}
+	for _, id := range ids {
+		if exercise, ok := f.byID[id]; ok {
+			found[id] = exercise
+		}
+	}
+	return found, nil
 }
 
 func (f *fakeExerciseRepository) LinkChallenge(_ context.Context, exerciseID, challengeID string) error {
@@ -1819,10 +1835,12 @@ type fakeInstrumentRepository struct {
 	// getErrs makes GetByID fail with the given error for an id, standing in
 	// for a database failure.
 	getErrs map[string]error
+	// gets counts GetByID reads, by id.
+	gets map[string]int
 }
 
 func newFakeInstrumentRepository() *fakeInstrumentRepository {
-	return &fakeInstrumentRepository{byID: map[string]domain.Instrument{}, getErrs: map[string]error{}}
+	return &fakeInstrumentRepository{byID: map[string]domain.Instrument{}, getErrs: map[string]error{}, gets: map[string]int{}}
 }
 
 func (f *fakeInstrumentRepository) Create(_ context.Context, instrument domain.Instrument) error {
@@ -1835,6 +1853,7 @@ func (f *fakeInstrumentRepository) Create(_ context.Context, instrument domain.I
 func (f *fakeInstrumentRepository) GetByID(_ context.Context, id string) (domain.Instrument, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.gets[id]++
 	if err, ok := f.getErrs[id]; ok {
 		return domain.Instrument{}, err
 	}
@@ -1914,6 +1933,8 @@ type fakeDiagramRepository struct {
 	mu        sync.Mutex
 	byID      map[string]domain.Diagram
 	knowledge *fakeKnowledgeNodeRepository
+	// gets counts GetByID reads and batchReads GetByIDs ones.
+	gets, batchReads int
 }
 
 func newFakeDiagramRepository() *fakeDiagramRepository {
@@ -1936,6 +1957,13 @@ func (f *fakeDiagramRepository) put(diagram domain.Diagram) {
 func (f *fakeDiagramRepository) GetByID(_ context.Context, id string) (domain.Diagram, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.gets++
+	return f.stored(id)
+}
+
+// stored is the diagram with this id as GetByID returns it, without counting
+// a read; f.mu is held.
+func (f *fakeDiagramRepository) stored(id string) (domain.Diagram, error) {
 	diagram, ok := f.byID[id]
 	if !ok {
 		return domain.Diagram{}, domain.ErrNotFound
@@ -1947,10 +1975,13 @@ func (f *fakeDiagramRepository) GetByID(_ context.Context, id string) (domain.Di
 	return diagram, nil
 }
 
-func (f *fakeDiagramRepository) GetByIDs(ctx context.Context, ids []string) (map[string]domain.Diagram, error) {
+func (f *fakeDiagramRepository) GetByIDs(_ context.Context, ids []string) (map[string]domain.Diagram, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.batchReads++
 	found := map[string]domain.Diagram{}
 	for _, id := range ids {
-		if d, err := f.GetByID(ctx, id); err == nil {
+		if d, err := f.stored(id); err == nil {
 			found[id] = d
 		}
 	}
@@ -2006,6 +2037,7 @@ type fakePracticeReferenceWriter struct {
 	threshold []domain.DrillThreshold
 	targets   []domain.ChangeTarget
 	progs     []domain.Progression
+	songs     []string
 	writes    int
 	err       error
 }
@@ -2082,6 +2114,28 @@ func (f *fakePracticeReferenceWriter) PutProgressions(ctx context.Context, progr
 	f.writes++
 	f.progs = append(f.progs, progressions...)
 	return nil
+}
+
+func (f *fakePracticeReferenceWriter) PutSongCharts(ctx context.Context, refs []domain.SongChartReference) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if f.err != nil {
+		return f.err
+	}
+	f.writes++
+	for _, ref := range refs {
+		f.songs = append(f.songs, ref.ID)
+	}
+	return nil
+}
+
+func (f *fakePracticeReferenceWriter) songChartIDs() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.songs
 }
 
 func (f *fakePracticeReferenceWriter) progressions() []domain.Progression {
@@ -2181,6 +2235,8 @@ func (f *fakePracticeReferenceWriter) diagram(id string) (domain.DiagramReferenc
 type fakeChordCatalogRepository struct {
 	chords   []domain.ChordDefinition
 	voicings map[string]domain.ChordVoicing
+	// finds counts FindChord reads.
+	finds int
 }
 
 func (f *fakeChordCatalogRepository) GetChord(_ context.Context, id string) (domain.ChordDefinition, error) {
@@ -2243,6 +2299,7 @@ func (f *fakeChordCatalogRepository) activeOnly(c domain.ChordDefinition) domain
 }
 
 func (f *fakeChordCatalogRepository) FindChord(_ context.Context, rootPitchClass int, quality domain.ChordQuality, bassPitchClass *int) (domain.ChordDefinition, error) {
+	f.finds++
 	for _, c := range f.chords {
 		sameBass := (c.BassPitchClass == nil && bassPitchClass == nil) ||
 			(c.BassPitchClass != nil && bassPitchClass != nil && *c.BassPitchClass == *bassPitchClass)
@@ -2258,6 +2315,9 @@ type fakeSongChartRepository struct {
 	mu        sync.Mutex
 	charts    map[string]domain.SongChart
 	revisions map[string][]domain.SongChartRevision
+	// publishedReads and chartReads count the reads of every published
+	// revision and of one chart or revision.
+	publishedReads, chartReads int
 }
 
 func newFakeSongChartRepository() *fakeSongChartRepository {
@@ -2274,6 +2334,7 @@ func (f *fakeSongChartRepository) Create(_ context.Context, chart domain.SongCha
 func (f *fakeSongChartRepository) GetByID(_ context.Context, id string) (domain.SongChart, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.chartReads++
 	chart, ok := f.charts[id]
 	if !ok {
 		return domain.SongChart{}, domain.ErrNotFound
@@ -2349,9 +2410,29 @@ func (f *fakeSongChartRepository) ListRevisions(_ context.Context, chartID strin
 	return append([]domain.SongChartRevision(nil), f.revisions[chartID]...), nil
 }
 
+func (f *fakeSongChartRepository) PublishedRevisions(_ context.Context) ([]domain.SongChartRevision, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.publishedReads++
+	var revisions []domain.SongChartRevision
+	for id, chart := range f.charts {
+		if chart.Status != domain.SongChartPublished || chart.PublishedRevision == nil {
+			continue
+		}
+		for _, rev := range f.revisions[id] {
+			if rev.Number == chart.PublishedRevision.Number {
+				rev.Body = domain.SongChartDocument{}
+				revisions = append(revisions, rev)
+			}
+		}
+	}
+	return revisions, nil
+}
+
 func (f *fakeSongChartRepository) GetRevision(_ context.Context, chartID string, number int) (domain.SongChartRevision, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.chartReads++
 	for _, rev := range f.revisions[chartID] {
 		if rev.Number == number {
 			return rev, nil
@@ -2375,9 +2456,14 @@ func (f *fakeExerciseRepository) ListSoundUses(_ context.Context, diagramID stri
 // test installs.
 type catalogDrillTemplates struct {
 	extra []domain.DrillTemplate
+	// err makes List fail, standing in for a database failure.
+	err error
 }
 
 func (c *catalogDrillTemplates) List(context.Context) ([]domain.DrillTemplate, error) {
+	if c.err != nil {
+		return nil, c.err
+	}
 	way := func(key string) *string { return &key }
 	return append([]domain.DrillTemplate{
 		{Key: "diagram_shape:find_the_degree", ItemKind: domain.PracticeItemKindDiagramShape, Rung: domain.PracticeRungKnow, SecondWay: way("diagram_shape:name_the_shape"), Timed: true},
@@ -2387,7 +2473,83 @@ func (c *catalogDrillTemplates) List(context.Context) ([]domain.DrillTemplate, e
 		{Key: "exercise:image_choice", ItemKind: domain.PracticeItemKindExercise, Rung: domain.PracticeRungKnow, Timed: true},
 		{Key: "exercise:image_recognition", ItemKind: domain.PracticeItemKindExercise, Rung: domain.PracticeRungKnow, Timed: true},
 		{Key: "exercise:text_response", ItemKind: domain.PracticeItemKindExercise, Rung: domain.PracticeRungKnow, Timed: true},
+		{Key: "fretboard_cell:find_every_instance", ItemKind: domain.PracticeItemKindFretboardCell, Rung: domain.PracticeRungKnow},
 		{Key: "fretboard_cell:find_the_note", ItemKind: domain.PracticeItemKindFretboardCell, Rung: domain.PracticeRungKnow, SecondWay: way("fretboard_cell:name_the_note"), Timed: true},
 		{Key: "fretboard_cell:name_the_note", ItemKind: domain.PracticeItemKindFretboardCell, Rung: domain.PracticeRungKnow, SecondWay: way("fretboard_cell:find_the_note"), Timed: true},
 	}, c.extra...), nil
+}
+
+// fakePracticeSubjectCatalogs is an in-memory
+// ports.PracticeSubjectCatalogRepository: the catalog's rows by scope and the
+// content version.
+type fakePracticeSubjectCatalogs struct {
+	mu      sync.Mutex
+	rows    map[string]domain.PracticeSubjectCatalog
+	version int64
+	// beforeStore runs as Store starts, before it checks the version.
+	beforeStore func()
+	// storeErr makes Store fail, standing in for a database failure.
+	storeErr error
+}
+
+func newFakePracticeSubjectCatalogs() *fakePracticeSubjectCatalogs {
+	return &fakePracticeSubjectCatalogs{rows: map[string]domain.PracticeSubjectCatalog{}}
+}
+
+func (f *fakePracticeSubjectCatalogs) Catalogs(_ context.Context, scopes []string) (map[string]domain.PracticeSubjectCatalog, int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	found := map[string]domain.PracticeSubjectCatalog{}
+	for _, scope := range scopes {
+		if row, ok := f.rows[scope]; ok {
+			found[scope] = row
+		}
+	}
+	return found, f.version, nil
+}
+
+func (f *fakePracticeSubjectCatalogs) BumpContentVersion(context.Context) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.version++
+	return nil
+}
+
+func (f *fakePracticeSubjectCatalogs) Store(_ context.Context, version int64, catalogs []domain.PracticeSubjectCatalog) (bool, error) {
+	if f.beforeStore != nil {
+		f.beforeStore()
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.storeErr != nil {
+		return false, f.storeErr
+	}
+	if version != f.version {
+		return false, nil
+	}
+	for _, c := range catalogs {
+		f.rows[c.Scope] = c
+	}
+	return true, nil
+}
+
+// scopes is the scopes with a catalog.
+func (f *fakePracticeSubjectCatalogs) scopes() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var scopes []string
+	for scope := range f.rows {
+		scopes = append(scopes, scope)
+	}
+	return scopes
+}
+
+// ageFormat makes every catalog look built by an older format.
+func (f *fakePracticeSubjectCatalogs) ageFormat() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for scope, row := range f.rows {
+		row.FormatVersion--
+		f.rows[scope] = row
+	}
 }

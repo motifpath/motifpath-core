@@ -63,6 +63,8 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathitem"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/position"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/practicecontentversion"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/practicesubjectcatalog"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/progression"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/songchart"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/songchartrevision"
@@ -71,6 +73,8 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/studentpathitem"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/user"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/voice"
+
+	stdsql "database/sql"
 )
 
 // Client is the client that holds all ent builders.
@@ -172,6 +176,10 @@ type Client struct {
 	LearningPathItem *LearningPathItemClient
 	// Position is the client for interacting with the Position builders.
 	Position *PositionClient
+	// PracticeContentVersion is the client for interacting with the PracticeContentVersion builders.
+	PracticeContentVersion *PracticeContentVersionClient
+	// PracticeSubjectCatalog is the client for interacting with the PracticeSubjectCatalog builders.
+	PracticeSubjectCatalog *PracticeSubjectCatalogClient
 	// Progression is the client for interacting with the Progression builders.
 	Progression *ProgressionClient
 	// SongChart is the client for interacting with the SongChart builders.
@@ -246,6 +254,8 @@ func (c *Client) init() {
 	c.LearningPathInstrument = NewLearningPathInstrumentClient(c.config)
 	c.LearningPathItem = NewLearningPathItemClient(c.config)
 	c.Position = NewPositionClient(c.config)
+	c.PracticeContentVersion = NewPracticeContentVersionClient(c.config)
+	c.PracticeSubjectCatalog = NewPracticeSubjectCatalogClient(c.config)
 	c.Progression = NewProgressionClient(c.config)
 	c.SongChart = NewSongChartClient(c.config)
 	c.SongChartRevision = NewSongChartRevisionClient(c.config)
@@ -393,6 +403,8 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		LearningPathInstrument:  NewLearningPathInstrumentClient(cfg),
 		LearningPathItem:        NewLearningPathItemClient(cfg),
 		Position:                NewPositionClient(cfg),
+		PracticeContentVersion:  NewPracticeContentVersionClient(cfg),
+		PracticeSubjectCatalog:  NewPracticeSubjectCatalogClient(cfg),
 		Progression:             NewProgressionClient(cfg),
 		SongChart:               NewSongChartClient(cfg),
 		SongChartRevision:       NewSongChartRevisionClient(cfg),
@@ -467,6 +479,8 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		LearningPathInstrument:  NewLearningPathInstrumentClient(cfg),
 		LearningPathItem:        NewLearningPathItemClient(cfg),
 		Position:                NewPositionClient(cfg),
+		PracticeContentVersion:  NewPracticeContentVersionClient(cfg),
+		PracticeSubjectCatalog:  NewPracticeSubjectCatalogClient(cfg),
 		Progression:             NewProgressionClient(cfg),
 		SongChart:               NewSongChartClient(cfg),
 		SongChartRevision:       NewSongChartRevisionClient(cfg),
@@ -516,8 +530,9 @@ func (c *Client) Use(hooks ...Hook) {
 		c.ExerciseOption, c.ExerciseSkill, c.ExpandedContent, c.FretboardCellRange,
 		c.Instrument, c.KnowledgeEdge, c.KnowledgeNode, c.KnowledgeNodeInstrument,
 		c.Language, c.LearningPath, c.LearningPathInstrument, c.LearningPathItem,
-		c.Position, c.Progression, c.SongChart, c.SongChartRevision,
-		c.StudentLearningState, c.StudentPath, c.StudentPathItem, c.User, c.Voice,
+		c.Position, c.PracticeContentVersion, c.PracticeSubjectCatalog, c.Progression,
+		c.SongChart, c.SongChartRevision, c.StudentLearningState, c.StudentPath,
+		c.StudentPathItem, c.User, c.Voice,
 	} {
 		n.Use(hooks...)
 	}
@@ -539,8 +554,9 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 		c.ExerciseOption, c.ExerciseSkill, c.ExpandedContent, c.FretboardCellRange,
 		c.Instrument, c.KnowledgeEdge, c.KnowledgeNode, c.KnowledgeNodeInstrument,
 		c.Language, c.LearningPath, c.LearningPathInstrument, c.LearningPathItem,
-		c.Position, c.Progression, c.SongChart, c.SongChartRevision,
-		c.StudentLearningState, c.StudentPath, c.StudentPathItem, c.User, c.Voice,
+		c.Position, c.PracticeContentVersion, c.PracticeSubjectCatalog, c.Progression,
+		c.SongChart, c.SongChartRevision, c.StudentLearningState, c.StudentPath,
+		c.StudentPathItem, c.User, c.Voice,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -643,6 +659,10 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.LearningPathItem.mutate(ctx, m)
 	case *PositionMutation:
 		return c.Position.mutate(ctx, m)
+	case *PracticeContentVersionMutation:
+		return c.PracticeContentVersion.mutate(ctx, m)
+	case *PracticeSubjectCatalogMutation:
+		return c.PracticeSubjectCatalog.mutate(ctx, m)
 	case *ProgressionMutation:
 		return c.Progression.mutate(ctx, m)
 	case *SongChartMutation:
@@ -8883,6 +8903,272 @@ func (c *PositionClient) mutate(ctx context.Context, m *PositionMutation) (Value
 	}
 }
 
+// PracticeContentVersionClient is a client for the PracticeContentVersion schema.
+type PracticeContentVersionClient struct {
+	config
+}
+
+// NewPracticeContentVersionClient returns a client for the PracticeContentVersion from the given config.
+func NewPracticeContentVersionClient(c config) *PracticeContentVersionClient {
+	return &PracticeContentVersionClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `practicecontentversion.Hooks(f(g(h())))`.
+func (c *PracticeContentVersionClient) Use(hooks ...Hook) {
+	c.hooks.PracticeContentVersion = append(c.hooks.PracticeContentVersion, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `practicecontentversion.Intercept(f(g(h())))`.
+func (c *PracticeContentVersionClient) Intercept(interceptors ...Interceptor) {
+	c.inters.PracticeContentVersion = append(c.inters.PracticeContentVersion, interceptors...)
+}
+
+// Create returns a builder for creating a PracticeContentVersion entity.
+func (c *PracticeContentVersionClient) Create() *PracticeContentVersionCreate {
+	mutation := newPracticeContentVersionMutation(c.config, OpCreate)
+	return &PracticeContentVersionCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of PracticeContentVersion entities.
+func (c *PracticeContentVersionClient) CreateBulk(builders ...*PracticeContentVersionCreate) *PracticeContentVersionCreateBulk {
+	return &PracticeContentVersionCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *PracticeContentVersionClient) MapCreateBulk(slice any, setFunc func(*PracticeContentVersionCreate, int)) *PracticeContentVersionCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &PracticeContentVersionCreateBulk{err: fmt.Errorf("calling to PracticeContentVersionClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*PracticeContentVersionCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &PracticeContentVersionCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for PracticeContentVersion.
+func (c *PracticeContentVersionClient) Update() *PracticeContentVersionUpdate {
+	mutation := newPracticeContentVersionMutation(c.config, OpUpdate)
+	return &PracticeContentVersionUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *PracticeContentVersionClient) UpdateOne(_m *PracticeContentVersion) *PracticeContentVersionUpdateOne {
+	mutation := newPracticeContentVersionMutation(c.config, OpUpdateOne, withPracticeContentVersion(_m))
+	return &PracticeContentVersionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *PracticeContentVersionClient) UpdateOneID(id int) *PracticeContentVersionUpdateOne {
+	mutation := newPracticeContentVersionMutation(c.config, OpUpdateOne, withPracticeContentVersionID(id))
+	return &PracticeContentVersionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for PracticeContentVersion.
+func (c *PracticeContentVersionClient) Delete() *PracticeContentVersionDelete {
+	mutation := newPracticeContentVersionMutation(c.config, OpDelete)
+	return &PracticeContentVersionDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *PracticeContentVersionClient) DeleteOne(_m *PracticeContentVersion) *PracticeContentVersionDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *PracticeContentVersionClient) DeleteOneID(id int) *PracticeContentVersionDeleteOne {
+	builder := c.Delete().Where(practicecontentversion.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &PracticeContentVersionDeleteOne{builder}
+}
+
+// Query returns a query builder for PracticeContentVersion.
+func (c *PracticeContentVersionClient) Query() *PracticeContentVersionQuery {
+	return &PracticeContentVersionQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypePracticeContentVersion},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a PracticeContentVersion entity by its id.
+func (c *PracticeContentVersionClient) Get(ctx context.Context, id int) (*PracticeContentVersion, error) {
+	return c.Query().Where(practicecontentversion.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *PracticeContentVersionClient) GetX(ctx context.Context, id int) *PracticeContentVersion {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *PracticeContentVersionClient) Hooks() []Hook {
+	return c.hooks.PracticeContentVersion
+}
+
+// Interceptors returns the client interceptors.
+func (c *PracticeContentVersionClient) Interceptors() []Interceptor {
+	return c.inters.PracticeContentVersion
+}
+
+func (c *PracticeContentVersionClient) mutate(ctx context.Context, m *PracticeContentVersionMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&PracticeContentVersionCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&PracticeContentVersionUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&PracticeContentVersionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&PracticeContentVersionDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown PracticeContentVersion mutation op: %q", m.Op())
+	}
+}
+
+// PracticeSubjectCatalogClient is a client for the PracticeSubjectCatalog schema.
+type PracticeSubjectCatalogClient struct {
+	config
+}
+
+// NewPracticeSubjectCatalogClient returns a client for the PracticeSubjectCatalog from the given config.
+func NewPracticeSubjectCatalogClient(c config) *PracticeSubjectCatalogClient {
+	return &PracticeSubjectCatalogClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `practicesubjectcatalog.Hooks(f(g(h())))`.
+func (c *PracticeSubjectCatalogClient) Use(hooks ...Hook) {
+	c.hooks.PracticeSubjectCatalog = append(c.hooks.PracticeSubjectCatalog, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `practicesubjectcatalog.Intercept(f(g(h())))`.
+func (c *PracticeSubjectCatalogClient) Intercept(interceptors ...Interceptor) {
+	c.inters.PracticeSubjectCatalog = append(c.inters.PracticeSubjectCatalog, interceptors...)
+}
+
+// Create returns a builder for creating a PracticeSubjectCatalog entity.
+func (c *PracticeSubjectCatalogClient) Create() *PracticeSubjectCatalogCreate {
+	mutation := newPracticeSubjectCatalogMutation(c.config, OpCreate)
+	return &PracticeSubjectCatalogCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of PracticeSubjectCatalog entities.
+func (c *PracticeSubjectCatalogClient) CreateBulk(builders ...*PracticeSubjectCatalogCreate) *PracticeSubjectCatalogCreateBulk {
+	return &PracticeSubjectCatalogCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *PracticeSubjectCatalogClient) MapCreateBulk(slice any, setFunc func(*PracticeSubjectCatalogCreate, int)) *PracticeSubjectCatalogCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &PracticeSubjectCatalogCreateBulk{err: fmt.Errorf("calling to PracticeSubjectCatalogClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*PracticeSubjectCatalogCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &PracticeSubjectCatalogCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for PracticeSubjectCatalog.
+func (c *PracticeSubjectCatalogClient) Update() *PracticeSubjectCatalogUpdate {
+	mutation := newPracticeSubjectCatalogMutation(c.config, OpUpdate)
+	return &PracticeSubjectCatalogUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *PracticeSubjectCatalogClient) UpdateOne(_m *PracticeSubjectCatalog) *PracticeSubjectCatalogUpdateOne {
+	mutation := newPracticeSubjectCatalogMutation(c.config, OpUpdateOne, withPracticeSubjectCatalog(_m))
+	return &PracticeSubjectCatalogUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *PracticeSubjectCatalogClient) UpdateOneID(id int) *PracticeSubjectCatalogUpdateOne {
+	mutation := newPracticeSubjectCatalogMutation(c.config, OpUpdateOne, withPracticeSubjectCatalogID(id))
+	return &PracticeSubjectCatalogUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for PracticeSubjectCatalog.
+func (c *PracticeSubjectCatalogClient) Delete() *PracticeSubjectCatalogDelete {
+	mutation := newPracticeSubjectCatalogMutation(c.config, OpDelete)
+	return &PracticeSubjectCatalogDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *PracticeSubjectCatalogClient) DeleteOne(_m *PracticeSubjectCatalog) *PracticeSubjectCatalogDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *PracticeSubjectCatalogClient) DeleteOneID(id int) *PracticeSubjectCatalogDeleteOne {
+	builder := c.Delete().Where(practicesubjectcatalog.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &PracticeSubjectCatalogDeleteOne{builder}
+}
+
+// Query returns a query builder for PracticeSubjectCatalog.
+func (c *PracticeSubjectCatalogClient) Query() *PracticeSubjectCatalogQuery {
+	return &PracticeSubjectCatalogQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypePracticeSubjectCatalog},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a PracticeSubjectCatalog entity by its id.
+func (c *PracticeSubjectCatalogClient) Get(ctx context.Context, id int) (*PracticeSubjectCatalog, error) {
+	return c.Query().Where(practicesubjectcatalog.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *PracticeSubjectCatalogClient) GetX(ctx context.Context, id int) *PracticeSubjectCatalog {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *PracticeSubjectCatalogClient) Hooks() []Hook {
+	return c.hooks.PracticeSubjectCatalog
+}
+
+// Interceptors returns the client interceptors.
+func (c *PracticeSubjectCatalogClient) Interceptors() []Interceptor {
+	return c.inters.PracticeSubjectCatalog
+}
+
+func (c *PracticeSubjectCatalogClient) mutate(ctx context.Context, m *PracticeSubjectCatalogMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&PracticeSubjectCatalogCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&PracticeSubjectCatalogUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&PracticeSubjectCatalogUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&PracticeSubjectCatalogDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown PracticeSubjectCatalog mutation op: %q", m.Op())
+	}
+}
+
 // ProgressionClient is a client for the Progression schema.
 type ProgressionClient struct {
 	config
@@ -10024,9 +10310,9 @@ type (
 		ExerciseConcept, ExerciseInstrument, ExerciseLanguage, ExerciseOption,
 		ExerciseSkill, ExpandedContent, FretboardCellRange, Instrument, KnowledgeEdge,
 		KnowledgeNode, KnowledgeNodeInstrument, Language, LearningPath,
-		LearningPathInstrument, LearningPathItem, Position, Progression, SongChart,
-		SongChartRevision, StudentLearningState, StudentPath, StudentPathItem, User,
-		Voice []ent.Hook
+		LearningPathInstrument, LearningPathItem, Position, PracticeContentVersion,
+		PracticeSubjectCatalog, Progression, SongChart, SongChartRevision,
+		StudentLearningState, StudentPath, StudentPathItem, User, Voice []ent.Hook
 	}
 	inters struct {
 		AppConfig, Challenge, ChallengeExercise, ChangeTarget, ChordChangePair,
@@ -10039,8 +10325,33 @@ type (
 		ExerciseConcept, ExerciseInstrument, ExerciseLanguage, ExerciseOption,
 		ExerciseSkill, ExpandedContent, FretboardCellRange, Instrument, KnowledgeEdge,
 		KnowledgeNode, KnowledgeNodeInstrument, Language, LearningPath,
-		LearningPathInstrument, LearningPathItem, Position, Progression, SongChart,
-		SongChartRevision, StudentLearningState, StudentPath, StudentPathItem, User,
+		LearningPathInstrument, LearningPathItem, Position, PracticeContentVersion,
+		PracticeSubjectCatalog, Progression, SongChart, SongChartRevision,
+		StudentLearningState, StudentPath, StudentPathItem, User,
 		Voice []ent.Interceptor
 	}
 )
+
+// ExecContext allows calling the underlying ExecContext method of the driver if it is supported by it.
+// See, database/sql#DB.ExecContext for more information.
+func (c *config) ExecContext(ctx context.Context, query string, args ...any) (stdsql.Result, error) {
+	ex, ok := c.driver.(interface {
+		ExecContext(context.Context, string, ...any) (stdsql.Result, error)
+	})
+	if !ok {
+		return nil, fmt.Errorf("Driver.ExecContext is not supported")
+	}
+	return ex.ExecContext(ctx, query, args...)
+}
+
+// QueryContext allows calling the underlying QueryContext method of the driver if it is supported by it.
+// See, database/sql#DB.QueryContext for more information.
+func (c *config) QueryContext(ctx context.Context, query string, args ...any) (*stdsql.Rows, error) {
+	q, ok := c.driver.(interface {
+		QueryContext(context.Context, string, ...any) (*stdsql.Rows, error)
+	})
+	if !ok {
+		return nil, fmt.Errorf("Driver.QueryContext is not supported")
+	}
+	return q.QueryContext(ctx, query, args...)
+}

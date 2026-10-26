@@ -41,6 +41,8 @@ type SongChartRevision struct {
 	TimeSignature *schema.SongChartTimeSignature `json:"time_signature,omitempty"`
 	// TuningFingerprint holds the value of the "tuning_fingerprint" field.
 	TuningFingerprint string `json:"tuning_fingerprint,omitempty"`
+	// SectionProgressions holds the value of the "section_progressions" field.
+	SectionProgressions []schema.SongChartSectionProgression `json:"section_progressions,omitempty"`
 	// Body holds the value of the "body" field.
 	Body string `json:"body,omitempty"`
 	// RightsConfirmedBy holds the value of the "rights_confirmed_by" field.
@@ -82,7 +84,7 @@ func (*SongChartRevision) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case songchartrevision.FieldTimeSignature:
+		case songchartrevision.FieldTimeSignature, songchartrevision.FieldSectionProgressions:
 			values[i] = new([]byte)
 		case songchartrevision.FieldRevisionNumber, songchartrevision.FieldCapoFret, songchartrevision.FieldTempoBpm:
 			values[i] = new(sql.NullInt64)
@@ -176,6 +178,14 @@ func (_m *SongChartRevision) assignValues(columns []string, values []any) error 
 				return fmt.Errorf("unexpected type %T for field tuning_fingerprint", values[i])
 			} else if value.Valid {
 				_m.TuningFingerprint = value.String
+			}
+		case songchartrevision.FieldSectionProgressions:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field section_progressions", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.SectionProgressions); err != nil {
+					return fmt.Errorf("unmarshal field section_progressions: %w", err)
+				}
 			}
 		case songchartrevision.FieldBody:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -281,6 +291,9 @@ func (_m *SongChartRevision) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("tuning_fingerprint=")
 	builder.WriteString(_m.TuningFingerprint)
+	builder.WriteString(", ")
+	builder.WriteString("section_progressions=")
+	builder.WriteString(fmt.Sprintf("%v", _m.SectionProgressions))
 	builder.WriteString(", ")
 	builder.WriteString("body=")
 	builder.WriteString(_m.Body)

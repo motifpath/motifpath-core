@@ -41,11 +41,14 @@ type SongChartDocument struct {
 }
 
 // SongChartSection is a part of the song with its lines. Label is the
-// heading as written; nil shows none.
+// heading as written; nil shows none. ProgressionKeys are the progressions of
+// the progression catalog the author says the section plays; a chart with no
+// tagged section is never practised.
 type SongChartSection struct {
-	Kind  SectionKind
-	Label *string
-	Lines []SongChartLine
+	Kind            SectionKind
+	Label           *string
+	ProgressionKeys []string
+	Lines           []SongChartLine
 }
 
 // SongChartLine is either a comment (Comment set) or a lyric line (Runs).
@@ -131,8 +134,9 @@ type pmNode struct {
 }
 
 type pmSectionAttrs struct {
-	Kind  SectionKind `json:"kind"`
-	Label *string     `json:"label"`
+	Kind            SectionKind `json:"kind"`
+	Label           *string     `json:"label"`
+	ProgressionKeys []string    `json:"progression_keys"`
 }
 
 type pmAnchorAttrs struct {
@@ -192,10 +196,16 @@ func (p documentParser) section(node pmNode, path string) (SongChartSection, err
 	if attrs.Label != nil && utf8.RuneCountInString(*attrs.Label) > MaxSectionLabelLength {
 		return SongChartSection{}, NewValidationError(path+"/attrs/label", "must be at most 100 characters")
 	}
+	if err := validateProgressionKeys(path+"/attrs/progression_keys", attrs.ProgressionKeys); err != nil {
+		return SongChartSection{}, err
+	}
 	if len(node.Content) == 0 {
 		return SongChartSection{}, NewValidationError(path+"/content", "must hold at least one line")
 	}
 	section := SongChartSection{Kind: attrs.Kind, Label: attrs.Label, Lines: make([]SongChartLine, len(node.Content))}
+	if len(attrs.ProgressionKeys) > 0 {
+		section.ProgressionKeys = attrs.ProgressionKeys
+	}
 	for i, child := range node.Content {
 		line, err := p.line(child, fmt.Sprintf("%s/content/%d", path, i))
 		if err != nil {
@@ -338,7 +348,13 @@ func (d SongChartDocument) MarshalJSON() ([]byte, error) {
 		for li, line := range section.Lines {
 			lines[li] = lineOut(line)
 		}
-		out.Content[si] = pmSectionOut{Type: "section", Attrs: pmSectionAttrs{Kind: section.Kind, Label: section.Label}, Content: lines}
+		progressions := section.ProgressionKeys
+		if progressions == nil {
+			progressions = []string{}
+		}
+		out.Content[si] = pmSectionOut{
+			Type: "section", Attrs: pmSectionAttrs{Kind: section.Kind, Label: section.Label, ProgressionKeys: progressions}, Content: lines,
+		}
 	}
 	return json.Marshal(out)
 }

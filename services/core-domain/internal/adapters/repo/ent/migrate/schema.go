@@ -1335,6 +1335,32 @@ var (
 			},
 		},
 	}
+	// PracticeContentVersionsColumns holds the columns for the "practice_content_versions" table.
+	PracticeContentVersionsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "version", Type: field.TypeInt64},
+	}
+	// PracticeContentVersionsTable holds the schema information for the "practice_content_versions" table.
+	PracticeContentVersionsTable = &schema.Table{
+		Name:       "practice_content_versions",
+		Columns:    PracticeContentVersionsColumns,
+		PrimaryKey: []*schema.Column{PracticeContentVersionsColumns[0]},
+	}
+	// PracticeSubjectCatalogsColumns holds the columns for the "practice_subject_catalogs" table.
+	PracticeSubjectCatalogsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "scope", Type: field.TypeString, Unique: true},
+		{Name: "content_version", Type: field.TypeInt64},
+		{Name: "format_version", Type: field.TypeInt},
+		{Name: "built_at", Type: field.TypeTime},
+		{Name: "items", Type: field.TypeJSON},
+	}
+	// PracticeSubjectCatalogsTable holds the schema information for the "practice_subject_catalogs" table.
+	PracticeSubjectCatalogsTable = &schema.Table{
+		Name:       "practice_subject_catalogs",
+		Columns:    PracticeSubjectCatalogsColumns,
+		PrimaryKey: []*schema.Column{PracticeSubjectCatalogsColumns[0]},
+	}
 	// ProgressionsColumns holds the columns for the "progressions" table.
 	ProgressionsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -1368,6 +1394,7 @@ var (
 		{Name: "rights_confirmed_at", Type: field.TypeTime, Nullable: true},
 		{Name: "body", Type: field.TypeString, Size: 2147483647},
 		{Name: "warnings", Type: field.TypeJSON},
+		{Name: "unplayed_progressions", Type: field.TypeJSON, Default: "[]"},
 		{Name: "updated_by", Type: field.TypeUUID},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "published_revision_number", Type: field.TypeInt, Nullable: true},
@@ -1390,7 +1417,7 @@ var (
 			{
 				Name:    "songchart_updated_at",
 				Unique:  false,
-				Columns: []*schema.Column{SongChartsColumns[16]},
+				Columns: []*schema.Column{SongChartsColumns[17]},
 			},
 		},
 	}
@@ -1406,6 +1433,7 @@ var (
 		{Name: "tempo_bpm", Type: field.TypeInt, Nullable: true},
 		{Name: "time_signature", Type: field.TypeJSON, Nullable: true},
 		{Name: "tuning_fingerprint", Type: field.TypeString},
+		{Name: "section_progressions", Type: field.TypeJSON, Default: "[]"},
 		{Name: "body", Type: field.TypeString, Size: 2147483647},
 		{Name: "rights_confirmed_by", Type: field.TypeUUID},
 		{Name: "rights_confirmed_at", Type: field.TypeTime},
@@ -1421,7 +1449,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "song_chart_revisions_song_charts_song_chart",
-				Columns:    []*schema.Column{SongChartRevisionsColumns[15]},
+				Columns:    []*schema.Column{SongChartRevisionsColumns[16]},
 				RefColumns: []*schema.Column{SongChartsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -1430,7 +1458,7 @@ var (
 			{
 				Name:    "songchartrevision_song_chart_id_revision_number",
 				Unique:  true,
-				Columns: []*schema.Column{SongChartRevisionsColumns[15], SongChartRevisionsColumns[1]},
+				Columns: []*schema.Column{SongChartRevisionsColumns[16], SongChartRevisionsColumns[1]},
 			},
 		},
 	}
@@ -1587,6 +1615,8 @@ var (
 		LearningPathInstrumentsTable,
 		LearningPathItemsTable,
 		PositionsTable,
+		PracticeContentVersionsTable,
+		PracticeSubjectCatalogsTable,
 		ProgressionsTable,
 		SongChartsTable,
 		SongChartRevisionsTable,

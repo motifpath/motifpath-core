@@ -1,4 +1,4 @@
-h1:Yg/OEJpaoXdXiDjx0WE4zPYyzQHkmwKvD0OkIhD43AA=
+h1:bFGn3aLpKhK7IA0/Z39Cth3bJxp7exdrB1PB+ziRZ0s=
 20261006144122_baseline_schema.up.sql h1:Mz7yS3khUoGF+JqUcqUl3UJhpxM3snY9i31Og9IRxs4=
 20261006144123_baseline_reference_data.up.sql h1:vd6h7t7ldITFFgH5BW/UfN4tDq6Dk+Q2JsD9JvZpccg=
 20261006223929_diagram_purpose.up.sql h1:9ZXjjkdDMhIbUdDHtw6edIVjiW1XiIbV67aqpLVZhLw=
@@ -14,3 +14,7 @@ h1:Yg/OEJpaoXdXiDjx0WE4zPYyzQHkmwKvD0OkIhD43AA=
 20261014180803_progressions_reference_data.up.sql h1:OBXusJhkE6I+7QB+QoUWaoSRKrkMyHn42QEW0EFhdzk=
 20261018235356_chord_drills.up.sql h1:eX7b1CiAehmN26Zp4mT44436wFFzNLwFXuHO14LdIq4=
 20261018235357_chord_drills_reference_data.up.sql h1:zInMUpSf8eZTjDpp21jCpbs8j/cNKAJgbSk8p+e74aA=
+20261023164451_song_chart_progressions.up.sql h1:6Lf2FjSyawPOXovP7wRqdd2LRS8GANRq7BUUXbCIigU=
+20261024110141_song_chart_section_progressions.up.sql h1:s6ANTGYJHm6XjrqVnZXRI6usYxLuaFXaI2Qll781oyc=
+20261026101251_practice_subject_catalog.up.sql h1:UZfyX/96PWvtIT7BI5CK6nFUrKcdfso5X8eaJlgJIik=
+20261026193000_drill_templates_after_first_install.up.sql h1:fYoZKCBpXHhsLmV7XXQfWYU2BwS5ierwoxjdF0pmgfM=

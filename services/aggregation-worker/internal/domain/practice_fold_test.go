@@ -297,6 +297,173 @@ func TestFoldEvidence_ChordChangesMeasureChangesPerMinute(t *testing.T) {
 	})
 }
 
+// tourTake is a take of a progression key tour in key at bpm.
+func tourTake(at time.Time, rating SelfRating, bpm int, key string) PracticeEvidence {
+	e := take(at, rating, bpm)
+	e.ItemKey = "progression_keys:" + diagramA + ":I-V-vi-IV"
+	e.MusicKey = key
+	e.Response = PracticeResponse{Type: PracticeResponseSelfRating, Rating: rating, TempoBPM: ptr(bpm), MusicKey: key}
+	return e
+}
+
+func TestFoldEvidence_ProgressionKeyTour(t *testing.T) {
+	tour := ItemGoal{TargetTempoBPM: ptr(ProgressionKeysTargetTempoBPM)}
+	at := func(tempo int, clean ...string) ItemFold {
+		return ItemFold{TourTempoBPM: ptr(tempo), TourCleanKeys: clean}
+	}
+	fold := func(t *testing.T, f ItemFold, evidence ...PracticeEvidence) ItemFold {
+		t.Helper()
+		for _, e := range evidence {
+			var err error
+			f, err = FoldEvidence(f, e, tour)
+			require.NoError(t, err)
+		}
+		return f
+	}
+
+	t.Run("a first clean take starts the tour at 60% of the target and makes its key clean", func(t *testing.T) {
+		f := fold(t, ItemFold{}, tourTake(onDay(0), SelfRatingClean, 60, "C"))
+		assert.Equal(t, 60, *f.TourTempoBPM)
+		assert.Equal(t, []string{"C"}, f.TourCleanKeys)
+		assert.Equal(t, NoteValueQuarters, *f.TourNoteValue)
+	})
+	t.Run("a clean take slower than the tour tempo doesn't make its key clean", func(t *testing.T) {
+		f := fold(t, at(70), tourTake(onDay(0), SelfRatingClean, 65, "C"))
+		assert.Empty(t, f.TourCleanKeys)
+		assert.Equal(t, 70, *f.TourTempoBPM)
+	})
+	t.Run("a clean take faster than the tour tempo makes its key clean and keeps the tempo", func(t *testing.T) {
+		f := fold(t, at(70), tourTake(onDay(0), SelfRatingClean, 80, "C"))
+		assert.Equal(t, []string{"C"}, f.TourCleanKeys)
+		assert.Equal(t, 70, *f.TourTempoBPM)
+	})
+	t.Run("a clean take in eighths counts at its effective speed and sets the note value", func(t *testing.T) {
+		e := tourTake(onDay(0), SelfRatingClean, 40, "C")
+		e.NoteValue = ptr(NoteValueEighths)
+		f := fold(t, at(70), e)
+		assert.Equal(t, []string{"C"}, f.TourCleanKeys)
+		assert.Equal(t, NoteValueEighths, *f.TourNoteValue)
+	})
+	t.Run("a struggle lowers the tour tempo by 5 and keeps the clean keys", func(t *testing.T) {
+		f := fold(t, at(70, "C", "F"), tourTake(onDay(0), SelfRatingStruggled, 70, "Bb"))
+		assert.Equal(t, 65, *f.TourTempoBPM)
+		assert.Equal(t, []string{"C", "F"}, f.TourCleanKeys)
+	})
+	t.Run("an almost take keeps the key and the tempo", func(t *testing.T) {
+		f := fold(t, at(70), tourTake(onDay(0), SelfRatingAlmost, 70, "C"))
+		assert.Equal(t, 70, *f.TourTempoBPM)
+		assert.Empty(t, f.TourCleanKeys)
+	})
+	t.Run("a struggle never lowers the tour below 60% of the target", func(t *testing.T) {
+		f := fold(t, at(60), tourTake(onDay(0), SelfRatingStruggled, 60, "C"))
+		assert.Equal(t, 60, *f.TourTempoBPM)
+	})
+	t.Run("a struggle above the tour tempo explores and doesn't lower it", func(t *testing.T) {
+		f := fold(t, at(70), tourTake(onDay(0), SelfRatingStruggled, 90, "C"))
+		assert.Equal(t, 70, *f.TourTempoBPM)
+	})
+	t.Run("the last key made clean starts the tour again, 5 BPM faster, with no key clean", func(t *testing.T) {
+		eleven := []string{"C", "F", "Bb", "Eb", "Ab", "Db", "F#", "B", "E", "A", "D"}
+		f := fold(t, at(70, eleven...), tourTake(onDay(0), SelfRatingClean, 70, "G"))
+		assert.Equal(t, 75, *f.TourTempoBPM)
+		assert.Empty(t, f.TourCleanKeys)
+	})
+	t.Run("a finished tour never climbs past the target by itself", func(t *testing.T) {
+		eleven := []string{"C", "F", "Bb", "Eb", "Ab", "Db", "F#", "B", "E", "A", "D"}
+		f := fold(t, at(100, eleven...), tourTake(onDay(0), SelfRatingClean, 100, "G"))
+		assert.Equal(t, 100, *f.TourTempoBPM)
+		assert.Empty(t, f.TourCleanKeys)
+	})
+	t.Run("a key made clean twice is listed once", func(t *testing.T) {
+		f := fold(t, at(70, "C"), tourTake(onDay(0), SelfRatingClean, 70, "C"))
+		assert.Equal(t, []string{"C"}, f.TourCleanKeys)
+	})
+	t.Run("clean keys are kept in the tour's order", func(t *testing.T) {
+		f := fold(t, at(70, "F"), tourTake(onDay(0), SelfRatingClean, 70, "C"))
+		assert.Equal(t, []string{"C", "F"}, f.TourCleanKeys)
+	})
+	t.Run("a play-along take keeps no tour", func(t *testing.T) {
+		f := foldAll(t, target100, take(onDay(0), SelfRatingClean, 80))
+		assert.Nil(t, f.TourTempoBPM)
+		assert.Nil(t, f.TourCleanKeys)
+	})
+	t.Run("five clean takes at the target are fluent, far below it only accurate", func(t *testing.T) {
+		keys := []string{"C", "F", "Bb", "Eb", "Ab"}
+		near := make([]PracticeEvidence, 5)
+		far := make([]PracticeEvidence, 5)
+		for i := range near {
+			near[i], far[i] = tourTake(onDay(i), SelfRatingClean, 100, keys[i]), tourTake(onDay(i), SelfRatingClean, 60, keys[i])
+		}
+		assert.Equal(t, KnowledgeLevelFluent, fold(t, ItemFold{}, near...).Level())
+		assert.Equal(t, KnowledgeLevelAccurate, fold(t, ItemFold{}, far...).Level())
+	})
+}
+
+// guideTake is a guide-tone take, right or not, played at bpm in v (quarters when nil).
+func guideTake(at time.Time, correct bool, bpm int, v *NoteValue) PracticeEvidence {
+	return PracticeEvidence{
+		ItemKey:    "guide_tone:" + guitarLayout + ":ii-V-I",
+		Source:     EvidenceSourceAutoGraded,
+		OccurredAt: at,
+		GraderID:   "timed_taps.v1",
+		Response:   PracticeResponse{Type: PracticeResponseTimedTaps, MusicKey: "C", Tone: "3", TempoBPM: ptr(bpm), NoteValue: v},
+		Correct:    ptr(correct),
+		LatencyMs:  ptr(400),
+	}
+}
+
+func TestFoldEvidence_GuideTonesMeasureTempo(t *testing.T) {
+	goal := ItemGoal{TargetTempoBPM: ptr(GuideToneTargetTempoBPM)}
+	fiveDays := func(correct bool, bpm int, v *NoteValue) []PracticeEvidence {
+		var evidence []PracticeEvidence
+		for i := range 5 {
+			evidence = append(evidence, guideTake(onDay(i), correct, bpm, v))
+		}
+		return evidence
+	}
+
+	cases := []struct {
+		name     string
+		evidence []PracticeEvidence
+		fluency  float64
+		level    KnowledgeLevel
+	}{
+		{"a right take's fluency is its tempo over the target", []PracticeEvidence{guideTake(onDay(0), true, 72, nil)}, 0.8, KnowledgeLevelLearning},
+		{"a take in eighths counts at its effective speed", []PracticeEvidence{guideTake(onDay(0), true, 45, ptr(NoteValueEighths))}, 1, KnowledgeLevelLearning},
+		{"a take faster than the target is fully fluent", []PracticeEvidence{guideTake(onDay(0), true, 120, nil)}, 1, KnowledgeLevelLearning},
+		{"a wrong take judges fluency as none", []PracticeEvidence{guideTake(onDay(0), false, 90, nil)}, 0, KnowledgeLevelLearning},
+		{"five right takes at 72 BPM are fluent", fiveDays(true, 72, nil), 0.8, KnowledgeLevelFluent},
+		{"five right takes at 60 BPM stay accurate", fiveDays(true, 60, nil), 60.0 / 90, KnowledgeLevelAccurate},
+		{"five right takes at 45 BPM in eighths are fluent", fiveDays(true, 45, ptr(NoteValueEighths)), 1, KnowledgeLevelFluent},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			f := foldAll(t, goal, tc.evidence...)
+
+			assert.InDelta(t, tc.fluency, f.Fluency, 1e-9)
+			assert.Equal(t, tc.level, f.Level())
+		})
+	}
+
+	t.Run("the last take's key is kept, right or not, so the next plan can avoid it", func(t *testing.T) {
+		inG := guideTake(onDay(1), false, 60, nil)
+		inG.Response.MusicKey = "G"
+
+		assert.Equal(t, "G", foldAll(t, goal, guideTake(onDay(0), true, 60, nil), inG).LastMusicKey)
+	})
+
+	t.Run("a late hit within its bar is never held against the student", func(t *testing.T) {
+		e := guideTake(onDay(0), true, 90, nil)
+		e.LatencyMs = ptr(2000)
+
+		assert.InDelta(t, 1, foldAll(t, goal, e).Fluency, 1e-9)
+	})
+}
+
+func TestProgressionKeyOrder_IsTheCycleOfFourthsFromC(t *testing.T) {
+	assert.Equal(t, []string{"C", "F", "Bb", "Eb", "Ab", "Db", "F#", "B", "E", "A", "D", "G"}, ProgressionKeyOrder)
+}
+
 func TestFoldEvidence_RejectsSourcesWithoutRulesYet(t *testing.T) {
 	e := take(onDay(0), SelfRatingClean, 80)
 	e.Source = EvidenceSourceTeacherReviewed
@@ -555,7 +722,7 @@ func TestWayAsked(t *testing.T) {
 		want string
 	}{
 		{"a generated question, by its way", PracticeItemKindDiatonicChord, PracticeResponse{Type: PracticeResponseGeneratedChoice, Way: "chord_to_numeral"}, "chord_to_numeral"},
-		{"a note found everywhere, by its kind's one template", PracticeItemKindFretboardNote, PracticeResponse{Type: PracticeResponseMultiTap}, "find_every_instance"},
+		{"a cell's note found everywhere, by its third way", PracticeItemKindFretboardCell, PracticeResponse{Type: PracticeResponseMultiTap}, "find_every_instance"},
 		{"a guide-tone take, by its kind's one template", PracticeItemKindGuideTone, PracticeResponse{Type: PracticeResponseTimedTaps}, "tap_the_third"},
 		{"a fretboard cell, by its response type", PracticeItemKindFretboardCell, PracticeResponse{Type: PracticeResponseNameTheNote}, "name_the_note"},
 		{"another kind answering with multi_tap never borrows a template", PracticeItemKindDiagramShape, PracticeResponse{Type: PracticeResponseMultiTap}, "multi_tap"},

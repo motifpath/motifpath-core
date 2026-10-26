@@ -1,8 +1,11 @@
 package domain
 
+import "slices"
+
 // selfRatingV1 grades takes the student rates themselves: a play-along at a tempo,
-// chord or root changes counted over a minute, or a chord voicing or a chord's root
-// and fifth played cleanly, untimed. It checks the take fits the item and keeps the
+// a progression in one key of its tour at a tempo, chord or root changes counted
+// over a minute, a chord voicing or a chord's root and fifth played cleanly,
+// untimed, or a whole song, rated once with no measure. It checks the take fits the item and keeps the
 // rating and its measure as given, except a minute of changes, whose rating follows
 // from its count (golden/practice-graders/self_rating.v1.json).
 type selfRatingV1 struct{}
@@ -28,16 +31,32 @@ const (
 )
 
 var measureOf = map[PracticeItemKind]selfRatedMeasure{
-	PracticeItemKindPlayAlong:    measureTempo,
-	PracticeItemKindChordChange:  measureChangeMinute,
-	PracticeItemKindRootChange:   measureChangeMinute,
-	PracticeItemKindChordVoicing: measureNone,
-	PracticeItemKindRootFifth:    measureNone,
+	PracticeItemKindPlayAlong:       measureTempo,
+	PracticeItemKindChordChange:     measureChangeMinute,
+	PracticeItemKindRootChange:      measureChangeMinute,
+	PracticeItemKindChordVoicing:    measureNone,
+	PracticeItemKindRootFifth:       measureNone,
+	PracticeItemKindProgressionKeys: measureTempo,
+	PracticeItemKindSong:            measureNone,
 }
 
-// referencesExist reports whether the diagrams and the layout the key points at
-// are in ref.
+// playedInAKey are the self-rated kinds whose take names the key it was played
+// in: the item holds every key, so the take says which one.
+var playedInAKey = map[PracticeItemKind]bool{PracticeItemKindProgressionKeys: true}
+
+// referencesExist reports whether the diagrams, the layout, the progression and the
+// song chart the key points at are in ref.
 func referencesExist(key PracticeItemKey, ref PracticeReference) bool {
+	if id := key.SongChartID(); id != "" {
+		if _, ok := ref.SongCharts[id]; !ok {
+			return false
+		}
+	}
+	if progression := key.ProgressionKey(); progression != "" {
+		if _, ok := ref.Progressions[progression]; !ok {
+			return false
+		}
+	}
 	for _, id := range key.DiagramIDs() {
 		if _, ok := ref.Diagrams[id]; !ok {
 			return false
@@ -89,6 +108,9 @@ func (selfRatingV1) Grade(key PracticeItemKey, r PracticeResponse, ref PracticeR
 	if r.Type != PracticeResponseSelfRating || !r.Rating.valid() || !rated {
 		return rejected(GradeRejectionResponseDoesNotFitItem)
 	}
+	if playedInAKey[key.Kind] != (r.MusicKey != "") || (r.MusicKey != "" && !validMusicKey(r.MusicKey)) {
+		return rejected(GradeRejectionResponseDoesNotFitItem)
+	}
 	if !referencesExist(key, ref) {
 		return rejected(GradeRejectionUnknownReference)
 	}
@@ -106,6 +128,7 @@ func (selfRatingV1) Grade(key PracticeItemKey, r PracticeResponse, ref PracticeR
 		TempoBPM:         r.TempoBPM,
 		NoteValue:        r.NoteValue,
 		ChangesPerMinute: r.ChangesPerMinute,
+		MusicKey:         r.MusicKey,
 	}}
 }
 
@@ -121,4 +144,10 @@ func changeMinuteRating(cleanChanges, tempoBPM int) SelfRating {
 		return SelfRatingAlmost
 	}
 	return SelfRatingStruggled
+}
+
+// validMusicKey reports whether k is a major key spelled as the chord catalog
+// spells roots.
+func validMusicKey(k string) bool {
+	return slices.Contains(catalogRoots[:], k)
 }

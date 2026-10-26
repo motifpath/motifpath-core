@@ -126,6 +126,30 @@ func TestMongoPracticeReferenceReader_Instruments(t *testing.T) {
 	})
 }
 
+func TestMongoPracticeReferenceReader_SongCharts(t *testing.T) {
+	ctx := context.Background()
+	db := mongoDatabase(t)
+	const amazingGrace, ohSusanna = "c0000000-0000-4000-8000-0000000000c1", "c0000000-0000-4000-8000-0000000000c2"
+	// The documents as core writes them; a diagram with the same id is another kind.
+	_, err := db.Collection("practice_reference").InsertMany(ctx, []bson.D{
+		{{Key: "kind", Value: "song_chart"}, {Key: "id", Value: amazingGrace}, {Key: "updated_at", Value: time.Now()}, {Key: "snapshot_version", Value: 5}},
+		{{Key: "kind", Value: "diagram"}, {Key: "id", Value: ohSusanna}, {Key: "instrument_ids", Value: bson.A{}}, {Key: "snapshot_version", Value: 1}},
+	})
+	require.NoError(t, err)
+	reader := NewMongoPracticeReferenceReader(db)
+
+	got, err := reader.SongCharts(ctx, []string{amazingGrace, ohSusanna})
+	require.NoError(t, err)
+
+	assert.Equal(t, map[string]domain.SongChartReference{amazingGrace: {ID: amazingGrace}}, got)
+
+	t.Run("no ids reads nothing", func(t *testing.T) {
+		got, err := reader.SongCharts(ctx, nil)
+		require.NoError(t, err)
+		assert.Empty(t, got)
+	})
+}
+
 func TestMongoPracticeReferenceReader_Progressions(t *testing.T) {
 	ctx := context.Background()
 	db := mongoDatabase(t)
@@ -332,12 +356,12 @@ func TestMongoPracticeEvidenceRepository(t *testing.T) {
 	}
 	everywhere := domain.PracticeEvidence{
 		EvidenceID: "e0000000-0000-4000-8000-000000000011", StudentID: studentA,
-		ItemKey: "fretboard_note:" + guitar + ":E", Source: domain.EvidenceSourceAutoGraded, OccurredAt: monday,
-		GraderID: "multi_tap.v1",
+		ItemKey: "fretboard_cell:" + guitar + ":1:0", Source: domain.EvidenceSourceAutoGraded, OccurredAt: monday,
+		GraderID: "multi_tap.v2",
 		Response: domain.PracticeResponse{Type: domain.PracticeResponseMultiTap, FretWindowFrom: intPtr(0),
 			Cells: []domain.AnswerCell{{String: 1, Fret: 0}}, LatencyMs: intPtr(4000)},
-		Correct: boolPtr(false), LatencyMs: intPtr(4000),
-		AnswerKey: &domain.AnswerKey{NoteName: "E", FretWindowFrom: intPtr(0), Cells: []domain.AnswerCell{{String: 1, Fret: 0}, {String: 6, Fret: 0}}},
+		Correct:   boolPtr(false),
+		AnswerKey: &domain.AnswerKey{String: intPtr(1), Fret: intPtr(0), NoteName: "E", FretWindowFrom: intPtr(0), Cells: []domain.AnswerCell{{String: 1, Fret: 0}, {String: 6, Fret: 0}}},
 	}
 	noTaps := domain.PracticeEvidence{
 		EvidenceID: "e0000000-0000-4000-8000-000000000012", StudentID: studentA,
@@ -349,13 +373,20 @@ func TestMongoPracticeEvidenceRepository(t *testing.T) {
 	}
 	noPlaces := domain.PracticeEvidence{
 		EvidenceID: "e0000000-0000-4000-8000-000000000013", StudentID: studentA,
-		ItemKey: "fretboard_note:" + guitar + ":G", Source: domain.EvidenceSourceAutoGraded, OccurredAt: monday,
-		GraderID: "multi_tap.v1",
-		Response: domain.PracticeResponse{Type: domain.PracticeResponseMultiTap, FretWindowFrom: intPtr(3), Cells: []domain.AnswerCell{}, LatencyMs: intPtr(3000)},
-		Correct:  boolPtr(false), LatencyMs: intPtr(3000),
-		AnswerKey: &domain.AnswerKey{NoteName: "G", FretWindowFrom: intPtr(3), Cells: []domain.AnswerCell{{String: 1, Fret: 3}}},
+		ItemKey: "fretboard_cell:" + guitar + ":1:3", Source: domain.EvidenceSourceAutoGraded, OccurredAt: monday,
+		GraderID:  "multi_tap.v2",
+		Response:  domain.PracticeResponse{Type: domain.PracticeResponseMultiTap, FretWindowFrom: intPtr(3), Cells: []domain.AnswerCell{}, LatencyMs: intPtr(3000)},
+		Correct:   boolPtr(false),
+		AnswerKey: &domain.AnswerKey{String: intPtr(1), Fret: intPtr(3), NoteName: "G", FretWindowFrom: intPtr(3), Cells: []domain.AnswerCell{{String: 1, Fret: 3}}},
 	}
-	for _, e := range []domain.PracticeEvidence{later, earlier, other, timed, challenge, named, found, namedAmong, heard, tappedAlong, everywhere, noTaps, noPlaces} {
+	toured := domain.PracticeEvidence{
+		EvidenceID: "e0000000-0000-4000-8000-000000000014", StudentID: studentA,
+		ItemKey: "progression_keys:" + guitar + ":I-V-vi-IV", Source: domain.EvidenceSourceSelfAssessed, OccurredAt: monday,
+		GraderID: "self_rating.v1",
+		Response: domain.PracticeResponse{Type: domain.PracticeResponseSelfRating, Rating: domain.SelfRatingClean, TempoBPM: intPtr(60), MusicKey: "Bb"},
+		Rating:   domain.SelfRatingClean, TempoBPM: intPtr(60), MusicKey: "Bb",
+	}
+	for _, e := range []domain.PracticeEvidence{later, earlier, other, timed, challenge, named, found, namedAmong, heard, tappedAlong, everywhere, noTaps, noPlaces, toured} {
 		inserted, err := repo.Insert(ctx, e)
 		require.NoError(t, err)
 		require.True(t, inserted)
@@ -386,7 +417,7 @@ func TestMongoPracticeEvidenceRepository(t *testing.T) {
 	})
 
 	t.Run("the drill v2 answers and a note named among choices keep their responses and answer keys", func(t *testing.T) {
-		for _, e := range []domain.PracticeEvidence{namedAmong, heard, tappedAlong, everywhere, noTaps, noPlaces} {
+		for _, e := range []domain.PracticeEvidence{namedAmong, heard, tappedAlong, everywhere, noTaps, noPlaces, toured} {
 			got, err := repo.ListForItem(ctx, studentA, e.ItemKey)
 			require.NoError(t, err)
 			assert.Equal(t, []domain.PracticeEvidence{e}, got, e.ItemKey)
@@ -414,8 +445,9 @@ func TestMongoPracticeItemStateRepository(t *testing.T) {
 	due := time.Date(2026, 10, 7, 9, 0, 0, 0, time.UTC)
 	last := time.Date(2026, 10, 5, 9, 0, 0, 0, time.UTC)
 	first := domain.ItemFold{Attempts: 1, Counted: 1, Accuracy: 1, Fluency: 0.9, Box: 1, DueAt: &due, LastAt: &last, BestCleanBPM: intPtr(90), BestCleanNoteValue: &eighths, BestChangesPerMinute: intPtr(48),
-		RightByResponse: map[string]int{"name_the_note": 2, "find_the_note": 1},
-		LastChangeTempoBPM: intPtr(55), LastChangesPerMinute: intPtr(48), LastRating: domain.SelfRatingAlmost, CleanMinutesInARow: 2}
+		RightByResponse:    map[string]int{"name_the_note": 2, "find_the_note": 1},
+		LastChangeTempoBPM: intPtr(55), LastChangesPerMinute: intPtr(48), LastRating: domain.SelfRatingAlmost, CleanMinutesInARow: 2,
+		TourTempoBPM: intPtr(65), TourCleanKeys: []string{"C", "F"}, TourNoteValue: &eighths, LastMusicKey: "Eb"}
 	require.NoError(t, repo.Put(ctx, studentA, itemKey, first))
 	replaced := first
 	replaced.Attempts, replaced.Counted, replaced.Box = 6, 5, 3
@@ -441,6 +473,12 @@ func TestMongoPracticeItemStateRepository(t *testing.T) {
 		assert.Equal(t, "almost", doc["last_rating"])
 		assert.EqualValues(t, 2, doc["clean_minutes_in_a_row"])
 		assert.EqualValues(t, 48, doc["best_changes_per_minute"], "and the best clean count by this one")
+		// core-domain reads a progression key tour by these names, to plan its next take.
+		assert.EqualValues(t, 65, doc["tour_tempo_bpm"])
+		assert.Equal(t, bson.A{"C", "F"}, doc["tour_clean_keys"])
+		assert.Equal(t, "eighths", doc["tour_note_value"])
+		// and a guide tone's last key by this one, to plan its next take in another.
+		assert.Equal(t, "Eb", doc["last_music_key"])
 		count, err := db.Collection("practice_item_state").CountDocuments(ctx, bson.D{})
 		require.NoError(t, err)
 		assert.EqualValues(t, 1, count)

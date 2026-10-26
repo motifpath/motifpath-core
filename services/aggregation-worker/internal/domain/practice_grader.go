@@ -35,6 +35,9 @@ type GradedEvidence struct {
 	TempoBPM         *int
 	NoteValue        *NoteValue
 	ChangesPerMinute *int
+	// MusicKey is the key a progression key tour take was played in; empty for
+	// every other kind.
+	MusicKey string
 	// AnswerKey is what a right answer was, kept with auto-graded evidence so a
 	// disputed answer can be checked from the evidence alone; nil when the grader
 	// had nothing to keep.
@@ -96,10 +99,19 @@ type AnswerOption struct {
 	Shown     []byte
 }
 
-// GradeResult is either evidence (Rejection empty) or a rejection.
+// GradeResult is either evidence (Rejection empty) or a rejection. An answer
+// graded on several items has EvidenceByItem instead of Evidence: one entry per
+// item, each stored on its own item.
 type GradeResult struct {
-	Evidence  GradedEvidence
-	Rejection GradeRejection
+	Evidence       GradedEvidence
+	EvidenceByItem []ItemEvidence
+	Rejection      GradeRejection
+}
+
+// ItemEvidence is the evidence one answer gives about one of the items it covers.
+type ItemEvidence struct {
+	ItemKey  string
+	Evidence GradedEvidence
 }
 
 func rejected(reason GradeRejection) GradeResult { return GradeResult{Rejection: reason} }
@@ -158,8 +170,7 @@ func (e ExerciseReference) DrillTemplateKey() string {
 // after the drill rather than its response: two kinds may answer with the same
 // response shape and still be different drills.
 var singleTemplate = map[PracticeItemKind]string{
-	PracticeItemKindFretboardNote: "find_every_instance",
-	PracticeItemKindGuideTone:     "tap_the_third",
+	PracticeItemKindGuideTone: "tap_the_third",
 }
 
 // WayAsked is the way an answer to an item of kind was asked, the second half of
@@ -170,11 +181,18 @@ func WayAsked(kind PracticeItemKind, r PracticeResponse) string {
 	if r.Type == PracticeResponseGeneratedChoice {
 		return r.Way
 	}
+	if kind == PracticeItemKindFretboardCell && r.Type == PracticeResponseMultiTap {
+		return findEveryInstance
+	}
 	if template, ok := singleTemplate[kind]; ok {
 		return template
 	}
 	return string(r.Type)
 }
+
+// findEveryInstance is the way of asking a fretboard cell to tap every place of its
+// note in the fret window.
+const findEveryInstance = "find_every_instance"
 
 // kindOf is the kind an item key names, its prefix.
 func kindOf(itemKey string) PracticeItemKind {
@@ -187,17 +205,21 @@ func kindOf(itemKey string) PracticeItemKind {
 // take is rated, not timed, so it practises none, and neither does an exercise
 // missing from ref.
 func TimedDrillTemplate(key PracticeItemKey, response PracticeResponse, ref PracticeReference) string {
+	if WayAsked(key.Kind, response) == findEveryInstance {
+		// One time covers several taps, so finding every instance isn't timed.
+		return ""
+	}
 	switch key.Kind {
 	case PracticeItemKindFretboardCell, PracticeItemKindDiagramShape, PracticeItemKindDiatonicChord,
 		PracticeItemKindChordFunction, PracticeItemKindChartProgression, PracticeItemKindHeardChord,
-		PracticeItemKindHeardProgression, PracticeItemKindGuideTone, PracticeItemKindFretboardNote:
+		PracticeItemKindHeardProgression, PracticeItemKindGuideTone:
 		return string(key.Kind) + ":" + WayAsked(key.Kind, response)
 	case PracticeItemKindExercise:
 		if e, ok := ref.Exercises[key.ExerciseID()]; ok {
 			return e.DrillTemplateKey()
 		}
 	case PracticeItemKindPlayAlong, PracticeItemKindChordChange, PracticeItemKindChordVoicing,
-		PracticeItemKindRootFifth, PracticeItemKindRootChange:
+		PracticeItemKindRootFifth, PracticeItemKindRootChange, PracticeItemKindProgressionKeys, PracticeItemKindSong:
 	}
 	return ""
 }
@@ -209,6 +231,12 @@ type ProgressionReference struct {
 	Bars []string
 }
 
+// SongChartReference is a song chart a song can be played from. Grading needs
+// only that it exists.
+type SongChartReference struct {
+	ID string
+}
+
 // PracticeReference is the reference data a grade runs against. Anything an item key
 // points at that is missing here is unknown.
 type PracticeReference struct {
@@ -216,6 +244,7 @@ type PracticeReference struct {
 	Exercises    map[string]ExerciseReference
 	Instruments  map[string]InstrumentReference
 	Progressions map[string]ProgressionReference
+	SongCharts   map[string]SongChartReference
 }
 
 // Grader grades raw responses to one or more item kinds under one versioned rule
@@ -234,6 +263,8 @@ var graderByKind = map[PracticeItemKind]Grader{
 	PracticeItemKindChordVoicing:     selfRatingV1{},
 	PracticeItemKindRootFifth:        selfRatingV1{},
 	PracticeItemKindRootChange:       selfRatingV1{},
+	PracticeItemKindProgressionKeys:  selfRatingV1{},
+	PracticeItemKindSong:             selfRatingV1{},
 	PracticeItemKindExercise:         exerciseOptionV1{},
 	PracticeItemKindFretboardCell:    fretboardCellV2{},
 	PracticeItemKindDiagramShape:     diagramShapeV1{},
@@ -243,12 +274,15 @@ var graderByKind = map[PracticeItemKind]Grader{
 	PracticeItemKindHeardChord:       generatedChoiceV1{},
 	PracticeItemKindHeardProgression: generatedChoiceV1{},
 	PracticeItemKindGuideTone:        timedTapsV1{},
-	PracticeItemKindFretboardNote:    multiTapV1{},
 }
 
-// GraderFor returns the grader for an item kind, and false when the worker has no
-// grader for that kind yet.
-func GraderFor(kind PracticeItemKind) (Grader, bool) {
+// GraderFor returns the grader for an item kind and the way it was answered, and
+// false when the worker has no grader for that kind yet.
+func GraderFor(kind PracticeItemKind, response PracticeResponseType) (Grader, bool) {
+	if kind == PracticeItemKindFretboardCell && response == PracticeResponseMultiTap {
+		// Finding every instance of a cell's note is graded on every cell it covers.
+		return multiTapV2{}, true
+	}
 	g, ok := graderByKind[kind]
 	return g, ok
 }
@@ -257,5 +291,5 @@ func GraderFor(kind PracticeItemKind) (Grader, bool) {
 // whose evidence is still kept.
 func Graders() []Grader {
 	return []Grader{selfRatingV1{}, exerciseOptionV1{}, fretboardCellV1{}, fretboardCellV2{}, diagramShapeV1{},
-		generatedChoiceV1{}, timedTapsV1{}, multiTapV1{}}
+		generatedChoiceV1{}, timedTapsV1{}, multiTapV2{}}
 }

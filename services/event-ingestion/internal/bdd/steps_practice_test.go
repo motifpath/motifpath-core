@@ -39,6 +39,10 @@ func registerPracticeSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^the stored and published practice\.item_answered event carries a tap time of (\d+) milliseconds$`, w.answerCarriesTap)
 	sc.Step(`^the stored and published practice\.item_answered event carries no tap time$`, w.answerCarriesNoTap)
 	sc.Step(`^the stored and published practice\.item_answered event keeps the tempo of (\d+) BPM and the note value (\w+)$`, w.answerKeepsTempoAndNoteValue)
+	sc.Step(`^"([^"]+)" submits a practice\.item_answered event rating a take of the progression key tour of "([^"]+)" on guitar "([^"]+)" at (\d+) BPM in (?:the key "([^"]+)"|([A-G][b#]?))$`, w.submitTourTake)
+	sc.Step(`^the stored and published practice\.item_answered event keeps the tempo of (\d+) BPM and the key ([A-G][b#]?)$`, w.answerKeepsTempoAndKey)
+	sc.Step(`^"([^"]+)" submits a practice\.item_answered event rating the song "([^"]+)" on guitar "([^"]+)"$`, w.submitSongRating)
+	sc.Step(`^the stored and published practice\.item_answered event names the item "song:<guitar layout id>:<([^"]+)'s chart id>"$`, w.answerNamesTheSong)
 }
 
 var guitarID = deterministicUUID("instrument", "guitar")
@@ -272,6 +276,30 @@ func (w *world) submitSelfRatedTakeInNoteValue(name, rating, tempoStr, quoted, b
 	}))
 }
 
+func (w *world) submitTourTake(name, progression, rating, tempoStr, quoted, bare string) error {
+	tempo, err := strconv.Atoi(tempoStr)
+	if err != nil {
+		return err
+	}
+	key := bare
+	if quoted != "" {
+		key = quoted
+	}
+	itemKey := fmt.Sprintf("progression_keys:%s:%s", guitarID, progression)
+	return w.submitPractice(w.answerEvent(name, itemKey, &practiceResponse{
+		ResponseType: "self_rating", Rating: rating, TempoBPM: tempo, MusicKey: key,
+	}))
+}
+
+// songKey is the song of chart on the guitar layout.
+func songKey(chart string) string {
+	return fmt.Sprintf("song:%s:%s", guitarID, deterministicUUID("song_chart", chart, "chart"))
+}
+
+func (w *world) submitSongRating(name, chart, rating string) error {
+	return w.submitPractice(w.answerEvent(name, songKey(chart), &practiceResponse{ResponseType: "self_rating", Rating: rating}))
+}
+
 func (w *world) submitNameTheNoteClaimingTap(name, tapStr string) error {
 	tap, err := strconv.Atoi(tapStr)
 	if err != nil {
@@ -420,6 +448,40 @@ func (w *world) answerCarriesNoTap() error {
 	for label, got := range map[string]*int{"stored": stored.TapMs, "published": published.TapMs} {
 		if got != nil {
 			return fmt.Errorf("the %s answer carries a tap time of %d, want none", label, *got)
+		}
+	}
+	return nil
+}
+
+func (w *world) answerKeepsTempoAndKey(tempoStr, key string) error {
+	tempo, err := strconv.Atoi(tempoStr)
+	if err != nil {
+		return err
+	}
+	stored, published, err := w.storedAndPublishedAnswer()
+	if err != nil {
+		return err
+	}
+	for label, got := range map[string]domain.PracticeResponse{"stored": stored.Response, "published": published.Response} {
+		if got.TempoBPM == nil || *got.TempoBPM != tempo {
+			return fmt.Errorf("the %s answer's tempo is %v, want %d", label, got.TempoBPM, tempo)
+		}
+		if got.MusicKey != key {
+			return fmt.Errorf("the %s answer's key is %v, want %s", label, got.MusicKey, key)
+		}
+	}
+	return nil
+}
+
+func (w *world) answerNamesTheSong(chart string) error {
+	stored, published, err := w.storedAndPublishedAnswer()
+	if err != nil {
+		return err
+	}
+	want := songKey(chart)
+	for label, got := range map[string]string{"stored": stored.ItemKey, "published": published.ItemKey} {
+		if got != want {
+			return fmt.Errorf("the %s answer names the item %q, want %q", label, got, want)
 		}
 	}
 	return nil

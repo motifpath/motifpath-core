@@ -2,6 +2,7 @@ package application_test
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -21,6 +22,7 @@ type songChartFixture struct {
 	charts   *fakeSongChartRepository
 	catalog  *fakeChordCatalogRepository
 	diagrams *fakeDiagramRepository
+	refs     *fakePracticeReferenceWriter
 	now      time.Time
 }
 
@@ -60,12 +62,43 @@ func newSongChartFixture() *songChartFixture {
 		charts:   newFakeSongChartRepository(),
 		catalog:  catalog,
 		diagrams: diagrams,
+		refs:     newFakePracticeReferenceWriter(),
 		now:      time.Date(2026, 10, 7, 12, 0, 0, 0, time.UTC),
 	}
 	ids := 0
 	newID := func() string { ids++; return "chart-" + string(rune('0'+ids)) }
-	f.service = application.NewSongChartService(f.charts, catalog, diagrams, newFakeLanguageRepository(), newID, func() time.Time { return f.now })
+	f.service = application.NewSongChartService(f.charts, catalog, diagrams, newFakeLanguageRepository(), songProgressions(), f.refs, newID, func() time.Time { return f.now })
 	return f
+}
+
+// songProgressions is the part of the progression catalog the song chart
+// tests tag charts with.
+func songProgressions() fakeProgressions {
+	return fakeProgressions{
+		{Key: "I-IV-I-V", Mode: "major", Bars: []string{"I", "IV", "I", "V"}},
+		{Key: "I-IV-V-I", Mode: "major", Bars: []string{"I", "IV", "V", "I"}},
+		{Key: "I-V-vi-IV", Mode: "major", Bars: []string{"I", "V", "vi", "IV"}},
+	}
+}
+
+// amazingGrace is a verse "[G]A[C]ma[G]zing [D]grace" in G, with confirmed
+// rights, the verse tagged with the progressions given.
+func amazingGrace(progressions ...string) application.SongChartInput {
+	key := "G"
+	in := chartInput(chartBody(run("a1", "G", "A"), run("a2", "C", "ma"), run("a3", "G", "zing "), run("a4", "D", "grace")))
+	in.Title, in.Artist, in.Language, in.ConcertKey = "Amazing Grace", "John Newton", "en", &key
+	in.RightsConfirmed = true
+	in.Body.Sections[0].ProgressionKeys = progressions
+	return in
+}
+
+// verseTags are the verse's tags, as the draft lists them unplayed.
+func verseTags(keys ...string) []domain.SectionProgression {
+	tags := []domain.SectionProgression{}
+	for _, k := range keys {
+		tags = append(tags, domain.SectionProgression{SectionIndex: 0, ProgressionKey: k})
+	}
+	return tags
 }
 
 // run is a lyric run with a chord: anchor id, written symbol, text.
@@ -370,6 +403,54 @@ func TestSongChartService_Publish(t *testing.T) {
 		assert.Equal(t, 1, stored.PublishedRevision.Number)
 		revs, _ := f.charts.ListRevisions(ctx, chart.ID)
 		assert.Equal(t, []domain.SongChartRevision{rev}, revs)
+	})
+
+	t.Run("a published chart is written to the practice reference, so its songs can be graded", func(t *testing.T) {
+		f := newSongChartFixture()
+		chart, _ := f.service.Create(ctx, adminCaller(), asaBranca())
+		require.Empty(t, f.refs.songChartIDs(), "a draft is never practised")
+
+		_, err := f.service.Publish(ctx, adminCaller(), chart.ID)
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{chart.ID}, f.refs.songChartIDs())
+	})
+
+	t.Run("the practice reference is written even when the request ends right after the publication", func(t *testing.T) {
+		f := newSongChartFixture()
+		chart, _ := f.service.Create(ctx, adminCaller(), asaBranca())
+		ended, cancel := context.WithCancel(ctx)
+		cancel()
+
+		_, err := f.service.Publish(ended, adminCaller(), chart.ID)
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{chart.ID}, f.refs.songChartIDs(), "a client leaving after the commit must not cost the snapshot its write")
+	})
+
+	t.Run("a failed practice reference write doesn't fail the publication", func(t *testing.T) {
+		f := newSongChartFixture()
+		f.refs.err = errors.New("mongo down")
+		chart, _ := f.service.Create(ctx, adminCaller(), asaBranca())
+
+		rev, err := f.service.Publish(ctx, adminCaller(), chart.ID)
+
+		require.NoError(t, err)
+		assert.Equal(t, 1, rev.Number)
+		stored, _ := f.charts.GetByID(ctx, chart.ID)
+		assert.Equal(t, domain.SongChartPublished, stored.Status)
+	})
+
+	t.Run("a refused publication writes no practice reference", func(t *testing.T) {
+		f := newSongChartFixture()
+		in := asaBranca()
+		in.RightsConfirmed = false
+		chart, _ := f.service.Create(ctx, adminCaller(), in)
+
+		_, err := f.service.Publish(ctx, adminCaller(), chart.ID)
+
+		require.Error(t, err)
+		assert.Empty(t, f.refs.songChartIDs())
 	})
 
 	t.Run("a draft whose rights aren't confirmed isn't published", func(t *testing.T) {
@@ -907,5 +988,122 @@ func TestSongChartService_ReadChordPro(t *testing.T) {
 		_, err := newSongChartFixture().service.ReadChordPro(ctx, teacherCaller(), "[G]La\n")
 
 		require.ErrorIs(t, err, domain.ErrForbidden)
+	})
+}
+
+func TestSongChartService_Progressions(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("a chart's sections are untagged until its author tags them", func(t *testing.T) {
+		f := newSongChartFixture()
+
+		chart, err := f.service.Create(ctx, adminCaller(), amazingGrace())
+
+		require.NoError(t, err)
+		assert.Empty(t, chart.Draft.Body.Sections[0].ProgressionKeys)
+		assert.Empty(t, chart.Draft.UnplayedProgressions)
+	})
+
+	t.Run("a tag the section plays is saved and lists nothing unplayed", func(t *testing.T) {
+		f := newSongChartFixture()
+
+		chart, err := f.service.Create(ctx, adminCaller(), amazingGrace("I-IV-I-V"))
+
+		require.NoError(t, err)
+		stored, _ := f.charts.GetByID(ctx, chart.ID)
+		assert.Equal(t, []string{"I-IV-I-V"}, stored.Draft.Body.Sections[0].ProgressionKeys)
+		assert.Empty(t, stored.Draft.UnplayedProgressions)
+	})
+
+	t.Run("a tag the section doesn't play is saved and listed as unplayed on that section", func(t *testing.T) {
+		f := newSongChartFixture()
+		chart, _ := f.service.Create(ctx, adminCaller(), amazingGrace())
+
+		got, err := f.service.UpdateDraft(ctx, adminCaller(), chart.ID, amazingGrace("I-IV-I-V", "I-V-vi-IV"))
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{"I-IV-I-V", "I-V-vi-IV"}, got.Draft.Body.Sections[0].ProgressionKeys)
+		assert.Equal(t, verseTags("I-V-vi-IV"), got.Draft.UnplayedProgressions)
+	})
+
+	t.Run("another section's chords never play a section's progression", func(t *testing.T) {
+		f := newSongChartFixture()
+		in := amazingGrace()
+		in.Body = domain.SongChartDocument{Sections: []domain.SongChartSection{
+			chartBody(run("a1", "G", "A"), run("a2", "C", "ma")).Sections[0],
+			chartBody(run("b1", "G", "zing "), run("b2", "D", "grace")).Sections[0],
+		}}
+		in.Body.Sections[1].Kind = domain.SectionChorus
+		in.Body.Sections[0].ProgressionKeys = []string{"I-IV-I-V"}
+
+		chart, err := f.service.Create(ctx, adminCaller(), in)
+
+		require.NoError(t, err)
+		assert.Equal(t, verseTags("I-IV-I-V"), chart.Draft.UnplayedProgressions)
+	})
+
+	t.Run("a progression the catalog doesn't have can't be tagged", func(t *testing.T) {
+		f := newSongChartFixture()
+		chart, _ := f.service.Create(ctx, adminCaller(), amazingGrace())
+
+		_, err := f.service.UpdateDraft(ctx, adminCaller(), chart.ID, amazingGrace("I-II-III"))
+
+		var valErr *domain.ValidationError
+		require.ErrorAs(t, err, &valErr)
+		assert.Equal(t, "body/content/0/attrs/progression_keys", valErr.Fields[0].Field)
+		stored, _ := f.charts.GetByID(ctx, chart.ID)
+		assert.Empty(t, stored.Draft.Body.Sections[0].ProgressionKeys)
+	})
+
+	t.Run("a chart with an unplayed progression cannot be published", func(t *testing.T) {
+		f := newSongChartFixture()
+		chart, _ := f.service.Create(ctx, adminCaller(), amazingGrace("I-V-vi-IV"))
+
+		_, err := f.service.Publish(ctx, adminCaller(), chart.ID)
+
+		var refusal *domain.SongChartNotPublishableError
+		require.ErrorAs(t, err, &refusal)
+		assert.Equal(t, []domain.NotPublishableReason{domain.ProgressionsNotPlayed}, refusal.Reasons)
+		assert.Equal(t, verseTags("I-V-vi-IV"), refusal.UnplayedProgressions)
+	})
+
+	t.Run("the progressions are checked again at publication", func(t *testing.T) {
+		f := newSongChartFixture()
+		chart, _ := f.service.Create(ctx, adminCaller(), amazingGrace())
+		stored, _ := f.charts.GetByID(ctx, chart.ID)
+		// A draft saved before its tags were checked lists none as unplayed.
+		stored.Draft.Body.Sections[0].ProgressionKeys = []string{"I-V-vi-IV"}
+		require.NoError(t, f.charts.Save(ctx, stored))
+
+		_, err := f.service.Publish(ctx, adminCaller(), chart.ID)
+
+		var refusal *domain.SongChartNotPublishableError
+		require.ErrorAs(t, err, &refusal)
+		assert.Equal(t, verseTags("I-V-vi-IV"), refusal.UnplayedProgressions)
+	})
+
+	t.Run("a revision keeps the progressions it was published with", func(t *testing.T) {
+		f := newSongChartFixture()
+		chart, _ := f.service.Create(ctx, adminCaller(), amazingGrace("I-IV-I-V"))
+		_, err := f.service.Publish(ctx, adminCaller(), chart.ID)
+		require.NoError(t, err)
+
+		_, err = f.service.UpdateDraft(ctx, adminCaller(), chart.ID, amazingGrace())
+		require.NoError(t, err)
+
+		revs, _ := f.charts.ListRevisions(ctx, chart.ID)
+		require.Len(t, revs, 1)
+		assert.Equal(t, verseTags("I-IV-I-V"), revs[0].SectionProgressions)
+	})
+
+	t.Run("a ChordPro import brings untagged sections", func(t *testing.T) {
+		f := newSongChartFixture()
+		chart, _ := f.service.Create(ctx, adminCaller(), amazingGrace("I-IV-I-V"))
+
+		got, err := f.service.ImportChordPro(ctx, adminCaller(), chart.ID, "{start_of_verse}\n[G]A[C]ma[G]zing [D]grace\n{end_of_verse}\n")
+
+		require.NoError(t, err)
+		assert.Empty(t, got.Chart.Draft.Body.Sections[0].ProgressionKeys)
+		assert.Empty(t, got.Chart.Draft.UnplayedProgressions)
 	})
 }

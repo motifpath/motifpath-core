@@ -40,6 +40,8 @@ type PracticeEvidence struct {
 	TempoBPM          *int
 	NoteValue         *NoteValue
 	ChangesPerMinute  *int
+	// MusicKey is the key a progression key tour take was played in.
+	MusicKey string
 	// AnswerKey is what a right answer was, for auto-graded evidence.
 	AnswerKey *AnswerKey
 }
@@ -207,6 +209,16 @@ type ItemFold struct {
 	LastChangesPerMinute *int
 	LastRating           SelfRating
 	CleanMinutesInARow   int
+	// TourTempoBPM, TourCleanKeys and TourNoteValue are a progression key tour's
+	// state: its tempo at effective speed, its keys clean at that tempo in the
+	// tour's order, and the note value of its last clean take. All are unset for
+	// any other item.
+	TourTempoBPM  *int
+	TourCleanKeys []string
+	TourNoteValue *NoteValue
+	// LastMusicKey is the key of a guide tone's last take, right or not, which
+	// its next take is never planned in; empty for any other item.
+	LastMusicKey string
 	// RightByResponse counts the right answers by the way the item was asked
 	// (WayAsked), so an item asked more than one way can next be asked the way it
 	// knows least. Both ways of a generated question share one response type, so
@@ -263,7 +275,10 @@ func FoldEvidence(f ItemFold, e PracticeEvidence, goal ItemGoal) (ItemFold, erro
 }
 
 // foldAnswer folds an auto-graded answer: a right one is a hit whose fluency is the
-// fluent time over the net time (capped at 1), a wrong one a miss.
+// fluent time over the net time (capped at 1), a wrong one a miss. An answer played
+// along with music at a tempo (a guide-tone take) is measured against the goal's
+// target tempo instead: its fluency is its effective speed over the target, and its
+// latency is never judged.
 func foldAnswer(f ItemFold, e PracticeEvidence, goal ItemGoal) (ItemFold, error) {
 	if e.Correct == nil {
 		return f, fmt.Errorf("auto-graded evidence %s has no verdict", e.EvidenceID)
@@ -271,16 +286,24 @@ func foldAnswer(f ItemFold, e PracticeEvidence, goal ItemGoal) (ItemFold, error)
 	f.Attempts++
 	at := e.OccurredAt
 	f.LastAt = &at
+	if kindOf(e.ItemKey) == PracticeItemKindGuideTone {
+		f.LastMusicKey = e.Response.MusicKey
+	}
 
 	judged, timed := JudgeTimed(e, goal)
-	r := reading{outcome: outcomeMiss, judgesFluency: timed}
+	tempo := effectiveTempo(e.Response.TempoBPM, e.Response.NoteValue)
+	byTempo := goal.TargetTempoBPM != nil && tempo != nil
+	r := reading{outcome: outcomeMiss, judgesFluency: timed || byTempo}
 	if *e.Correct {
 		if f.RightByResponse == nil {
 			f.RightByResponse = map[string]int{}
 		}
 		f.RightByResponse[WayAsked(kindOf(e.ItemKey), e.Response)]++
 		r.outcome, r.accuracy, r.fluency = outcomeHit, 1, 1
-		if timed && judged.NetMs > 0 {
+		switch {
+		case byTempo:
+			r.fluency = goalRatio(tempo, goal.TargetTempoBPM)
+		case timed && judged.NetMs > 0:
 			r.fluency = math.Min(1, float64(judged.FluentTime.FluentNetMs)/float64(judged.NetMs))
 		}
 	}
@@ -297,6 +320,9 @@ func foldTake(f ItemFold, e PracticeEvidence, goal ItemGoal) ItemFold {
 	f.Attempts++
 	at := e.OccurredAt
 	f.LastAt = &at
+	if kindOf(e.ItemKey) == PracticeItemKindProgressionKeys {
+		f.foldTour(e, goal)
+	}
 
 	measure, best, target := effectiveTempo(e.TempoBPM, e.NoteValue), effectiveTempo(f.BestCleanBPM, f.BestCleanNoteValue), goal.TargetTempoBPM
 	if e.ChangesPerMinute != nil {

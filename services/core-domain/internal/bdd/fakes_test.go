@@ -440,6 +440,18 @@ func (f *fakeExerciseRepo) GetByID(_ context.Context, id string) (domain.Exercis
 	return e, nil
 }
 
+func (f *fakeExerciseRepo) GetByIDs(_ context.Context, ids []string) (map[string]domain.Exercise, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	found := map[string]domain.Exercise{}
+	for _, id := range ids {
+		if e, ok := f.byID[id]; ok {
+			found[id] = e
+		}
+	}
+	return found, nil
+}
+
 func (f *fakeExerciseRepo) LinkChallenge(_ context.Context, exerciseID, challengeID string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -2173,6 +2185,10 @@ func (f *fakeDiagramRepo) put(d domain.Diagram) {
 // discardPracticeReferences is a ports.PracticeReferenceWriter that keeps
 // nothing: no feature reads the practice reference snapshot through core.
 type discardPracticeReferences struct{}
+
+func (discardPracticeReferences) PutSongCharts(context.Context, []domain.SongChartReference) error {
+	return nil
+}
 
 func (discardPracticeReferences) PutDiagrams(context.Context, []domain.DiagramReference) error {
 	return nil

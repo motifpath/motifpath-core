@@ -42,6 +42,8 @@ func TestFeatures(t *testing.T) {
 				featuresBase + "/practice/fretboard-cells.feature",
 				featuresBase + "/practice/focused-session.feature",
 				featuresBase + "/practice/fretboard-map.feature",
+				featuresBase + "/practice/guide-tones.feature",
+				featuresBase + "/practice/songs.feature",
 				featuresBase + "/practice/node-levels.feature",
 				featuresBase + "/practice/practice-summary.feature",
 				featuresBase + "/practice/practice-overview.feature",
@@ -92,6 +94,8 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	registerDiagramSteps(sc, w)
 	registerChordSteps(sc, w)
 	registerSongChartSteps(sc, w)
+	registerSongChartProgressionSteps(sc, w)
+	registerSongSteps(sc, w)
 	registerSongChartChordProSteps(sc, w)
 	registerSongChartEmbedSteps(sc, w)
 	registerDiagramPlaybackSteps(sc, w)
@@ -135,6 +139,8 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	registerHarmonyDrillSteps(sc, w)
 	registerHearDrillSteps(sc, w)
 	registerChordDrillSteps(sc, w)
+	registerTourSteps(sc, w)
+	registerGuideToneSteps(sc, w)
 	registerProgressionCatalogSteps(sc, w)
 	registerDiagramShapeSteps(sc, w)
 	registerFretboardMapSteps(sc, w)

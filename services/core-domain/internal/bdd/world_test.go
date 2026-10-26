@@ -54,12 +54,24 @@ type world struct {
 	harmonyDrills     *harmonyWorld
 	hearDrills        *hearWorld
 	chordDrills       *chordDrillWorld
-	shapeWorld        *diagramShapeWorld
-	songCharts        *songChartWorld
+	// tourItemKey is the progression key tour a step named.
+	tourItemKey string
+	// guideToneKey is the guide tone a step named, and guideToneKeys the music
+	// keys it was planned in over repeated sessions.
+	guideToneKey  string
+	guideToneKeys []string
+	// pickedGuideTones are the guide tones planned for different students, and
+	// guideTonePlans the responses of repeated sessions in the head.
+	pickedGuideTones []generated.PlannedGuideTone
+	guideTonePlans   []generated.CreatePracticeSessionPlan200JSONResponse
+	shapeWorld  *diagramShapeWorld
+	songCharts  *songChartWorld
 	// dueDays holds the cells a scenario made due on two days.
 	dueDays *cellsDueOnTwoDays
 	// lastCell is the fretboard cell a step answered, for a following step.
 	lastCell *lastCell
+	// everyInstancePair are the two cells a find every instance step named.
+	everyInstancePair []string
 	// lastShapeKey is the diagram shape a step set up, for a following step.
 	lastShapeKey     string
 	practiceActivity *fakePracticeActivity
@@ -339,7 +351,10 @@ func newWorld() *world {
 	w.practiceActivity = newFakePracticeActivity()
 	practiceSession := application.NewPracticeSessionService(w.instruments, w.studentPaths, w.courseEnrollments, w.paths, w.courseVersions, w.nodes, w.diagrams, w.exercises, w.rollup, catalogDrillTemplates{}, w.tapChecks, w.feltRatings, w.practiceActivity, newID, now).
 		WithHarmonyDrills(catalogProgressions{}, &catalogChordRepository{newFakeChordCatalog()}, harmonyLayouts{}).
-		WithChordDrills(chordDrillCatalog{}, w.instruments)
+		WithChordDrills(chordDrillCatalog{}, w.instruments).
+		WithProgressionKeyTours(w.instruments).
+		WithGuideTones(w.instruments).
+		WithSongs(w.songChartRepo, w.practiceActivity)
 	w.summaryNow = fixedNow
 	summaryNow := func() time.Time { return w.summaryNow }
 	summaryRollup := application.NewKnowledgeRollupService(w.knowledge, w.knowledgeEdges, w.practiceItems, w.practiceStates, summaryNow)
@@ -349,7 +364,7 @@ func newWorld() *world {
 	alphaObservation := application.NewAlphaObservationService(w.users, w.studentPaths, w.nodes, w.completion, w.alpha.activity, func() time.Time { return w.alpha.now })
 
 	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, knowledgeNode, knowledgeEdge, media, path, application.NewPathCatalogService(w.paths, w.users, w.knowledge), studentPath, course, courseEnrollment, instrument, voice, diagram, practiceSession, practiceSummary, application.NewChordCatalogService(w.chords), application.NewProgressionCatalogService(catalogProgressions{}),
-		application.NewSongChartService(w.songChartRepo, w.chords, w.diagrams, newFakeLanguageRepo(), newID, now),
+		application.NewSongChartService(w.songChartRepo, w.chords, w.diagrams, newFakeLanguageRepo(), catalogProgressions{}, discardPracticeReferences{}, newID, now),
 		application.NewAppConfigService(w.appConfig, now, application.NewStartingPointsKey(w.instruments, newFakeLanguageRepo(), w.paths, w.courses)),
 		application.NewStartingPointsService(w.appConfig, newFakeLanguageRepo(), w.paths, w.courses),
 		alphaObservation,

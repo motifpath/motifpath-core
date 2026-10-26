@@ -30,7 +30,8 @@ const (
 	PracticeItemKindRootFifth        PracticeItemKind = "root_fifth"
 	PracticeItemKindRootChange       PracticeItemKind = "root_change"
 	PracticeItemKindGuideTone        PracticeItemKind = "guide_tone"
-	PracticeItemKindFretboardNote    PracticeItemKind = "fretboard_note"
+	PracticeItemKindProgressionKeys  PracticeItemKind = "progression_keys"
+	PracticeItemKindSong             PracticeItemKind = "song"
 )
 
 const (
@@ -61,7 +62,8 @@ var practiceItemKeyPattern = regexp.MustCompile(`^(` +
 	`|root_fifth:` + uuidPattern + `:` + chordPattern +
 	`|root_change:` + uuidPattern + `:` + chordPattern + `:` + chordPattern +
 	`|guide_tone:` + uuidPattern + `:` + progressionKeyPattern +
-	`|fretboard_note:` + uuidPattern + `:(C|C#|D|D#|E|F|F#|G|G#|A|A#|B)` +
+	`|progression_keys:` + uuidPattern + `:` + progressionKeyPattern +
+	`|song:` + uuidPattern + `:` + uuidPattern +
 	`)$`)
 
 // PracticeItemKey identifies the practice item that evidence is about.
@@ -86,7 +88,8 @@ func (k PracticeItemKey) String() string { return k.raw }
 
 // LayoutInstrumentID is the instrument whose fretboard the item is played or
 // tapped on: a fretboard cell's, a bass root and fifth's or root change's, a guide
-// tone's or a note found everywhere; empty for the other kinds.
+// tone's, a note found everywhere's, a progression key tour's or a song's; empty
+// for the other kinds.
 func (k PracticeItemKey) LayoutInstrumentID() string {
 	if !onALayout[k.Kind] {
 		return ""
@@ -98,12 +101,12 @@ func (k PracticeItemKey) LayoutInstrumentID() string {
 // played or tapped on.
 var onALayout = map[PracticeItemKind]bool{
 	PracticeItemKindFretboardCell: true, PracticeItemKindRootFifth: true, PracticeItemKindRootChange: true,
-	PracticeItemKindGuideTone: true, PracticeItemKindFretboardNote: true,
+	PracticeItemKindGuideTone: true, PracticeItemKindProgressionKeys: true, PracticeItemKindSong: true,
 }
 
 // ProgressionKey is the progression of the progression catalog the item is about:
-// a chart progression's, a heard progression's or a guide tone's; empty for the
-// other kinds.
+// a chart progression's, a heard progression's, a guide tone's or a progression
+// key tour's; empty for the other kinds.
 func (k PracticeItemKey) ProgressionKey() string {
 	segment, ok := progressionSegment[k.Kind]
 	if !ok {
@@ -115,6 +118,7 @@ func (k PracticeItemKey) ProgressionKey() string {
 // progressionSegment is where a progression item's key names its progression.
 var progressionSegment = map[PracticeItemKind]int{
 	PracticeItemKindChartProgression: 0, PracticeItemKindHeardProgression: 0, PracticeItemKindGuideTone: 1,
+	PracticeItemKindProgressionKeys: 1,
 }
 
 // ExerciseID is the exercise an exercise item is about; empty for the other kinds.
@@ -125,6 +129,14 @@ func (k PracticeItemKey) ExerciseID() string {
 	return k.parts[0]
 }
 
+// SongChartID is the song chart a song is played from; empty for the other kinds.
+func (k PracticeItemKey) SongChartID() string {
+	if k.Kind != PracticeItemKindSong {
+		return ""
+	}
+	return k.parts[1]
+}
+
 // DiagramIDs are the diagrams the item points at: one for a play-along or a
 // diagram shape, the two chords of a chord change, none for the other kinds.
 func (k PracticeItemKey) DiagramIDs() []string {
@@ -133,7 +145,8 @@ func (k PracticeItemKey) DiagramIDs() []string {
 		return k.parts
 	case PracticeItemKindFretboardCell, PracticeItemKindExercise, PracticeItemKindDiatonicChord, PracticeItemKindChordFunction,
 		PracticeItemKindChartProgression, PracticeItemKindHeardChord, PracticeItemKindHeardProgression,
-		PracticeItemKindRootFifth, PracticeItemKindRootChange, PracticeItemKindGuideTone, PracticeItemKindFretboardNote:
+		PracticeItemKindRootFifth, PracticeItemKindRootChange, PracticeItemKindGuideTone,
+		PracticeItemKindProgressionKeys, PracticeItemKindSong:
 		return nil
 	}
 	return nil

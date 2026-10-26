@@ -48,19 +48,29 @@ type PracticeSessionService struct {
 	instruments ports.InstrumentRepository
 	learning    studentLearning
 	diagrams    ports.DiagramRepository
-	exercises   ports.ExerciseRepository
-	rollup      *KnowledgeRollupService
-	templates   ports.DrillTemplateRepository
-	tapChecks   ports.TapCheckReader
-	feltRatings ports.FeltRatingReader
-	headCount   ports.HeadSessionCounter
+	// composingDiagrams is diagrams keeping what it reads, while composing.
+	composingDiagrams *composingDiagrams
+	// composingExercises is exercises keeping what it reads, while composing.
+	composingExercises *composingExercises
+	exercises          ports.ExerciseRepository
+	rollup             *KnowledgeRollupService
+	templates          ports.DrillTemplateRepository
+	tapChecks          ports.TapCheckReader
+	feltRatings        ports.FeltRatingReader
+	headCount          ports.HeadSessionCounter
 	// sources find the generated drill items, a source per drill family.
 	sources []DrillSource
 	// harmony is what the harmony drills read; nil when they aren't
 	// installed.
 	harmony *harmonyDrills
-	newID   func() string
-	now     func() time.Time
+	// subjectCatalogs holds the precomputed practice subject catalog; nil
+	// when subjects are always listed live.
+	subjectCatalogs ports.PracticeSubjectCatalogRepository
+	// lastInHand tells the items of a student's last in-hand session; nil
+	// when no songs are installed.
+	lastInHand ports.LastInHandSessionReader
+	newID      func() string
+	now        func() time.Time
 	// shuffle puts equally urgent candidates in random order.
 	shuffle func(n int, swap func(i, j int))
 }
@@ -108,6 +118,34 @@ func NewPracticeSessionService(
 func (s *PracticeSessionService) WithDrillSources(sources ...DrillSource) *PracticeSessionService {
 	s.sources = append(s.sources, sources...)
 	return s
+}
+
+// composingSource is a drill source that keeps what it reads for one
+// composition, read afresh for the next.
+type composingSource interface {
+	DrillSource
+	composing(s *PracticeSessionService) DrillSource
+}
+
+// forComposition is s keeping what it reads, with a fresh copy of each
+// source that does, for one composition or one list of subjects.
+func (s *PracticeSessionService) forComposition() *PracticeSessionService {
+	composing := *s
+	composing.composingDiagrams = newComposingDiagrams(s.diagrams)
+	composing.diagrams = composing.composingDiagrams
+	composing.composingExercises = newComposingExercises(s.exercises)
+	composing.exercises = composing.composingExercises
+	if s.harmony != nil {
+		composing.harmony = s.harmony.forComposition()
+	}
+	composing.sources = make([]DrillSource, len(s.sources))
+	for i, src := range s.sources {
+		if c, ok := src.(composingSource); ok {
+			src = c.composing(&composing)
+		}
+		composing.sources[i] = src
+	}
+	return &composing
 }
 
 // WithShuffle replaces how equally urgent candidates are put in random
@@ -229,6 +267,7 @@ func (s *PracticeSessionService) ComposePlan(ctx context.Context, caller domain.
 	if err := domain.ValidatePracticeMinutes(minutes); err != nil {
 		return domain.PracticeSessionPlan{}, err
 	}
+	s = s.forComposition()
 	instrumentIDs, err := s.sessionInstruments(ctx, caller.ID, instrumentID)
 	if err != nil {
 		return domain.PracticeSessionPlan{}, err
@@ -245,10 +284,19 @@ func (s *PracticeSessionService) ComposePlan(ctx context.Context, caller domain.
 	if c.newTurn, err = s.newCellTurn(ctx, caller.ID, instrumentID != nil); err != nil {
 		return domain.PracticeSessionPlan{}, err
 	}
+	if c.lastInHand, err = s.lastInHandItems(ctx, caller.ID, instrumentID != nil); err != nil {
+		return domain.PracticeSessionPlan{}, err
+	}
+	tunings := s.layoutTunings(ctx)
+	c.tuningOf = tunings.of
 	var boxes *chordBoxes
-	if s.harmony != nil && instrumentID == nil {
-		if c.reading, c.bassInstrumentID, err = s.harmony.reading(ctx, instrumentIDs, c.newTurn); err != nil {
-			return domain.PracticeSessionPlan{}, err
+	if s.harmony != nil {
+		// Harmony questions are read in the head only; a tour played in hand
+		// still sounds its chords in their voicings.
+		if instrumentID == nil {
+			if c.reading, c.bassInstrumentID, err = s.harmony.reading(ctx, instrumentIDs, c.newTurn); err != nil {
+				return domain.PracticeSessionPlan{}, err
+			}
 		}
 		boxes = s.harmony.boxes(ctx)
 		c.voicing = boxes.diagramOf
@@ -259,10 +307,57 @@ func (s *PracticeSessionService) ComposePlan(ctx context.Context, caller domain.
 	} else {
 		plan, err = s.composeMix(ctx, c, caller.ID, instrumentID, instrumentIDs, maps)
 	}
-	if err == nil && boxes != nil && boxes.err != nil {
-		return domain.PracticeSessionPlan{}, boxes.err
+	if err := firstError(err, boxes.failure(), tunings.err); err != nil {
+		return domain.PracticeSessionPlan{}, err
 	}
-	return plan, err
+	return plan, nil
+}
+
+// lastInHandItems are the items of the student's last in-hand session, which an
+// in-hand session reads for its song; none in the head or with no songs
+// installed.
+func (s *PracticeSessionService) lastInHandItems(ctx context.Context, studentID string, inHand bool) ([]string, error) {
+	if !inHand || s.lastInHand == nil {
+		return nil, nil
+	}
+	return s.lastInHand.LastInHandSessionItemKeys(ctx, studentID)
+}
+
+// firstError is the first of errs that isn't nil: a composition's own error
+// before a lookup it deferred.
+func firstError(errs ...error) error {
+	for _, err := range errs {
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// layoutTuningCache looks up fretboard layouts' tunings once each during one
+// composition. A layout that no longer exists has no tuning; any other
+// failure is kept in err for the composition to return.
+type layoutTuningCache struct {
+	ctx     context.Context
+	service *PracticeSessionService
+	tunings map[string][]string
+	err     error
+}
+
+func (s *PracticeSessionService) layoutTunings(ctx context.Context) *layoutTuningCache {
+	return &layoutTuningCache{ctx: ctx, service: s, tunings: map[string][]string{}}
+}
+
+func (l *layoutTuningCache) of(layoutInstrumentID string) []string {
+	if tuning, ok := l.tunings[layoutInstrumentID]; ok {
+		return tuning
+	}
+	instrument, err := l.service.instruments.GetByID(l.ctx, layoutInstrumentID)
+	if err != nil && !errors.Is(err, domain.ErrNotFound) && l.err == nil {
+		l.err = err
+	}
+	l.tunings[layoutInstrumentID] = instrument.Tuning
+	return instrument.Tuning
 }
 
 // composeMix composes Today's mix with c: see ComposePlan.
@@ -348,7 +443,7 @@ func (s *PracticeSessionService) newPlan(ctx context.Context, studentID string, 
 			nodes[n.ID] = n
 		}
 	}
-	feltQuestions, err := s.feltQuestions(ctx, items)
+	feltQuestions, err := s.feltQuestions(ctx, timedItems(items, c.templates))
 	if err != nil {
 		return domain.PracticeSessionPlan{}, err
 	}
@@ -361,6 +456,20 @@ func (s *PracticeSessionService) newPlan(ctx context.Context, studentID string, 
 		FocusSource: source, FocusNodes: c.focusNodes(items, nodes),
 		FeltQuestions: feltQuestions, TapCheckDue: tapCheckDue,
 	}, nil
+}
+
+// timedItems are the items of a plan whose drill template is timed: an
+// untimed one, such as finding every instance of a note, has no fluent time
+// for a felt rating to calibrate.
+func timedItems(items []domain.PracticeSessionItem, templates map[string]domain.DrillTemplate) []domain.PracticeSessionItem {
+	var timed []domain.PracticeSessionItem
+	for _, item := range items {
+		if t, ok := templates[item.DrillTemplateKey()]; ok && !t.Timed {
+			continue
+		}
+		timed = append(timed, item)
+	}
+	return timed
 }
 
 // feltQuestions picks the plan's felt questions, reading felt ratings only
@@ -494,7 +603,9 @@ func (s *PracticeSessionService) drillCandidates(ctx context.Context, skillID, i
 			return nil, err
 		}
 		for _, item := range items {
-			candidates = append(candidates, practiceCandidate{drill: item, nodeID: &skillID})
+			if readyFor(knowledge, item) {
+				candidates = append(candidates, practiceCandidate{drill: item, nodeID: &skillID})
+			}
 		}
 	}
 	return candidates, nil
@@ -577,7 +688,7 @@ func (s *PracticeSessionService) stretchCandidates(ctx context.Context, knowledg
 			return nil, err
 		}
 		c.nodeID = &pick.nodeID
-		if ok && c.suitsSession(inHand) && fits(c) {
+		if ok && c.suitsSession(inHand) && !c.endsSessionOnly() && (c.drill == nil || readyFor(knowledge, c.drill)) && fits(c) {
 			c.instrumentID = instrumentID
 			stretch = append(stretch, c)
 			found += c.seconds()
@@ -732,6 +843,9 @@ func (c practiceCandidate) seconds() int {
 		tempo, noteValue := startTempo(c)
 		return domain.PlayAlongSeconds(*c.diagram, tempo, noteValue, false)
 	case c.drill != nil:
+		if timed, ok := c.drill.(domain.TimedByWay); ok {
+			return timed.SecondsAsked(domain.NextDrillWay(c.drill, c.state))
+		}
 		return c.drill.Seconds()
 	default:
 		return domain.ExerciseSeconds(*c.exercise)
@@ -793,6 +907,17 @@ type composer struct {
 	// comebacks holds, by item key, each pick asked a way that comes back,
 	// planned again for its second time later in the session.
 	comebacks map[string]domain.PracticeSessionItem
+	// tuningOf is the tuning of a fretboard layout, which spells a cell's
+	// note; nil when nothing is planned. everyInstance holds each layout's
+	// notes already asked to find every instance, keyed layout:note.
+	tuningOf      func(layoutInstrumentID string) []string
+	everyInstance map[string]bool
+	// chosenNode is the one subject a session the student chose practises;
+	// empty in Today's mix.
+	chosenNode string
+	// lastInHand are the items of the student's last in-hand session, whose
+	// song isn't played again while another fits.
+	lastInHand []string
 }
 
 // drillWindowKey is a fretboard drill of a layout, which takes one window.
@@ -816,8 +941,68 @@ func newComposer(now time.Time, minutes int, shuffle func(n int, swap func(i, j 
 		now: now, budget: minutes * 60, shuffle: shuffle, picked: map[string]bool{}, drills: map[string]int{},
 		windows: map[drillWindowKey]domain.FretWindow{}, templates: templates,
 		subjectOf: candidateNode, newRungs: map[string][]domain.PracticeRung{}, confusable: map[string][]string{},
-		comebacks: map[string]domain.PracticeSessionItem{},
+		comebacks: map[string]domain.PracticeSessionItem{}, everyInstance: map[string]bool{},
 	}
+}
+
+// everyInstanceKey names a cell's note on its layout, for the cells asked to
+// find every instance; false when its note can't be read from the layout's
+// tuning, so it never stands in for another cell's.
+func (c *composer) everyInstanceKey(cell *domain.FretboardCell) (string, bool) {
+	if c.tuningOf == nil {
+		return "", false
+	}
+	note, ok := domain.CellNote(c.tuningOf(cell.LayoutInstrumentID), cell.String, cell.Fret)
+	return cell.LayoutInstrumentID + ":" + note, ok
+}
+
+// wayOf is the way cand is asked: the next one (domain.NextDrillWay), except
+// that one finding every instance of a note covers every cell of that note,
+// so a second cell of a note already asked that way is asked the way it has
+// the next fewest right answers instead. It reports false when that way's
+// window doesn't hold the cell, which then isn't picked.
+func (c *composer) wayOf(cand practiceCandidate) (string, bool) {
+	if cand.drill == nil {
+		return "", true
+	}
+	way := domain.NextDrillWay(cand.drill, cand.state)
+	cell := cand.cell()
+	if cell == nil || way != string(domain.FretboardDrillFindEveryInstance) {
+		return way, true
+	}
+	if key, ok := c.everyInstanceKey(cell); !ok || !c.everyInstance[key] {
+		return way, true
+	}
+	way = nextWayBut(cell, cand.state, way)
+	w, picked := c.windows[drillWindowKey{layoutInstrumentID: cell.LayoutInstrumentID, drill: domain.FretboardDrill(way)}]
+	return way, !picked || w.Contains(cell.Fret)
+}
+
+// cellWindow is the window cell is asked within through way: its drill's on
+// its layout. A drill first met here, as when a cell moves on from finding
+// every instance, takes the window that holds the cell.
+func (c *composer) cellWindow(cell *domain.FretboardCell, way string) domain.FretWindow {
+	k := drillWindowKey{layoutInstrumentID: cell.LayoutInstrumentID, drill: domain.FretboardDrill(way)}
+	if w, picked := c.windows[k]; picked {
+		return w
+	}
+	c.windows[k] = domain.PickFretWindow(nil, nil, []int{cell.Fret}, c.newTurn)
+	return c.windows[k]
+}
+
+// nextWayBut is the way item has the fewest right answers on, the first of
+// its ways on a tie, leaving out but.
+func nextWayBut(item domain.DrillItem, state *domain.PracticeItemState, but string) string {
+	next := ""
+	for _, way := range item.Ways() {
+		if way == but {
+			continue
+		}
+		if next == "" || (state != nil && state.RightByResponse[way] < state.RightByResponse[next]) {
+			next = way
+		}
+	}
+	return next
 }
 
 func (c *composer) remaining() int { return c.budget - c.used }
@@ -837,7 +1022,7 @@ func (c *composer) split(candidates []practiceCandidate) pools {
 	var p pools
 	for _, cand := range candidates {
 		switch {
-		case c.picked[cand.key()]:
+		case c.picked[cand.key()] || cand.endsSessionOnly():
 		case !cand.practised():
 			if c.atNewRung(cand) {
 				p.fresh = append(p.fresh, cand)
@@ -1084,15 +1269,23 @@ func betterWarmUp(a, b practiceCandidate, now time.Time) bool {
 	return compareDueAt(a.state.LastAt, b.state.LastAt) > 0
 }
 
-// application reserves the session's ending: one play-along applying one
-// of subjects (see subjectEnding), or, with no subjects, any play-along of
-// onPath; if it takes no more than a quarter of the session. Like the
-// warm-up, a due play-along is never the ending: its review belongs in the
-// focus block.
+// application reserves the session's ending: a song or a play-along applying
+// one of subjects (see subjectEnding); in a chosen session, a song of its
+// subject at the use rung, else any play-along of onPath; with no subjects,
+// any play-along of onPath; if it takes no more than a quarter of the
+// session. Like the warm-up, a due play-along is never the ending: its review
+// belongs in the focus block.
 func (c *composer) application(onPath []practiceCandidate, subjects []string, focus []practiceCandidate) {
-	pick := c.endingFor(onPath, "")
-	if subjects != nil {
+	var pick *practiceCandidate
+	switch {
+	case c.chosenNode != "":
+		if pick = c.songEnding(onPath, "", c.chosenNode); pick == nil {
+			pick = c.endingFor(onPath, "")
+		}
+	case subjects != nil:
 		pick = c.subjectEnding(onPath, subjects, focus)
+	default:
+		pick = c.endingFor(onPath, "")
 	}
 	if pick == nil {
 		return
@@ -1105,13 +1298,17 @@ func (c *composer) application(onPath []practiceCandidate, subjects []string, fo
 	c.ending = &item
 }
 
-// subjectEnding finds a play-along applying the first of subjects that has
-// one and that another item of focus practises, or else the first that has
-// one, as for endingFor; its node is that subject.
+// subjectEnding finds the ending of the first of subjects that has one and
+// that another item of focus practises, or else the first that has one: a
+// song when the subject is at the use rung (see songEnding), otherwise a
+// play-along applying it, as for endingFor. Its node is that subject.
 func (c *composer) subjectEnding(onPath []practiceCandidate, subjects []string, focus []practiceCandidate) *practiceCandidate {
 	for _, besides := range []bool{true, false} {
 		for _, subject := range subjects {
-			pick := c.endingFor(onPath, subject)
+			pick := c.songEnding(onPath, subject, subject)
+			if pick == nil {
+				pick = c.endingFor(onPath, subject)
+			}
 			if pick == nil || besides && !practisedBesides(focus, subject, pick.key()) {
 				continue
 			}
@@ -1188,6 +1385,9 @@ func (c *composer) take(candidates []practiceCandidate, reason domain.PracticePi
 		if c.picked[cand.key()] {
 			continue
 		}
+		if _, fits := c.wayOf(cand); !fits {
+			continue
+		}
 		item := c.pick(cand, reason)
 		if drill, most, capped := item.SessionCap(); capped && c.drills[drill] >= most {
 			continue
@@ -1215,6 +1415,11 @@ func (c *composer) neverEmpty() {
 }
 
 func (c *composer) reserve(item domain.PracticeSessionItem) {
+	if cell := item.FretboardCell; cell != nil && cell.Drill == domain.FretboardDrillFindEveryInstance {
+		if key, ok := c.everyInstanceKey(&cell.FretboardCell); ok {
+			c.everyInstance[key] = true
+		}
+	}
 	c.picked[item.ItemKey] = true
 	c.used += c.cost(item)
 	if drill, _, capped := item.SessionCap(); capped {
@@ -1275,11 +1480,16 @@ func (c *composer) item(cand practiceCandidate, reason domain.PracticePickReason
 	}
 	if cand.drill != nil {
 		planning := domain.DrillPlanning{Pick: rand.IntN, Level: level, Reading: c.reading, Voicing: c.voicing, BassInstrumentID: c.bassInstrumentID, State: cand.state}
-		if k, ok := windowKey(cand); ok {
-			window := c.windows[k]
+		// take already passed over a cell whose way doesn't fit its window.
+		way, _ := c.wayOf(cand)
+		if cell := cand.cell(); cell != nil {
+			window := c.cellWindow(cell, way)
 			planning.Window = &window
 		}
-		item.Ask(cand.drill.Plan(domain.NextDrillWay(cand.drill, cand.state), planning))
+		if timed, ok := cand.drill.(domain.TimedByWay); ok {
+			item.EstimatedSeconds = timed.SecondsAsked(way)
+		}
+		item.Ask(cand.drill.Plan(way, planning))
 		if c.comesBack(item) {
 			again := item
 			again.Ask(cand.drill.Plan(item.Way, planning))
@@ -1395,4 +1605,23 @@ func nextInQueue(queue []domain.PracticeSessionItem, lastCell *domain.PlannedFre
 // the same layout.
 func sameString(cell, last *domain.PlannedFretboardCell) bool {
 	return cell != nil && cell.LayoutInstrumentID == last.LayoutInstrumentID && cell.String == last.String
+}
+
+// readyFor reports whether the student may meet item: true unless it waits on
+// a node the student hasn't reached the level of yet.
+func readyFor(knowledge KnowledgeMap, item domain.DrillItem) bool {
+	waiting, ok := item.(domain.WaitingItem)
+	if !ok {
+		return true
+	}
+	nodeKey, level, waits := waiting.WaitsOn()
+	if !waits {
+		return true
+	}
+	i := slices.IndexFunc(knowledge.Nodes, func(n domain.KnowledgeNode) bool { return n.Key == nodeKey })
+	if i < 0 {
+		return false
+	}
+	reached := knowledge.Standings[knowledge.Nodes[i].ID].Level
+	return reached != nil && reached.Rank() >= level.Rank()
 }

@@ -10,9 +10,9 @@ import (
 )
 
 // Generated drill items share one way of being asked next: the way with the
-// fewer right answers, the first way on a tie.
+// fewer right answers, the first way on a tie. A cell's three ways are
+// checked in TestAFretboardCellIsAskedThreeWays.
 func TestNextDrillWay(t *testing.T) {
-	cell := domain.FretboardCell{LayoutInstrumentID: guitarLayout, String: 6, Fret: 3}
 	shape := domain.DiagramShapeItem{Diagram: domain.Diagram{ID: "d-1", Shape: &domain.DiagramShape{Family: cagedGrips, Shape: "A"}}}
 	states := []*domain.PracticeItemState{
 		nil,
@@ -23,7 +23,6 @@ func TestNextDrillWay(t *testing.T) {
 		{RightByResponse: map[string]int{"name_the_note": 3, "find_the_note": 1, "name_the_shape": 3, "find_the_degree": 1}},
 	}
 	for _, state := range states {
-		assert.Equal(t, string(domain.NextFretboardDrill(state)), domain.NextDrillWay(cell, state))
 		assert.Equal(t, string(domain.NextDiagramShapeDrill(state)), domain.NextDrillWay(shape, state))
 	}
 }
@@ -36,7 +35,7 @@ func TestFretboardCell_AsADrillItem(t *testing.T) {
 	t.Run("is a cell asked in the head, named or found", func(t *testing.T) {
 		assert.Equal(t, domain.FretboardCellItemKey(guitarLayout, 6, 3), cell.ItemKey())
 		assert.Equal(t, domain.PracticeItemKindFretboardCell, cell.Kind())
-		assert.Equal(t, []string{"name_the_note", "find_the_note"}, cell.Ways())
+		assert.Equal(t, []string{"name_the_note", "find_the_note", "find_every_instance"}, cell.Ways())
 		assert.Equal(t, domain.FretboardCellSeconds, cell.Seconds())
 		assert.True(t, cell.SuitsSession(false))
 		assert.False(t, cell.SuitsSession(true))

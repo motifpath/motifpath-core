@@ -41,21 +41,24 @@ const (
 	chordWay = "self_rating"
 )
 
-// chordSessionCaps are the most single chords and changes a session plays.
+// chordSessionCaps are the most single chords, changes and progression key
+// tours a session plays.
 var chordSessionCaps = map[PracticeItemKind]int{
-	PracticeItemKindChordVoicing: MaxChordVoicingsPerSession,
-	PracticeItemKindRootFifth:    MaxChordVoicingsPerSession,
-	PracticeItemKindChordChange:  MaxChordChangesPerSession,
-	PracticeItemKindRootChange:   MaxChordChangesPerSession,
+	PracticeItemKindChordVoicing:    MaxChordVoicingsPerSession,
+	PracticeItemKindRootFifth:       MaxChordVoicingsPerSession,
+	PracticeItemKindChordChange:     MaxChordChangesPerSession,
+	PracticeItemKindRootChange:      MaxChordChangesPerSession,
+	PracticeItemKindProgressionKeys: MaxProgressionKeysPerSession,
 }
 
-// selfRatedChordKinds are the chord drills' kinds, played and rated rather
-// than timed.
+// selfRatedChordKinds are the kinds played and rated rather than timed: the
+// chord drills and the progression key tour, with their rungs.
 var selfRatedChordKinds = map[PracticeItemKind]PracticeRung{
-	PracticeItemKindChordVoicing: PracticeRungPlayClean,
-	PracticeItemKindRootFifth:    PracticeRungPlayClean,
-	PracticeItemKindChordChange:  PracticeRungPlayInTime,
-	PracticeItemKindRootChange:   PracticeRungPlayInTime,
+	PracticeItemKindChordVoicing:    PracticeRungPlayClean,
+	PracticeItemKindRootFifth:       PracticeRungPlayClean,
+	PracticeItemKindChordChange:     PracticeRungPlayInTime,
+	PracticeItemKindRootChange:      PracticeRungPlayInTime,
+	PracticeItemKindProgressionKeys: PracticeRungMove,
 }
 
 // PlannedChordVoicing is a single chord as a session plays it: its voicing's
@@ -263,7 +266,9 @@ func NewRootChangeItem(layout Instrument, from, to string, target int) (RootChan
 	return RootChangeItem{LayoutInstrumentID: layout.ID, From: from, To: to, FromRoot: places[0], ToRoot: places[1], TargetChangesPerMinute: target}, nil
 }
 
-func (r RootChangeItem) ItemKey() string { return RootChangeItemKey(r.LayoutInstrumentID, r.From, r.To) }
+func (r RootChangeItem) ItemKey() string {
+	return RootChangeItemKey(r.LayoutInstrumentID, r.From, r.To)
+}
 
 // RootChangeItemKey is the item key of the changes between from's and to's
 // roots on the bass layout layoutInstrumentID.

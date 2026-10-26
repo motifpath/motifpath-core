@@ -46,6 +46,7 @@ func (r *EntSongChartRepository) Create(ctx context.Context, chart domain.SongCh
 		SetNillableTempoBpm(chart.Draft.TempoBPM).
 		SetBody(string(body)).
 		SetWarnings(toSchemaWarnings(chart.Draft.Warnings)).
+		SetUnplayedProgressions(toSchemaSectionProgressions(chart.Draft.UnplayedProgressions)).
 		SetUpdatedBy(ids.updatedBy).
 		SetUpdatedAt(chart.Draft.UpdatedAt).
 		SetNillableRightsConfirmedBy(ids.rightsConfirmedBy).
@@ -161,6 +162,7 @@ func (r *EntSongChartRepository) save(ctx context.Context, client *ent.Client, c
 		SetCapoFret(chart.Draft.CapoFret).
 		SetBody(string(body)).
 		SetWarnings(toSchemaWarnings(chart.Draft.Warnings)).
+		SetUnplayedProgressions(toSchemaSectionProgressions(chart.Draft.UnplayedProgressions)).
 		SetUpdatedBy(ids.updatedBy).
 		SetUpdatedAt(chart.Draft.UpdatedAt)
 	setDraftOptionals(update, chart.Draft)
@@ -289,6 +291,7 @@ func createRevision(ctx context.Context, client *ent.Client, rev domain.SongChar
 		SetCapoFret(rev.CapoFret).
 		SetNillableTempoBpm(rev.TempoBPM).
 		SetTuningFingerprint(rev.TuningFingerprint).
+		SetSectionProgressions(toSchemaSectionProgressions(rev.SectionProgressions)).
 		SetBody(string(body)).
 		SetRightsConfirmedBy(confirmedBy).
 		SetRightsConfirmedAt(rev.RightsConfirmation.ConfirmedAt).
@@ -424,6 +427,7 @@ func toDomainSongChart(row *ent.SongChart) (domain.SongChart, error) {
 			Title: row.Title, Artist: row.Artist, Language: row.Language, ConcertKey: row.ConcertKey,
 			CapoFret: row.CapoFret, TempoBPM: row.TempoBpm, TimeSignature: toDomainTimeSignature(row.TimeSignature),
 			Body: body, Warnings: toDomainWarnings(row.Warnings),
+			UnplayedProgressions: toDomainSectionProgressions(row.UnplayedProgressions),
 			UpdatedBy: row.UpdatedBy.String(), UpdatedAt: row.UpdatedAt,
 		},
 	}
@@ -445,6 +449,28 @@ func toDomainSongChart(row *ent.SongChart) (domain.SongChart, error) {
 	return chart, nil
 }
 
+// toSchemaSectionProgressions stores tags as their JSON column, empty and
+// never null when there are none.
+func toSchemaSectionProgressions(tags []domain.SectionProgression) []schema.SongChartSectionProgression {
+	out := make([]schema.SongChartSectionProgression, len(tags))
+	for i, t := range tags {
+		out[i] = schema.SongChartSectionProgression{SectionIndex: t.SectionIndex, ProgressionKey: t.ProgressionKey}
+	}
+	return out
+}
+
+// toDomainSectionProgressions reads tags back, nil when there are none.
+func toDomainSectionProgressions(tags []schema.SongChartSectionProgression) []domain.SectionProgression {
+	if len(tags) == 0 {
+		return nil
+	}
+	out := make([]domain.SectionProgression, len(tags))
+	for i, t := range tags {
+		out[i] = domain.SectionProgression{SectionIndex: t.SectionIndex, ProgressionKey: t.ProgressionKey}
+	}
+	return out
+}
+
 func toDomainSongChartRevision(row *ent.SongChartRevision) (domain.SongChartRevision, error) {
 	body, err := domain.ParseSongChartDocument([]byte(row.Body))
 	if err != nil {
@@ -454,7 +480,7 @@ func toDomainSongChartRevision(row *ent.SongChartRevision) (domain.SongChartRevi
 		SongChartID: row.SongChartID.String(), Number: row.RevisionNumber,
 		Title: row.Title, Artist: row.Artist, Language: row.Language, ConcertKey: row.ConcertKey,
 		CapoFret: row.CapoFret, TempoBPM: row.TempoBpm, TimeSignature: toDomainTimeSignature(row.TimeSignature),
-		TuningFingerprint: row.TuningFingerprint, Body: body,
+		TuningFingerprint: row.TuningFingerprint, SectionProgressions: toDomainSectionProgressions(row.SectionProgressions), Body: body,
 		RightsConfirmation: domain.RightsConfirmation{ConfirmedBy: row.RightsConfirmedBy.String(), ConfirmedAt: row.RightsConfirmedAt},
 		PublishedBy:        row.PublishedBy.String(), PublishedAt: row.PublishedAt,
 	}, nil
@@ -479,4 +505,40 @@ func uuidString(u *uuid.UUID) string {
 		return ""
 	}
 	return u.String()
+}
+
+func (r *EntSongChartRepository) PublishedRevisions(ctx context.Context) ([]domain.SongChartRevision, error) {
+	published, err := r.client.SongChart.Query().
+		Where(songchart.StatusEQ(songchart.StatusPublished), songchart.PublishedRevisionNumberNotNil()).
+		Select(songchart.FieldID, songchart.FieldPublishedRevisionNumber).
+		All(ctx)
+	if err != nil || len(published) == 0 {
+		return nil, err
+	}
+	latest := make(map[uuid.UUID]int, len(published))
+	ids := make([]uuid.UUID, len(published))
+	for i, c := range published {
+		latest[c.ID], ids[i] = *c.PublishedRevisionNumber, c.ID
+	}
+	// Every revision of those charts, but only the few columns kept: a chart's
+	// body is the bulk of a row.
+	rows, err := r.client.SongChartRevision.Query().
+		Where(songchartrevision.SongChartIDIn(ids...)).
+		Select(songchartrevision.FieldSongChartID, songchartrevision.FieldRevisionNumber, songchartrevision.FieldTitle,
+			songchartrevision.FieldArtist, songchartrevision.FieldSectionProgressions).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	revisions := make([]domain.SongChartRevision, 0, len(published))
+	for _, row := range rows {
+		if row.RevisionNumber != latest[row.SongChartID] {
+			continue
+		}
+		revisions = append(revisions, domain.SongChartRevision{
+			SongChartID: row.SongChartID.String(), Number: row.RevisionNumber, Title: row.Title, Artist: row.Artist,
+			SectionProgressions: toDomainSectionProgressions(row.SectionProgressions),
+		})
+	}
+	return revisions, nil
 }
