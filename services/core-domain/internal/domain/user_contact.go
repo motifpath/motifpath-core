@@ -66,17 +66,6 @@ func DefaultEmailPreferences() EmailPreferences {
 	return EmailPreferences{ProgressReport: true, Reminders: true}
 }
 
-// Without returns the preferences with kind turned off.
-func (p EmailPreferences) Without(kind EmailKind) EmailPreferences {
-	switch kind {
-	case EmailKindProgressReport:
-		p.ProgressReport = false
-	case EmailKindReminders:
-		p.Reminders = false
-	}
-	return p
-}
-
 // EmailPreferencesUpdate changes the switches that are set and keeps the
 // others.
 type EmailPreferencesUpdate struct {
