@@ -573,6 +573,30 @@ func (f PositionFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, er
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PositionMutation", m)
 }
 
+// The PracticeCatalogSignalFunc type is an adapter to allow the use of ordinary
+// function as PracticeCatalogSignal mutator.
+type PracticeCatalogSignalFunc func(context.Context, *ent.PracticeCatalogSignalMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f PracticeCatalogSignalFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.PracticeCatalogSignalMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PracticeCatalogSignalMutation", m)
+}
+
+// The PracticeSubjectCatalogFunc type is an adapter to allow the use of ordinary
+// function as PracticeSubjectCatalog mutator.
+type PracticeSubjectCatalogFunc func(context.Context, *ent.PracticeSubjectCatalogMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f PracticeSubjectCatalogFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.PracticeSubjectCatalogMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PracticeSubjectCatalogMutation", m)
+}
+
 // The ProgressionFunc type is an adapter to allow the use of ordinary
 // function as Progression mutator.
 type ProgressionFunc func(context.Context, *ent.ProgressionMutation) (ent.Value, error)

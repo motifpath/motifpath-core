@@ -60,6 +60,8 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathitem"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/position"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/practicecatalogsignal"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/practicesubjectcatalog"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/progression"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/schema"
@@ -128,6 +130,8 @@ const (
 	TypeLearningPathInstrument  = "LearningPathInstrument"
 	TypeLearningPathItem        = "LearningPathItem"
 	TypePosition                = "Position"
+	TypePracticeCatalogSignal   = "PracticeCatalogSignal"
+	TypePracticeSubjectCatalog  = "PracticeSubjectCatalog"
 	TypeProgression             = "Progression"
 	TypeSongChart               = "SongChart"
 	TypeSongChartRevision       = "SongChartRevision"
@@ -40654,6 +40658,926 @@ func (m *PositionMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown Position edge %s", name)
+}
+
+// PracticeCatalogSignalMutation represents an operation that mutates the PracticeCatalogSignal nodes in the graph.
+type PracticeCatalogSignalMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *int
+	reason        *string
+	created_at    *time.Time
+	clearedFields map[string]struct{}
+	done          bool
+	oldValue      func(context.Context) (*PracticeCatalogSignal, error)
+	predicates    []predicate.PracticeCatalogSignal
+}
+
+var _ ent.Mutation = (*PracticeCatalogSignalMutation)(nil)
+
+// practicecatalogsignalOption allows management of the mutation configuration using functional options.
+type practicecatalogsignalOption func(*PracticeCatalogSignalMutation)
+
+// newPracticeCatalogSignalMutation creates new mutation for the PracticeCatalogSignal entity.
+func newPracticeCatalogSignalMutation(c config, op Op, opts ...practicecatalogsignalOption) *PracticeCatalogSignalMutation {
+	m := &PracticeCatalogSignalMutation{
+		config:        c,
+		op:            op,
+		typ:           TypePracticeCatalogSignal,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withPracticeCatalogSignalID sets the ID field of the mutation.
+func withPracticeCatalogSignalID(id int) practicecatalogsignalOption {
+	return func(m *PracticeCatalogSignalMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *PracticeCatalogSignal
+		)
+		m.oldValue = func(ctx context.Context) (*PracticeCatalogSignal, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().PracticeCatalogSignal.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withPracticeCatalogSignal sets the old PracticeCatalogSignal of the mutation.
+func withPracticeCatalogSignal(node *PracticeCatalogSignal) practicecatalogsignalOption {
+	return func(m *PracticeCatalogSignalMutation) {
+		m.oldValue = func(context.Context) (*PracticeCatalogSignal, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m PracticeCatalogSignalMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m PracticeCatalogSignalMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *PracticeCatalogSignalMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *PracticeCatalogSignalMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().PracticeCatalogSignal.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetReason sets the "reason" field.
+func (m *PracticeCatalogSignalMutation) SetReason(s string) {
+	m.reason = &s
+}
+
+// Reason returns the value of the "reason" field in the mutation.
+func (m *PracticeCatalogSignalMutation) Reason() (r string, exists bool) {
+	v := m.reason
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldReason returns the old "reason" field's value of the PracticeCatalogSignal entity.
+// If the PracticeCatalogSignal object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PracticeCatalogSignalMutation) OldReason(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldReason is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldReason requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldReason: %w", err)
+	}
+	return oldValue.Reason, nil
+}
+
+// ResetReason resets all changes to the "reason" field.
+func (m *PracticeCatalogSignalMutation) ResetReason() {
+	m.reason = nil
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *PracticeCatalogSignalMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *PracticeCatalogSignalMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the PracticeCatalogSignal entity.
+// If the PracticeCatalogSignal object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PracticeCatalogSignalMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *PracticeCatalogSignalMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// Where appends a list predicates to the PracticeCatalogSignalMutation builder.
+func (m *PracticeCatalogSignalMutation) Where(ps ...predicate.PracticeCatalogSignal) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the PracticeCatalogSignalMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *PracticeCatalogSignalMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.PracticeCatalogSignal, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *PracticeCatalogSignalMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *PracticeCatalogSignalMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (PracticeCatalogSignal).
+func (m *PracticeCatalogSignalMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *PracticeCatalogSignalMutation) Fields() []string {
+	fields := make([]string, 0, 2)
+	if m.reason != nil {
+		fields = append(fields, practicecatalogsignal.FieldReason)
+	}
+	if m.created_at != nil {
+		fields = append(fields, practicecatalogsignal.FieldCreatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *PracticeCatalogSignalMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case practicecatalogsignal.FieldReason:
+		return m.Reason()
+	case practicecatalogsignal.FieldCreatedAt:
+		return m.CreatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *PracticeCatalogSignalMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case practicecatalogsignal.FieldReason:
+		return m.OldReason(ctx)
+	case practicecatalogsignal.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown PracticeCatalogSignal field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *PracticeCatalogSignalMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case practicecatalogsignal.FieldReason:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetReason(v)
+		return nil
+	case practicecatalogsignal.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown PracticeCatalogSignal field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *PracticeCatalogSignalMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *PracticeCatalogSignalMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *PracticeCatalogSignalMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown PracticeCatalogSignal numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *PracticeCatalogSignalMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *PracticeCatalogSignalMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *PracticeCatalogSignalMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown PracticeCatalogSignal nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *PracticeCatalogSignalMutation) ResetField(name string) error {
+	switch name {
+	case practicecatalogsignal.FieldReason:
+		m.ResetReason()
+		return nil
+	case practicecatalogsignal.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown PracticeCatalogSignal field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *PracticeCatalogSignalMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *PracticeCatalogSignalMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *PracticeCatalogSignalMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *PracticeCatalogSignalMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *PracticeCatalogSignalMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *PracticeCatalogSignalMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *PracticeCatalogSignalMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown PracticeCatalogSignal unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *PracticeCatalogSignalMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown PracticeCatalogSignal edge %s", name)
+}
+
+// PracticeSubjectCatalogMutation represents an operation that mutates the PracticeSubjectCatalog nodes in the graph.
+type PracticeSubjectCatalogMutation struct {
+	config
+	op                Op
+	typ               string
+	id                *int
+	scope             *string
+	format_version    *int
+	addformat_version *int
+	built_at          *time.Time
+	items             *jsontext.Value
+	appenditems       jsontext.Value
+	clearedFields     map[string]struct{}
+	done              bool
+	oldValue          func(context.Context) (*PracticeSubjectCatalog, error)
+	predicates        []predicate.PracticeSubjectCatalog
+}
+
+var _ ent.Mutation = (*PracticeSubjectCatalogMutation)(nil)
+
+// practicesubjectcatalogOption allows management of the mutation configuration using functional options.
+type practicesubjectcatalogOption func(*PracticeSubjectCatalogMutation)
+
+// newPracticeSubjectCatalogMutation creates new mutation for the PracticeSubjectCatalog entity.
+func newPracticeSubjectCatalogMutation(c config, op Op, opts ...practicesubjectcatalogOption) *PracticeSubjectCatalogMutation {
+	m := &PracticeSubjectCatalogMutation{
+		config:        c,
+		op:            op,
+		typ:           TypePracticeSubjectCatalog,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withPracticeSubjectCatalogID sets the ID field of the mutation.
+func withPracticeSubjectCatalogID(id int) practicesubjectcatalogOption {
+	return func(m *PracticeSubjectCatalogMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *PracticeSubjectCatalog
+		)
+		m.oldValue = func(ctx context.Context) (*PracticeSubjectCatalog, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().PracticeSubjectCatalog.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withPracticeSubjectCatalog sets the old PracticeSubjectCatalog of the mutation.
+func withPracticeSubjectCatalog(node *PracticeSubjectCatalog) practicesubjectcatalogOption {
+	return func(m *PracticeSubjectCatalogMutation) {
+		m.oldValue = func(context.Context) (*PracticeSubjectCatalog, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m PracticeSubjectCatalogMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m PracticeSubjectCatalogMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *PracticeSubjectCatalogMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *PracticeSubjectCatalogMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().PracticeSubjectCatalog.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetScope sets the "scope" field.
+func (m *PracticeSubjectCatalogMutation) SetScope(s string) {
+	m.scope = &s
+}
+
+// Scope returns the value of the "scope" field in the mutation.
+func (m *PracticeSubjectCatalogMutation) Scope() (r string, exists bool) {
+	v := m.scope
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldScope returns the old "scope" field's value of the PracticeSubjectCatalog entity.
+// If the PracticeSubjectCatalog object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PracticeSubjectCatalogMutation) OldScope(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldScope is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldScope requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldScope: %w", err)
+	}
+	return oldValue.Scope, nil
+}
+
+// ResetScope resets all changes to the "scope" field.
+func (m *PracticeSubjectCatalogMutation) ResetScope() {
+	m.scope = nil
+}
+
+// SetFormatVersion sets the "format_version" field.
+func (m *PracticeSubjectCatalogMutation) SetFormatVersion(i int) {
+	m.format_version = &i
+	m.addformat_version = nil
+}
+
+// FormatVersion returns the value of the "format_version" field in the mutation.
+func (m *PracticeSubjectCatalogMutation) FormatVersion() (r int, exists bool) {
+	v := m.format_version
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFormatVersion returns the old "format_version" field's value of the PracticeSubjectCatalog entity.
+// If the PracticeSubjectCatalog object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PracticeSubjectCatalogMutation) OldFormatVersion(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFormatVersion is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFormatVersion requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFormatVersion: %w", err)
+	}
+	return oldValue.FormatVersion, nil
+}
+
+// AddFormatVersion adds i to the "format_version" field.
+func (m *PracticeSubjectCatalogMutation) AddFormatVersion(i int) {
+	if m.addformat_version != nil {
+		*m.addformat_version += i
+	} else {
+		m.addformat_version = &i
+	}
+}
+
+// AddedFormatVersion returns the value that was added to the "format_version" field in this mutation.
+func (m *PracticeSubjectCatalogMutation) AddedFormatVersion() (r int, exists bool) {
+	v := m.addformat_version
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetFormatVersion resets all changes to the "format_version" field.
+func (m *PracticeSubjectCatalogMutation) ResetFormatVersion() {
+	m.format_version = nil
+	m.addformat_version = nil
+}
+
+// SetBuiltAt sets the "built_at" field.
+func (m *PracticeSubjectCatalogMutation) SetBuiltAt(t time.Time) {
+	m.built_at = &t
+}
+
+// BuiltAt returns the value of the "built_at" field in the mutation.
+func (m *PracticeSubjectCatalogMutation) BuiltAt() (r time.Time, exists bool) {
+	v := m.built_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldBuiltAt returns the old "built_at" field's value of the PracticeSubjectCatalog entity.
+// If the PracticeSubjectCatalog object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PracticeSubjectCatalogMutation) OldBuiltAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldBuiltAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldBuiltAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldBuiltAt: %w", err)
+	}
+	return oldValue.BuiltAt, nil
+}
+
+// ResetBuiltAt resets all changes to the "built_at" field.
+func (m *PracticeSubjectCatalogMutation) ResetBuiltAt() {
+	m.built_at = nil
+}
+
+// SetItems sets the "items" field.
+func (m *PracticeSubjectCatalogMutation) SetItems(j jsontext.Value) {
+	m.items = &j
+	m.appenditems = nil
+}
+
+// Items returns the value of the "items" field in the mutation.
+func (m *PracticeSubjectCatalogMutation) Items() (r jsontext.Value, exists bool) {
+	v := m.items
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldItems returns the old "items" field's value of the PracticeSubjectCatalog entity.
+// If the PracticeSubjectCatalog object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PracticeSubjectCatalogMutation) OldItems(ctx context.Context) (v jsontext.Value, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldItems is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldItems requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldItems: %w", err)
+	}
+	return oldValue.Items, nil
+}
+
+// AppendItems adds j to the "items" field.
+func (m *PracticeSubjectCatalogMutation) AppendItems(j jsontext.Value) {
+	m.appenditems = append(m.appenditems, j...)
+}
+
+// AppendedItems returns the list of values that were appended to the "items" field in this mutation.
+func (m *PracticeSubjectCatalogMutation) AppendedItems() (jsontext.Value, bool) {
+	if len(m.appenditems) == 0 {
+		return nil, false
+	}
+	return m.appenditems, true
+}
+
+// ResetItems resets all changes to the "items" field.
+func (m *PracticeSubjectCatalogMutation) ResetItems() {
+	m.items = nil
+	m.appenditems = nil
+}
+
+// Where appends a list predicates to the PracticeSubjectCatalogMutation builder.
+func (m *PracticeSubjectCatalogMutation) Where(ps ...predicate.PracticeSubjectCatalog) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the PracticeSubjectCatalogMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *PracticeSubjectCatalogMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.PracticeSubjectCatalog, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *PracticeSubjectCatalogMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *PracticeSubjectCatalogMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (PracticeSubjectCatalog).
+func (m *PracticeSubjectCatalogMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *PracticeSubjectCatalogMutation) Fields() []string {
+	fields := make([]string, 0, 4)
+	if m.scope != nil {
+		fields = append(fields, practicesubjectcatalog.FieldScope)
+	}
+	if m.format_version != nil {
+		fields = append(fields, practicesubjectcatalog.FieldFormatVersion)
+	}
+	if m.built_at != nil {
+		fields = append(fields, practicesubjectcatalog.FieldBuiltAt)
+	}
+	if m.items != nil {
+		fields = append(fields, practicesubjectcatalog.FieldItems)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *PracticeSubjectCatalogMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case practicesubjectcatalog.FieldScope:
+		return m.Scope()
+	case practicesubjectcatalog.FieldFormatVersion:
+		return m.FormatVersion()
+	case practicesubjectcatalog.FieldBuiltAt:
+		return m.BuiltAt()
+	case practicesubjectcatalog.FieldItems:
+		return m.Items()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *PracticeSubjectCatalogMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case practicesubjectcatalog.FieldScope:
+		return m.OldScope(ctx)
+	case practicesubjectcatalog.FieldFormatVersion:
+		return m.OldFormatVersion(ctx)
+	case practicesubjectcatalog.FieldBuiltAt:
+		return m.OldBuiltAt(ctx)
+	case practicesubjectcatalog.FieldItems:
+		return m.OldItems(ctx)
+	}
+	return nil, fmt.Errorf("unknown PracticeSubjectCatalog field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *PracticeSubjectCatalogMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case practicesubjectcatalog.FieldScope:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetScope(v)
+		return nil
+	case practicesubjectcatalog.FieldFormatVersion:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFormatVersion(v)
+		return nil
+	case practicesubjectcatalog.FieldBuiltAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetBuiltAt(v)
+		return nil
+	case practicesubjectcatalog.FieldItems:
+		v, ok := value.(jsontext.Value)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetItems(v)
+		return nil
+	}
+	return fmt.Errorf("unknown PracticeSubjectCatalog field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *PracticeSubjectCatalogMutation) AddedFields() []string {
+	var fields []string
+	if m.addformat_version != nil {
+		fields = append(fields, practicesubjectcatalog.FieldFormatVersion)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *PracticeSubjectCatalogMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case practicesubjectcatalog.FieldFormatVersion:
+		return m.AddedFormatVersion()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *PracticeSubjectCatalogMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case practicesubjectcatalog.FieldFormatVersion:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddFormatVersion(v)
+		return nil
+	}
+	return fmt.Errorf("unknown PracticeSubjectCatalog numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *PracticeSubjectCatalogMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *PracticeSubjectCatalogMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *PracticeSubjectCatalogMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown PracticeSubjectCatalog nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *PracticeSubjectCatalogMutation) ResetField(name string) error {
+	switch name {
+	case practicesubjectcatalog.FieldScope:
+		m.ResetScope()
+		return nil
+	case practicesubjectcatalog.FieldFormatVersion:
+		m.ResetFormatVersion()
+		return nil
+	case practicesubjectcatalog.FieldBuiltAt:
+		m.ResetBuiltAt()
+		return nil
+	case practicesubjectcatalog.FieldItems:
+		m.ResetItems()
+		return nil
+	}
+	return fmt.Errorf("unknown PracticeSubjectCatalog field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *PracticeSubjectCatalogMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *PracticeSubjectCatalogMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *PracticeSubjectCatalogMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *PracticeSubjectCatalogMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *PracticeSubjectCatalogMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *PracticeSubjectCatalogMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *PracticeSubjectCatalogMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown PracticeSubjectCatalog unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *PracticeSubjectCatalogMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown PracticeSubjectCatalog edge %s", name)
 }
 
 // ProgressionMutation represents an operation that mutates the Progression nodes in the graph.

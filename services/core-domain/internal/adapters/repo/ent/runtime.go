@@ -53,6 +53,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathitem"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/position"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/practicecatalogsignal"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/progression"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/schema"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/songchart"
@@ -647,6 +648,12 @@ func init() {
 	positionDescID := positionFields[0].Descriptor()
 	// position.DefaultID holds the default value on creation for the id field.
 	position.DefaultID = positionDescID.Default.(func() uuid.UUID)
+	practicecatalogsignalFields := schema.PracticeCatalogSignal{}.Fields()
+	_ = practicecatalogsignalFields
+	// practicecatalogsignalDescReason is the schema descriptor for reason field.
+	practicecatalogsignalDescReason := practicecatalogsignalFields[0].Descriptor()
+	// practicecatalogsignal.ReasonValidator is a validator for the "reason" field. It is called by the builders before save.
+	practicecatalogsignal.ReasonValidator = practicecatalogsignalDescReason.Validators[0].(func(string) error)
 	progressionFields := schema.Progression{}.Fields()
 	_ = progressionFields
 	// progressionDescKey is the schema descriptor for key field.
