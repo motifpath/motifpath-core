@@ -195,6 +195,36 @@ func (r *MongoPracticeActivityReader) HeadSessionsStarted(ctx context.Context, s
 	return int(n), err
 }
 
+// plannedItemsDocument holds the planned items this service reads from a
+// `practice_sessions` document.
+type plannedItemsDocument struct {
+	PlannedItems []struct {
+		ItemKey string `bson:"item_key"`
+	} `bson:"planned_items"`
+}
+
+func (r *MongoPracticeActivityReader) LastInHandSessionItemKeys(ctx context.Context, studentID string) ([]string, error) {
+	// The worker leaves instrument_id out of a session in the head, and
+	// started_at null until its start arrives.
+	var doc plannedItemsDocument
+	err := r.sessions.FindOne(ctx, bson.D{
+		{Key: "student_id", Value: studentID},
+		{Key: "started_at", Value: bson.D{{Key: "$ne", Value: nil}}},
+		{Key: "instrument_id", Value: bson.D{{Key: "$nin", Value: bson.A{nil, ""}}}},
+	}, options.FindOne().SetSort(bson.D{{Key: "started_at", Value: -1}}).SetProjection(bson.D{{Key: "planned_items", Value: 1}})).Decode(&doc)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	keys := make([]string, len(doc.PlannedItems))
+	for i, item := range doc.PlannedItems {
+		keys[i] = item.ItemKey
+	}
+	return keys, nil
+}
+
 func (r *MongoPracticeActivityReader) SessionSpans(ctx context.Context, studentID string, since time.Time) ([]domain.PracticeSessionSpan, error) {
 	// A session whose start hasn't arrived has a null started_at, which
 	// $gte never matches.

@@ -79,6 +79,12 @@ type PracticeItemState struct {
 	// LastChangeMinute is a chord or root change's last minute, which the next
 	// one starts from; nil for an item never played that way.
 	LastChangeMinute *ChangeMinuteState
+	// KeyTour is a progression key tour as the student left it; nil for an
+	// item never played that way.
+	KeyTour *KeyTourState
+	// LastMusicKey is the key of a guide tone's last take, which its next one
+	// is never planned in; empty for any other item.
+	LastMusicKey string
 }
 
 // ChangeMinuteState is a chord or root change's last minute: the tempo it was
@@ -248,14 +254,18 @@ type PracticeSessionItem struct {
 	ChordChange     *PlannedChordChange
 	RootFifth       *PlannedRootFifth
 	RootChange      *PlannedRootChange
+	ProgressionKeys *PlannedProgressionKeys
+	GuideTone       *PlannedGuideTone
+	Song            *PlannedSong
 }
 
 // DrillTemplateKey is the timed drill template answering the item
 // practises: a generated drill item's kind and the way it is asked, or an
 // exercise's type.
-// A play-along or a chord item is rated, not timed, so it practises none ("").
+// A play-along or a chord item is rated, and a guide tone measured by tempo,
+// not timed, so they practise none ("").
 func (i PracticeSessionItem) DrillTemplateKey() string {
-	if _, rated := selfRatedChordKinds[i.Kind]; rated {
+	if _, untimed := fixedRung(i.Kind); untimed {
 		return ""
 	}
 	switch {
@@ -297,11 +307,11 @@ func (i PracticeSessionItem) IsGeneratedDrill() bool {
 }
 
 // SessionCap is the drill the item counts toward in a session and the most
-// items of it a session takes: single chords and chord changes each by their
-// kind, any other generated drill by its template. False for an item no cap
+// items of it a session takes: single chords, chord changes, tours and guide
+// tones each by their kind, any other generated drill by its template. False for an item no cap
 // applies to, such as a play-along or an exercise.
 func (i PracticeSessionItem) SessionCap() (string, int, bool) {
-	if most, ok := chordSessionCaps[i.Kind]; ok {
+	if most, ok := kindSessionCap(i.Kind); ok {
 		return string(i.Kind), most, true
 	}
 	if i.IsGeneratedDrill() {
@@ -376,15 +386,23 @@ type PracticeSessionPlan struct {
 const TapCheckValidity = 30 * 24 * time.Hour
 
 // TapCheckDue reports whether a plan of items asks for a tap check: when
-// it has a fretboard cell or a diagram shape and the student's newest tap
-// check, lastDone, is older than TapCheckValidity, or there is none.
+// it has a timed fretboard drill (a cell named or found, or a diagram shape)
+// and the student's newest tap check, lastDone, is older than
+// TapCheckValidity, or there is none. A tap time only offsets a timed
+// answer, and finding every instance of a cell's note isn't timed.
 func TapCheckDue(items []PracticeSessionItem, lastDone *time.Time, now time.Time) bool {
-	if !slices.ContainsFunc(items, func(item PracticeSessionItem) bool {
-		return item.Kind == PracticeItemKindFretboardCell || item.Kind == PracticeItemKindDiagramShape
-	}) {
+	if !slices.ContainsFunc(items, isTimedFretboardDrill) {
 		return false
 	}
 	return lastDone == nil || lastDone.Before(now.Add(-TapCheckValidity))
+}
+
+func isTimedFretboardDrill(item PracticeSessionItem) bool {
+	if item.Kind == PracticeItemKindDiagramShape {
+		return true
+	}
+	return item.Kind == PracticeItemKindFretboardCell &&
+		(item.FretboardCell == nil || item.FretboardCell.Drill != FretboardDrillFindEveryInstance)
 }
 
 // The bounds of a session's length, in minutes.

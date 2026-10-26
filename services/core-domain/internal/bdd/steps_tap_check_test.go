@@ -36,6 +36,7 @@ func registerTapCheckSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" has never done a tap check$`, w.neverDidTapCheck)
 	sc.Step(`^"([^"]+)" did a tap check (\d+) days ago$`, w.didTapCheckDaysAgo)
 	sc.Step(`^"([^"]+)"'s next session will practise only play-alongs and exercises$`, w.nextSessionHasNoCells)
+	sc.Step(`^"([^"]+)"'s next session will practise only fretboard cells asked to find every instance$`, w.nextSessionFindsEveryInstanceOnly)
 
 	sc.Step(`^the plan asks for a tap check$`, func() error { return w.planAsksForTapCheck(true) })
 	sc.Step(`^the plan doesn't ask for a tap check$`, func() error { return w.planAsksForTapCheck(false) })
@@ -86,6 +87,23 @@ func (w *world) planAsksForTapCheck(want bool) error {
 	}
 	if plan.TapCheckDue != want {
 		return fmt.Errorf("expected tap_check_due %t, got %t (%d items)", want, plan.TapCheckDue, len(plan.Items))
+	}
+	return nil
+}
+
+// nextSessionFindsEveryInstanceOnly leaves the path one string of guitar cells,
+// every one due to be asked to find every instance. One string holds each note
+// once, so no cell is moved to another way for sharing a note with another.
+func (w *world) nextSessionFindsEveryInstanceOnly(name string) error {
+	layout := instrumentID("guitar").String()
+	w.practiceItems.cells[layout] = nil
+	state := dueState()
+	state.RightByResponse = map[string]int{string(domain.FretboardDrillNameTheNote): 1, string(domain.FretboardDrillFindTheNote): 1}
+	for fret := range 12 {
+		w.practiceItems.cells[layout] = append(w.practiceItems.cells[layout], domain.ClassifiedItem{
+			ItemKey: domain.FretboardCellItemKey(layout, 6, fret), NodeIDs: []string{w.skillIDFor(w.tapCheckSkill).String()},
+		})
+		w.putCellState(name, "guitar", 6, fret, state)
 	}
 	return nil
 }

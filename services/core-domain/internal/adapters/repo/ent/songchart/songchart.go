@@ -7,6 +7,7 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/schema"
 )
 
 const (
@@ -42,6 +43,8 @@ const (
 	FieldBody = "body"
 	// FieldWarnings holds the string denoting the warnings field in the database.
 	FieldWarnings = "warnings"
+	// FieldUnplayedProgressions holds the string denoting the unplayed_progressions field in the database.
+	FieldUnplayedProgressions = "unplayed_progressions"
 	// FieldUpdatedBy holds the string denoting the updated_by field in the database.
 	FieldUpdatedBy = "updated_by"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
@@ -96,6 +99,7 @@ var Columns = []string{
 	FieldRightsConfirmedAt,
 	FieldBody,
 	FieldWarnings,
+	FieldUnplayedProgressions,
 	FieldUpdatedBy,
 	FieldUpdatedAt,
 	FieldPublishedRevisionNumber,
@@ -129,6 +133,8 @@ var (
 	LanguageValidator func(string) error
 	// CapoFretValidator is a validator for the "capo_fret" field. It is called by the builders before save.
 	CapoFretValidator func(int) error
+	// DefaultUnplayedProgressions holds the default value on creation for the "unplayed_progressions" field.
+	DefaultUnplayedProgressions []schema.SongChartSectionProgression
 )
 
 // Status defines the type for the "status" enum field.

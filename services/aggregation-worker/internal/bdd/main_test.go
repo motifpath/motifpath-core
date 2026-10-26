@@ -32,6 +32,7 @@ func TestFeatures(t *testing.T) {
 			Paths: []string{
 				specsDir + "/features/practice/grade-practice-response.feature",
 				specsDir + "/features/practice/knowledge-state.feature",
+				specsDir + "/features/practice/progression-key-tour.feature",
 				specsDir + "/features/practice/practice-sessions.feature",
 				specsDir + "/features/practice/timed-thresholds.feature",
 			},
@@ -57,6 +58,7 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	w := newWorld()
 	registerPracticeSteps(sc, w)
 	registerCellSteps(sc, w)
+	registerEveryInstanceSteps(sc, w)
 	registerExerciseSteps(sc, w)
 	registerShapeSteps(sc, w)
 	registerGeneratedChoiceSteps(sc, w)
@@ -64,4 +66,7 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	registerActivitySteps(sc, w)
 	registerReviewSteps(sc, w)
 	registerChordSteps(sc, w)
+	registerSongSteps(sc, w)
+	registerTourSteps(sc, w)
+	registerGuideToneSteps(sc, w)
 }

@@ -148,6 +148,7 @@ type practiceEvidenceDocument struct {
 	TempoBPM          *int                     `bson:"tempo_bpm,omitempty"`
 	NoteValue         *string                  `bson:"note_value,omitempty"`
 	ChangesPerMinute  *int                     `bson:"changes_per_minute,omitempty"`
+	MusicKey          string                   `bson:"music_key,omitempty"`
 	AnswerKey         *answerKeyDocument       `bson:"answer_key,omitempty"`
 }
 
@@ -297,6 +298,7 @@ func toEvidenceDocument(e domain.PracticeEvidence) (practiceEvidenceDocument, er
 		TempoBPM:         e.TempoBPM,
 		NoteValue:        noteValueString(e.NoteValue),
 		ChangesPerMinute: e.ChangesPerMinute,
+		MusicKey:         e.MusicKey,
 		AnswerKey:        answerKey,
 	}, nil
 }
@@ -349,6 +351,7 @@ func (d practiceEvidenceDocument) toDomain() (domain.PracticeEvidence, error) {
 		TempoBPM:         d.TempoBPM,
 		NoteValue:        domainNoteValue(d.NoteValue),
 		ChangesPerMinute: d.ChangesPerMinute,
+		MusicKey:         d.MusicKey,
 		AnswerKey:        answerKey,
 	}, nil
 }
@@ -377,6 +380,13 @@ type practiceItemStateDocument struct {
 	LastChangesPerMinute *int   `bson:"last_changes_per_minute,omitempty"`
 	LastRating           string `bson:"last_rating,omitempty"`
 	CleanMinutesInARow   int    `bson:"clean_minutes_in_a_row,omitempty"`
+	// A progression key tour's tempo at effective speed, its keys clean at that
+	// tempo, and the note value of its last clean take, which its next take starts from.
+	TourTempoBPM  *int     `bson:"tour_tempo_bpm,omitempty"`
+	TourCleanKeys []string `bson:"tour_clean_keys,omitempty"`
+	TourNoteValue *string  `bson:"tour_note_value,omitempty"`
+	// A guide tone's last key, which its next take is never planned in.
+	LastMusicKey string `bson:"last_music_key,omitempty"`
 	// RightByResponse counts right answers by the way the item was asked.
 	RightByResponse map[string]int `bson:"right_by_response,omitempty"`
 	UpdatedAt       time.Time      `bson:"updated_at"`
@@ -398,6 +408,10 @@ func (d practiceItemStateDocument) toDomain() domain.ItemFold {
 		LastChangesPerMinute: d.LastChangesPerMinute,
 		LastRating:           domain.SelfRating(d.LastRating),
 		CleanMinutesInARow:   d.CleanMinutesInARow,
+		TourTempoBPM:         d.TourTempoBPM,
+		TourCleanKeys:        d.TourCleanKeys,
+		TourNoteValue:        domainNoteValue(d.TourNoteValue),
+		LastMusicKey:         d.LastMusicKey,
 		RightByResponse:      d.RightByResponse,
 	}
 }

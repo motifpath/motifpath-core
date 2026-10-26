@@ -50,8 +50,9 @@ func registerFeltQuestionSteps(sc *godog.ScenarioContext, w *world) {
 // guitar cells (asked by name), a due guitar cell named right more often than
 // found, so it is asked by finding, and a due text exercise.
 func (w *world) nextSessionPractisesNameFindAndText(name string) error {
-	w.cellDue(name, "guitar", 6, 5, 4, map[string]int{
+	w.cellDue(name, "guitar", 6, 5, 6, map[string]int{
 		string(domain.FretboardDrillNameTheNote): 3, string(domain.FretboardDrillFindTheNote): 1,
+		string(domain.FretboardDrillFindEveryInstance): 2,
 	})
 	w.dueItems(name, w.putPracticeExercise("felt-text", practiceSkill))
 	return nil

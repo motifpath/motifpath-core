@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -35,6 +36,7 @@ type fakeReference struct {
 	exercises    map[string]domain.ExerciseReference
 	instruments  map[string]domain.InstrumentReference
 	progressions map[string]domain.ProgressionReference
+	songCharts   map[string]domain.SongChartReference
 	fluentTimes  map[string][]domain.FluentTime
 	targets      []domain.ChangeTarget
 	err          error
@@ -52,6 +54,19 @@ func (f *fakeReference) Progressions(_ context.Context) (map[string]domain.Progr
 		return nil, f.err
 	}
 	return f.progressions, nil
+}
+
+func (f *fakeReference) SongCharts(_ context.Context, ids []string) (map[string]domain.SongChartReference, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	found := map[string]domain.SongChartReference{}
+	for _, id := range ids {
+		if c, ok := f.songCharts[id]; ok {
+			found[id] = c
+		}
+	}
+	return found, nil
 }
 
 func (f *fakeReference) Instruments(_ context.Context, ids []string) (map[string]domain.InstrumentReference, error) {
@@ -207,7 +222,8 @@ func newPracticeFixture() *practiceFixture {
 				"diagram_shape:find_the_degree":           {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 2000}},
 				"heard_progression:progression_by_number": {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 4000}},
 			},
-			targets: []domain.ChangeTarget{{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), ChangesPerMinute: 60}},
+			targets:    []domain.ChangeTarget{{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), ChangesPerMinute: 60}},
+			songCharts: map[string]domain.SongChartReference{amazingGraceChart: {ID: amazingGraceChart}},
 			progressions: map[string]domain.ProgressionReference{
 				"I-V-vi-IV": {Key: "I-V-vi-IV", Bars: []string{"I", "V", "vi", "IV"}},
 				"I-vi-IV-V": {Key: "I-vi-IV-V", Bars: []string{"I", "vi", "IV", "V"}},
@@ -302,6 +318,69 @@ func TestPracticeEvidenceService_GradesAndFoldsAMinuteOfChordChanges(t *testing.
 	assert.InDelta(t, 0.25, fold.Fluency, 1e-9)
 }
 
+func TestPracticeEvidenceService_GradesAndFoldsAProgressionKeyTourTake(t *testing.T) {
+	f := newPracticeFixture()
+	key := "progression_keys:" + guitarLayout + ":I-V-vi-IV"
+	tempo := 60
+	answer := domain.PracticeAnswer{
+		EventID: "e0000000-0000-4000-8000-000000000041", StudentID: alice, OccurredAt: monday, ItemKey: key,
+		Response: domain.PracticeResponse{Type: domain.PracticeResponseSelfRating, Rating: domain.SelfRatingClean, TempoBPM: &tempo, MusicKey: "C"},
+	}
+
+	require.NoError(t, f.service.Process(context.Background(), answer))
+
+	require.Len(t, f.evidence.stored, 1)
+	assert.Equal(t, "C", f.evidence.stored[0].MusicKey)
+	fold, ok := f.fold(t, key)
+	require.True(t, ok)
+	assert.Equal(t, []string{"C"}, fold.TourCleanKeys)
+	// Fluency is measured against the tour target: 60 of 100.
+	assert.InDelta(t, 0.6, fold.Fluency, 1e-9)
+}
+
+const amazingGraceChart = "c0000000-0000-4000-8000-0000000000c1"
+
+func TestPracticeEvidenceService_GradesAndFoldsASong(t *testing.T) {
+	f := newPracticeFixture()
+	key := "song:" + guitarLayout + ":" + amazingGraceChart
+	answer := domain.PracticeAnswer{
+		EventID: "e0000000-0000-4000-8000-000000000051", StudentID: alice, OccurredAt: monday, ItemKey: key,
+		Response: domain.PracticeResponse{Type: domain.PracticeResponseSelfRating, Rating: domain.SelfRatingClean},
+	}
+
+	require.NoError(t, f.service.Process(context.Background(), answer))
+
+	require.Len(t, f.evidence.stored, 1)
+	assert.Equal(t, domain.SelfRatingClean, f.evidence.stored[0].Rating)
+	assert.Nil(t, f.evidence.stored[0].TempoBPM)
+	fold, ok := f.fold(t, key)
+	require.True(t, ok)
+	// A song has no measure, so a clean rating is fully fluent.
+	assert.InDelta(t, 1.0, fold.Fluency, 1e-9)
+}
+
+func TestPracticeEvidenceService_GradesAndFoldsAGuideToneTake(t *testing.T) {
+	f := newPracticeFixture()
+	key := "guide_tone:" + guitarLayout + ":I-V-vi-IV"
+	tempo := 72
+	// I-V-vi-IV in C is C G Am F; at 72 BPM a bar lasts 3333 ms. Each tap is its bar's third.
+	taps := []domain.TimedTap{{AtMs: 100, String: 1, Fret: 0}, {AtMs: 3400, String: 2, Fret: 0}, {AtMs: 6800, String: 2, Fret: 1}, {AtMs: 10100, String: 3, Fret: 2}}
+	answer := domain.PracticeAnswer{
+		EventID: "e0000000-0000-4000-8000-000000000051", StudentID: alice, OccurredAt: monday, ItemKey: key,
+		Response: domain.PracticeResponse{Type: domain.PracticeResponseTimedTaps, MusicKey: "C", Tone: "3", TempoBPM: &tempo, Taps: taps},
+	}
+
+	require.NoError(t, f.service.Process(context.Background(), answer))
+
+	require.Len(t, f.evidence.stored, 1)
+	require.NotNil(t, f.evidence.stored[0].Correct)
+	assert.True(t, *f.evidence.stored[0].Correct)
+	fold, ok := f.fold(t, key)
+	require.True(t, ok)
+	// Fluency is measured against the guide-tone target: 72 of 90.
+	assert.InDelta(t, 0.8, fold.Fluency, 1e-9)
+}
+
 func challengeAnswer(eventID string, at time.Time, optionID string, latency int) domain.PracticeAnswer {
 	return domain.PracticeAnswer{
 		EventID:        eventID,
@@ -392,6 +471,75 @@ func TestPracticeEvidenceService_GradesAndFoldsAFretboardCellAnswer(t *testing.T
 
 		require.NoError(t, f.service.Process(context.Background(), cellAnswer("e0000000-0000-4000-8000-0000000000c3", monday,
 			domain.PracticeResponse{Type: domain.PracticeResponseNameTheNote, NoteName: "C", LatencyMs: &latency})))
+
+		assert.Empty(t, f.evidence.stored)
+	})
+}
+
+// everyInstanceAnswer is alice's answer to the guitar cell on string 6 at fret 3,
+// asked to find every G in frets 3 to 7: G is at string 1 fret 3, string 4 fret 5
+// and string 6 fret 3 there.
+func everyInstanceAnswer(eventID string, taps ...domain.AnswerCell) domain.PracticeAnswer {
+	from, latency, tap := 3, 5200, 300
+	return domain.PracticeAnswer{
+		EventID: eventID, StudentID: alice, OccurredAt: monday, PracticeSessionID: "5e550000-0000-4000-8000-000000000001",
+		ItemKey: "fretboard_cell:" + guitarLayout + ":6:3", TapMs: &tap,
+		Response: domain.PracticeResponse{Type: domain.PracticeResponseMultiTap, FretWindowFrom: &from, Cells: taps, LatencyMs: &latency},
+	}
+}
+
+func TestPracticeEvidenceService_GradesFindEveryInstanceOnEveryCell(t *testing.T) {
+	const eventID = "e0000000-0000-4000-8000-0000000000f1"
+	cell := func(str, fret int) string { return fmt.Sprintf("fretboard_cell:%s:%d:%d", guitarLayout, str, fret) }
+
+	t.Run("each place of the note is right when tapped and wrong when missed, an extra tap wrong", func(t *testing.T) {
+		f := newPracticeFixture()
+		answer := everyInstanceAnswer(eventID, domain.AnswerCell{String: 6, Fret: 3}, domain.AnswerCell{String: 1, Fret: 3}, domain.AnswerCell{String: 5, Fret: 5})
+
+		require.NoError(t, f.service.Process(context.Background(), answer))
+
+		correct := map[string]bool{}
+		for _, e := range f.evidence.stored {
+			require.NotNil(t, e.Correct)
+			correct[e.ItemKey] = *e.Correct
+			assert.Equal(t, "multi_tap.v2", e.GraderID)
+			assert.Nil(t, e.LatencyMs, "finding every instance counts for accuracy only")
+			assert.Nil(t, e.TapMs, "a tap time only offsets a latency")
+			assert.Equal(t, uuid.NewSHA1(uuid.MustParse(eventID), []byte(e.ItemKey)).String(), e.EvidenceID)
+		}
+		assert.Equal(t, map[string]bool{cell(1, 3): true, cell(4, 5): false, cell(5, 5): false, cell(6, 3): true}, correct)
+	})
+
+	t.Run("every cell graded is folded, its right answers counted under find_every_instance", func(t *testing.T) {
+		f := newPracticeFixture()
+
+		require.NoError(t, f.service.Process(context.Background(), everyInstanceAnswer(eventID, domain.AnswerCell{String: 6, Fret: 3}, domain.AnswerCell{String: 1, Fret: 3})))
+
+		for _, key := range []string{cell(1, 3), cell(6, 3)} {
+			fold, ok := f.fold(t, key)
+			require.True(t, ok, key)
+			assert.Equal(t, 1, fold.RightByResponse["find_every_instance"], key)
+			assert.Zero(t, fold.Fluency, key)
+		}
+		missed, ok := f.fold(t, cell(4, 5))
+		require.True(t, ok)
+		assert.Zero(t, missed.RightByResponse["find_every_instance"])
+	})
+
+	t.Run("the same answer twice counts once on every cell", func(t *testing.T) {
+		f := newPracticeFixture()
+		answer := everyInstanceAnswer(eventID, domain.AnswerCell{String: 6, Fret: 3}, domain.AnswerCell{String: 1, Fret: 3}, domain.AnswerCell{String: 4, Fret: 5})
+
+		require.NoError(t, f.service.Process(context.Background(), answer))
+		require.NoError(t, f.service.Process(context.Background(), answer))
+
+		assert.Len(t, f.evidence.stored, 3)
+	})
+
+	t.Run("a tap outside the window stores nothing on any cell", func(t *testing.T) {
+		f := newPracticeFixture()
+
+		require.NoError(t, f.service.Process(context.Background(), everyInstanceAnswer(eventID, domain.AnswerCell{String: 6, Fret: 3}, domain.AnswerCell{String: 2, Fret: 8})))
 
 		assert.Empty(t, f.evidence.stored)
 	})
@@ -533,6 +681,12 @@ func TestPracticeEvidenceService_StoresNothingWhenItCannotGrade(t *testing.T) {
 			a.ItemKey = "heard_progression:ii-V-I"
 			a.Response = domain.PracticeResponse{Type: domain.PracticeResponseGeneratedChoice, Way: "progression_by_number", MusicKey: "C",
 				Options: []string{"ii-V-I", "IV-V-I"}, Choice: "ii-V-I", LatencyMs: &latency}
+			return a
+		}},
+		{"the song chart isn't in the reference", func() domain.PracticeAnswer {
+			a := ratedTake("e0000000-0000-4000-8000-000000000001", monday, domain.SelfRatingClean, 90)
+			a.ItemKey = "song:" + guitarLayout + ":" + missingDiag
+			a.Response.TempoBPM = nil
 			return a
 		}},
 		{"the item key is malformed", func() domain.PracticeAnswer {

@@ -290,7 +290,8 @@ func (w *world) inputOf(title string) (generated.SongChartDraftInput, error) {
 	d := chart.Draft
 	return generated.SongChartDraftInput{
 		Title: d.Title, Artist: d.Artist, Language: d.Language, ConcertKey: d.ConcertKey, CapoFret: d.CapoFret,
-		TempoBpm: d.TempoBpm, TimeSignature: d.TimeSignature, RightsConfirmed: d.RightsConfirmation != nil, Body: d.Body,
+		TempoBpm: d.TempoBpm, TimeSignature: d.TimeSignature, RightsConfirmed: d.RightsConfirmation != nil,
+		Body: d.Body,
 	}, nil
 }
 

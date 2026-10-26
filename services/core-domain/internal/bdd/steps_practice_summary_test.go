@@ -35,8 +35,10 @@ type fakePracticeSession struct {
 	instrumentID *string
 	startedAt    *time.Time
 	lastEventAt  time.Time
-	endedAt      *time.Time
-	leftEarly    bool
+	// itemKeys are the items planned in it.
+	itemKeys  []string
+	endedAt   *time.Time
+	leftEarly bool
 }
 
 // fakeItemSnapshot is an item's state at the end of the UTC day starting
@@ -60,6 +62,21 @@ func (f *fakePracticeActivity) FinishedSessions(_ context.Context, studentID str
 		}
 	}
 	return out, nil
+}
+
+func (f *fakePracticeActivity) LastInHandSessionItemKeys(_ context.Context, studentID string) ([]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var last *fakePracticeSession
+	for i, s := range f.sessions[studentID] {
+		if s.startedAt != nil && s.instrumentID != nil && (last == nil || s.startedAt.After(*last.startedAt)) {
+			last = &f.sessions[studentID][i]
+		}
+	}
+	if last == nil {
+		return nil, nil
+	}
+	return last.itemKeys, nil
 }
 
 func (f *fakePracticeActivity) HeadSessionsStarted(_ context.Context, studentID string) (int, error) {

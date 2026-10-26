@@ -13,7 +13,7 @@ import (
 )
 
 // oneLineChart is a document with one verse holding "[G]Quando olhei a [C]terra".
-const oneLineChart = `{"type":"doc","content":[{"type":"section","attrs":{"kind":"verse","label":null},"content":[
+const oneLineChart = `{"type":"doc","content":[{"type":"section","attrs":{"kind":"verse","label":null,"progression_keys":[]},"content":[
 	{"type":"lyricLine","content":[
 		{"type":"text","text":"Quando olhei a ","marks":[{"type":"chordAnchor","attrs":{"anchorId":"a1","writtenSymbol":"G","chordDefinitionId":null,"chordVoicingId":null}}]},
 		{"type":"text","text":"terra","marks":[{"type":"chordAnchor","attrs":{"anchorId":"a2","writtenSymbol":"C","chordDefinitionId":null,"chordVoicingId":null}}]}
@@ -50,7 +50,7 @@ func TestParseSongChartDocument(t *testing.T) {
 	})
 
 	t.Run("a run without an anchor is written without marks", func(t *testing.T) {
-		raw := `{"type":"doc","content":[{"type":"section","attrs":{"kind":"other","label":"Intro"},"content":[{"type":"lyricLine","content":[{"type":"text","text":"La"}]}]}]}`
+		raw := `{"type":"doc","content":[{"type":"section","attrs":{"kind":"other","label":"Intro","progression_keys":[]},"content":[{"type":"lyricLine","content":[{"type":"text","text":"La"}]}]}]}`
 		doc, err := domain.ParseSongChartDocument([]byte(raw))
 		require.NoError(t, err)
 
@@ -58,6 +58,29 @@ func TestParseSongChartDocument(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.JSONEq(t, raw, string(out))
+	})
+
+	t.Run("a section's progressions are read and written back", func(t *testing.T) {
+		raw := `{"type":"doc","content":[{"type":"section","attrs":{"kind":"verse","label":null,"progression_keys":["I-IV-I-V","I-IV-V-I"]},"content":[{"type":"lyricLine","content":[{"type":"text","text":"La"}]}]}]}`
+		doc, err := domain.ParseSongChartDocument([]byte(raw))
+		require.NoError(t, err)
+		assert.Equal(t, []string{"I-IV-I-V", "I-IV-V-I"}, doc.Sections[0].ProgressionKeys)
+
+		out, err := json.Marshal(doc)
+
+		require.NoError(t, err)
+		assert.JSONEq(t, raw, string(out))
+	})
+
+	t.Run("a section with no progressions is written with none", func(t *testing.T) {
+		doc, err := domain.ParseSongChartDocument([]byte(`{"type":"doc","content":[{"type":"section","attrs":{"kind":"verse","label":null},"content":[{"type":"lyricLine","content":[{"type":"text","text":"La"}]}]}]}`))
+		require.NoError(t, err)
+		assert.Empty(t, doc.Sections[0].ProgressionKeys)
+
+		out, err := json.Marshal(doc)
+
+		require.NoError(t, err)
+		assert.Contains(t, string(out), `"progression_keys":[]`)
 	})
 
 	invalid := []struct {
@@ -79,6 +102,8 @@ func TestParseSongChartDocument(t *testing.T) {
 		{name: "an empty anchor id", raw: `{"type":"doc","content":[{"type":"section","attrs":{"kind":"verse","label":null},"content":[{"type":"lyricLine","content":[{"type":"text","text":"x","marks":[` + anchorJSON("", "G") + `]}]}]}]}`, wantField: "body/content/0/content/0/content/0/marks/0/attrs/anchorId"},
 		{name: "two anchors with the same id", raw: `{"type":"doc","content":[{"type":"section","attrs":{"kind":"verse","label":null},"content":[{"type":"lyricLine","content":[{"type":"text","text":"x","marks":[` + anchorJSON("a1", "G") + `]},{"type":"text","text":"y","marks":[` + anchorJSON("a1", "C") + `]}]}]}]}`, wantField: "body/content/0/content/0/content/1/marks/0/attrs/anchorId"},
 		{name: "a comment with chords", raw: `{"type":"doc","content":[{"type":"section","attrs":{"kind":"verse","label":null},"content":[{"type":"comment","content":[{"type":"text","text":"x","marks":[` + anchorJSON("a1", "G") + `]}]}]}]}`, wantField: "body/content/0/content/0/content/0/marks"},
+		{name: "a section tagged with a progression twice", raw: `{"type":"doc","content":[{"type":"section","attrs":{"kind":"verse","label":null,"progression_keys":["I-IV-V-I","ii-V-I","I-IV-V-I"]},"content":[{"type":"comment","content":[{"type":"text","text":"x"}]}]}]}`, wantField: "body/content/0/attrs/progression_keys"},
+		{name: "a section tagged with more than 10 progressions", raw: `{"type":"doc","content":[{"type":"section","attrs":{"kind":"verse","label":null,"progression_keys":["a","b","c","d","e","f","g","h","i","j","k"]},"content":[{"type":"comment","content":[{"type":"text","text":"x"}]}]}]}`, wantField: "body/content/0/attrs/progression_keys"},
 		{name: "JSON that isn't an object", raw: `[]`, wantField: "body"},
 	}
 	for _, tt := range invalid {
@@ -270,6 +295,30 @@ func TestSongChart_Publish(t *testing.T) {
 		require.ErrorAs(t, err, &notPublishable)
 		assert.Equal(t, []domain.NotPublishableReason{domain.UnresolvedChords}, notPublishable.Reasons)
 		assert.Equal(t, []domain.AnchorWarning{blocking}, notPublishable.AnchorWarnings)
+	})
+
+	t.Run("the revision keeps the progressions its sections are tagged with", func(t *testing.T) {
+		chart := confirmedChart()
+		chart.Draft.Body.Sections[0].ProgressionKeys = []string{"I-IV-I-V"}
+
+		_, rev, err := chart.Publish("ana", publishedAt)
+
+		require.NoError(t, err)
+		assert.Equal(t, []domain.SectionProgression{{SectionIndex: 0, ProgressionKey: "I-IV-I-V"}}, rev.SectionProgressions)
+	})
+
+	t.Run("a tagged progression a section doesn't play blocks publication, and is listed with its section", func(t *testing.T) {
+		chart := confirmedChart()
+		chart.Draft.Body.Sections[0].ProgressionKeys = []string{"I-IV-I-V", "I-V-vi-IV"}
+		unplayed := []domain.SectionProgression{{SectionIndex: 0, ProgressionKey: "I-V-vi-IV"}}
+		chart.Draft.UnplayedProgressions = unplayed
+
+		_, _, err := chart.Publish("ana", publishedAt)
+
+		var notPublishable *domain.SongChartNotPublishableError
+		require.ErrorAs(t, err, &notPublishable)
+		assert.Equal(t, []domain.NotPublishableReason{domain.ProgressionsNotPlayed}, notPublishable.Reasons)
+		assert.Equal(t, unplayed, notPublishable.UnplayedProgressions)
 	})
 
 	t.Run("every reason is reported at once", func(t *testing.T) {

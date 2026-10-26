@@ -731,12 +731,20 @@ func init() {
 	songchartDescCapoFret := songchartFields[8].Descriptor()
 	// songchart.CapoFretValidator is a validator for the "capo_fret" field. It is called by the builders before save.
 	songchart.CapoFretValidator = songchartDescCapoFret.Validators[0].(func(int) error)
+	// songchartDescUnplayedProgressions is the schema descriptor for unplayed_progressions field.
+	songchartDescUnplayedProgressions := songchartFields[15].Descriptor()
+	// songchart.DefaultUnplayedProgressions holds the default value on creation for the unplayed_progressions field.
+	songchart.DefaultUnplayedProgressions = songchartDescUnplayedProgressions.Default.([]schema.SongChartSectionProgression)
 	songchartrevisionFields := schema.SongChartRevision{}.Fields()
 	_ = songchartrevisionFields
 	// songchartrevisionDescRevisionNumber is the schema descriptor for revision_number field.
 	songchartrevisionDescRevisionNumber := songchartrevisionFields[2].Descriptor()
 	// songchartrevision.RevisionNumberValidator is a validator for the "revision_number" field. It is called by the builders before save.
 	songchartrevision.RevisionNumberValidator = songchartrevisionDescRevisionNumber.Validators[0].(func(int) error)
+	// songchartrevisionDescSectionProgressions is the schema descriptor for section_progressions field.
+	songchartrevisionDescSectionProgressions := songchartrevisionFields[11].Descriptor()
+	// songchartrevision.DefaultSectionProgressions holds the default value on creation for the section_progressions field.
+	songchartrevision.DefaultSectionProgressions = songchartrevisionDescSectionProgressions.Default.([]schema.SongChartSectionProgression)
 	// songchartrevisionDescID is the schema descriptor for id field.
 	songchartrevisionDescID := songchartrevisionFields[0].Descriptor()
 	// songchartrevision.DefaultID holds the default value on creation for the id field.

@@ -26,6 +26,10 @@ type chordSource struct {
 	now         func() time.Time
 }
 
+func (src chordSource) composing(*PracticeSessionService) DrillSource {
+	return chordSource{catalog: &composingChordDrills{catalog: src.catalog}, instruments: newComposingInstruments(src.instruments), now: src.now}
+}
+
 func (src chordSource) SkillItems(ctx context.Context, skillID, _ string, inHand bool, knowledge KnowledgeMap) ([]domain.DrillItem, error) {
 	if !inHand {
 		return nil, nil

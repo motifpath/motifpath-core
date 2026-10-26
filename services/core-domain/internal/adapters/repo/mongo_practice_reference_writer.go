@@ -17,8 +17,8 @@ import (
 // writer stores. Bump it when a document's fields change, so a reader can
 // tell the shapes apart. Version 2 added the exercise options and the
 // instrument documents; version 3 the drill shape fields of a diagram;
-// version 4 the progression documents.
-const practiceReferenceSnapshotVersion = 4
+// version 4 the progression documents; version 5 the song chart documents.
+const practiceReferenceSnapshotVersion = 5
 
 // diagramReferenceDocument is a `practice_reference` document of kind
 // "diagram", in the shape ADR-047 fixes for the Aggregation Worker's
@@ -239,6 +239,26 @@ func (w *MongoPracticeReferenceWriter) PutProgressions(ctx context.Context, prog
 		}
 	}
 	return upsert(ctx, w.collection, docs, func(d progressionReferenceDocument) (string, string) { return d.Kind, d.ID })
+}
+
+// songChartReferenceDocument is a `practice_reference` document of kind
+// "song_chart": a published song chart, by id. It holds nothing else, since
+// grading a song needs only that its chart exists.
+type songChartReferenceDocument struct {
+	Kind            string    `bson:"kind"`
+	ID              string    `bson:"id"`
+	UpdatedAt       time.Time `bson:"updated_at"`
+	SnapshotVersion int       `bson:"snapshot_version"`
+}
+
+// PutSongCharts upserts every reference in one unordered bulk write.
+func (w *MongoPracticeReferenceWriter) PutSongCharts(ctx context.Context, refs []domain.SongChartReference) error {
+	at := w.now()
+	docs := make([]songChartReferenceDocument, len(refs))
+	for i, ref := range refs {
+		docs[i] = songChartReferenceDocument{Kind: "song_chart", ID: ref.ID, UpdatedAt: at, SnapshotVersion: practiceReferenceSnapshotVersion}
+	}
+	return upsert(ctx, w.collection, docs, func(d songChartReferenceDocument) (string, string) { return d.Kind, d.ID })
 }
 
 func (w *MongoPracticeReferenceWriter) PutInstruments(ctx context.Context, refs []domain.InstrumentReference) error {

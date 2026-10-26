@@ -140,10 +140,13 @@ func run(logger *slog.Logger) error {
 	// by the SDK from this point on — see ADR-007/ADR-009.
 	clerk.SetKey(cfg.clerkSecretKey)
 
-	handler, err := buildHandler(ctx, cfg, entClient, sqlDB, mongoClient)
+	handler, subjectCatalogs, err := buildHandler(ctx, cfg, entClient, sqlDB, mongoClient)
 	if err != nil {
 		return err
 	}
+	// Migrations may have installed reference data the practice subject
+	// catalog is built from, so it is out of date until rebuilt.
+	subjectCatalogs.InvalidateSubjectCatalogs(ctx)
 	strictHandler := generated.NewStrictHandler(handler, nil)
 
 	router := generated.HandlerWithOptions(strictHandler, generated.ChiServerOptions{
@@ -200,15 +203,15 @@ func syncPracticeReference(ctx context.Context, logger *slog.Logger, entClient *
 		logger.Error("ensure the practice reference indexes", "error", err)
 		return
 	}
-	sync := application.NewPracticeReferenceService(repo.NewEntDiagramRepository(entClient), repo.NewEntExerciseRepository(entClient), repo.NewEntInstrumentRepository(entClient), repo.NewEntDrillThresholdRepository(entClient), repo.NewEntProgressionRepository(entClient), repo.NewEntChordDrillRepository(entClient), writer)
+	sync := application.NewPracticeReferenceService(repo.NewEntDiagramRepository(entClient), repo.NewEntExerciseRepository(entClient), repo.NewEntInstrumentRepository(entClient), repo.NewEntDrillThresholdRepository(entClient), repo.NewEntProgressionRepository(entClient), repo.NewEntChordDrillRepository(entClient), repo.NewEntSongChartRepository(entClient), writer)
 	synced, err := sync.Sync(ctx)
 	if err != nil {
 		logger.Error("sync the practice reference snapshot", "diagrams", synced.Diagrams, "exercises", synced.Exercises,
-			"instruments", synced.Instruments, "drill_thresholds", synced.DrillThresholds, "progressions", synced.Progressions, "error", err)
+			"instruments", synced.Instruments, "drill_thresholds", synced.DrillThresholds, "progressions", synced.Progressions, "song_charts", synced.SongCharts, "error", err)
 		return
 	}
 	logger.Info("practice reference snapshot synced", "diagrams", synced.Diagrams, "exercises", synced.Exercises,
-		"instruments", synced.Instruments, "drill_thresholds", synced.DrillThresholds, "progressions", synced.Progressions)
+		"instruments", synced.Instruments, "drill_thresholds", synced.DrillThresholds, "progressions", synced.Progressions, "song_charts", synced.SongCharts)
 }
 
 // applyMigrations shells out to the Atlas CLI (bundled into the service
@@ -260,10 +263,10 @@ func connectStores(cfg config, logger *slog.Logger) (*sql.DB, *ent.Client, *mong
 // HTTP handler. Split out of run so the resource-lifecycle concerns there
 // (connect, defer-close, apply migrations, start the server) stay separate
 // from dependency wiring.
-func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB *sql.DB, mongoClient *mongo.Client) (*appHTTP.Handler, error) {
+func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB *sql.DB, mongoClient *mongo.Client) (*appHTTP.Handler, application.SubjectCatalogInvalidator, error) {
 	s3Client, err := newS3Client(ctx, cfg)
 	if err != nil {
-		return nil, fmt.Errorf("configure media storage client: %w", err)
+		return nil, nil, fmt.Errorf("configure media storage client: %w", err)
 	}
 	mediaStorage := repo.NewS3MediaStorage(s3Client, cfg.mediaS3Bucket, cfg.mediaPublicBaseURL)
 
@@ -290,10 +293,24 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 
 	newID := uuid.NewString
 	now := func() time.Time { return time.Now().UTC() }
-	practiceReferences := repo.NewMongoPracticeReferenceWriter(mongoClient.Database(cfg.mongoDatabase), now)
+	chordCatalogRepo := repo.NewEntChordCatalogRepository(entClient)
+	songChartRepo := repo.NewEntSongChartRepository(entClient)
+	nodeItemSource := repo.NewEntNodeItemSource(entClient)
+	rollupService := application.NewKnowledgeRollupService(knowledgeNodeRepo, knowledgeEdgeRepo, nodeItemSource, repo.NewMongoPracticeItemStateReader(mongoClient.Database(cfg.mongoDatabase)), now)
+	practiceActivity := repo.NewMongoPracticeActivityReader(mongoClient.Database(cfg.mongoDatabase))
+	practiceSessionService := application.NewPracticeSessionService(instrumentRepo, studentPathRepo, courseEnrollmentRepo, pathRepo, courseVersionRepo, nodeRepo, diagramRepo, exerciseRepo, rollupService, repo.NewEntDrillTemplateRepository(entClient), practiceActivity, practiceActivity, practiceActivity, newID, now).
+		WithHarmonyDrills(repo.NewEntProgressionRepository(entClient), chordCatalogRepo, nodeItemSource).
+		WithChordDrills(repo.NewEntChordDrillRepository(entClient), instrumentRepo).
+		WithProgressionKeyTours(instrumentRepo).
+		WithGuideTones(instrumentRepo).
+		WithSongs(songChartRepo, practiceActivity)
+	// Every save that changes what a practice subjects list holds writes a
+	// practice reference, so the reference writer also invalidates the
+	// subject catalog.
+	practiceSessionService.WithSubjectCatalogs(repo.NewEntPracticeSubjectCatalogRepository(entClient))
+	practiceReferences := application.CatalogInvalidatingReferences(repo.NewMongoPracticeReferenceWriter(mongoClient.Database(cfg.mongoDatabase), now), practiceSessionService)
 
 	identityService := application.NewIdentityService(userRepo, languageRepo, newID, now)
-	songChartRepo := repo.NewEntSongChartRepository(entClient)
 	contentService := application.NewContentService(nodeRepo, expandedRepo, knowledgeNodeRepo, contentNodeVersionRepo, diagramRepo, instrumentRepo, voiceRepo, songChartRepo, userRepo, newID, now)
 	challengeService := application.NewChallengeService(nodeRepo, challengeRepo, exerciseRepo, newID, now)
 	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, knowledgeNodeRepo, diagramRepo, instrumentRepo, voiceRepo, userRepo, practiceReferences, newID, now, mathrand.Shuffle)
@@ -308,17 +325,11 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 	// Voice samples are served from the same public media address as
 	// uploaded media.
 	voiceService := application.NewVoiceService(voiceRepo, cfg.mediaPublicBaseURL)
-	chordCatalogRepo := repo.NewEntChordCatalogRepository(entClient)
 	diagramService := application.NewDiagramService(diagramRepo, instrumentRepo, knowledgeNodeRepo, languageRepo, userRepo, practiceReferences, chordCatalogRepo, exerciseRepo, newID, now)
-	nodeItemSource := repo.NewEntNodeItemSource(entClient)
-	rollupService := application.NewKnowledgeRollupService(knowledgeNodeRepo, knowledgeEdgeRepo, nodeItemSource, repo.NewMongoPracticeItemStateReader(mongoClient.Database(cfg.mongoDatabase)), now)
-	practiceActivity := repo.NewMongoPracticeActivityReader(mongoClient.Database(cfg.mongoDatabase))
-	practiceSessionService := application.NewPracticeSessionService(instrumentRepo, studentPathRepo, courseEnrollmentRepo, pathRepo, courseVersionRepo, nodeRepo, diagramRepo, exerciseRepo, rollupService, repo.NewEntDrillTemplateRepository(entClient), practiceActivity, practiceActivity, practiceActivity, newID, now).
-		WithHarmonyDrills(repo.NewEntProgressionRepository(entClient), chordCatalogRepo, nodeItemSource).
-		WithChordDrills(repo.NewEntChordDrillRepository(entClient), instrumentRepo)
 	practiceSummaryService := application.NewPracticeSummaryService(instrumentRepo, studentPathRepo, courseEnrollmentRepo, pathRepo, courseVersionRepo, nodeRepo, rollupService, practiceActivity, songChartRepo, now)
 	chordCatalogService := application.NewChordCatalogService(chordCatalogRepo)
-	songChartService := application.NewSongChartService(songChartRepo, chordCatalogRepo, diagramRepo, languageRepo, newID, now)
+	songChartService := application.NewSongChartService(songChartRepo, chordCatalogRepo, diagramRepo, languageRepo, repo.NewEntProgressionRepository(entClient), practiceReferences, newID, now).
+		WithCatalogInvalidation(practiceSessionService)
 
 	appConfigRepo := repo.NewEntAppConfigRepository(entClient)
 	appConfigService := application.NewAppConfigService(appConfigRepo, now, application.NewStartingPointsKey(instrumentRepo, languageRepo, pathRepo, courseRepo))
@@ -327,7 +338,7 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 		repo.NewMongoAlphaActivityReader(mongoClient.Database(cfg.mongoDatabase)), now)
 
 	return appHTTP.NewHandler(identityService, contentService, challengeService, exerciseService, knowledgeNodeService, knowledgeEdgeService, mediaService, pathService, application.NewPathCatalogService(pathRepo, userRepo, knowledgeNodeRepo), studentPathService,
-		courseService, courseEnrollmentService, instrumentService, voiceService, diagramService, practiceSessionService, practiceSummaryService, chordCatalogService, application.NewProgressionCatalogService(repo.NewEntProgressionRepository(entClient)), songChartService, appConfigService, startingPointsService, alphaObservationService, learningGraphPinger, completionReader), nil
+		courseService, courseEnrollmentService, instrumentService, voiceService, diagramService, practiceSessionService, practiceSummaryService, chordCatalogService, application.NewProgressionCatalogService(repo.NewEntProgressionRepository(entClient)), songChartService, appConfigService, startingPointsService, alphaObservationService, learningGraphPinger, completionReader), practiceSessionService, nil
 }
 
 // newS3Client builds the client MediaService's presigned uploads go

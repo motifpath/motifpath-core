@@ -1,21 +1,26 @@
 package domain
 
+import "math"
+
 // timedTapsV1 grades guide-tone takes: a chord tone of each chord of a progression
 // tapped on the fretboard in time with its playback, four beats to a bar and one
-// chord per bar. A bar is hit when a tap within it sounds the asked tone and no tap
+// chord per bar, a faster note value shortening each bar by its speed factor. A bar is hit when a tap within it sounds the asked tone and no tap
 // within it sounds another note; the take is right only when every bar is hit. Taps
 // after the last bar are not graded.
 type timedTapsV1 struct{}
 
 func (timedTapsV1) ID() string { return "timed_taps.v1" }
 
+// GuideToneTargetTempoBPM is the tempo, in quarters, a right guide-tone take's
+// effective speed is measured against for fluency.
+const GuideToneTargetTempoBPM = 90
+
 // beatsPerBarMs is four beats of a minute, in milliseconds: a bar lasts this
 // divided by the tempo.
 const beatsPerBarMs = 4 * 60_000
 
 func (timedTapsV1) Grade(key PracticeItemKey, r PracticeResponse, ref PracticeReference) GradeResult {
-	if key.Kind != PracticeItemKindGuideTone || r.Type != PracticeResponseTimedTaps || r.TempoBPM == nil || *r.TempoBPM < 1 ||
-		(r.Tone != "3" && r.Tone != "7") {
+	if !fitsGuideTone(key, r) {
 		return rejected(GradeRejectionResponseDoesNotFitItem)
 	}
 	instrument, ok := ref.Instruments[key.LayoutInstrumentID()]
@@ -59,6 +64,13 @@ func (timedTapsV1) Grade(key PracticeItemKey, r PracticeResponse, ref PracticeRe
 	}}
 }
 
+// fitsGuideTone reports whether r is a guide-tone take of key: timed taps at a
+// tempo, asking the third or the seventh, at a note value if any.
+func fitsGuideTone(key PracticeItemKey, r PracticeResponse) bool {
+	return key.Kind == PracticeItemKindGuideTone && r.Type == PracticeResponseTimedTaps && r.TempoBPM != nil && *r.TempoBPM >= 1 &&
+		(r.Tone == "3" || r.Tone == "7") && (r.NoteValue == nil || r.NoteValue.Valid())
+}
+
 // gradeBar grades bar i, whose chord is numeral in the key: hit when a tap within
 // it sounds the asked tone and none sounds another note. Its delay is how long
 // after the bar's start its first right tap came, or the bar's length when it
@@ -72,7 +84,7 @@ func gradeBar(r PracticeResponse, tapped []int, musicKey, i int, numeral string)
 	if r.Tone == "7" {
 		tone = seventhOf(musicKey, numeral)
 	}
-	start, end := i*beatsPerBarMs / *r.TempoBPM, (i+1)*beatsPerBarMs / *r.TempoBPM
+	start, end := barStartMs(i, r), barStartMs(i+1, r)
 	firstHit, wrongNote := -1, false
 	for j, t := range r.Taps {
 		switch {
@@ -89,6 +101,12 @@ func gradeBar(r PracticeResponse, tapped []int, musicKey, i int, numeral string)
 		delay = firstHit - start
 	}
 	return AnswerBar{Chord: c.symbol(), NoteName: sharpNames[tone], Hit: hit}, delay, true
+}
+
+// barStartMs is when bar i starts, in milliseconds from the first bar's downbeat,
+// rounded down: a bar lasts four beats at the take's effective speed.
+func barStartMs(i int, r PracticeResponse) int {
+	return int(math.Floor(float64(i*beatsPerBarMs) / EffectiveSpeed(*r.TempoBPM, r.NoteValue)))
 }
 
 // cellPitchClass is the pitch class a cell of the instrument sounds, and false for a

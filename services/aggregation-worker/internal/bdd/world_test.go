@@ -18,11 +18,24 @@ import (
 // fakeReference stands in for core's practice_reference snapshot; the Mongo reader
 // is covered by the repo package's integration tests.
 type fakeReference struct {
-	diagrams    map[string]domain.DiagramReference
-	exercises   map[string]domain.ExerciseReference
-	instruments map[string]domain.InstrumentReference
-	fluentTimes map[string][]domain.FluentTime
-	targets     []domain.ChangeTarget
+	diagrams     map[string]domain.DiagramReference
+	exercises    map[string]domain.ExerciseReference
+	instruments  map[string]domain.InstrumentReference
+	fluentTimes  map[string][]domain.FluentTime
+	targets      []domain.ChangeTarget
+	progressions map[string]domain.ProgressionReference
+	songCharts   map[string]domain.SongChartReference
+}
+
+// SongCharts holds the song charts a scenario named.
+func (f *fakeReference) SongCharts(_ context.Context, ids []string) (map[string]domain.SongChartReference, error) {
+	found := map[string]domain.SongChartReference{}
+	for _, id := range ids {
+		if c, ok := f.songCharts[id]; ok {
+			found[id] = c
+		}
+	}
+	return found, nil
 }
 
 // ChangeTargets is the catalog's first change target, in force before any
@@ -41,9 +54,9 @@ func (f *fakeReference) Instruments(_ context.Context, ids []string) (map[string
 	return found, nil
 }
 
-// Progressions finds none: no scenario practises a progression yet.
+// Progressions holds the progressions a scenario named.
 func (f *fakeReference) Progressions(_ context.Context) (map[string]domain.ProgressionReference, error) {
-	return map[string]domain.ProgressionReference{}, nil
+	return f.progressions, nil
 }
 
 func (f *fakeReference) Exercises(_ context.Context, ids []string) (map[string]domain.ExerciseReference, error) {
@@ -316,6 +329,8 @@ type world struct {
 	before      domain.ItemFold
 	// shapeKey is the diagram shape the latest catalog step named.
 	shapeKey string
+	// songKey is the song the latest song step named.
+	songKey string
 
 	// lastTemplate is the drill template the latest fluent time step named.
 	lastTemplate string
@@ -326,7 +341,14 @@ type world struct {
 	lastExercise   string
 	lastExerciseID string
 	cells          cellWorld
+	everyInstance  everyInstanceWorld
 	chords         chordWorld
+	// tourKey is the progression key tour a scenario practises, and
+	// tourStudent the student whose next session it is picked for.
+	tourKey     string
+	tourStudent string
+	// guideKey is the guide tone a scenario practises.
+	guideKey string
 }
 
 // chordWorld is the chord change and the single chord a scenario practises.
@@ -341,8 +363,12 @@ func newWorld() *world {
 			diagrams:    map[string]domain.DiagramReference{},
 			exercises:   map[string]domain.ExerciseReference{},
 			instruments: map[string]domain.InstrumentReference{},
+			songCharts:  map[string]domain.SongChartReference{},
 			fluentTimes: map[string][]domain.FluentTime{},
 			targets:     []domain.ChangeTarget{{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), ChangesPerMinute: 60}},
+			progressions: map[string]domain.ProgressionReference{
+				"I-V-vi-IV": {Key: "I-V-vi-IV", Bars: []string{"I", "V", "vi", "IV"}},
+			},
 		},
 		evidence: &fakeEvidence{},
 		states:   &fakeStates{folds: map[string]domain.ItemFold{}},

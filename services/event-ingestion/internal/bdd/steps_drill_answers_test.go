@@ -21,6 +21,7 @@ func registerDrillAnswerSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" submits a practice\.item_answered event skipping exercise "([^"]+)" because its sound failed to load$`, w.submitSkippedExercise)
 	sc.Step(`^"([^"]+)" submits a practice\.item_answered event picking "([^"]+)" among `+list+` for the chord on (\S+) in (\S+)$`, w.submitGeneratedChoice)
 	sc.Step(`^"([^"]+)" submits a practice\.item_answered event for a guide-tone take of "([^"]+)" in (\S+) at (\d+) BPM with no taps$`, w.submitEmptyGuideToneTake)
+	sc.Step(`^"([^"]+)" submits a practice\.item_answered event for a guide-tone take of "([^"]+)" in (\S+) at (\d+) BPM in (\w+) with no taps$`, w.submitEmptyGuideToneTakeInNoteValue)
 	sc.Step(`^"([^"]+)" submits a practice\.item_answered event tapping ((?:string \d+ at fret \d+(?:, | and )?)+) for the note "([^"]+)" in the window from fret (\d+)$`, w.submitMultiTap)
 
 	sc.Step(`^the stored and published practice\.item_answered event keeps the choices `+list+`$`, w.answerKeepsTheChoices)
@@ -86,6 +87,16 @@ func (w *world) submitEmptyGuideToneTake(name, progression, key, tempoStr string
 	}))
 }
 
+func (w *world) submitEmptyGuideToneTakeInNoteValue(name, progression, key, tempoStr, noteValue string) error {
+	tempo, err := strconv.Atoi(tempoStr)
+	if err != nil {
+		return err
+	}
+	return w.submitPractice(w.answerEvent(name, fmt.Sprintf("guide_tone:%s:%s", guitarID, progression), &practiceResponse{
+		ResponseType: "timed_taps", MusicKey: key, Tone: "3", TempoBPM: tempo, NoteValue: noteValue, Taps: &[]timedTap{},
+	}))
+}
+
 func (w *world) submitMultiTap(name, places, note, fromStr string) error {
 	from, err := strconv.Atoi(fromStr)
 	if err != nil {
@@ -103,8 +114,13 @@ func (w *world) submitMultiTap(name, places, note, fromStr string) error {
 		}
 		cells = append(cells, tappedCell{String: str, Fret: fret})
 	}
+	// Finding every instance is answered under the planned cell's key: the first
+	// place tapped, which must be the note named.
+	if len(cells) == 0 || guitarNoteAt(cells[0].String, cells[0].Fret) != note {
+		return fmt.Errorf("the first place tapped must be a %s, the cell asked", note)
+	}
 	latency := 5200
-	return w.submitPractice(w.answerEvent(name, fmt.Sprintf("fretboard_note:%s:%s", guitarID, note), &practiceResponse{
+	return w.submitPractice(w.answerEvent(name, fmt.Sprintf("fretboard_cell:%s:%d:%d", guitarID, cells[0].String, cells[0].Fret), &practiceResponse{
 		ResponseType: "multi_tap", FretWindow: &fretWindow{FromFret: from}, Cells: &cells, LatencyMs: &latency,
 	}))
 }
@@ -158,4 +174,12 @@ func (w *world) answerKeepsAnEmptyListOfTaps() error {
 		}
 	}
 	return nil
+}
+
+// guitarNoteAt is the note of a standard-tuned guitar's string at fret, spelled
+// with sharps; string 1 is the highest-pitched.
+func guitarNoteAt(str, fret int) string {
+	notes := []string{"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"}
+	openByString := map[int]int{1: 4, 2: 11, 3: 7, 4: 2, 5: 9, 6: 4}
+	return notes[(openByString[str]+fret)%12]
 }

@@ -49,6 +49,10 @@ type diagramShapeSource struct {
 	service *PracticeSessionService
 }
 
+func (src diagramShapeSource) composing(s *PracticeSessionService) DrillSource {
+	return diagramShapeSource{service: s}
+}
+
 func (src diagramShapeSource) SkillItems(ctx context.Context, skillID, instrumentID string, inHand bool, _ KnowledgeMap) ([]domain.DrillItem, error) {
 	if inHand || instrumentID == "" {
 		return nil, nil

@@ -1371,13 +1371,16 @@ func (e FretWindowFromFret) Valid() bool {
 
 // Defines values for FretboardDrill.
 const (
-	FindTheNote FretboardDrill = "find_the_note"
-	NameTheNote FretboardDrill = "name_the_note"
+	FindEveryInstance FretboardDrill = "find_every_instance"
+	FindTheNote       FretboardDrill = "find_the_note"
+	NameTheNote       FretboardDrill = "name_the_note"
 )
 
 // Valid indicates whether the value is a known member of the FretboardDrill enum.
 func (e FretboardDrill) Valid() bool {
 	switch e {
+	case FindEveryInstance:
+		return true
 	case FindTheNote:
 		return true
 	case NameTheNote:
@@ -1828,6 +1831,42 @@ func (e PathDetailLevel) Valid() bool {
 	}
 }
 
+// Defines values for PlannedGuideToneTone.
+const (
+	PlannedGuideToneToneN3 PlannedGuideToneTone = "3"
+	PlannedGuideToneToneN7 PlannedGuideToneTone = "7"
+)
+
+// Valid indicates whether the value is a known member of the PlannedGuideToneTone enum.
+func (e PlannedGuideToneTone) Valid() bool {
+	switch e {
+	case PlannedGuideToneToneN3:
+		return true
+	case PlannedGuideToneToneN7:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PlannedSongPlays.
+const (
+	Chords PlannedSongPlays = "chords"
+	Roots  PlannedSongPlays = "roots"
+)
+
+// Valid indicates whether the value is a known member of the PlannedSongPlays enum.
+func (e PlannedSongPlays) Valid() bool {
+	switch e {
+	case Chords:
+		return true
+	case Roots:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PracticeFocusSource.
 const (
 	Chosen    PracticeFocusSource = "chosen"
@@ -1856,13 +1895,14 @@ const (
 	PracticeItemKindDiatonicChord    PracticeItemKind = "diatonic_chord"
 	PracticeItemKindExercise         PracticeItemKind = "exercise"
 	PracticeItemKindFretboardCell    PracticeItemKind = "fretboard_cell"
-	PracticeItemKindFretboardNote    PracticeItemKind = "fretboard_note"
 	PracticeItemKindGuideTone        PracticeItemKind = "guide_tone"
 	PracticeItemKindHeardChord       PracticeItemKind = "heard_chord"
 	PracticeItemKindHeardProgression PracticeItemKind = "heard_progression"
 	PracticeItemKindPlayAlong        PracticeItemKind = "play_along"
+	PracticeItemKindProgressionKeys  PracticeItemKind = "progression_keys"
 	PracticeItemKindRootChange       PracticeItemKind = "root_change"
 	PracticeItemKindRootFifth        PracticeItemKind = "root_fifth"
+	PracticeItemKindSong             PracticeItemKind = "song"
 )
 
 // Valid indicates whether the value is a known member of the PracticeItemKind enum.
@@ -1884,8 +1924,6 @@ func (e PracticeItemKind) Valid() bool {
 		return true
 	case PracticeItemKindFretboardCell:
 		return true
-	case PracticeItemKindFretboardNote:
-		return true
 	case PracticeItemKindGuideTone:
 		return true
 	case PracticeItemKindHeardChord:
@@ -1894,9 +1932,13 @@ func (e PracticeItemKind) Valid() bool {
 		return true
 	case PracticeItemKindPlayAlong:
 		return true
+	case PracticeItemKindProgressionKeys:
+		return true
 	case PracticeItemKindRootChange:
 		return true
 	case PracticeItemKindRootFifth:
+		return true
+	case PracticeItemKindSong:
 		return true
 	default:
 		return false
@@ -2394,13 +2436,16 @@ func (e SongChartLyricLineType) Valid() bool {
 
 // Defines values for SongChartNotPublishableErrorReasons.
 const (
-	RightsNotConfirmed SongChartNotPublishableErrorReasons = "rights_not_confirmed"
-	UnresolvedChords   SongChartNotPublishableErrorReasons = "unresolved_chords"
+	ProgressionsNotPlayed SongChartNotPublishableErrorReasons = "progressions_not_played"
+	RightsNotConfirmed    SongChartNotPublishableErrorReasons = "rights_not_confirmed"
+	UnresolvedChords      SongChartNotPublishableErrorReasons = "unresolved_chords"
 )
 
 // Valid indicates whether the value is a known member of the SongChartNotPublishableErrorReasons enum.
 func (e SongChartNotPublishableErrorReasons) Valid() bool {
 	switch e {
+	case ProgressionsNotPlayed:
+		return true
 	case RightsNotConfirmed:
 		return true
 	case UnresolvedChords:
@@ -5672,7 +5717,9 @@ type FretWindow struct {
 type FretWindowFromFret int
 
 // FretboardDrill How a fretboard cell is asked. name_the_note = the cell is shown and the student names
-// its note; find_the_note = the note and string are named and the student taps the cell.
+// its note; find_the_note = the note and string are named and the student taps the cell;
+// find_every_instance = the cell's note is named and the student taps every place of it in
+// the fret window, on a board with nothing marked and without being told how many there are.
 type FretboardDrill string
 
 // FretboardMap How well the student knows each cell of an instrument's fretboard.
@@ -5703,7 +5750,9 @@ type FretboardMapCell struct {
 	// - fretboard_cell:<layout instrument id>:<string>:<fret> — a generated fretboard cell.
 	//   The instrument is the one whose fretboard layout the cell belongs to, so instruments
 	//   that share a layout share the cell. Strings are numbered from 1, the highest-pitched;
-	//   fret 0 is the open string.
+	//   fret 0 is the open string. A cell asked to find every place of its note in a fret
+	//   window is answered under its own key, and that answer is graded on every cell of the
+	//   window.
 	// - exercise:<exercise id> — an authored exercise.
 	// - play_along:<diagram id> — playing a diagram along with its playback, at a tempo.
 	// - chord_change:<from diagram id>:<to diagram id> — changing between two chord diagrams.
@@ -5730,14 +5779,16 @@ type FretboardMapCell struct {
 	// - guide_tone:<layout instrument id>:<progression key> — tapping a chord tone of each chord
 	//   of a progression in time with its playback. The key, the tone and the tempo are picked
 	//   each time.
-	// - fretboard_note:<layout instrument id>:<note> — finding every place of a note within a
-	//   fret window. The window is picked each time.
+	// - progression_keys:<layout instrument id>:<progression key> — playing a progression along
+	//   with its backing, key after key around the cycle of fourths. The key is the tour's next
+	//   one, sent back with each take.
+	// - song:<layout instrument id>:<song chart id> — playing a published song chart whole, as
+	//   written, on an instrument of the layout: its chords on guitar, their roots on bass.
 	//
 	// In these keys, <key> is a major key spelled as one of C Db D Eb E F F# G Ab A Bb B;
 	// <numeral> is one of I ii iii IV V vi viio (viio is vii°); <chord> is a root spelled the
 	// same way, followed by m (minor), dim (diminished), 7 (dominant seventh) or nothing
-	// (major); <note> is spelled with sharps; <progression key> is a key of the progression
-	// catalog.
+	// (major); <progression key> is a key of the progression catalog.
 	//
 	// Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
 	// grader, and its golden cases.
@@ -5816,9 +5867,10 @@ type GeneratedChoiceQuestion struct {
 	// Function The function asked for, for function_to_chord. Null for every other way.
 	Function *ChordFunction `json:"function"`
 
-	// MusicKey A major key. In a response, the key a question was asked in when its item doesn't fix one:
-	// a chart progression, a heard chord, a heard progression or a guide tone; absent in a
-	// response to any other item. A planned question always names its key.
+	// MusicKey A major key. In a response, the key a question was asked in or a take was played in when
+	// its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
+	// tone or a progression key tour; absent in a response to any other item. A planned question
+	// always names its key.
 	MusicKey MusicKey `json:"music_key"`
 
 	// Numeral The numeral asked about, for numeral_to_chord. Null for every other way.
@@ -6298,9 +6350,10 @@ type MediaUploadUrl struct {
 	UploadUrl string `json:"upload_url"`
 }
 
-// MusicKey A major key. In a response, the key a question was asked in when its item doesn't fix one:
-// a chart progression, a heard chord, a heard progression or a guide tone; absent in a
-// response to any other item. A planned question always names its key.
+// MusicKey A major key. In a response, the key a question was asked in or a take was played in when
+// its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
+// tone or a progression key tour; absent in a response to any other item. A planned question
+// always names its key.
 type MusicKey string
 
 // NotFoundError Returned when the requested resource does not exist.
@@ -6729,6 +6782,185 @@ type PlannedChordVoicing struct {
 	DiagramId openapi_types.UUID `json:"diagram_id"`
 }
 
+// PlannedGuideTone A progression played once in a key, one chord a bar after a bar of count-in, while the
+// student taps the asked tone of each chord on an empty fretboard as it sounds (kind
+// guide_tone), graded by timed_taps.v1. It names the chords, the key and the tone, never the
+// notes to tap or their places. The item ends after a right take or after takes takes, all in
+// music_key; each take is answered with a timed_taps response sending music_key, tone, the
+// tempo and note value it played at, and the taps.
+type PlannedGuideTone struct {
+	// Bars Every bar of the progression, in order, played once a take.
+	Bars []struct {
+		// Chord The bar's chord symbol in music_key, spelled as the chord catalog spells roots. It
+		// is shown and sounded.
+		Chord string `json:"chord"`
+
+		// Numeral The bar's numeral in the progression catalog; a 7 marks a dominant seventh.
+		Numeral string `json:"numeral"`
+	} `json:"bars"`
+
+	// FretWindow The frets a fretboard drill is asked within, so its board is drawn at full tap size without
+	// scrolling sideways. Five frets, plus the open string when the window starts at the nut: a
+	// from_fret of 0 covers the open string and frets 1 to 5; any other from_fret covers it and the
+	// next four frets, such as 3 to 7. Only the window's places can be tapped, and the question
+	// names it. Every cell of the same drill and layout in a plan carries the same window, and the
+	// cell's fret is always inside it.
+	FretWindow FretWindow `json:"fret_window"`
+
+	// LayoutInstrumentId The instrument whose fretboard layout is tapped on: guitar or electric bass. On electric
+	// bass each chord's root also plays under it in the bass voice.
+	LayoutInstrumentId openapi_types.UUID `json:"layout_instrument_id"`
+
+	// MusicKey A major key. In a response, the key a question was asked in or a take was played in when
+	// its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
+	// tone or a progression key tour; absent in a response to any other item. A planned question
+	// always names its key.
+	MusicKey MusicKey `json:"music_key"`
+
+	// Progression The progression played.
+	Progression struct {
+		// Key The progression's key in the progression catalog, such as ii-V-I.
+		Key string `json:"key"`
+
+		// Name The progression's name in the student's language, such as "ii–V–I".
+		Name string `json:"name"`
+	} `json:"progression"`
+
+	// Takes The most takes of the item this session plays.
+	Takes int `json:"takes"`
+
+	// TargetTempoBpm The tempo a right take's effective speed is measured against for fluency, in quarters,
+	// the same for every progression and layout.
+	TargetTempoBpm int `json:"target_tempo_bpm"`
+
+	// TempoBpm The tempo the first take starts at, in quarter notes per minute, by the student's level
+	// on the item: 60 while new or learning, 72 once accurate, 90 once fluent. The student may
+	// change it, and the note value, before any take.
+	TempoBpm int `json:"tempo_bpm"`
+
+	// Tone The chord tone asked of every chord: 3 = its third, until the student is accurate on the
+	// item; 7 = its seventh in the key from then on (the major seventh of I and IV, the minor
+	// seventh of every other chord and of a dominant seventh).
+	Tone PlannedGuideToneTone `json:"tone"`
+
+	// Voicings One voicing per distinct chord of bars.
+	Voicings []struct {
+		// Chord The chord symbol, as it appears in bars.
+		Chord string `json:"chord"`
+
+		// DiagramId The chord catalog voicing the playback sounds: the chord's open voicing if the
+		// catalog has one, else its lowest-difficulty voicing.
+		DiagramId openapi_types.UUID `json:"diagram_id"`
+	} `json:"voicings"`
+}
+
+// PlannedGuideToneTone The chord tone asked of every chord: 3 = its third, until the student is accurate on the
+// item; 7 = its seventh in the key from then on (the major seventh of I and IV, the minor
+// seventh of every other chord and of a dominant seventh).
+type PlannedGuideToneTone string
+
+// PlannedProgressionKeys A progression played along with, key after key around the cycle of fourths (kind
+// progression_keys), self-rated take by take. The plan lists the whole tour, so the client
+// moves to the next key without asking again: after a clean take at an effective speed at
+// or above tour_tempo_bpm, the next take is in the next key of keys not yet clean, at the
+// same tempo; after an almost or a struggle it stays in the key, and a struggle lowers the
+// tempo by 5 BPM, never below min_tempo_bpm. When every key is clean, the tour starts again
+// at the first key, 5 BPM faster, never past target_tempo_bpm by itself. The student may
+// choose any tempo for a take; a clean take slower than the tour tempo doesn't make its key
+// clean.
+type PlannedProgressionKeys struct {
+	// Keys The tour's 12 keys in its order, the cycle of fourths from C: C F Bb Eb Ab Db F# B E A D
+	// G, each with whether it is clean and the progression drawn in it.
+	Keys []struct {
+		// Chart The progression in this key, one chord symbol per bar, spelled as the chord
+		// catalog spells roots.
+		Chart []string `json:"chart"`
+
+		// ChordTones On a bass layout, the places of each distinct chord's root, third and fifth, each
+		// at its lowest fret, then its lowest string, inside frets 0–5. A dominant seventh
+		// keeps its root, third and fifth. Empty on guitar.
+		ChordTones []struct {
+			// Chord The chord symbol, as it appears in chart.
+			Chord string `json:"chord"`
+
+			// Fifth One place on a fretboard layout.
+			Fifth FretPlace `json:"fifth"`
+
+			// Root One place on a fretboard layout.
+			Root FretPlace `json:"root"`
+
+			// Third One place on a fretboard layout.
+			Third FretPlace `json:"third"`
+		} `json:"chord_tones"`
+
+		// Clean Whether the key is clean at the tour tempo.
+		Clean bool `json:"clean"`
+
+		// MusicKey A major key. In a response, the key a question was asked in or a take was played in when
+		// its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
+		// tone or a progression key tour; absent in a response to any other item. A planned question
+		// always names its key.
+		MusicKey MusicKey `json:"music_key"`
+
+		// Voicings One voicing per distinct chord of chart.
+		Voicings []struct {
+			// Chord The chord symbol, as it appears in chart.
+			Chord string `json:"chord"`
+
+			// DiagramId The chord catalog voicing the backing sounds, and the box shown on demand on
+			// guitar: the chord's open voicing if the catalog has one, else its
+			// lowest-difficulty voicing.
+			DiagramId openapi_types.UUID `json:"diagram_id"`
+		} `json:"voicings"`
+	} `json:"keys"`
+
+	// LayoutInstrumentId The instrument whose fretboard layout the tour is played on: guitar (chord symbols, chord
+	// boxes on demand) or electric bass (chord symbols and each chord's root, third and fifth
+	// on the board).
+	LayoutInstrumentId openapi_types.UUID `json:"layout_instrument_id"`
+
+	// MinTempoBpm The slowest tempo a struggle lowers the tour to, 60% of the target.
+	MinTempoBpm int `json:"min_tempo_bpm"`
+
+	// Progression The progression played.
+	Progression struct {
+		// Key The progression's key in the progression catalog, such as I-V-vi-IV.
+		Key string `json:"key"`
+
+		// Name The progression's name in the student's language, such as "I–V–vi–IV (pop)".
+		Name string `json:"name"`
+	} `json:"progression"`
+
+	// StartMusicKey A major key. In a response, the key a question was asked in or a take was played in when
+	// its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
+	// tone or a progression key tour; absent in a response to any other item. A planned question
+	// always names its key.
+	StartMusicKey MusicKey `json:"start_music_key"`
+
+	// StartNoteValue The note value a play-along take was played at: a speed factor on the music as written,
+	// with the click staying on the beat. halves = x0.5, quarters = x1 (as written), eighths = x2,
+	// triplets = x3, sixteenths = x4, quintuplets = x5, sextuplets = x6, thirty_seconds = x8.
+	// A take's effective speed is its tempo_bpm times the factor, in quarter-note beats per
+	// minute: 80 BPM in eighths is as fast as 160 BPM in quarters. Tempos of the same item are
+	// compared at effective speed. Absent means quarters. Present only with a tempo_bpm.
+	StartNoteValue NoteValue2 `json:"start_note_value"`
+
+	// Takes The most takes of the tour this session plays.
+	Takes int `json:"takes"`
+
+	// TargetTempoBpm The tempo the tour aims for, in quarters, the same for every progression.
+	TargetTempoBpm int `json:"target_tempo_bpm"`
+
+	// TimesThrough How many times one take plays the progression after its bar of count-in: 4 for a
+	// four-bar progression, 1 for a 12-bar blues.
+	TimesThrough int `json:"times_through"`
+
+	// TourTempoBpm The tour's tempo, in start_note_value: the tempo of the first take, and the one a take
+	// must be clean at, or faster than, to make its key clean. 60% of the target, rounded down
+	// to 5 BPM, for a tour never played.
+	TourTempoBpm int `json:"tour_tempo_bpm"`
+}
+
 // PlannedRootChange A minute of changes between two chords' roots on a bass layout (kind root_change). Both
 // roots are marked.
 type PlannedRootChange struct {
@@ -6768,6 +7000,40 @@ type PlannedRootFifth struct {
 	// Root One place on a fretboard layout.
 	Root FretPlace `json:"root"`
 }
+
+// PlannedSong A published song chart to play whole on the instrument in hand, then rate (kind song). It is
+// always a session's application ending. The chart is played as written, in its concert key
+// with its capo, never transposed; the client loads it as learners read it. The take is rated
+// by the student and has no measure.
+type PlannedSong struct {
+	// Artist The performer or composer the song is known by.
+	Artist string `json:"artist"`
+
+	// LayoutInstrumentId The instrument whose layout the song is practised on.
+	LayoutInstrumentId openapi_types.UUID `json:"layout_instrument_id"`
+
+	// Plays What the student plays from the chart. chords = the chords as written, on a guitar
+	// layout; roots = the root of each chord, on a bass layout.
+	Plays PlannedSongPlays `json:"plays"`
+
+	// ProgressionKey The key, in the progression catalog, of the progression the chart plays that practises
+	// the session's subject, shown as why this song was picked.
+	ProgressionKey string `json:"progression_key"`
+
+	// SectionIndex The first section, numbered from 0 in document order, tagged with progression_key: the
+	// section shown as playing it ("Its verse plays I–IV–I–V"). The whole song is played.
+	SectionIndex int `json:"section_index"`
+
+	// SongChartId The published song chart to play.
+	SongChartId openapi_types.UUID `json:"song_chart_id"`
+
+	// Title The song's title, from the chart's latest published revision.
+	Title string `json:"title"`
+}
+
+// PlannedSongPlays What the student plays from the chart. chords = the chords as written, on a guitar
+// layout; roots = the root of each chord, on a bass layout.
+type PlannedSongPlays string
 
 // PracticeDay One calendar day of an instrument's last 7, and whether the student practised it.
 type PracticeDay struct {
@@ -6815,7 +7081,9 @@ type PracticeInstrumentCard struct {
 //   - fretboard_cell:<layout instrument id>:<string>:<fret> — a generated fretboard cell.
 //     The instrument is the one whose fretboard layout the cell belongs to, so instruments
 //     that share a layout share the cell. Strings are numbered from 1, the highest-pitched;
-//     fret 0 is the open string.
+//     fret 0 is the open string. A cell asked to find every place of its note in a fret
+//     window is answered under its own key, and that answer is graded on every cell of the
+//     window.
 //
 //   - exercise:<exercise id> — an authored exercise.
 //
@@ -6855,14 +7123,17 @@ type PracticeInstrumentCard struct {
 //     of a progression in time with its playback. The key, the tone and the tempo are picked
 //     each time.
 //
-//   - fretboard_note:<layout instrument id>:<note> — finding every place of a note within a
-//     fret window. The window is picked each time.
+//   - progression_keys:<layout instrument id>:<progression key> — playing a progression along
+//     with its backing, key after key around the cycle of fourths. The key is the tour's next
+//     one, sent back with each take.
+//
+//   - song:<layout instrument id>:<song chart id> — playing a published song chart whole, as
+//     written, on an instrument of the layout: its chords on guitar, their roots on bass.
 //
 // In these keys, <key> is a major key spelled as one of C Db D Eb E F F# G Ab A Bb B;
 // <numeral> is one of I ii iii IV V vi viio (viio is vii°); <chord> is a root spelled the
 // same way, followed by m (minor), dim (diminished), 7 (dominant seventh) or nothing
-// (major); <note> is spelled with sharps; <progression key> is a key of the progression
-// catalog.
+// (major); <progression key> is a key of the progression catalog.
 //
 // Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
 // grader, and its golden cases.
@@ -7031,9 +7302,10 @@ type PracticeOverview struct {
 // practised, is not due, and is not yet fluent; new = it has not been practised yet;
 // warm_up = something already known, played first with the instrument in hand, below the
 // student's edge and outside the evidence: its takes are not sent as practice.item_answered;
-// application = one play-along at the end of a session of 10 minutes or more, applying a
-// skill the session's focus items practised (or, with none, another skill of the student's
-// paths), and evidence like any other take; review_ahead = a known item coming due within the
+// application = one play-along or song at the end of a session of 10 minutes or more,
+// applying a skill the session's focus items practised (or, with none, another skill of the
+// student's paths), and evidence like any other take; it is a song when one of the session's
+// subjects is at the use rung and a song practises it; review_ahead = a known item coming due within the
 // week, reviewed before it falls due, when nothing else is due; stretch = an unseen item of a
 // node the student is ready to start, the skills of their paths first, when nothing else is due
 // or past the new share.
@@ -7044,12 +7316,13 @@ type PracticePickReason string
 // play_in_time = play it at a tempo; move = play it in another key or place; target = aim at it
 // while the music moves; use = play it in a piece of music. A drill template has one rung;
 // a play-along and a chord change are play_in_time, a single self-rated chord is play_clean,
-// and a song chart item is use.
+// a progression key tour is move, and a song is use.
 type PracticeRung string
 
 // PracticeSessionItem One item of a composed session, with what the client needs to present it. Exactly
 // one of fretboard_cell, exercise, play_along, diagram_shape, generated_choice,
-// chord_voicing, chord_change, root_fifth and root_change is present, matching kind:
+// chord_voicing, chord_change, root_fifth, root_change, progression_keys, guide_tone and
+// song is present, matching kind:
 // generated_choice for a diatonic chord, a chord function, a chart progression, a heard
 // chord or a heard progression.
 type PracticeSessionItem struct {
@@ -7115,14 +7388,21 @@ type PracticeSessionItem struct {
 	Exercise *Exercise `json:"exercise,omitempty"`
 
 	// FretboardCell Present when kind is fretboard_cell. The drill is the way of asking the cell has
-	// the fewer right answers so far, name_the_note on a tie. The fret window is the one
+	// the fewest right answers so far: name_the_note, then find_the_note, then
+	// find_every_instance on a tie. No two cells of the same layout and note are asked
+	// find_every_instance in one plan; the second is asked the way it has the next fewest
+	// right answers. A cell asked
+	// find_every_instance is answered under its own key, and its note is the one to find
+	// everywhere in the window. The fret window is the one
 	// the composer picked for this drill and layout: the one holding the most of the
 	// drill's due cells, then weak, then new, the one nearest the nut on a tie. When the
 	// student has started an odd number of sessions in the head so far and the drill has
 	// new cells, it is instead the one holding the most new cells.
 	FretboardCell *struct {
 		// Drill How a fretboard cell is asked. name_the_note = the cell is shown and the student names
-		// its note; find_the_note = the note and string are named and the student taps the cell.
+		// its note; find_the_note = the note and string are named and the student taps the cell;
+		// find_every_instance = the cell's note is named and the student taps every place of it in
+		// the fret window, on a board with nothing marked and without being told how many there are.
 		Drill FretboardDrill `json:"drill"`
 
 		// Fret The cell's fret; 0 is the open string.
@@ -7152,13 +7432,23 @@ type PracticeSessionItem struct {
 	// the playback the client sounds before the options can be picked.
 	GeneratedChoice *GeneratedChoiceQuestion `json:"generated_choice,omitempty"`
 
+	// GuideTone A progression played once in a key, one chord a bar after a bar of count-in, while the
+	// student taps the asked tone of each chord on an empty fretboard as it sounds (kind
+	// guide_tone), graded by timed_taps.v1. It names the chords, the key and the tone, never the
+	// notes to tap or their places. The item ends after a right take or after takes takes, all in
+	// music_key; each take is answered with a timed_taps response sending music_key, tone, the
+	// tempo and note value it played at, and the taps.
+	GuideTone *PlannedGuideTone `json:"guide_tone,omitempty"`
+
 	// ItemKey Stable, readable identifier of a practice item: the smallest thing whose knowledge is
 	// tracked. Every answer, rating and review points at one. The prefix is the item kind:
 	//
 	// - fretboard_cell:<layout instrument id>:<string>:<fret> — a generated fretboard cell.
 	//   The instrument is the one whose fretboard layout the cell belongs to, so instruments
 	//   that share a layout share the cell. Strings are numbered from 1, the highest-pitched;
-	//   fret 0 is the open string.
+	//   fret 0 is the open string. A cell asked to find every place of its note in a fret
+	//   window is answered under its own key, and that answer is graded on every cell of the
+	//   window.
 	// - exercise:<exercise id> — an authored exercise.
 	// - play_along:<diagram id> — playing a diagram along with its playback, at a tempo.
 	// - chord_change:<from diagram id>:<to diagram id> — changing between two chord diagrams.
@@ -7185,14 +7475,16 @@ type PracticeSessionItem struct {
 	// - guide_tone:<layout instrument id>:<progression key> — tapping a chord tone of each chord
 	//   of a progression in time with its playback. The key, the tone and the tempo are picked
 	//   each time.
-	// - fretboard_note:<layout instrument id>:<note> — finding every place of a note within a
-	//   fret window. The window is picked each time.
+	// - progression_keys:<layout instrument id>:<progression key> — playing a progression along
+	//   with its backing, key after key around the cycle of fourths. The key is the tour's next
+	//   one, sent back with each take.
+	// - song:<layout instrument id>:<song chart id> — playing a published song chart whole, as
+	//   written, on an instrument of the layout: its chords on guitar, their roots on bass.
 	//
 	// In these keys, <key> is a major key spelled as one of C Db D Eb E F F# G Ab A Bb B;
 	// <numeral> is one of I ii iii IV V vi viio (viio is vii°); <chord> is a root spelled the
 	// same way, followed by m (minor), dim (diminished), 7 (dominant seventh) or nothing
-	// (major); <note> is spelled with sharps; <progression key> is a key of the progression
-	// catalog.
+	// (major); <progression key> is a key of the progression catalog.
 	//
 	// Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
 	// grader, and its golden cases.
@@ -7244,14 +7536,26 @@ type PracticeSessionItem struct {
 		TargetTempoBpm int `json:"target_tempo_bpm"`
 	} `json:"play_along,omitempty"`
 
+	// ProgressionKeys A progression played along with, key after key around the cycle of fourths (kind
+	// progression_keys), self-rated take by take. The plan lists the whole tour, so the client
+	// moves to the next key without asking again: after a clean take at an effective speed at
+	// or above tour_tempo_bpm, the next take is in the next key of keys not yet clean, at the
+	// same tempo; after an almost or a struggle it stays in the key, and a struggle lowers the
+	// tempo by 5 BPM, never below min_tempo_bpm. When every key is clean, the tour starts again
+	// at the first key, 5 BPM faster, never past target_tempo_bpm by itself. The student may
+	// choose any tempo for a take; a clean take slower than the tour tempo doesn't make its key
+	// clean.
+	ProgressionKeys *PlannedProgressionKeys `json:"progression_keys,omitempty"`
+
 	// Reason Why the session composer put an item in a session, shown to the student.
 	// teacher_suggested = a teacher asked for it; due = its review is due; weak = it has been
 	// practised, is not due, and is not yet fluent; new = it has not been practised yet;
 	// warm_up = something already known, played first with the instrument in hand, below the
 	// student's edge and outside the evidence: its takes are not sent as practice.item_answered;
-	// application = one play-along at the end of a session of 10 minutes or more, applying a
-	// skill the session's focus items practised (or, with none, another skill of the student's
-	// paths), and evidence like any other take; review_ahead = a known item coming due within the
+	// application = one play-along or song at the end of a session of 10 minutes or more,
+	// applying a skill the session's focus items practised (or, with none, another skill of the
+	// student's paths), and evidence like any other take; it is a song when one of the session's
+	// subjects is at the use rung and a song practises it; review_ahead = a known item coming due within the
 	// week, reviewed before it falls due, when nothing else is due; stretch = an unseen item of a
 	// node the student is ready to start, the skills of their paths first, when nothing else is due
 	// or past the new share.
@@ -7270,8 +7574,14 @@ type PracticeSessionItem struct {
 	// play_in_time = play it at a tempo; move = play it in another key or place; target = aim at it
 	// while the music moves; use = play it in a piece of music. A drill template has one rung;
 	// a play-along and a chord change are play_in_time, a single self-rated chord is play_clean,
-	// and a song chart item is use.
+	// a progression key tour is move, and a song is use.
 	Rung PracticeRung `json:"rung"`
+
+	// Song A published song chart to play whole on the instrument in hand, then rate (kind song). It is
+	// always a session's application ending. The chart is played as written, in its concert key
+	// with its capo, never transposed; the client loads it as learners read it. The take is rated
+	// by the student and has no measure.
+	Song *PlannedSong `json:"song,omitempty"`
 }
 
 // PracticeSessionPlan A composed practice session. Not stored: it exists only in this response and in the
@@ -7306,8 +7616,9 @@ type PracticeSessionPlan struct {
 	// PracticeSessionId New identifier for this session, carried by every practice.* event it produces.
 	PracticeSessionId openapi_types.UUID `json:"practice_session_id"`
 
-	// TapCheckDue True when the plan has a fretboard cell or a diagram shape and the student has
-	// done no tap check in the last 30 days, or never. The client then offers the tap
+	// TapCheckDue True when the plan has a timed fretboard drill (a fretboard cell named or found,
+	// or a diagram shape) and the student has done no tap check in the last 30 days, or
+	// never. A cell asked to find every instance isn't timed, so it needs none. The client then offers the tap
 	// check before the first item; the student may skip it, and their answers are then
 	// judged on the whole latency.
 	TapCheckDue bool `json:"tap_check_due"`
@@ -7320,7 +7631,7 @@ type PracticeSubject struct {
 	// play_in_time = play it at a tempo; move = play it in another key or place; target = aim at it
 	// while the music moves; use = play it in a piece of music. A drill template has one rung;
 	// a play-along and a chord change are play_in_time, a single self-rated chord is play_clean,
-	// and a song chart item is use.
+	// a progression key tour is move, and a song is use.
 	CurrentRung PracticeRung `json:"current_rung"`
 
 	// ItemCount Items of the node and its part_of subtree that the session could pick.
@@ -7970,6 +8281,20 @@ type SongChartDraft struct {
 	// Title The song's title as shown to learners.
 	Title string `json:"title"`
 
+	// UnplayedProgressions The sections' tagged progressions the section doesn't play, by
+	// section in document order, then in the order they were tagged;
+	// empty when every section plays its tags. A progression is played
+	// by a section when its chords appear in a row in that section, in
+	// the chart's concert key: the section's chords as they sound
+	// (each written chord moved up by the capo), each counted by its
+	// root and triad (major, minor or diminished), N.C. skipped and a
+	// chord repeated in a row counted once, against the progression's
+	// numerals spelled in the concert key, a dominant seventh counting
+	// as major and a repeated numeral counted once. The chords of
+	// another section never count. With no stated major concert key,
+	// every tag is unplayed. Any entry blocks publication.
+	UnplayedProgressions []SongChartUnplayedProgression `json:"unplayed_progressions"`
+
 	// UpdatedAt When the draft was last changed.
 	UpdatedAt time.Time `json:"updated_at"`
 
@@ -8053,11 +8378,25 @@ type SongChartNotPublishableError struct {
 	// Reasons rights_not_confirmed: no admin has confirmed the song's rights
 	// were checked. unresolved_chords: at least one anchor has a
 	// warning that blocks publication (see anchor_warnings).
+	// progressions_not_played: a section doesn't play at least one
+	// progression it is tagged with (see unplayed_progressions).
 	Reasons []SongChartNotPublishableErrorReasons `json:"reasons"`
+
+	// UnplayedProgressions The sections' tags the section doesn't play; empty unless reasons has progressions_not_played.
+	UnplayedProgressions []SongChartUnplayedProgression `json:"unplayed_progressions"`
 }
 
 // SongChartNotPublishableErrorReasons defines model for SongChartNotPublishableError.Reasons.
 type SongChartNotPublishableErrorReasons string
+
+// SongChartProgressionKeys The progressions a section plays, by their key in the progression
+// catalog (e.g. "I-IV-V-I"), as its author tagged them. A chart with
+// a tagged section is practised as a song on those progressions'
+// knowledge nodes, played whole; an untagged chart never is. On
+// input, absent means none, and a key the catalog doesn't have is
+// refused. The server always writes it, empty for an untagged
+// section.
+type SongChartProgressionKeys = []string
 
 // SongChartRevision A published revision of a song chart. A revision never changes: a
 // correction is published as a new revision.
@@ -8082,6 +8421,10 @@ type SongChartRevision struct {
 
 	// Language The Language.code of this revision's lyrics.
 	Language string `json:"language"`
+
+	// ProgressionKeys Every progression the revision's sections are tagged with, each
+	// once, in document order: read from the body, never written.
+	ProgressionKeys []string `json:"progression_keys"`
 
 	// PublishedAt When the revision was published.
 	PublishedAt time.Time `json:"published_at"`
@@ -8159,6 +8502,15 @@ type SongChartSection struct {
 		// Label The section's heading as the author wrote it (e.g. "Verse 2",
 		// "Refrão"); null shows no heading.
 		Label *string `json:"label"`
+
+		// ProgressionKeys The progressions a section plays, by their key in the progression
+		// catalog (e.g. "I-IV-V-I"), as its author tagged them. A chart with
+		// a tagged section is practised as a song on those progressions'
+		// knowledge nodes, played whole; an untagged chart never is. On
+		// input, absent means none, and a key the catalog doesn't have is
+		// refused. The server always writes it, empty for an untagged
+		// section.
+		ProgressionKeys *SongChartProgressionKeys `json:"progression_keys,omitempty"`
 	} `json:"attrs"`
 
 	// Content The section's lines and comments, in order.
@@ -8241,6 +8593,15 @@ type SongChartText struct {
 
 // SongChartTextType Discriminates this node as text.
 type SongChartTextType string
+
+// SongChartUnplayedProgression A progression a section is tagged with but doesn't play.
+type SongChartUnplayedProgression struct {
+	// ProgressionKey The tagged progression, by its key in the progression catalog.
+	ProgressionKey string `json:"progression_key"`
+
+	// SectionIndex The section, numbered from 0 in document order.
+	SectionIndex int `json:"section_index"`
+}
 
 // SongChartWithdrawal Who withdrew a song chart, when and why.
 type SongChartWithdrawal struct {

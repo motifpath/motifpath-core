@@ -407,8 +407,9 @@ func (h *Handler) toGeneratedSongChart(ctx context.Context, chart domain.SongCha
 			Title: d.Title, Artist: d.Artist, Language: d.Language, ConcertKey: d.ConcertKey,
 			CapoFret: d.CapoFret, TempoBpm: d.TempoBPM, TimeSignature: toGeneratedTimeSignature(d.TimeSignature),
 			RightsConfirmed: d.RightsConfirmation != nil, Body: body,
-			Warnings:  toGeneratedAnchorWarnings(d.Warnings),
-			UpdatedBy: names.ref(d.UpdatedBy), UpdatedAt: d.UpdatedAt,
+			Warnings:             toGeneratedAnchorWarnings(d.Warnings),
+			UnplayedProgressions: toGeneratedUnplayedProgressions(d.UnplayedProgressions),
+			UpdatedBy:            names.ref(d.UpdatedBy), UpdatedAt: d.UpdatedAt,
 		},
 	}
 	if c := d.RightsConfirmation; c != nil {
@@ -465,8 +466,19 @@ func toGeneratedNotPublishable(e *domain.SongChartNotPublishableError) generated
 	}
 	return generated.SongChartNotPublishableError{
 		Message: "the song chart can't be published as it stands", Reasons: reasons,
-		AnchorWarnings: toGeneratedAnchorWarnings(e.AnchorWarnings),
+		AnchorWarnings:       toGeneratedAnchorWarnings(e.AnchorWarnings),
+		UnplayedProgressions: toGeneratedUnplayedProgressions(e.UnplayedProgressions),
 	}
+}
+
+// toGeneratedUnplayedProgressions lists the unplayed tags, empty and never
+// null when there are none.
+func toGeneratedUnplayedProgressions(tags []domain.SectionProgression) []generated.SongChartUnplayedProgression {
+	out := make([]generated.SongChartUnplayedProgression, len(tags))
+	for i, t := range tags {
+		out[i] = generated.SongChartUnplayedProgression{SectionIndex: t.SectionIndex, ProgressionKey: t.ProgressionKey}
+	}
+	return out
 }
 
 func toGeneratedSongChartRevision(r domain.SongChartRevision, names userNames) (generated.SongChartRevision, error) {
@@ -478,7 +490,7 @@ func toGeneratedSongChartRevision(r domain.SongChartRevision, names userNames) (
 		SongChartId: mustUUID(r.SongChartID), RevisionNumber: r.Number,
 		Title: r.Title, Artist: r.Artist, Language: r.Language, ConcertKey: r.ConcertKey,
 		CapoFret: r.CapoFret, TempoBpm: r.TempoBPM, TimeSignature: toGeneratedTimeSignature(r.TimeSignature),
-		TuningFingerprint: r.TuningFingerprint, Body: body,
+		TuningFingerprint: r.TuningFingerprint, ProgressionKeys: nonNilStrings(domain.ProgressionKeysOf(r.SectionProgressions)), Body: body,
 		RightsConfirmation: generated.RightsConfirmation{ConfirmedBy: names.ref(r.RightsConfirmation.ConfirmedBy), ConfirmedAt: r.RightsConfirmation.ConfirmedAt},
 		PublishedBy:        names.ref(r.PublishedBy), PublishedAt: r.PublishedAt,
 	}, nil

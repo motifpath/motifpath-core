@@ -1190,9 +1190,10 @@ type GeneratedChoiceResponse struct {
 	// asked by ear, from the moment its sound started.
 	LatencyMs int `json:"latency_ms"`
 
-	// MusicKey A major key. In a response, the key a question was asked in when its item doesn't fix one:
-	// a chart progression, a heard chord, a heard progression or a guide tone; absent in a
-	// response to any other item. A planned question always names its key.
+	// MusicKey A major key. In a response, the key a question was asked in or a take was played in when
+	// its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
+	// tone or a progression key tour; absent in a response to any other item. A planned question
+	// always names its key.
 	MusicKey *MusicKey `json:"music_key,omitempty"`
 
 	// Options The options as shown, in the order shown. What an option is depends on the way: a
@@ -1400,9 +1401,11 @@ type LoggedEventPage struct {
 	Total int `json:"total"`
 }
 
-// MultiTapResponse Answer to a note asked within a fret window: the student taps every place of the note in
-// the window, then says they are done. It is right only when the places tapped are exactly
-// the note's places in the window.
+// MultiTapResponse Answer to a fretboard cell asked to find every instance: the cell's note is named, and the
+// student taps every place of it in the fret window, then says they are done. It is graded on
+// every cell it covers: each place of the note in the window is right when tapped and wrong
+// when missed, and each other place tapped is wrong. Its time covers several taps, so it
+// counts for accuracy only, never for fluency.
 type MultiTapResponse struct {
 	// Cells The places tapped, in the order tapped. A tap taken back is not sent.
 	Cells []struct {
@@ -1431,9 +1434,10 @@ type MultiTapResponse struct {
 // MultiTapResponseResponseType Discriminator. The student tapped every place of the note they found.
 type MultiTapResponseResponseType string
 
-// MusicKey A major key. In a response, the key a question was asked in when its item doesn't fix one:
-// a chart progression, a heard chord, a heard progression or a guide tone; absent in a
-// response to any other item. A planned question always names its key.
+// MusicKey A major key. In a response, the key a question was asked in or a take was played in when
+// its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
+// tone or a progression key tour; absent in a response to any other item. A planned question
+// always names its key.
 type MusicKey string
 
 // NameTheNoteResponse Answer to a fretboard cell shown on the fretboard: the student names its note, picking it
@@ -1555,7 +1559,9 @@ type PlannedPracticeItem struct {
 	// - fretboard_cell:<layout instrument id>:<string>:<fret> — a generated fretboard cell.
 	//   The instrument is the one whose fretboard layout the cell belongs to, so instruments
 	//   that share a layout share the cell. Strings are numbered from 1, the highest-pitched;
-	//   fret 0 is the open string.
+	//   fret 0 is the open string. A cell asked to find every place of its note in a fret
+	//   window is answered under its own key, and that answer is graded on every cell of the
+	//   window.
 	// - exercise:<exercise id> — an authored exercise.
 	// - play_along:<diagram id> — playing a diagram along with its playback, at a tempo.
 	// - chord_change:<from diagram id>:<to diagram id> — changing between two chord diagrams.
@@ -1582,14 +1588,16 @@ type PlannedPracticeItem struct {
 	// - guide_tone:<layout instrument id>:<progression key> — tapping a chord tone of each chord
 	//   of a progression in time with its playback. The key, the tone and the tempo are picked
 	//   each time.
-	// - fretboard_note:<layout instrument id>:<note> — finding every place of a note within a
-	//   fret window. The window is picked each time.
+	// - progression_keys:<layout instrument id>:<progression key> — playing a progression along
+	//   with its backing, key after key around the cycle of fourths. The key is the tour's next
+	//   one, sent back with each take.
+	// - song:<layout instrument id>:<song chart id> — playing a published song chart whole, as
+	//   written, on an instrument of the layout: its chords on guitar, their roots on bass.
 	//
 	// In these keys, <key> is a major key spelled as one of C Db D Eb E F F# G Ab A Bb B;
 	// <numeral> is one of I ii iii IV V vi viio (viio is vii°); <chord> is a root spelled the
 	// same way, followed by m (minor), dim (diminished), 7 (dominant seventh) or nothing
-	// (major); <note> is spelled with sharps; <progression key> is a key of the progression
-	// catalog.
+	// (major); <progression key> is a key of the progression catalog.
 	//
 	// Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
 	// grader, and its golden cases.
@@ -1600,9 +1608,10 @@ type PlannedPracticeItem struct {
 	// practised, is not due, and is not yet fluent; new = it has not been practised yet;
 	// warm_up = something already known, played first with the instrument in hand, below the
 	// student's edge and outside the evidence: its takes are not sent as practice.item_answered;
-	// application = one play-along at the end of a session of 10 minutes or more, applying a
-	// skill the session's focus items practised (or, with none, another skill of the student's
-	// paths), and evidence like any other take; review_ahead = a known item coming due within the
+	// application = one play-along or song at the end of a session of 10 minutes or more,
+	// applying a skill the session's focus items practised (or, with none, another skill of the
+	// student's paths), and evidence like any other take; it is a song when one of the session's
+	// subjects is at the use rung and a song practises it; review_ahead = a known item coming due within the
 	// week, reviewed before it falls due, when nothing else is due; stretch = an unseen item of a
 	// node the student is ready to start, the skills of their paths first, when nothing else is due
 	// or past the new share.
@@ -1623,7 +1632,9 @@ type PracticeItemAnsweredEvent struct {
 	// - fretboard_cell:<layout instrument id>:<string>:<fret> — a generated fretboard cell.
 	//   The instrument is the one whose fretboard layout the cell belongs to, so instruments
 	//   that share a layout share the cell. Strings are numbered from 1, the highest-pitched;
-	//   fret 0 is the open string.
+	//   fret 0 is the open string. A cell asked to find every place of its note in a fret
+	//   window is answered under its own key, and that answer is graded on every cell of the
+	//   window.
 	// - exercise:<exercise id> — an authored exercise.
 	// - play_along:<diagram id> — playing a diagram along with its playback, at a tempo.
 	// - chord_change:<from diagram id>:<to diagram id> — changing between two chord diagrams.
@@ -1650,14 +1661,16 @@ type PracticeItemAnsweredEvent struct {
 	// - guide_tone:<layout instrument id>:<progression key> — tapping a chord tone of each chord
 	//   of a progression in time with its playback. The key, the tone and the tempo are picked
 	//   each time.
-	// - fretboard_note:<layout instrument id>:<note> — finding every place of a note within a
-	//   fret window. The window is picked each time.
+	// - progression_keys:<layout instrument id>:<progression key> — playing a progression along
+	//   with its backing, key after key around the cycle of fourths. The key is the tour's next
+	//   one, sent back with each take.
+	// - song:<layout instrument id>:<song chart id> — playing a published song chart whole, as
+	//   written, on an instrument of the layout: its chords on guitar, their roots on bass.
 	//
 	// In these keys, <key> is a major key spelled as one of C Db D Eb E F F# G Ab A Bb B;
 	// <numeral> is one of I ii iii IV V vi viio (viio is vii°); <chord> is a root spelled the
 	// same way, followed by m (minor), dim (diminished), 7 (dominant seventh) or nothing
-	// (major); <note> is spelled with sharps; <progression key> is a key of the progression
-	// catalog.
+	// (major); <progression key> is a key of the progression catalog.
 	//
 	// Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
 	// grader, and its golden cases.
@@ -1717,7 +1730,9 @@ type PracticeItemAnsweredEvent1 = interface{}
 //   - fretboard_cell:<layout instrument id>:<string>:<fret> — a generated fretboard cell.
 //     The instrument is the one whose fretboard layout the cell belongs to, so instruments
 //     that share a layout share the cell. Strings are numbered from 1, the highest-pitched;
-//     fret 0 is the open string.
+//     fret 0 is the open string. A cell asked to find every place of its note in a fret
+//     window is answered under its own key, and that answer is graded on every cell of the
+//     window.
 //
 //   - exercise:<exercise id> — an authored exercise.
 //
@@ -1757,14 +1772,17 @@ type PracticeItemAnsweredEvent1 = interface{}
 //     of a progression in time with its playback. The key, the tone and the tempo are picked
 //     each time.
 //
-//   - fretboard_note:<layout instrument id>:<note> — finding every place of a note within a
-//     fret window. The window is picked each time.
+//   - progression_keys:<layout instrument id>:<progression key> — playing a progression along
+//     with its backing, key after key around the cycle of fourths. The key is the tour's next
+//     one, sent back with each take.
+//
+//   - song:<layout instrument id>:<song chart id> — playing a published song chart whole, as
+//     written, on an instrument of the layout: its chords on guitar, their roots on bass.
 //
 // In these keys, <key> is a major key spelled as one of C Db D Eb E F F# G Ab A Bb B;
 // <numeral> is one of I ii iii IV V vi viio (viio is vii°); <chord> is a root spelled the
 // same way, followed by m (minor), dim (diminished), 7 (dominant seventh) or nothing
-// (major); <note> is spelled with sharps; <progression key> is a key of the progression
-// catalog.
+// (major); <progression key> is a key of the progression catalog.
 //
 // Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
 // grader, and its golden cases.
@@ -1775,9 +1793,10 @@ type PracticeItemKey = string
 // practised, is not due, and is not yet fluent; new = it has not been practised yet;
 // warm_up = something already known, played first with the instrument in hand, below the
 // student's edge and outside the evidence: its takes are not sent as practice.item_answered;
-// application = one play-along at the end of a session of 10 minutes or more, applying a
-// skill the session's focus items practised (or, with none, another skill of the student's
-// paths), and evidence like any other take; review_ahead = a known item coming due within the
+// application = one play-along or song at the end of a session of 10 minutes or more,
+// applying a skill the session's focus items practised (or, with none, another skill of the
+// student's paths), and evidence like any other take; it is a song when one of the session's
+// subjects is at the use rung and a song practises it; review_ahead = a known item coming due within the
 // week, reviewed before it falls due, when nothing else is due; stretch = an unseen item of a
 // node the student is ready to start, the skills of their paths first, when nothing else is due
 // or past the new share.
@@ -1941,15 +1960,23 @@ type ResolvePublishOutboxEntryRequest struct {
 }
 
 // SelfRatingResponse The student's own rating of a take they played: a play-along at a tempo, chord changes
-// counted over a minute, or one chord played cleanly. A play-along rating carries tempo_bpm
-// and no changes_per_minute, and may carry the note_value it was played at (quarters when
-// absent); a chord-change or root-change take carries both tempo_bpm and changes_per_minute,
-// and its rating is derived from them (see rating); a single chord voicing or a chord's root
-// and fifth (play clean) carries neither.
+// counted over a minute, one chord played cleanly, a progression in one key of its tour, or a
+// whole song. A
+// play-along rating carries tempo_bpm and no changes_per_minute, and may carry the note_value
+// it was played at (quarters when absent); a progression key tour take carries the same and
+// the music_key it was played in; a chord-change or root-change take carries both tempo_bpm and changes_per_minute,
+// and its rating is derived from them (see rating); a single chord voicing, a chord's root
+// and fifth (play clean) or a song carries neither.
 type SelfRatingResponse struct {
 	// ChangesPerMinute The number of chord changes in one minute that rang clean, counted by the student. Present
 	// for a chord change and a root change, and never more than tempo_bpm.
 	ChangesPerMinute *int `json:"changes_per_minute,omitempty"`
+
+	// MusicKey A major key. In a response, the key a question was asked in or a take was played in when
+	// its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
+	// tone or a progression key tour; absent in a response to any other item. A planned question
+	// always names its key.
+	MusicKey *MusicKey `json:"music_key,omitempty"`
 
 	// NoteValue The note value a play-along take was played at: a speed factor on the music as written,
 	// with the click staying on the beat. halves = x0.5, quarters = x1 (as written), eighths = x2,
@@ -1971,7 +1998,8 @@ type SelfRatingResponse struct {
 	ResponseType SelfRatingResponseResponseType `json:"response_type"`
 
 	// TempoBpm The tempo of the take, in beats per minute, as played: the click's tempo. Present for a
-	// play-along, and for a chord change or a root change, where the student changes on every
+	// play-along and a progression key tour take, and for a chord change or a root change,
+	// where the student changes on every
 	// beat, so it is also the number of changes the minute asked for.
 	TempoBpm *int `json:"tempo_bpm,omitempty"`
 }
@@ -2136,13 +2164,23 @@ type TimedTap struct {
 
 // TimedTapsResponse A take of tapping a chord tone of each chord of a progression in time with its playback,
 // on the fretboard of the item's layout. The progression is played in the key and at the
-// tempo sent, four beats to a bar, one chord per bar. Each tap is kept with the time it
-// was made, so every bar can be graded.
+// tempo and note value sent, one chord per bar of four beats: in quarters a bar lasts
+// 240000 / tempo_bpm milliseconds, and a faster note value shortens it by its speed factor.
+// Each tap is kept with the time it was made, so every bar can be graded.
 type TimedTapsResponse struct {
-	// MusicKey A major key. In a response, the key a question was asked in when its item doesn't fix one:
-	// a chart progression, a heard chord, a heard progression or a guide tone; absent in a
-	// response to any other item. A planned question always names its key.
+	// MusicKey A major key. In a response, the key a question was asked in or a take was played in when
+	// its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
+	// tone or a progression key tour; absent in a response to any other item. A planned question
+	// always names its key.
 	MusicKey MusicKey `json:"music_key"`
+
+	// NoteValue The note value a play-along take was played at: a speed factor on the music as written,
+	// with the click staying on the beat. halves = x0.5, quarters = x1 (as written), eighths = x2,
+	// triplets = x3, sixteenths = x4, quintuplets = x5, sextuplets = x6, thirty_seconds = x8.
+	// A take's effective speed is its tempo_bpm times the factor, in quarter-note beats per
+	// minute: 80 BPM in eighths is as fast as 160 BPM in quarters. Tempos of the same item are
+	// compared at effective speed. Absent means quarters. Present only with a tempo_bpm.
+	NoteValue *NoteValue `json:"note_value,omitempty"`
 
 	// ResponseType Discriminator. The student tapped along with a progression's playback.
 	ResponseType TimedTapsResponseResponseType `json:"response_type"`

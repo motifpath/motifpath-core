@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"slices"
 	"time"
 	"unicode/utf8"
 
@@ -15,12 +17,24 @@ import (
 // chords anchored to the words they fall on. Only admins author and publish
 // charts; any signed-in user reads a published one.
 type SongChartService struct {
-	charts    ports.SongChartRepository
-	chords    ports.ChordCatalogRepository
-	diagrams  ports.DiagramRepository
-	languages ports.LanguageRepository
-	newID     func() string
-	now       func() time.Time
+	charts       ports.SongChartRepository
+	chords       ports.ChordCatalogRepository
+	diagrams     ports.DiagramRepository
+	languages    ports.LanguageRepository
+	progressions ports.ProgressionRepository
+	refs         ports.PracticeReferenceWriter
+	// catalogs is invalidated on a withdrawal; nil invalidates nothing.
+	catalogs SubjectCatalogInvalidator
+	newID    func() string
+	now      func() time.Time
+}
+
+// WithCatalogInvalidation makes a withdrawal invalidate the practice subject
+// catalog through catalogs: a withdrawn chart is no longer a song to
+// practise, and a withdrawal writes no practice reference to invalidate it.
+func (s *SongChartService) WithCatalogInvalidation(catalogs SubjectCatalogInvalidator) *SongChartService {
+	s.catalogs = catalogs
+	return s
 }
 
 func NewSongChartService(
@@ -28,10 +42,12 @@ func NewSongChartService(
 	chords ports.ChordCatalogRepository,
 	diagrams ports.DiagramRepository,
 	languages ports.LanguageRepository,
+	progressions ports.ProgressionRepository,
+	refs ports.PracticeReferenceWriter,
 	newID func() string,
 	now func() time.Time,
 ) *SongChartService {
-	return &SongChartService{charts: charts, chords: chords, diagrams: diagrams, languages: languages, newID: newID, now: now}
+	return &SongChartService{charts: charts, chords: chords, diagrams: diagrams, languages: languages, progressions: progressions, refs: refs, newID: newID, now: now}
 }
 
 // SongChartInput is what an author writes in a chart's draft. Anchors'
@@ -45,7 +61,8 @@ type SongChartInput struct {
 	TempoBPM        *int
 	TimeSignature   *domain.TimeSignature
 	RightsConfirmed bool
-	Body            domain.SongChartDocument
+	// Body holds the sections, each tagged with the progressions it plays.
+	Body domain.SongChartDocument
 }
 
 // LearnerSongChart is a chart as a learner reads it: the lyrics with their
@@ -112,8 +129,9 @@ func (s *SongChartService) UpdateDraft(ctx context.Context, caller domain.User, 
 	return chart, nil
 }
 
-// buildDraft validates in, resolves its anchors and carries the previous
-// rights confirmation over, so confirming again doesn't change who did.
+// buildDraft validates in, resolves its anchors, checks the progressions its
+// sections are tagged with and carries the previous rights confirmation over, so
+// confirming again doesn't change who did.
 func (s *SongChartService) buildDraft(ctx context.Context, caller domain.User, confirmation *domain.RightsConfirmation, in SongChartInput, now time.Time) (domain.SongChartDraft, error) {
 	draft := domain.SongChartDraft{
 		Title: in.Title, Artist: in.Artist, Language: in.Language, ConcertKey: in.ConcertKey,
@@ -133,6 +151,17 @@ func (s *SongChartService) buildDraft(ctx context.Context, caller domain.User, c
 		return domain.SongChartDraft{}, err
 	}
 	draft.Body, draft.Warnings = body, warnings
+	catalog, err := s.progressions.List(ctx)
+	if err != nil {
+		return domain.SongChartDraft{}, err
+	}
+	for _, tag := range draft.Body.SectionProgressions() {
+		if !slices.ContainsFunc(catalog, func(p domain.Progression) bool { return p.Key == tag.ProgressionKey }) {
+			field := fmt.Sprintf("body/content/%d/attrs/progression_keys", tag.SectionIndex)
+			return domain.SongChartDraft{}, domain.NewValidationError(field, fmt.Sprintf("%q is not a progression of the catalog", tag.ProgressionKey))
+		}
+	}
+	draft.UnplayedProgressions = domain.UnplayedProgressions(draft.Body, draft.ConcertKey, draft.CapoFret, catalog)
 	draft.SetRightsConfirmed(in.RightsConfirmed, caller.ID, now)
 	return draft, nil
 }
@@ -175,7 +204,7 @@ func canList(caller domain.User, filter domain.SongChartFilter) error {
 
 // Publish publishes the draft as the chart's next revision. Its chords are
 // resolved again first, since the catalog may have changed since the draft
-// was saved.
+// was saved, and its progressions are checked again against them.
 func (s *SongChartService) Publish(ctx context.Context, caller domain.User, id string) (domain.SongChartRevision, error) {
 	if err := requireAdmin(caller); err != nil {
 		return domain.SongChartRevision{}, err
@@ -189,6 +218,12 @@ func (s *SongChartService) Publish(ctx context.Context, caller domain.User, id s
 		return domain.SongChartRevision{}, err
 	}
 	chart.Draft.Body, chart.Draft.Warnings = body, warnings
+	catalog, err := s.progressions.List(ctx)
+	if err != nil {
+		return domain.SongChartRevision{}, err
+	}
+	d := chart.Draft
+	chart.Draft.UnplayedProgressions = domain.UnplayedProgressions(d.Body, d.ConcertKey, d.CapoFret, catalog)
 	published, rev, err := chart.Publish(caller.ID, s.now())
 	if err != nil {
 		return domain.SongChartRevision{}, err
@@ -196,6 +231,7 @@ func (s *SongChartService) Publish(ctx context.Context, caller domain.User, id s
 	if err := s.charts.Publish(ctx, published, rev); err != nil {
 		return domain.SongChartRevision{}, err
 	}
+	putSongChartReference(ctx, s.refs, id)
 	return rev, nil
 }
 
@@ -214,6 +250,9 @@ func (s *SongChartService) Withdraw(ctx context.Context, caller domain.User, id,
 	}
 	if err := s.charts.Save(ctx, withdrawn); err != nil {
 		return domain.SongChart{}, err
+	}
+	if s.catalogs != nil {
+		s.catalogs.InvalidateSubjectCatalogs(ctx)
 	}
 	return withdrawn, nil
 }

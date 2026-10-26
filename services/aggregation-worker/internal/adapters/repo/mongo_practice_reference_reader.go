@@ -60,6 +60,12 @@ type progressionReferenceDocument struct {
 	Bars []string `bson:"bars"`
 }
 
+// songChartReferenceDocument is a `practice_reference` document of kind
+// "song_chart": a song chart a song can be played from.
+type songChartReferenceDocument struct {
+	ID string `bson:"id"`
+}
+
 // drillThresholdDocument is a `practice_reference` document of kind
 // "drill_threshold": one version of a drill template's fluent time.
 type drillThresholdDocument struct {
@@ -174,6 +180,28 @@ func (r *MongoPracticeReferenceReader) Instruments(ctx context.Context, ids []st
 	}
 	for _, d := range docs {
 		found[d.ID] = domain.InstrumentReference{ID: d.ID, Tuning: d.Tuning}
+	}
+	return found, nil
+}
+
+func (r *MongoPracticeReferenceReader) SongCharts(ctx context.Context, ids []string) (map[string]domain.SongChartReference, error) {
+	found := map[string]domain.SongChartReference{}
+	if len(ids) == 0 {
+		return found, nil
+	}
+	cursor, err := r.collection.Find(ctx, bson.D{
+		{Key: "kind", Value: "song_chart"},
+		{Key: "id", Value: bson.D{{Key: "$in", Value: ids}}},
+	})
+	if err != nil {
+		return nil, err
+	}
+	var docs []songChartReferenceDocument
+	if err := cursor.All(ctx, &docs); err != nil {
+		return nil, err
+	}
+	for _, d := range docs {
+		found[d.ID] = domain.SongChartReference(d)
 	}
 	return found, nil
 }

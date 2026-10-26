@@ -173,11 +173,11 @@ func words(text string) []string {
 	})
 }
 
-// containsRun reports whether run appears in words, in order and side by
+// containsRun reports whether run appears in items, in order and side by
 // side.
-func containsRun(words, run []string) bool {
-	for i := 0; i+len(run) <= len(words); i++ {
-		if slices.Equal(words[i:i+len(run)], run) {
+func containsRun[T comparable](items, run []T) bool {
+	for i := 0; i+len(run) <= len(items); i++ {
+		if slices.Equal(items[i:i+len(run)], run) {
 			return true
 		}
 	}

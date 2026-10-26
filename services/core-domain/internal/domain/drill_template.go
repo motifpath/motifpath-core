@@ -93,7 +93,7 @@ func ItemRung(item PracticeSessionItem, templates map[string]DrillTemplate) Prac
 	if item.PlayAlong != nil {
 		return PracticeRungPlayInTime
 	}
-	if rung, rated := selfRatedChordKinds[item.Kind]; rated {
+	if rung, fixed := fixedRung(item.Kind); fixed {
 		return rung
 	}
 	if t, ok := templates[item.DrillTemplateKey()]; ok {

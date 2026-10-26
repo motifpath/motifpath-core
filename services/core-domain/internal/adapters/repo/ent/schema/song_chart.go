@@ -2,6 +2,7 @@ package schema
 
 import (
 	"entgo.io/ent"
+	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
@@ -29,6 +30,13 @@ type SongChartWarning struct {
 	LineIndex     int    `json:"line_index"`
 	WrittenSymbol string `json:"written_symbol"`
 	Kind          string `json:"kind"`
+}
+
+// SongChartSectionProgression is a progression a chart's section is tagged
+// with, stored in a JSON column.
+type SongChartSectionProgression struct {
+	SectionIndex   int    `json:"section_index"`
+	ProgressionKey string `json:"progression_key"`
 }
 
 func (SongChart) Fields() []ent.Field {
@@ -85,6 +93,13 @@ func (SongChart) Fields() []ent.Field {
 		field.Text("body"),
 
 		field.JSON("warnings", []SongChartWarning{}),
+		// unplayed_progressions are the sections' tags (kept in the body) their
+		// section didn't play when the draft was last saved; empty, never
+		// null, when every section plays its tags.
+		field.JSON("unplayed_progressions", []SongChartSectionProgression{}).
+			Default([]SongChartSectionProgression{}).
+			// The database default fills the rows stored before the column.
+			Annotations(entsql.Default("[]")),
 
 		field.UUID("updated_by", uuid.UUID{}),
 

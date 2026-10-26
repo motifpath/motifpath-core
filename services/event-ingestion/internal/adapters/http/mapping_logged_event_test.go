@@ -57,8 +57,8 @@ func TestLoggedEvent_ReturnsEachResponseAsSubmitted(t *testing.T) {
 		"generated choice":            {"heard_chord:vi", `{"response_type":"generated_choice","way":"cadence_then_chord","music_key":"C","options":["vi","IV"],"choice":"IV","latency_ms":3200,"audio_ms":2500}`},
 		"timed taps":                  {"guide_tone:" + testInstrumentID + ":ii-V-I", `{"response_type":"timed_taps","music_key":"C","tone":"3","tempo_bpm":120,"taps":[{"at_ms":0,"string":1,"fret":1}]}`},
 		"timed taps with none":        {"guide_tone:" + testInstrumentID + ":ii-V-I", `{"response_type":"timed_taps","music_key":"C","tone":"7","tempo_bpm":120,"taps":[]}`},
-		"multi tap at the nut":        {"fretboard_note:" + testInstrumentID + ":E", `{"response_type":"multi_tap","fret_window":{"from_fret":0},"cells":[{"string":1,"fret":0}],"latency_ms":4000}`},
-		"multi tap with none":         {"fretboard_note:" + testInstrumentID + ":E", `{"response_type":"multi_tap","fret_window":{"from_fret":3},"cells":[],"latency_ms":4000}`},
+		"multi tap at the nut":        {"fretboard_cell:" + testInstrumentID + ":6:0", `{"response_type":"multi_tap","fret_window":{"from_fret":0},"cells":[{"string":1,"fret":0}],"latency_ms":4000}`},
+		"multi tap with none":         {"fretboard_cell:" + testInstrumentID + ":6:0", `{"response_type":"multi_tap","fret_window":{"from_fret":3},"cells":[],"latency_ms":4000}`},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {

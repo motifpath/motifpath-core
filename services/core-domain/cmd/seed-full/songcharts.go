@@ -5,6 +5,7 @@ import (
 	"embed"
 	"fmt"
 	"log"
+	"slices"
 
 	"github.com/motifpath/core-domain/internal/application"
 	"github.com/motifpath/core-domain/internal/domain"
@@ -32,6 +33,9 @@ type songChartSpec struct {
 	// correction is the draft's text after publishing, for
 	// publishedThenCorrected.
 	correction string
+	// progressions are the progressions of the catalog the chart's first
+	// section plays, which make it a song practice can end a session with.
+	progressions []string
 }
 
 //go:embed songcharts/*.cho
@@ -56,13 +60,16 @@ func songChartSpecs() []songChartSpec {
 			chordPro:        chordProFile("amazing-grace.cho"),
 			fate:            publishedThenCorrected,
 			correction:      chordProFile("amazing-grace-corrected.cho"),
+			progressions:    []string{"I-IV-I-V"},
 		},
 		{
 			title:           "Oh! Susanna",
 			language:        "en",
 			rightsConfirmed: true,
-			chordPro:        chordProFile("oh-susanna.cho"),
-			fate:            publishedThenWithdrawn,
+			// Untagged: its I-IV-I-V only meets across the verse and the
+			// chorus, which no section plays.
+			chordPro: chordProFile("oh-susanna.cho"),
+			fate:     publishedThenWithdrawn,
 		},
 		{
 			// A draft with every kind of chord that doesn't fully resolve:
@@ -91,6 +98,28 @@ func seedSongCharts(ctx context.Context, charts *application.SongChartService, a
 	return seeded, nil
 }
 
+// importTagged imports chordPro into the chart's draft, then tags its first
+// section with progressions: an import brings untagged sections.
+func importTagged(ctx context.Context, charts *application.SongChartService, author domain.User, id, chordPro string, progressions []string) (domain.SongChart, error) {
+	imported, err := charts.ImportChordPro(ctx, author, id, chordPro)
+	if err != nil || len(progressions) == 0 {
+		return imported.Chart, err
+	}
+	d := imported.Chart.Draft
+	return charts.UpdateDraft(ctx, author, id, application.SongChartInput{
+		Title: d.Title, Artist: d.Artist, Language: d.Language, ConcertKey: d.ConcertKey,
+		CapoFret: d.CapoFret, TempoBPM: d.TempoBPM, TimeSignature: d.TimeSignature,
+		RightsConfirmed: d.RightsConfirmation != nil, Body: tagFirstSection(d.Body, progressions),
+	})
+}
+
+// tagFirstSection is body with its first section tagged with progressions.
+func tagFirstSection(body domain.SongChartDocument, progressions []string) domain.SongChartDocument {
+	body.Sections = slices.Clone(body.Sections)
+	body.Sections[0].ProgressionKeys = progressions
+	return body
+}
+
 func seedSongChart(ctx context.Context, charts *application.SongChartService, author domain.User, spec songChartSpec) (domain.SongChart, error) {
 	chart, err := charts.Create(ctx, author, application.SongChartInput{
 		Title: spec.title, Artist: "—", Language: spec.language, RightsConfirmed: spec.rightsConfirmed,
@@ -99,11 +128,9 @@ func seedSongChart(ctx context.Context, charts *application.SongChartService, au
 	if err != nil {
 		return domain.SongChart{}, fmt.Errorf("create: %w", err)
 	}
-	imported, err := charts.ImportChordPro(ctx, author, chart.ID, spec.chordPro)
-	if err != nil {
+	if chart, err = importTagged(ctx, charts, author, chart.ID, spec.chordPro, spec.progressions); err != nil {
 		return domain.SongChart{}, fmt.Errorf("import: %w", err)
 	}
-	chart = imported.Chart
 	if spec.fate == draftOnly {
 		return chart, nil
 	}
@@ -112,11 +139,11 @@ func seedSongChart(ctx context.Context, charts *application.SongChartService, au
 	}
 	switch spec.fate {
 	case publishedThenCorrected:
-		corrected, err := charts.ImportChordPro(ctx, author, chart.ID, spec.correction)
+		corrected, err := importTagged(ctx, charts, author, chart.ID, spec.correction, spec.progressions)
 		if err != nil {
 			return domain.SongChart{}, fmt.Errorf("correct: %w", err)
 		}
-		return corrected.Chart, nil
+		return corrected, nil
 	case publishedThenWithdrawn:
 		return charts.Withdraw(ctx, author, chart.ID, "Seeded as withdrawn, to show a chart learners can no longer read.")
 	case draftOnly:

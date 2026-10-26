@@ -29,6 +29,7 @@ type drillCatalogFile struct {
 		Rung         string  `yaml:"rung"`
 		SecondWay    *string `yaml:"second_way"`
 		ComesBack    bool    `yaml:"comes_back"`
+		Timed        bool    `yaml:"timed"`
 	} `yaml:"templates"`
 	FretboardCells []struct {
 		Skill   string `yaml:"skill"`
@@ -38,6 +39,9 @@ type drillCatalogFile struct {
 		} `yaml:"layouts"`
 	} `yaml:"fretboard_cells"`
 	DiagramShapes []shapeFamilyEntry `yaml:"diagram_shapes"`
+	Thresholds    []struct {
+		Template string `yaml:"template"`
+	} `yaml:"thresholds"`
 }
 
 // fretboardCellWorld is what the fretboard cell steps share in a scenario.
@@ -46,6 +50,8 @@ type fretboardCellWorld struct {
 	ranges map[string]map[string]domain.FretboardCellRange
 	// templates lists the catalog's fretboard cell drill templates.
 	templates []string
+	// fluentTimed holds the catalog's templates that have a fluent time.
+	fluentTimed map[string]bool
 	// cells holds the cells a step generated.
 	cells []domain.ClassifiedItem
 	// pending is a catalog entry a scenario declares, checked on install.
@@ -76,6 +82,7 @@ func registerFretboardCellSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^they are the cells of the "([^"]+)" layout, with the same item keys$`, w.theyAreTheLayoutsCells)
 	sc.Step(`^there are (\d+) cells and no cell belongs to both skills$`, w.cellsBelongToOneSkill)
 	sc.Step(`^it can be asked through "([^"]+)" or "([^"]+)"$`, w.cellCanBeAskedThrough)
+	sc.Step(`^it can also be asked through "([^"]+)", which has no fluent time$`, w.cellCanAlsoBeAskedUntimed)
 	sc.Step(`^a drill catalog listing string (\d+) for skill "([^"]+)" on the "([^"]+)" layout$`, w.catalogListingString)
 	sc.Step(`^a drill catalog listing a guitar-only skill on the "([^"]+)" layout$`, w.catalogListingGuitarOnlySkill)
 	sc.Step(`^the drill catalog is installed$`, w.drillCatalogIsInstalled)
@@ -117,6 +124,10 @@ func (w *world) practiceDrillCatalogIsInstalled() error {
 		return err
 	}
 	f := w.fretboard()
+	f.fluentTimed = map[string]bool{}
+	for _, th := range file.Thresholds {
+		f.fluentTimed[th.Template] = true
+	}
 	templates := make([]domain.DrillTemplate, 0, len(file.Templates)+1)
 	for _, t := range file.Templates {
 		if t.ItemKind == string(domain.PracticeItemKindFretboardCell) {
@@ -124,7 +135,7 @@ func (w *world) practiceDrillCatalogIsInstalled() error {
 		}
 		templates = append(templates, domain.DrillTemplate{
 			Key: t.Key, ItemKind: domain.PracticeItemKind(t.ItemKind), ResponseType: t.ResponseType,
-			Rung: domain.PracticeRung(t.Rung), SecondWay: t.SecondWay,
+			Rung: domain.PracticeRung(t.Rung), SecondWay: t.SecondWay, Timed: t.Timed,
 		})
 	}
 	if f.pendingTemplate != nil {
@@ -316,24 +327,46 @@ func (w *world) cellsBelongToOneSkill(count int) error {
 	return nil
 }
 
-// cellCanBeAskedThrough checks the drill templates of the item picked for
-// practice: a diagram shape when one was picked, a fretboard cell otherwise.
-func (w *world) cellCanBeAskedThrough(first, second string) error {
+// pickedTemplates are the drill templates of the item picked for practice: a
+// diagram shape's when one was picked, a fretboard cell's otherwise.
+func (w *world) pickedTemplates() ([]string, error) {
 	f := w.fretboard()
-	var got []string
 	switch {
 	case w.shapeWorld != nil && w.shapeWorld.picked != nil:
-		got = slices.Clone(w.shapeWorld.templates)
+		return slices.Clone(w.shapeWorld.templates), nil
 	case len(f.cells) == 1:
-		got = slices.Clone(f.templates)
-	default:
-		return fmt.Errorf("no cell or shape was picked")
+		return slices.Clone(f.templates), nil
 	}
-	want := []string{first, second}
-	slices.Sort(got)
-	slices.Sort(want)
-	if !slices.Equal(got, want) {
-		return fmt.Errorf("the picked item is asked through %v, want %v", got, want)
+	return nil, fmt.Errorf("no cell or shape was picked")
+}
+
+// cellCanBeAskedThrough checks that both named ways are among the picked
+// item's drill templates; a cell has others too.
+func (w *world) cellCanBeAskedThrough(first, second string) error {
+	got, err := w.pickedTemplates()
+	if err != nil {
+		return err
+	}
+	for _, want := range []string{first, second} {
+		if !slices.Contains(got, want) {
+			return fmt.Errorf("the picked item is asked through %v, not %s", got, want)
+		}
+	}
+	return nil
+}
+
+// cellCanAlsoBeAskedUntimed checks the picked cell can be asked through
+// template, and that template has no fluent time.
+func (w *world) cellCanAlsoBeAskedUntimed(template string) error {
+	got, err := w.pickedTemplates()
+	if err != nil {
+		return err
+	}
+	if !slices.Contains(got, template) {
+		return fmt.Errorf("the picked item is asked through %v, not %s", got, template)
+	}
+	if w.fretboard().fluentTimed[template] {
+		return fmt.Errorf("%s has a fluent time in the catalog", template)
 	}
 	return nil
 }
@@ -435,7 +468,7 @@ func (catalogDrillTemplates) List(context.Context) ([]domain.DrillTemplate, erro
 	for i, t := range file.Templates {
 		templates[i] = domain.DrillTemplate{
 			Key: t.Key, ItemKind: domain.PracticeItemKind(t.ItemKind), ResponseType: t.ResponseType,
-			Rung: domain.PracticeRung(t.Rung), SecondWay: t.SecondWay, ComesBack: t.ComesBack,
+			Rung: domain.PracticeRung(t.Rung), SecondWay: t.SecondWay, ComesBack: t.ComesBack, Timed: t.Timed,
 		}
 	}
 	return templates, nil
