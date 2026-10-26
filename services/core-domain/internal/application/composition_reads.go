@@ -12,8 +12,8 @@ import (
 
 // A composition, or a list of subjects, reads every item the student's
 // knowledge maps hold, so what it reads is kept for it: the diagrams, the
-// instruments, the progression catalog and the guitar layout are each read
-// once, however many items name them. A later composition reads them again,
+// exercises, the instruments, the progression and chord drill catalogs and the
+// guitar layout are each read once, however many items name them. A later composition reads them again,
 // so it finds what changed since.
 
 // composingDiagrams is the diagrams one composition reads, each once.
@@ -53,17 +53,7 @@ func (c *composingDiagrams) GetByID(ctx context.Context, id string) (domain.Diag
 // readAll reads the diagrams the play-along and diagram shape items of maps
 // name, in one read, so none of them is read alone later.
 func (c *composingDiagrams) readAll(ctx context.Context, maps []KnowledgeMap) error {
-	seen := map[string]bool{}
-	var ids []string
-	for _, m := range maps {
-		for _, item := range m.Items {
-			id, ok := diagramIDOf(item.ItemKey)
-			if ok && !seen[id] {
-				seen[id] = true
-				ids = append(ids, id)
-			}
-		}
-	}
+	ids := itemIDs(maps, domain.PracticeItemKindPlayAlong, domain.PracticeItemKindDiagramShape)
 	if len(ids) == 0 {
 		return nil
 	}
@@ -83,14 +73,93 @@ func (c *composingDiagrams) readAll(ctx context.Context, maps []KnowledgeMap) er
 	return nil
 }
 
-// diagramIDOf is the diagram a play-along or diagram shape item key names.
-func diagramIDOf(itemKey string) (string, bool) {
-	for _, kind := range []domain.PracticeItemKind{domain.PracticeItemKindPlayAlong, domain.PracticeItemKindDiagramShape} {
-		if id, ok := strings.CutPrefix(itemKey, string(kind)+":"); ok {
-			return id, true
+// composingExercises is the exercises one composition reads, each once.
+type composingExercises struct {
+	ports.ExerciseRepository
+	mu sync.Mutex
+	// read holds each exercise read, by id; nil for an id with no exercise.
+	read map[string]*domain.Exercise
+}
+
+func newComposingExercises(exercises ports.ExerciseRepository) *composingExercises {
+	return &composingExercises{ExerciseRepository: exercises, read: map[string]*domain.Exercise{}}
+}
+
+func (c *composingExercises) GetByID(ctx context.Context, id string) (domain.Exercise, error) {
+	c.mu.Lock()
+	e, ok := c.read[id]
+	c.mu.Unlock()
+	if !ok {
+		got, err := c.ExerciseRepository.GetByID(ctx, id)
+		if err != nil && !errors.Is(err, domain.ErrNotFound) {
+			return domain.Exercise{}, err
+		}
+		if err == nil {
+			e = &got
+		}
+		c.mu.Lock()
+		c.read[id] = e
+		c.mu.Unlock()
+	}
+	if e == nil {
+		return domain.Exercise{}, domain.ErrNotFound
+	}
+	return *e, nil
+}
+
+// readAll reads the exercises the items of maps name, in one read, so none of
+// them is read alone later.
+func (c *composingExercises) readAll(ctx context.Context, maps []KnowledgeMap) error {
+	ids := itemIDs(maps, domain.PracticeItemKindExercise)
+	if len(ids) == 0 {
+		return nil
+	}
+	found, err := c.GetByIDs(ctx, ids)
+	if err != nil {
+		return err
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for _, id := range ids {
+		if e, ok := found[id]; ok {
+			c.read[id] = &e
+		} else {
+			c.read[id] = nil
 		}
 	}
-	return "", false
+	return nil
+}
+
+// itemIDs is the ids the items of maps of kinds name, each once.
+func itemIDs(maps []KnowledgeMap, kinds ...domain.PracticeItemKind) []string {
+	seen := map[string]bool{}
+	var ids []string
+	for _, m := range maps {
+		for _, item := range m.Items {
+			for _, kind := range kinds {
+				id, ok := strings.CutPrefix(item.ItemKey, string(kind)+":")
+				if ok && !seen[id] {
+					seen[id] = true
+					ids = append(ids, id)
+				}
+			}
+		}
+	}
+	return ids
+}
+
+// composingChordDrills is the chord drill catalog, read once for one
+// composition.
+type composingChordDrills struct {
+	catalog ports.ChordDrillRepository
+	once    sync.Once
+	read    domain.ChordDrillCatalog
+	err     error
+}
+
+func (c *composingChordDrills) Catalog(ctx context.Context) (domain.ChordDrillCatalog, error) {
+	c.once.Do(func() { c.read, c.err = c.catalog.Catalog(ctx) })
+	return c.read, c.err
 }
 
 // composingInstruments is the instruments one composition reads, each once.

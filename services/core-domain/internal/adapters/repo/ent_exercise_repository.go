@@ -195,16 +195,7 @@ func (r *EntExerciseRepository) GetByID(ctx context.Context, id string) (domain.
 	if err != nil {
 		return domain.Exercise{}, domain.ErrNotFound
 	}
-	row, err := r.client.Exercise.Query().
-		Where(exercise.ID(parsed)).
-		WithChallenges().
-		WithContentNodes().
-		WithOptions().
-		WithLanguages().
-		WithInstruments().
-		WithSkills(withNodeInstruments).
-		WithConcepts(withNodeInstruments).
-		Only(ctx)
+	row, err := withExerciseEdges(r.client.Exercise.Query()).Where(exercise.ID(parsed)).Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return domain.Exercise{}, domain.ErrNotFound
@@ -212,6 +203,33 @@ func (r *EntExerciseRepository) GetByID(ctx context.Context, id string) (domain.
 		return domain.Exercise{}, err
 	}
 	return toDomainExercise(row), nil
+}
+
+func (r *EntExerciseRepository) GetByIDs(ctx context.Context, ids []string) (map[string]domain.Exercise, error) {
+	parsed := parseUUIDsSkippingInvalid(ids)
+	if len(parsed) == 0 {
+		return map[string]domain.Exercise{}, nil
+	}
+	rows, err := withExerciseEdges(r.client.Exercise.Query()).Where(exercise.IDIn(parsed...)).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	found := make(map[string]domain.Exercise, len(rows))
+	for _, row := range rows {
+		found[row.ID.String()] = toDomainExercise(row)
+	}
+	return found, nil
+}
+
+// withExerciseEdges loads every edge an Exercise is read with.
+func withExerciseEdges(q *ent.ExerciseQuery) *ent.ExerciseQuery {
+	return q.WithChallenges().
+		WithContentNodes().
+		WithOptions().
+		WithLanguages().
+		WithInstruments().
+		WithSkills(withNodeInstruments).
+		WithConcepts(withNodeInstruments)
 }
 
 // LinkChallenge links exerciseID into challengeID via the ChallengeExercise

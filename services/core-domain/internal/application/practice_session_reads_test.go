@@ -23,6 +23,18 @@ func (c *countingProgressions) List(ctx context.Context) ([]domain.Progression, 
 	return c.progressions.List(ctx)
 }
 
+// countingChordDrills is a ports.ChordDrillRepository over catalog that
+// counts its reads.
+type countingChordDrills struct {
+	catalog domain.ChordDrillCatalog
+	reads   int
+}
+
+func (c *countingChordDrills) Catalog(context.Context) (domain.ChordDrillCatalog, error) {
+	c.reads++
+	return c.catalog, nil
+}
+
 // A list of subjects reads every item the student's knowledge maps hold, so
 // what it reads must not grow with them: the diagrams come in one read, and
 // each instrument and the progression catalog are read once.
@@ -108,6 +120,64 @@ func TestPracticeSessionService_ListSubjectsReads(t *testing.T) {
 		many := readsFor(t, nil, "ii-V-I", "IV-V-I", "I-V-vi-IV", "I-vi-IV-V", "12-bar-blues")
 
 		assert.Equal(t, few, many)
+	})
+
+	t.Run("the exercises come in one read, however many there are", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.exerciseBatch("ex", "progressions", 5, 60)
+		f.onPathFor([]string{practiceGuitar}, "progressions")
+
+		list, err := f.svc.ListSubjects(context.Background(), studentCaller(), guitar())
+
+		require.NoError(t, err)
+		require.NotEmpty(t, list.Groups)
+		assert.Equal(t, 5, list.Groups[0].Subjects[0].ItemCount)
+		assert.Zero(t, f.exercises.gets, "no exercise is read alone")
+		assert.Equal(t, 1, f.exercises.batchReads)
+	})
+
+	// chordReadsFor lists the subjects in hand on instrumentID with chords as
+	// single chords and root-fifth lines, and every pair of them as a
+	// change, and tells how often the chord drill catalog and the
+	// instruments were read.
+	chordReadsFor := func(t *testing.T, instrumentID string, chords ...string) (catalogReads, instrumentReads int) {
+		f := newPracticeFixture(t)
+		f.instruments.put(domain.Instrument{ID: practiceBass, Tuning: []string{"E1", "A1", "D2", "G2"}})
+		for _, skill := range []string{"play-open-chords", "change-chords", "play-root-fifth-lines", "play-root-notes"} {
+			f.skill(skill)
+		}
+		f.onPathFor([]string{practiceGuitar}, "play-open-chords", "change-chords")
+		f.onPathFor([]string{practiceBass}, "play-root-fifth-lines", "play-root-notes")
+		for i, chord := range chords {
+			f.cells[practiceGuitar] = append(f.cells[practiceGuitar], domain.ClassifiedItem{ItemKey: voicingKey(chord), NodeIDs: []string{"play-open-chords"}})
+			f.cells[practiceBass] = append(f.cells[practiceBass], domain.ClassifiedItem{ItemKey: "root_fifth:" + practiceBass + ":" + chord, NodeIDs: []string{"play-root-fifth-lines"}})
+			for _, other := range chords[i+1:] {
+				f.cells[practiceGuitar] = append(f.cells[practiceGuitar], domain.ClassifiedItem{ItemKey: changeKey(chord, other), NodeIDs: []string{"change-chords"}})
+				f.cells[practiceBass] = append(f.cells[practiceBass], domain.ClassifiedItem{ItemKey: "root_change:" + practiceBass + ":" + chord + ":" + other, NodeIDs: []string{"play-root-notes"}})
+			}
+		}
+		catalog := &countingChordDrills{catalog: chordCatalog()}
+		f.svc.WithChordDrills(catalog, f.instruments)
+
+		list, err := f.svc.ListSubjects(context.Background(), studentCaller(), &instrumentID)
+
+		require.NoError(t, err)
+		require.NotEmpty(t, list.Groups)
+		for _, n := range f.instruments.gets {
+			instrumentReads += n
+		}
+		return catalog.reads, instrumentReads
+	}
+
+	t.Run("chord drills read the catalog once, however many there are", func(t *testing.T) {
+		for _, instrumentID := range []string{practiceGuitar, practiceBass} {
+			catalogReads, instrumentReads := chordReadsFor(t, instrumentID, "Am")
+			manyCatalogReads, manyInstrumentReads := chordReadsFor(t, instrumentID, "Am", "C", "G", "E")
+
+			assert.Equal(t, 1, catalogReads, instrumentID)
+			assert.Equal(t, 1, manyCatalogReads, instrumentID)
+			assert.Equal(t, instrumentReads, manyInstrumentReads, instrumentID)
+		}
 	})
 
 	t.Run("a later list reads again, so a new diagram is found", func(t *testing.T) {

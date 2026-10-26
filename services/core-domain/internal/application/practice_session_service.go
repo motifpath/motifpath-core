@@ -50,12 +50,14 @@ type PracticeSessionService struct {
 	diagrams    ports.DiagramRepository
 	// composingDiagrams is diagrams keeping what it reads, while composing.
 	composingDiagrams *composingDiagrams
-	exercises         ports.ExerciseRepository
-	rollup            *KnowledgeRollupService
-	templates         ports.DrillTemplateRepository
-	tapChecks         ports.TapCheckReader
-	feltRatings       ports.FeltRatingReader
-	headCount         ports.HeadSessionCounter
+	// composingExercises is exercises keeping what it reads, while composing.
+	composingExercises *composingExercises
+	exercises          ports.ExerciseRepository
+	rollup             *KnowledgeRollupService
+	templates          ports.DrillTemplateRepository
+	tapChecks          ports.TapCheckReader
+	feltRatings        ports.FeltRatingReader
+	headCount          ports.HeadSessionCounter
 	// sources find the generated drill items, a source per drill family.
 	sources []DrillSource
 	// harmony is what the harmony drills read; nil when they aren't
@@ -128,6 +130,8 @@ func (s *PracticeSessionService) forComposition() *PracticeSessionService {
 	composing := *s
 	composing.composingDiagrams = newComposingDiagrams(s.diagrams)
 	composing.diagrams = composing.composingDiagrams
+	composing.composingExercises = newComposingExercises(s.exercises)
+	composing.exercises = composing.composingExercises
 	if s.harmony != nil {
 		composing.harmony = s.harmony.forComposition()
 	}

@@ -427,6 +427,8 @@ type fakeExerciseRepository struct {
 	byChallengeOrder map[string][]string
 	byNodeOrder      map[string][]string
 	createErr        error
+	// gets counts GetByID reads and batchReads GetByIDs ones.
+	gets, batchReads int
 }
 
 func newFakeExerciseRepository() *fakeExerciseRepository {
@@ -450,11 +452,25 @@ func (f *fakeExerciseRepository) Create(_ context.Context, exercise domain.Exerc
 func (f *fakeExerciseRepository) GetByID(_ context.Context, id string) (domain.Exercise, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.gets++
 	exercise, ok := f.byID[id]
 	if !ok {
 		return domain.Exercise{}, domain.ErrNotFound
 	}
 	return exercise, nil
+}
+
+func (f *fakeExerciseRepository) GetByIDs(_ context.Context, ids []string) (map[string]domain.Exercise, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.batchReads++
+	found := map[string]domain.Exercise{}
+	for _, id := range ids {
+		if exercise, ok := f.byID[id]; ok {
+			found[id] = exercise
+		}
+	}
+	return found, nil
 }
 
 func (f *fakeExerciseRepository) LinkChallenge(_ context.Context, exerciseID, challengeID string) error {

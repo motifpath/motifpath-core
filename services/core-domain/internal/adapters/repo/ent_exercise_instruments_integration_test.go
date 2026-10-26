@@ -50,6 +50,25 @@ func TestEntExerciseInstruments(t *testing.T) {
 	require.NoError(t, exercises.LinkChallenge(ctx, guitarDrill.ID, challenge.ID))
 	require.NoError(t, exercises.LinkContentNode(ctx, anyDrill.ID, node.ID))
 
+	t.Run("GetByIDs reads several exercises at once, as GetByID does, leaving out unknown ids", func(t *testing.T) {
+		byID, err := exercises.GetByIDs(ctx, []string{guitarDrill.ID, anyDrill.ID, uuid.NewString(), "not-a-uuid"})
+
+		require.NoError(t, err)
+		require.Len(t, byID, 2)
+		for _, id := range []string{guitarDrill.ID, anyDrill.ID} {
+			one, err := exercises.GetByID(ctx, id)
+			require.NoError(t, err)
+			assert.Equal(t, one, byID[id])
+		}
+	})
+
+	t.Run("GetByIDs with no ids reads no exercises", func(t *testing.T) {
+		byID, err := exercises.GetByIDs(ctx, nil)
+
+		require.NoError(t, err)
+		assert.Empty(t, byID)
+	})
+
 	t.Run("LinkedExerciseInstrumentSets lists exercises linked through a challenge or as path exercises", func(t *testing.T) {
 		got, err := nodes.LinkedExerciseInstrumentSets(ctx, node.ID)
 
