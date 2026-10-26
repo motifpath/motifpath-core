@@ -81,6 +81,7 @@ services:
       # boot and pass /healthz + /readyz.
       MEDIA_S3_BUCKET: motifpath-content-media-smoke
       MEDIA_PUBLIC_BASE_URL: http://localhost:9000/motifpath-content-media-smoke
+      EMAIL_UNSUBSCRIBE_SECRET: smoke-unsubscribe-secret
     ports: ["8080:8080"]
     depends_on:
       postgres: { condition: service_healthy }
