@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/motifpath/core-domain/internal/domain"
+	"github.com/motifpath/core-domain/internal/ports"
 )
 
 // Today's mix review block takes at most reviewMaxItems items and a
@@ -353,17 +354,29 @@ func (c *composer) chained(group []domain.PracticeSessionItem) []domain.Practice
 // domain.SubjectRungs. An instrumentID that doesn't exist is not found.
 func (s *PracticeSessionService) ListSubjects(ctx context.Context, caller domain.User, instrumentID *string) (domain.PracticeSubjectList, error) {
 	s = s.forComposition()
-	instrumentIDs, err := s.sessionInstruments(ctx, caller.ID, instrumentID)
-	if err != nil {
-		return domain.PracticeSubjectList{}, err
-	}
-	catalogs, err := s.subjectCatalogItems(ctx, instrumentIDs)
+	tally, maps, err := s.tallySubjects(ctx, caller.ID, instrumentID)
 	if err != nil {
 		return domain.PracticeSubjectList{}, err
 	}
 	pathSkillIDs, err := s.learning.pathSkillIDs(ctx, caller.ID)
 	if err != nil {
 		return domain.PracticeSubjectList{}, err
+	}
+	return tally.list(instrumentID, allNodes(maps), pathSkillIDs, s.now()), nil
+}
+
+// tallySubjects tallies every node's material for a session of studentID
+// with instrumentID in hand, or in the head when it is nil, from the
+// subject catalogs, with the student's knowledge maps over it. An
+// instrumentID that doesn't exist is not found.
+func (s *PracticeSessionService) tallySubjects(ctx context.Context, studentID string, instrumentID *string) (subjectTally, []KnowledgeMap, error) {
+	instrumentIDs, err := s.sessionInstruments(ctx, studentID, instrumentID)
+	if err != nil {
+		return subjectTally{}, nil, err
+	}
+	catalogs, err := s.subjectCatalogItems(ctx, instrumentIDs)
+	if err != nil {
+		return subjectTally{}, nil, err
 	}
 	now := s.now()
 	tally := newSubjectTally()
@@ -374,12 +387,69 @@ func (s *PracticeSessionService) ListSubjects(ctx context.Context, caller domain
 		for j, item := range items {
 			classified[j] = domain.ClassifiedItem{ItemKey: item.ItemKey, NodeIDs: item.NodeIDs}
 		}
-		if maps[i], err = s.rollup.MapWith(ctx, caller.ID, id, classified); err != nil {
-			return domain.PracticeSubjectList{}, err
+		if maps[i], err = s.rollup.MapWith(ctx, studentID, id, classified); err != nil {
+			return subjectTally{}, nil, err
 		}
 		tallyCatalog(maps[i], items, instrumentID != nil, tally, now)
 	}
-	return tally.list(instrumentID, allNodes(maps), pathSkillIDs, now), nil
+	return tally, maps, nil
+}
+
+// focusRungs finds, for each of a plan's subjects, its current rung for
+// the session and the student's level on it, as the subjects list and the
+// subject progress read find them, so the session summary compares like
+// with like.
+func (s *PracticeSessionService) focusRungs(ctx context.Context, studentID string, instrumentID *string, focus []domain.KnowledgeNode) ([]domain.RungLevel, error) {
+	tally, _, err := s.tallySubjects(ctx, studentID, instrumentID)
+	if err != nil {
+		return nil, err
+	}
+	now := s.now()
+	rungs := make([]domain.RungLevel, len(focus))
+	for i, n := range focus {
+		rungs[i] = tally.progress(n.ID, now).Current()
+	}
+	return rungs, nil
+}
+
+// WithSessionEnds lets the subject progress read tell when a session is
+// caught up, from the sessions whose end the Aggregation Worker recorded.
+func (s *PracticeSessionService) WithSessionEnds(ends ports.SessionEndReader) *PracticeSessionService {
+	s.sessionEnds = ends
+	return s
+}
+
+// SessionSubjectProgress reads where caller stands now on nodeIDs, the
+// subjects of their session sessionID with instrumentID in hand (nil: in
+// the head), in the order asked: each one's current rung and their level on
+// every rung with material, tallied as ListSubjects tallies them. It is
+// caught up once the session's end has been recorded; a session of another
+// student, or one never recorded, never is. One to domain.MaxFocusNodes
+// subjects may be asked; a node that doesn't exist is not found.
+func (s *PracticeSessionService) SessionSubjectProgress(ctx context.Context, caller domain.User, sessionID string, instrumentID *string, nodeIDs []string) (domain.PracticeSessionSubjectProgress, error) {
+	if len(nodeIDs) == 0 || len(nodeIDs) > domain.MaxFocusNodes {
+		return domain.PracticeSessionSubjectProgress{}, domain.NewValidationError("node_id", fmt.Sprintf("give 1 to %d subjects", domain.MaxFocusNodes))
+	}
+	s = s.forComposition()
+	tally, maps, err := s.tallySubjects(ctx, caller.ID, instrumentID)
+	if err != nil {
+		return domain.PracticeSessionSubjectProgress{}, err
+	}
+	nodes := allNodes(maps)
+	now := s.now()
+	progress := domain.PracticeSessionSubjectProgress{Subjects: make([]domain.SubjectProgress, len(nodeIDs))}
+	for i, id := range nodeIDs {
+		if nodeIndex(nodes, id) < 0 {
+			return domain.PracticeSessionSubjectProgress{}, fmt.Errorf("%w: no knowledge node exists with the given node_id", domain.ErrNotFound)
+		}
+		progress.Subjects[i] = tally.progress(id, now)
+	}
+	if s.sessionEnds != nil {
+		if progress.CaughtUp, err = s.sessionEnds.SessionEnded(ctx, caller.ID, sessionID); err != nil {
+			return domain.PracticeSessionSubjectProgress{}, err
+		}
+	}
+	return progress, nil
 }
 
 // tallyCatalog tallies in tally the items of a catalog that suit a session
@@ -473,6 +543,11 @@ func (t subjectTally) add(nodeID string, keys []string, level *domain.KnowledgeL
 	if best := t.levels[nodeID]; level != nil && (best == nil || level.Rank() > best.Rank()) {
 		t.levels[nodeID] = level
 	}
+}
+
+// progress is where the student stands on nodeID: see domain.NewSubjectProgress.
+func (t subjectTally) progress(nodeID string, now time.Time) domain.SubjectProgress {
+	return domain.NewSubjectProgress(nodeID, t.material[nodeID], t.states, now)
 }
 
 // count is how many items nodeID's subtree has for the session.

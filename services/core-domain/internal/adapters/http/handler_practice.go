@@ -240,6 +240,46 @@ func (h *Handler) ListPracticeSubjects(ctx context.Context, request generated.Li
 	}
 }
 
+func (h *Handler) GetPracticeSessionSubjectProgress(ctx context.Context, request generated.GetPracticeSessionSubjectProgressRequestObject) (generated.GetPracticeSessionSubjectProgressResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.GetPracticeSessionSubjectProgress401JSONResponse(unauthorizedError()), nil
+	}
+	nodeIDs := make([]string, len(request.Params.NodeId))
+	for i, id := range request.Params.NodeId {
+		nodeIDs[i] = id.String()
+	}
+	progress, err := h.practiceSession.SessionSubjectProgress(ctx, caller, request.PracticeSessionId.String(), uuidPtrToStringPtr(request.Params.InstrumentId), nodeIDs)
+	switch kind, valErr := classify(err); {
+	case err == nil:
+		return generated.GetPracticeSessionSubjectProgress200JSONResponse(toGeneratedSubjectProgress(progress)), nil
+	case kind == errKindValidation:
+		return generated.GetPracticeSessionSubjectProgress400JSONResponse(validationErrorResponse(valErr)), nil
+	case kind == errKindNotFound:
+		return generated.GetPracticeSessionSubjectProgress404JSONResponse(notFoundError(notFoundMessage(err))), nil
+	default:
+		return nil, err
+	}
+}
+
+// toGeneratedSubjectProgress maps progress; a subject with no material has
+// no current rung.
+func toGeneratedSubjectProgress(progress domain.PracticeSessionSubjectProgress) generated.PracticeSessionSubjectProgress {
+	subjects := make([]generated.PracticeSubjectProgress, len(progress.Subjects))
+	for i, s := range progress.Subjects {
+		rungs := make([]generated.PracticeRungLevel, len(s.Rungs))
+		for j, r := range s.Rungs {
+			rungs[j] = generated.PracticeRungLevel{Rung: generated.PracticeRung(r.Rung), Level: generated.KnowledgeLevel(r.Level)}
+		}
+		subjects[i] = generated.PracticeSubjectProgress{NodeId: mustUUID(s.NodeID), Rungs: rungs}
+		if s.CurrentRung != "" {
+			rung := generated.PracticeRung(s.CurrentRung)
+			subjects[i].CurrentRung = &rung
+		}
+	}
+	return generated.PracticeSessionSubjectProgress{CaughtUp: progress.CaughtUp, Subjects: subjects}
+}
+
 // toGeneratedPracticeSubjectList maps list; a wide node's level is null.
 func toGeneratedPracticeSubjectList(list domain.PracticeSubjectList) generated.PracticeSubjectList {
 	groups := make([]generated.PracticeSubjectGroup, len(list.Groups))
@@ -281,6 +321,10 @@ func toGeneratedPracticeSessionPlan(plan domain.PracticeSessionPlan, names userN
 	focus := make([]generated.PracticeFocusNode, len(plan.FocusNodes))
 	for i, n := range plan.FocusNodes {
 		focus[i] = generated.PracticeFocusNode{NodeId: mustUUID(n.ID), Names: generated.LocalizedNames(n.Names)}
+		if i < len(plan.FocusRungs) {
+			focus[i].Rung = generated.PracticeRung(plan.FocusRungs[i].Rung)
+			focus[i].RungLevel = generated.KnowledgeLevel(plan.FocusRungs[i].Level)
+		}
 	}
 	return generated.PracticeSessionPlan{
 		PracticeSessionId: mustUUID(plan.ID),

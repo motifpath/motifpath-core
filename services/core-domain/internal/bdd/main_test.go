@@ -42,6 +42,7 @@ func TestFeatures(t *testing.T) {
 				featuresBase + "/practice/progression-catalog.feature",
 				featuresBase + "/practice/fretboard-cells.feature",
 				featuresBase + "/practice/focused-session.feature",
+				featuresBase + "/practice/session-subject-progress.feature",
 				featuresBase + "/practice/fretboard-map.feature",
 				featuresBase + "/practice/guide-tones.feature",
 				featuresBase + "/practice/songs.feature",
@@ -132,6 +133,7 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	registerListingSteps(sc, w)
 	registerPracticeSessionSteps(sc, w)
 	registerPracticeFocusSteps(sc, w)
+	registerSessionSubjectProgressSteps(sc, w)
 	registerPracticeSummarySteps(sc, w)
 	registerPracticeDaysSteps(sc, w)
 	registerSongsPlayedSteps(sc, w)

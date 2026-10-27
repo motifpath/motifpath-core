@@ -313,7 +313,8 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 		WithChordDrills(repo.NewEntChordDrillRepository(entClient), instrumentRepo).
 		WithProgressionKeyTours(instrumentRepo).
 		WithGuideTones(instrumentRepo).
-		WithSongs(songChartRepo, practiceActivity)
+		WithSongs(songChartRepo, practiceActivity).
+		WithSessionEnds(practiceActivity)
 	// Every save that changes what a practice subjects list holds writes a
 	// practice reference, so the reference writer also invalidates the
 	// subject catalog.
