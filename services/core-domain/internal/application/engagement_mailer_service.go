@@ -231,19 +231,34 @@ func (s *EngagementMailerService) conciergeRow(ctx context.Context, student doma
 	return row, nil
 }
 
+// releaseTimeout bounds giving a claim back, which may run after the pass
+// itself was cancelled.
+const releaseTimeout = 5 * time.Second
+
 // claimAndSend claims the email's place in the send record and sends it.
-// A claim someone else already made sends nothing; a failed send gives the
-// claim back.
+// A claim someone else already made sends nothing. A failed send gives the
+// claim back, so a later pass tries again, unless the server refused the
+// email for good: that claim is kept, so the refusal is reported once
+// rather than on every pass.
 func (s *EngagementMailerService) claimAndSend(ctx context.Context, claim domain.EmailSendClaim, email domain.Email) error {
 	claimed, err := s.deps.Sends.Claim(ctx, claim)
 	if err != nil || !claimed {
 		return err
 	}
-	if err := s.deps.Sender.Send(ctx, email); err != nil {
-		sendErr := fmt.Errorf("send %s %s to %s: %w", claim.Kind, claim.PeriodKey, claim.Recipient, err)
-		return errors.Join(sendErr, s.deps.Sends.Release(ctx, claim))
+	err = s.deps.Sender.Send(ctx, email)
+	if err == nil {
+		return nil
 	}
-	return nil
+	sendErr := fmt.Errorf("send %s %s to %s: %w", claim.Kind, claim.PeriodKey, claim.Recipient, err)
+	if errors.Is(err, domain.ErrEmailRejected) {
+		return sendErr
+	}
+	// The pass may have been cancelled mid-send, by a shutdown or its own
+	// deadline; the claim must still be given back, or the email would
+	// never go out.
+	releaseCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), releaseTimeout)
+	defer cancel()
+	return errors.Join(sendErr, s.deps.Sends.Release(releaseCtx, claim))
 }
 
 // links builds a student email's links: the app, and both ways to stop
