@@ -3,6 +3,7 @@ package application_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -51,7 +52,8 @@ func (f *fakeWeeklyFigures) OverviewAt(_ context.Context, caller domain.User, lo
 	return f.byID[caller.ID], nil
 }
 
-// fakeEmailSendLog is an in-memory ports.EmailSendLog.
+// fakeEmailSendLog is an in-memory ports.EmailSendLog. Like a real store,
+// it fails every call made on a context that is already cancelled.
 type fakeEmailSendLog struct {
 	mu     sync.Mutex
 	claims map[domain.EmailSendClaim]bool
@@ -66,7 +68,10 @@ func claimKey(c domain.EmailSendClaim) domain.EmailSendClaim {
 	return c
 }
 
-func (f *fakeEmailSendLog) Claim(_ context.Context, c domain.EmailSendClaim) (bool, error) {
+func (f *fakeEmailSendLog) Claim(ctx context.Context, c domain.EmailSendClaim) (bool, error) {
+	if err := ctx.Err(); err != nil {
+		return false, err
+	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.claims[claimKey(c)] {
@@ -76,14 +81,20 @@ func (f *fakeEmailSendLog) Claim(_ context.Context, c domain.EmailSendClaim) (bo
 	return true, nil
 }
 
-func (f *fakeEmailSendLog) Release(_ context.Context, c domain.EmailSendClaim) error {
+func (f *fakeEmailSendLog) Release(ctx context.Context, c domain.EmailSendClaim) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	delete(f.claims, claimKey(c))
 	return nil
 }
 
-func (f *fakeEmailSendLog) Claimed(_ context.Context, c domain.EmailSendClaim) (bool, error) {
+func (f *fakeEmailSendLog) Claimed(ctx context.Context, c domain.EmailSendClaim) (bool, error) {
+	if err := ctx.Err(); err != nil {
+		return false, err
+	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.claims[claimKey(c)], nil
@@ -119,19 +130,29 @@ func (f *fakeEmailComposer) ConciergeSummary(m domain.ConciergeSummaryMessage) (
 	return domain.Email{To: m.To, Subject: "concierge summary"}, nil
 }
 
-// fakeEmailSender records what it sent, and fails for the addresses in
-// failFor.
+// fakeEmailSender records what it sent. It fails for the addresses in
+// failFor, has the server refuse for good the ones in rejectFor, and calls
+// interruptFor's function for an address mid-send, as a shutdown would.
 type fakeEmailSender struct {
-	mu      sync.Mutex
-	sent    []domain.Email
-	failFor map[string]bool
+	mu           sync.Mutex
+	sent         []domain.Email
+	failFor      map[string]bool
+	rejectFor    map[string]bool
+	interruptFor map[string]func()
 }
 
-func (f *fakeEmailSender) Send(_ context.Context, email domain.Email) error {
+func (f *fakeEmailSender) Send(ctx context.Context, email domain.Email) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if interrupt := f.interruptFor[email.To]; interrupt != nil {
+		interrupt()
+		return ctx.Err()
+	}
 	if f.failFor[email.To] {
 		return errors.New("smtp: 451 try again later")
+	}
+	if f.rejectFor[email.To] {
+		return fmt.Errorf("smtp: 554 access denied: %w", domain.ErrEmailRejected)
 	}
 	f.sent = append(f.sent, email)
 	return nil
@@ -171,7 +192,7 @@ func newMailerFixture() *mailerFixture {
 		figures:     newFakeWeeklyFigures(),
 		sends:       newFakeEmailSendLog(),
 		composer:    &fakeEmailComposer{},
-		sender:      &fakeEmailSender{failFor: map[string]bool{}},
+		sender:      &fakeEmailSender{failFor: map[string]bool{}, rejectFor: map[string]bool{}, interruptFor: map[string]func(){}},
 		concierge:   "concierge@motifpath.com",
 	}
 }
@@ -502,4 +523,45 @@ func TestEngagementMailerService_SendFailure(t *testing.T) {
 	f.run(t)
 	assert.Equal(t, 1, f.sender.sentTo("alice@example.com", "progress report"))
 	assert.Equal(t, 1, f.sender.sentTo("bob@example.com", "progress report"))
+}
+
+func TestEngagementMailerService_RejectedEmail(t *testing.T) {
+	f := newMailerFixture()
+	f.concierge = ""
+	alice := f.addStudent(t, "alice")
+	f.figures.byID[alice] = somethingToShow()
+	f.sender.rejectFor["alice@example.com"] = true
+	f.now = monday(9, 0, saoPaulo)
+
+	err := f.service().Run(context.Background())
+
+	require.ErrorIs(t, err, domain.ErrEmailRejected, "the refusal is reported once")
+
+	// The server refused that email for good, so later runs don't try it
+	// again, nor report it again.
+	f.sender.rejectFor["alice@example.com"] = false
+	f.now = monday(9, 15, saoPaulo)
+	f.run(t)
+	assert.Zero(t, f.sender.sentTo("alice@example.com", "progress report"))
+}
+
+func TestEngagementMailerService_InterruptedSend(t *testing.T) {
+	f := newMailerFixture()
+	f.concierge = ""
+	alice := f.addStudent(t, "alice")
+	f.figures.byID[alice] = somethingToShow()
+	ctx, cancel := context.WithCancel(context.Background())
+	f.sender.interruptFor["alice@example.com"] = cancel
+	f.now = monday(9, 0, saoPaulo)
+
+	err := f.service().Run(ctx)
+
+	require.ErrorIs(t, err, context.Canceled)
+
+	// A pass stopped mid-send still gives the claim back, so the next pass
+	// sends the email.
+	delete(f.sender.interruptFor, "alice@example.com")
+	f.now = monday(9, 15, saoPaulo)
+	f.run(t)
+	assert.Equal(t, 1, f.sender.sentTo("alice@example.com", "progress report"))
 }

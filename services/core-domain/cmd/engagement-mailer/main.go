@@ -48,6 +48,7 @@ type config struct {
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	slog.SetDefault(logger)
 	if err := run(logger); err != nil {
 		logger.Error("engagement mailer stopped", "error", err)
 		os.Exit(1)

@@ -32,7 +32,9 @@ type EmailComposer interface {
 	ConciergeSummary(message domain.ConciergeSummaryMessage) (domain.Email, error)
 }
 
-// EmailSender delivers an email. An error means it was not delivered.
+// EmailSender delivers an email. An error means it was not delivered; one
+// that wraps domain.ErrEmailRejected means the server refused it for good,
+// so sending it again would fail the same way.
 type EmailSender interface {
 	Send(ctx context.Context, email domain.Email) error
 }

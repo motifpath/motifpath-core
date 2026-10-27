@@ -1,9 +1,14 @@
 package domain
 
 import (
+	"errors"
 	"fmt"
 	"time"
 )
+
+// ErrEmailRejected means the mail server refused an email for good: sending
+// the same email again would be refused the same way.
+var ErrEmailRejected = errors.New("email rejected")
 
 // EngagementTimeZone is the time zone of a student who never reported one,
 // and the time zone the concierge works in.
