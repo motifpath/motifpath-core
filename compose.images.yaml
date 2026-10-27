@@ -11,6 +11,7 @@
 #   curl -fsS localhost:8080/healthz && curl -fsS localhost:8080/readyz
 #   curl -fsS localhost:8081/healthz && curl -fsS localhost:8081/readyz
 #   curl -fsS localhost:8082/healthz && curl -fsS localhost:8082/readyz
+#   curl -fsS localhost:8083/healthz && curl -fsS localhost:8083/readyz
 #   docker compose -f compose.images.yaml down -v
 #
 # No Clerk secret: the smoke stays on unauthenticated paths (ADR-016 Q4), so
@@ -86,6 +87,35 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
       mongodb: { condition: service_healthy }
+
+  # The core-domain image again, with the mailer's entrypoint. Mailpit
+  # stands in for SES; with no students in the smoke database, nothing is
+  # sent.
+  engagement-mailer:
+    build:
+      context: .
+      dockerfile: services/core-domain/Dockerfile
+    entrypoint: ["/app/engagement-mailer"]
+    environment:
+      MAILER_PORT: "8083"
+      DATABASE_URL: postgres://motifpath:motifpath@postgres:5432/core_domain?sslmode=disable
+      MONGO_URI: mongodb://motifpath:motifpath@mongodb:27017/?authSource=admin
+      MONGO_DATABASE: motifpath_events
+      EMAIL_UNSUBSCRIBE_SECRET: smoke-unsubscribe-secret
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      MAIL_FROM_ADDRESS: noreply@mail.localhost
+      APP_BASE_URL: http://localhost:5173
+      API_BASE_URL: http://localhost:8080
+    ports: ["8083:8083"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      mongodb: { condition: service_healthy }
+      core-domain: { condition: service_started }
+      mailpit: { condition: service_started }
+
+  mailpit:
+    image: axllent/mailpit:v1.21.8
 
   event-ingestion:
     build:

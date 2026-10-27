@@ -118,7 +118,7 @@ edge=(docker compose -p edge --env-file "$state_dir/edge.secrets.env"
 probe() {
 	curl -fsS --max-time 5 --retry 60 --retry-delay 3 --retry-all-errors "$1" >/dev/null
 }
-for name in CORE_DOMAIN EVENT_INGESTION AGGREGATION_WORKER; do
+for name in CORE_DOMAIN EVENT_INGESTION AGGREGATION_WORKER ENGAGEMENT_MAILER; do
 	port=$(env_value "${name}_HOST_PORT" "$bundle/env/$env.env")
 	for path in healthz readyz; do
 		if ! probe "http://127.0.0.1:$port/$path"; then
