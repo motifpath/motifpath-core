@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
 	"mime"
 	"mime/multipart"
 	"mime/quotedprintable"
@@ -76,7 +77,12 @@ func (s *SMTPSender) Send(ctx context.Context, email domain.Email) error {
 	if err := s.deliver(client, email.To, message); err != nil {
 		return errors.Join(err, client.Close())
 	}
-	return client.Quit()
+	// The server accepted the message when it answered its data, so it is
+	// delivered: failing here would send it a second time.
+	if err := client.Quit(); err != nil {
+		slog.Default().Warn("smtp: quit after the message was accepted", "host", s.cfg.Host, "error", err)
+	}
+	return nil
 }
 
 func (s *SMTPSender) deliver(client *smtp.Client, to string, message []byte) error {
@@ -96,7 +102,7 @@ func (s *SMTPSender) deliver(client *smtp.Client, to string, message []byte) err
 		return fmt.Errorf("smtp: mail from: %w", err)
 	}
 	if err := client.Rcpt(to); err != nil {
-		return fmt.Errorf("smtp: rcpt to: %w", err)
+		return fmt.Errorf("smtp: rcpt to: %w", rejectedForGood(err))
 	}
 	body, err := client.Data()
 	if err != nil {
@@ -105,7 +111,21 @@ func (s *SMTPSender) deliver(client *smtp.Client, to string, message []byte) err
 	if _, err := body.Write(message); err != nil {
 		return errors.Join(fmt.Errorf("smtp: write: %w", err), body.Close())
 	}
-	return body.Close()
+	if err := body.Close(); err != nil {
+		return fmt.Errorf("smtp: data: %w", rejectedForGood(err))
+	}
+	return nil
+}
+
+// rejectedForGood marks a permanent (5xx) refusal of this email's recipient
+// or content as domain.ErrEmailRejected, so it isn't sent again. A
+// temporary (4xx) refusal, or any other failure, is left as it is.
+func rejectedForGood(err error) error {
+	var reply *textproto.Error
+	if errors.As(err, &reply) && reply.Code >= 500 && reply.Code < 600 {
+		return errors.Join(err, domain.ErrEmailRejected)
+	}
+	return err
 }
 
 // message builds the MIME message: headers, then a multipart/alternative
