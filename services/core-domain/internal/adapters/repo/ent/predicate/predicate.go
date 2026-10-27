@@ -96,6 +96,9 @@ type DrillTemplate func(*sql.Selector)
 // DrillThreshold is the predicate function for drillthreshold builders.
 type DrillThreshold func(*sql.Selector)
 
+// EmailSend is the predicate function for emailsend builders.
+type EmailSend func(*sql.Selector)
+
 // Exercise is the predicate function for exercise builders.
 type Exercise func(*sql.Selector)
 

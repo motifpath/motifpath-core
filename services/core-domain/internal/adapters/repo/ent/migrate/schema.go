@@ -827,6 +827,27 @@ var (
 			},
 		},
 	}
+	// EmailSendsColumns holds the columns for the "email_sends" table.
+	EmailSendsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "recipient", Type: field.TypeString},
+		{Name: "kind", Type: field.TypeEnum, Enums: []string{"progress_report", "inactivity_reminder", "concierge_summary"}},
+		{Name: "period_key", Type: field.TypeString},
+		{Name: "sent_at", Type: field.TypeTime},
+	}
+	// EmailSendsTable holds the schema information for the "email_sends" table.
+	EmailSendsTable = &schema.Table{
+		Name:       "email_sends",
+		Columns:    EmailSendsColumns,
+		PrimaryKey: []*schema.Column{EmailSendsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "emailsend_recipient_kind_period_key",
+				Unique:  true,
+				Columns: []*schema.Column{EmailSendsColumns[1], EmailSendsColumns[2], EmailSendsColumns[3]},
+			},
+		},
+	}
 	// ExercisesColumns holds the columns for the "exercises" table.
 	ExercisesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -1602,6 +1623,7 @@ var (
 		DiagramSkillsTable,
 		DrillTemplatesTable,
 		DrillThresholdsTable,
+		EmailSendsTable,
 		ExercisesTable,
 		ExerciseConceptsTable,
 		ExerciseInstrumentsTable,

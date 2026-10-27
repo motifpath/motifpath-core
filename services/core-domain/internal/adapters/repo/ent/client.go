@@ -46,6 +46,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/drilltemplate"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/drillthreshold"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/emailsend"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseinstrument"
@@ -142,6 +143,8 @@ type Client struct {
 	DrillTemplate *DrillTemplateClient
 	// DrillThreshold is the client for interacting with the DrillThreshold builders.
 	DrillThreshold *DrillThresholdClient
+	// EmailSend is the client for interacting with the EmailSend builders.
+	EmailSend *EmailSendClient
 	// Exercise is the client for interacting with the Exercise builders.
 	Exercise *ExerciseClient
 	// ExerciseConcept is the client for interacting with the ExerciseConcept builders.
@@ -237,6 +240,7 @@ func (c *Client) init() {
 	c.DiagramSkill = NewDiagramSkillClient(c.config)
 	c.DrillTemplate = NewDrillTemplateClient(c.config)
 	c.DrillThreshold = NewDrillThresholdClient(c.config)
+	c.EmailSend = NewEmailSendClient(c.config)
 	c.Exercise = NewExerciseClient(c.config)
 	c.ExerciseConcept = NewExerciseConceptClient(c.config)
 	c.ExerciseInstrument = NewExerciseInstrumentClient(c.config)
@@ -386,6 +390,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		DiagramSkill:            NewDiagramSkillClient(cfg),
 		DrillTemplate:           NewDrillTemplateClient(cfg),
 		DrillThreshold:          NewDrillThresholdClient(cfg),
+		EmailSend:               NewEmailSendClient(cfg),
 		Exercise:                NewExerciseClient(cfg),
 		ExerciseConcept:         NewExerciseConceptClient(cfg),
 		ExerciseInstrument:      NewExerciseInstrumentClient(cfg),
@@ -462,6 +467,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		DiagramSkill:            NewDiagramSkillClient(cfg),
 		DrillTemplate:           NewDrillTemplateClient(cfg),
 		DrillThreshold:          NewDrillThresholdClient(cfg),
+		EmailSend:               NewEmailSendClient(cfg),
 		Exercise:                NewExerciseClient(cfg),
 		ExerciseConcept:         NewExerciseConceptClient(cfg),
 		ExerciseInstrument:      NewExerciseInstrumentClient(cfg),
@@ -526,13 +532,14 @@ func (c *Client) Use(hooks ...Hook) {
 		c.CourseInstrument, c.CourseVersion, c.CourseVersionCheckpoint, c.Diagram,
 		c.DiagramConcept, c.DiagramInstrument, c.DiagramRegion, c.DiagramShape,
 		c.DiagramShapeFamily, c.DiagramSkill, c.DrillTemplate, c.DrillThreshold,
-		c.Exercise, c.ExerciseConcept, c.ExerciseInstrument, c.ExerciseLanguage,
-		c.ExerciseOption, c.ExerciseSkill, c.ExpandedContent, c.FretboardCellRange,
-		c.Instrument, c.KnowledgeEdge, c.KnowledgeNode, c.KnowledgeNodeInstrument,
-		c.Language, c.LearningPath, c.LearningPathInstrument, c.LearningPathItem,
-		c.Position, c.PracticeContentVersion, c.PracticeSubjectCatalog, c.Progression,
-		c.SongChart, c.SongChartRevision, c.StudentLearningState, c.StudentPath,
-		c.StudentPathItem, c.User, c.Voice,
+		c.EmailSend, c.Exercise, c.ExerciseConcept, c.ExerciseInstrument,
+		c.ExerciseLanguage, c.ExerciseOption, c.ExerciseSkill, c.ExpandedContent,
+		c.FretboardCellRange, c.Instrument, c.KnowledgeEdge, c.KnowledgeNode,
+		c.KnowledgeNodeInstrument, c.Language, c.LearningPath,
+		c.LearningPathInstrument, c.LearningPathItem, c.Position,
+		c.PracticeContentVersion, c.PracticeSubjectCatalog, c.Progression, c.SongChart,
+		c.SongChartRevision, c.StudentLearningState, c.StudentPath, c.StudentPathItem,
+		c.User, c.Voice,
 	} {
 		n.Use(hooks...)
 	}
@@ -550,13 +557,14 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 		c.CourseInstrument, c.CourseVersion, c.CourseVersionCheckpoint, c.Diagram,
 		c.DiagramConcept, c.DiagramInstrument, c.DiagramRegion, c.DiagramShape,
 		c.DiagramShapeFamily, c.DiagramSkill, c.DrillTemplate, c.DrillThreshold,
-		c.Exercise, c.ExerciseConcept, c.ExerciseInstrument, c.ExerciseLanguage,
-		c.ExerciseOption, c.ExerciseSkill, c.ExpandedContent, c.FretboardCellRange,
-		c.Instrument, c.KnowledgeEdge, c.KnowledgeNode, c.KnowledgeNodeInstrument,
-		c.Language, c.LearningPath, c.LearningPathInstrument, c.LearningPathItem,
-		c.Position, c.PracticeContentVersion, c.PracticeSubjectCatalog, c.Progression,
-		c.SongChart, c.SongChartRevision, c.StudentLearningState, c.StudentPath,
-		c.StudentPathItem, c.User, c.Voice,
+		c.EmailSend, c.Exercise, c.ExerciseConcept, c.ExerciseInstrument,
+		c.ExerciseLanguage, c.ExerciseOption, c.ExerciseSkill, c.ExpandedContent,
+		c.FretboardCellRange, c.Instrument, c.KnowledgeEdge, c.KnowledgeNode,
+		c.KnowledgeNodeInstrument, c.Language, c.LearningPath,
+		c.LearningPathInstrument, c.LearningPathItem, c.Position,
+		c.PracticeContentVersion, c.PracticeSubjectCatalog, c.Progression, c.SongChart,
+		c.SongChartRevision, c.StudentLearningState, c.StudentPath, c.StudentPathItem,
+		c.User, c.Voice,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -625,6 +633,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.DrillTemplate.mutate(ctx, m)
 	case *DrillThresholdMutation:
 		return c.DrillThreshold.mutate(ctx, m)
+	case *EmailSendMutation:
+		return c.EmailSend.mutate(ctx, m)
 	case *ExerciseMutation:
 		return c.Exercise.mutate(ctx, m)
 	case *ExerciseConceptMutation:
@@ -5538,6 +5548,139 @@ func (c *DrillThresholdClient) mutate(ctx context.Context, m *DrillThresholdMuta
 	}
 }
 
+// EmailSendClient is a client for the EmailSend schema.
+type EmailSendClient struct {
+	config
+}
+
+// NewEmailSendClient returns a client for the EmailSend from the given config.
+func NewEmailSendClient(c config) *EmailSendClient {
+	return &EmailSendClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `emailsend.Hooks(f(g(h())))`.
+func (c *EmailSendClient) Use(hooks ...Hook) {
+	c.hooks.EmailSend = append(c.hooks.EmailSend, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `emailsend.Intercept(f(g(h())))`.
+func (c *EmailSendClient) Intercept(interceptors ...Interceptor) {
+	c.inters.EmailSend = append(c.inters.EmailSend, interceptors...)
+}
+
+// Create returns a builder for creating a EmailSend entity.
+func (c *EmailSendClient) Create() *EmailSendCreate {
+	mutation := newEmailSendMutation(c.config, OpCreate)
+	return &EmailSendCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of EmailSend entities.
+func (c *EmailSendClient) CreateBulk(builders ...*EmailSendCreate) *EmailSendCreateBulk {
+	return &EmailSendCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *EmailSendClient) MapCreateBulk(slice any, setFunc func(*EmailSendCreate, int)) *EmailSendCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &EmailSendCreateBulk{err: fmt.Errorf("calling to EmailSendClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*EmailSendCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &EmailSendCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for EmailSend.
+func (c *EmailSendClient) Update() *EmailSendUpdate {
+	mutation := newEmailSendMutation(c.config, OpUpdate)
+	return &EmailSendUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *EmailSendClient) UpdateOne(_m *EmailSend) *EmailSendUpdateOne {
+	mutation := newEmailSendMutation(c.config, OpUpdateOne, withEmailSend(_m))
+	return &EmailSendUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *EmailSendClient) UpdateOneID(id uuid.UUID) *EmailSendUpdateOne {
+	mutation := newEmailSendMutation(c.config, OpUpdateOne, withEmailSendID(id))
+	return &EmailSendUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for EmailSend.
+func (c *EmailSendClient) Delete() *EmailSendDelete {
+	mutation := newEmailSendMutation(c.config, OpDelete)
+	return &EmailSendDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *EmailSendClient) DeleteOne(_m *EmailSend) *EmailSendDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *EmailSendClient) DeleteOneID(id uuid.UUID) *EmailSendDeleteOne {
+	builder := c.Delete().Where(emailsend.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &EmailSendDeleteOne{builder}
+}
+
+// Query returns a query builder for EmailSend.
+func (c *EmailSendClient) Query() *EmailSendQuery {
+	return &EmailSendQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeEmailSend},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a EmailSend entity by its id.
+func (c *EmailSendClient) Get(ctx context.Context, id uuid.UUID) (*EmailSend, error) {
+	return c.Query().Where(emailsend.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *EmailSendClient) GetX(ctx context.Context, id uuid.UUID) *EmailSend {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *EmailSendClient) Hooks() []Hook {
+	return c.hooks.EmailSend
+}
+
+// Interceptors returns the client interceptors.
+func (c *EmailSendClient) Interceptors() []Interceptor {
+	return c.inters.EmailSend
+}
+
+func (c *EmailSendClient) mutate(ctx context.Context, m *EmailSendMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&EmailSendCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&EmailSendUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&EmailSendUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&EmailSendDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown EmailSend mutation op: %q", m.Op())
+	}
+}
+
 // ExerciseClient is a client for the Exercise schema.
 type ExerciseClient struct {
 	config
@@ -10306,10 +10449,10 @@ type (
 		ContentNodeSkill, ContentNodeVersion, Course, CourseCheckpoint,
 		CourseEnrollment, CourseInstrument, CourseVersion, CourseVersionCheckpoint,
 		Diagram, DiagramConcept, DiagramInstrument, DiagramRegion, DiagramShape,
-		DiagramShapeFamily, DiagramSkill, DrillTemplate, DrillThreshold, Exercise,
-		ExerciseConcept, ExerciseInstrument, ExerciseLanguage, ExerciseOption,
-		ExerciseSkill, ExpandedContent, FretboardCellRange, Instrument, KnowledgeEdge,
-		KnowledgeNode, KnowledgeNodeInstrument, Language, LearningPath,
+		DiagramShapeFamily, DiagramSkill, DrillTemplate, DrillThreshold, EmailSend,
+		Exercise, ExerciseConcept, ExerciseInstrument, ExerciseLanguage,
+		ExerciseOption, ExerciseSkill, ExpandedContent, FretboardCellRange, Instrument,
+		KnowledgeEdge, KnowledgeNode, KnowledgeNodeInstrument, Language, LearningPath,
 		LearningPathInstrument, LearningPathItem, Position, PracticeContentVersion,
 		PracticeSubjectCatalog, Progression, SongChart, SongChartRevision,
 		StudentLearningState, StudentPath, StudentPathItem, User, Voice []ent.Hook
@@ -10321,10 +10464,10 @@ type (
 		ContentNodeSkill, ContentNodeVersion, Course, CourseCheckpoint,
 		CourseEnrollment, CourseInstrument, CourseVersion, CourseVersionCheckpoint,
 		Diagram, DiagramConcept, DiagramInstrument, DiagramRegion, DiagramShape,
-		DiagramShapeFamily, DiagramSkill, DrillTemplate, DrillThreshold, Exercise,
-		ExerciseConcept, ExerciseInstrument, ExerciseLanguage, ExerciseOption,
-		ExerciseSkill, ExpandedContent, FretboardCellRange, Instrument, KnowledgeEdge,
-		KnowledgeNode, KnowledgeNodeInstrument, Language, LearningPath,
+		DiagramShapeFamily, DiagramSkill, DrillTemplate, DrillThreshold, EmailSend,
+		Exercise, ExerciseConcept, ExerciseInstrument, ExerciseLanguage,
+		ExerciseOption, ExerciseSkill, ExpandedContent, FretboardCellRange, Instrument,
+		KnowledgeEdge, KnowledgeNode, KnowledgeNodeInstrument, Language, LearningPath,
 		LearningPathInstrument, LearningPathItem, Position, PracticeContentVersion,
 		PracticeSubjectCatalog, Progression, SongChart, SongChartRevision,
 		StudentLearningState, StudentPath, StudentPathItem, User,
