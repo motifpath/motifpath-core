@@ -271,7 +271,8 @@ func TestEngagementMailerService_ProgressReport(t *testing.T) {
 		{name: "sent for a week with only a session started", now: monday(9, 0, saoPaulo), figures: application.PracticeOverview{SessionsStartedLast7: 1}, wantSent: true},
 		{name: "not sent when progress reports are off", now: monday(9, 0, saoPaulo), opts: []studentOption{withPrefs(false, true)}, figures: somethingToShow()},
 		{name: "not sent to a student with no address", now: monday(9, 0, saoPaulo), opts: []studentOption{withoutEmail()}, figures: somethingToShow()},
-		{name: "not sent to a teacher", now: monday(9, 0, saoPaulo), opts: []studentOption{withRole(domain.RoleTeacher)}, figures: somethingToShow()},
+		{name: "sent to a teacher who is learning", now: monday(9, 0, saoPaulo), opts: []studentOption{withRole(domain.RoleTeacher)}, figures: somethingToShow(), wantSent: true},
+		{name: "sent to an admin who is learning", now: monday(9, 0, saoPaulo), opts: []studentOption{withRole(domain.RoleAdmin)}, figures: somethingToShow(), wantSent: true},
 		{name: "waits for 09:00 in the student's own time zone", now: monday(8, 0, mustLocation("Europe/Lisbon")), opts: []studentOption{withTimeZone("Europe/Lisbon")}, figures: somethingToShow()},
 		{name: "sent at 09:00 in the student's own time zone", now: monday(9, 0, mustLocation("Europe/Lisbon")), opts: []studentOption{withTimeZone("Europe/Lisbon")}, figures: somethingToShow(), wantSent: true},
 	}
@@ -458,6 +459,38 @@ func TestEngagementMailerService_NeverStartedStudentsGetNothing(t *testing.T) {
 			assert.NotEqual(t, "Bruno", row.DisplayName, "a student who never started is not in the concierge summary")
 		}
 	}
+}
+
+func TestEngagementMailerService_EveryRoleThatLearns(t *testing.T) {
+	friday := time.Date(2026, 10, 30, 20, 0, 0, 0, saoPaulo)
+	f := newMailerFixture()
+	learning := map[string]domain.Role{"tomas": domain.RoleTeacher, "marina": domain.RoleAdmin}
+	for name, role := range learning {
+		id := f.addStudent(t, name, withRole(role))
+		f.activity.lastActive[id] = friday
+	}
+	// A teacher who only authors has started nothing.
+	f.users.put(domain.User{
+		ID: "id-helena", ClerkUserID: "clerk-helena", Role: domain.RoleTeacher, DisplayName: "helena", Email: "helena@example.com",
+		Locale: domain.Language{Code: "en"}, EmailPreferences: domain.DefaultEmailPreferences(), RegisteredAt: friday.AddDate(0, 0, -30),
+	})
+
+	for _, at := range []time.Time{monday(8, 0, saoPaulo), monday(18, 0, saoPaulo)} {
+		f.now = at
+		f.run(t)
+	}
+
+	assert.Equal(t, 1, f.sender.sentTo("tomas@example.com", "reminder"))
+	assert.Equal(t, 1, f.sender.sentTo("marina@example.com", "reminder"))
+	for _, e := range f.sender.sent {
+		assert.NotEqual(t, "helena@example.com", e.To, "a teacher who never started learning gets nothing")
+	}
+	require.Len(t, f.composer.summaries, 1)
+	var listed []string
+	for _, row := range f.composer.summaries[0].Rows {
+		listed = append(listed, row.DisplayName)
+	}
+	assert.ElementsMatch(t, []string{"tomas", "marina"}, listed, "the concierge sees every learner, whatever their role")
 }
 
 func TestEngagementMailerService_StartedThroughAStandalonePathOrAFinishedCourse(t *testing.T) {
