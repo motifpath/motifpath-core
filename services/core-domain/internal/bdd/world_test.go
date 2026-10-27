@@ -138,6 +138,13 @@ type world struct {
 	// unsubscribeToken is the token of the unsubscribe link a persona holds.
 	unsubscribeToken string
 
+	// practiceSummary is the service behind the home overview, which the
+	// engagement mailer reads a week's figures from.
+	practiceSummary *application.PracticeSummaryService
+	// mail is the engagement mailer's state: its clock, configuration, send
+	// record and what it sent. Nil until a scenario first needs it.
+	mail *mailWorld
+
 	// lastResp holds whichever generated ...ResponseObject the most recent
 	// handler call returned — one of dozens of distinct generated types
 	// across every operation this world drives, so `any` here is the
@@ -370,6 +377,7 @@ func newWorld() *world {
 	summaryNow := func() time.Time { return w.summaryNow }
 	summaryRollup := application.NewKnowledgeRollupService(w.knowledge, w.knowledgeEdges, w.practiceItems, w.practiceStates, summaryNow)
 	practiceSummary := application.NewPracticeSummaryService(w.instruments, w.studentPaths, w.courseEnrollments, w.paths, w.courseVersions, w.nodes, summaryRollup, w.practiceActivity, w.songChartRepo, summaryNow)
+	w.practiceSummary = practiceSummary
 
 	w.alpha = newAlphaWorld()
 	w.emailPreferences = application.NewEmailPreferencesService(w.users, []byte("bdd-unsubscribe-secret-long-enough-to-sign"))

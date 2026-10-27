@@ -24,7 +24,7 @@ func registerUserEmailPreferencesSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^the response shows no email address$`, w.responseShowsNoEmail)
 
 	// Time zone.
-	sc.Step(`^"([^"]+)" has no time zone set$`, func(name string) error { w.ensureRegistered(name, domain.RoleStudent); return nil })
+	sc.Step(`^"([^"]+)" has no time zone set$`, w.hasNoTimeZone)
 	sc.Step(`^"([^"]+)"'s time zone is "([^"]+)"$`, w.timeZoneIs)
 	sc.Step(`^"([^"]+)" sets their time zone to "([^"]+)"$`, w.setsTimeZone)
 	sc.Step(`^"([^"]+)" attempts to set their time zone to "([^"]+)"$`, w.setsTimeZone)
@@ -143,6 +143,19 @@ func (w *world) responseShowsNoEmail() error {
 }
 
 // ── Time zone ───────────────────────────────────────────────────────────────
+
+// hasNoTimeZone registers persona if needed and clears any stored time
+// zone, the state of a user whose client never reported one.
+func (w *world) hasNoTimeZone(persona string) error {
+	id := w.ensureRegistered(persona, domain.RoleStudent)
+	user, err := w.users.GetByID(context.Background(), id.String())
+	if err != nil {
+		return err
+	}
+	user.TimeZone = ""
+	w.users.put(user)
+	return nil
+}
 
 // timeZoneIs sets persona's stored time zone directly — a Given fixture,
 // not an exercise of the profile update.
