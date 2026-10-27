@@ -91,6 +91,20 @@ processes:
       period_seconds: 3
       failure_threshold: 30
 
+  # Sends engagement emails to the local Mailpit (http://localhost:8025),
+  # from core-domain's .env.
+  engagement-mailer:
+    command: "sh -c 'set -a && . ./.env && exec wgo run ./cmd/engagement-mailer'"
+    working_dir: "services/core-domain"
+    disabled: true
+    depends_on:
+      core-domain: { condition: process_healthy }
+    readiness_probe:
+      http_get: { host: "127.0.0.1", scheme: "http", port: 8083, path: "/readyz" }
+      initial_delay_seconds: 3
+      period_seconds: 3
+      failure_threshold: 30
+
   web:
     command: "npm run dev"
     working_dir: "../motifpath-web"

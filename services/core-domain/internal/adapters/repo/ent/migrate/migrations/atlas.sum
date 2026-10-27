@@ -1,4 +1,4 @@
-h1:dJr1aXVOpwBMpm9z3liw+8m59QTOdDr8BGI2RKlfgNc=
+h1:Wb6snMIb7LG7OpBbK3yhOtArTuNsbIZ4B+XrR5+f9jU=
 20261006144122_baseline_schema.up.sql h1:Mz7yS3khUoGF+JqUcqUl3UJhpxM3snY9i31Og9IRxs4=
 20261006144123_baseline_reference_data.up.sql h1:vd6h7t7ldITFFgH5BW/UfN4tDq6Dk+Q2JsD9JvZpccg=
 20261006223929_diagram_purpose.up.sql h1:9ZXjjkdDMhIbUdDHtw6edIVjiW1XiIbV67aqpLVZhLw=
@@ -19,3 +19,4 @@ h1:dJr1aXVOpwBMpm9z3liw+8m59QTOdDr8BGI2RKlfgNc=
 20261026101251_practice_subject_catalog.up.sql h1:UZfyX/96PWvtIT7BI5CK6nFUrKcdfso5X8eaJlgJIik=
 20261026193000_drill_templates_after_first_install.up.sql h1:fYoZKCBpXHhsLmV7XXQfWYU2BwS5ierwoxjdF0pmgfM=
 20261026225207_user_email_and_preferences.up.sql h1:phnALE+sNslGtKN/R+hEVL5m7xNtv1xtRuq6W58m+FQ=
+20261026234954_email_send.up.sql h1:Z5b2h5OgSl0SmVvmOdcIUMoMGwNFU+feCcOqD64MkIU=

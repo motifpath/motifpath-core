@@ -92,6 +92,9 @@ type PracticeOverview struct {
 	SkillsUpLast7    int
 	SongsPlayedTotal int
 	SongsPlayedLast7 int
+	// SessionsStartedLast7 counts the practice sessions started in the last
+	// 7 days, however they ended.
+	SessionsStartedLast7 int
 	// Last7Days lists the days PracticeDaysLast7 and LearningDaysLast7
 	// count, oldest first and today last.
 	Last7Days   []ActivityDay
@@ -233,6 +236,15 @@ func (s *PracticeSummaryService) Overview(ctx context.Context, caller domain.Use
 	if err != nil {
 		return PracticeOverview{}, err
 	}
+	return s.OverviewAt(ctx, caller, loc, s.now())
+}
+
+// OverviewAt returns caller's practice overview as it stood at now, a
+// moment that may lie in the past: the last 7 days are the 7 calendar days
+// in loc ending on now's day, and activity after now counts nowhere. Skills
+// up and the instrument cards read the knowledge state as it is, not as it
+// was at now.
+func (s *PracticeSummaryService) OverviewAt(ctx context.Context, caller domain.User, loc *time.Location, now time.Time) (PracticeOverview, error) {
 	instrumentIDs, err := s.learning.instrumentIDs(ctx, caller.ID)
 	if err != nil {
 		return PracticeOverview{}, err
@@ -241,7 +253,6 @@ func (s *PracticeSummaryService) Overview(ctx context.Context, caller domain.Use
 	if err != nil {
 		return PracticeOverview{}, err
 	}
-	now := s.now()
 	start := domain.Last7DaysStart(now, loc)
 	previousStart := domain.Previous7DaysStart(now, loc)
 	// Every finished session ever, since the best streak can lie anywhere
@@ -250,6 +261,7 @@ func (s *PracticeSummaryService) Overview(ctx context.Context, caller domain.Use
 	if err != nil {
 		return PracticeOverview{}, err
 	}
+	sessions = finishedBy(sessions, now)
 	completions, err := s.activity.CompletionTimes(ctx, caller.ID, start)
 	if err != nil {
 		return PracticeOverview{}, err
@@ -288,6 +300,7 @@ func (s *PracticeSummaryService) Overview(ctx context.Context, caller domain.Use
 		SkillsUpLast7:             skillsUp,
 		SongsPlayedTotal:          songs.Total,
 		SongsPlayedLast7:          songs.Last7,
+		SessionsStartedLast7:      startedBetween(spans, start, endOfToday(now, loc)),
 		Last7Days:                 activityDays(domain.DaysOfLast7(ends, now, loc), domain.DaysOfLast7(completions, now, loc)),
 	}
 	for i, id := range instrumentIDs {
@@ -379,6 +392,29 @@ func (s *PracticeSummaryService) skillsUp(ctx context.Context, studentID string,
 func endOfToday(now time.Time, loc *time.Location) time.Time {
 	y, m, d := now.In(loc).Date()
 	return time.Date(y, m, d+1, 0, 0, 0, 0, loc)
+}
+
+// finishedBy keeps the sessions that had ended by now.
+func finishedBy(sessions []domain.FinishedPracticeSession, now time.Time) []domain.FinishedPracticeSession {
+	kept := make([]domain.FinishedPracticeSession, 0, len(sessions))
+	for _, session := range sessions {
+		if !session.EndedAt.After(now) {
+			kept = append(kept, session)
+		}
+	}
+	return kept
+}
+
+// startedBetween counts the spans that started at or after from and before
+// to.
+func startedBetween(spans []domain.PracticeSessionSpan, from, to time.Time) int {
+	count := 0
+	for _, span := range spans {
+		if !span.StartedAt.Before(from) && span.StartedAt.Before(to) {
+			count++
+		}
+	}
+	return count
 }
 
 // sessionEnds lists when the sessions with instrumentID in hand (nil: in

@@ -4,7 +4,7 @@
 #   mise trust && mise install        # install the tools pinned below
 #   mise run dev                      # start the dependency containers
 #   mise run services                 # backend inner loop (process-compose)
-#   mise run full                     # backend + aggregation-worker + web
+#   mise run full                     # backend + aggregation-worker + engagement-mailer + web
 #
 # Not managed here: atlas, GNU `timeout`, Bash 4+, ffmpeg — see the README.
 
@@ -26,7 +26,7 @@ node = "26"
 PC_PORT_NUM = "8099"
 
 [tasks.dev]
-description = "Start Postgres, MongoDB, Redpanda and the object store"
+description = "Start Postgres, MongoDB, Redpanda, the object store and Mailpit"
 run = "make dev"
 
 [tasks.services]
@@ -34,8 +34,8 @@ description = "Backend inner loop: core-domain + event-ingestion"
 run = "process-compose up"
 
 [tasks.full]
-description = "Full stack: backend + aggregation-worker + web SPA"
-run = "process-compose up core-domain event-ingestion aggregation-worker web"
+description = "Full stack: backend + aggregation-worker + engagement-mailer + web SPA"
+run = "process-compose up core-domain event-ingestion aggregation-worker engagement-mailer web"
 
 [tasks.generate]
 run = "make generate"

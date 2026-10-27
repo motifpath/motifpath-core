@@ -1,0 +1,7 @@
+Students, week of {{.WeekStart}}. Inactive longest first.
+{{range .Rows}}
+{{.Name}} <{{.Email}}>
+  practice days: {{.PracticeDays}}, minutes: {{.Minutes}}, last active: {{.LastActive}}, days inactive: {{.DaysInactive}}
+{{else}}
+No student has started learning yet.
+{{end}}

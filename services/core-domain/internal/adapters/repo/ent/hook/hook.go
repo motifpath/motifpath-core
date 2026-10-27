@@ -369,6 +369,18 @@ func (f DrillThresholdFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Val
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DrillThresholdMutation", m)
 }
 
+// The EmailSendFunc type is an adapter to allow the use of ordinary
+// function as EmailSend mutator.
+type EmailSendFunc func(context.Context, *ent.EmailSendMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f EmailSendFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.EmailSendMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.EmailSendMutation", m)
+}
+
 // The ExerciseFunc type is an adapter to allow the use of ordinary
 // function as Exercise mutator.
 type ExerciseFunc func(context.Context, *ent.ExerciseMutation) (ent.Value, error)

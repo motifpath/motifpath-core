@@ -86,6 +86,7 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	registerDisplayNameSteps(sc, w)
 	registerLocaleSteps(sc, w)
 	registerUserEmailPreferencesSteps(sc, w)
+	registerEngagementEmailSteps(sc, w)
 	registerContentNodeSteps(sc, w)
 	registerAuthoringListSteps(sc, w)
 	registerKnowledgeNodeSteps(sc, w)

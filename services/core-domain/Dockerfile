@@ -16,6 +16,9 @@ RUN go mod download
 
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -C services/core-domain -o /out/core-domain ./cmd
+# The engagement mailer ships in the same image and runs as its own
+# container, with this binary as its entrypoint.
+RUN CGO_ENABLED=0 GOOS=linux go build -C services/core-domain -o /out/engagement-mailer ./cmd/engagement-mailer
 
 # Not distroless: cmd/main.go shells out to the Atlas CLI at startup to apply
 # migrations under its Postgres advisory lock (ADR-005) — that needs a real
@@ -33,6 +36,7 @@ COPY --from=arigaio/atlas:1.3.2 /atlas /usr/local/bin/atlas
 # in the build stage.
 WORKDIR /app
 COPY --from=build /out/core-domain /app/core-domain
+COPY --from=build /out/engagement-mailer /app/engagement-mailer
 COPY --from=build /src/services/core-domain/internal/adapters/repo/ent/migrate/migrations /app/internal/adapters/repo/ent/migrate/migrations
 
 USER nonroot:nonroot
