@@ -181,6 +181,7 @@ type mailerFixture struct {
 	sender      *fakeEmailSender
 	now         time.Time
 	concierge   string
+	only        string
 }
 
 func newMailerFixture() *mailerFixture {
@@ -212,6 +213,7 @@ func (f *mailerFixture) service() *application.EngagementMailerService {
 		AppBaseURL:       "https://app.motifpath.com",
 		APIBaseURL:       "https://api.motifpath.com",
 		ConciergeAddress: f.concierge,
+		OnlyRecipient:    f.only,
 	}, func() time.Time { return f.now })
 }
 
@@ -459,6 +461,28 @@ func TestEngagementMailerService_NeverStartedStudentsGetNothing(t *testing.T) {
 			assert.NotEqual(t, "Bruno", row.DisplayName, "a student who never started is not in the concierge summary")
 		}
 	}
+}
+
+func TestEngagementMailerService_OnlyRecipient(t *testing.T) {
+	friday := time.Date(2026, 10, 30, 20, 0, 0, 0, saoPaulo)
+	f := newMailerFixture()
+	for _, name := range []string{"alice", "bruno"} {
+		id := f.addStudent(t, name)
+		f.activity.lastActive[id] = friday
+		f.figures.byID[id] = somethingToShow()
+	}
+	f.only = "ALICE@example.com "
+
+	for _, at := range []time.Time{monday(8, 0, saoPaulo), monday(9, 0, saoPaulo), monday(18, 0, saoPaulo)} {
+		f.now = at
+		f.run(t)
+	}
+
+	assert.Equal(t, 1, f.sender.sentTo("alice@example.com", "progress report"))
+	assert.Equal(t, 1, f.sender.sentTo("alice@example.com", "reminder"))
+	assert.Zero(t, f.sender.sentTo("bruno@example.com", "progress report"), "everyone else is left alone")
+	assert.Zero(t, f.sender.sentTo("bruno@example.com", "reminder"))
+	assert.Zero(t, f.sender.sentTo("concierge@motifpath.com", "concierge summary"), "the summary covers everyone, so it is left out")
 }
 
 func TestEngagementMailerService_EveryRoleThatLearns(t *testing.T) {

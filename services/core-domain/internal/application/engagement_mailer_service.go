@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/url"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/motifpath/core-domain/internal/domain"
@@ -34,10 +35,14 @@ type EngagementMailerDeps struct {
 
 // EngagementMailerConfig holds where the emails' links point and who the
 // concierge is. An empty ConciergeAddress sends no concierge summary.
+// OnlyRecipient, when set, limits a run to the student emails due to that
+// one address and sends no concierge summary, which covers everyone: an
+// operator's way to check one user's emails without mailing anyone else.
 type EngagementMailerConfig struct {
 	AppBaseURL       string
 	APIBaseURL       string
 	ConciergeAddress string
+	OnlyRecipient    string
 }
 
 // EngagementMailerService decides, each time it runs, which engagement
@@ -70,6 +75,10 @@ func (s *EngagementMailerService) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	only := strings.ToLower(strings.TrimSpace(s.cfg.OnlyRecipient))
+	if only != "" {
+		students = slices.DeleteFunc(students, func(u domain.User) bool { return strings.ToLower(u.Email) != only })
+	}
 	ids := make([]string, len(students))
 	for i, student := range students {
 		ids[i] = student.ID
@@ -85,7 +94,9 @@ func (s *EngagementMailerService) Run(ctx context.Context) error {
 		errs = append(errs, s.sendProgressReport(ctx, student, loc, now))
 		errs = append(errs, s.sendReminder(ctx, student, loc, s.spellStart(student, lastActive), now))
 	}
-	errs = append(errs, s.sendConciergeSummary(ctx, students, lastActive, now))
+	if only == "" {
+		errs = append(errs, s.sendConciergeSummary(ctx, students, lastActive, now))
+	}
 	return errors.Join(errs...)
 }
 
