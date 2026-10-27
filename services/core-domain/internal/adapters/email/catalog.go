@@ -3,6 +3,8 @@ package email
 import (
 	"fmt"
 	"time"
+
+	"github.com/motifpath/core-domain/internal/domain"
 )
 
 // catalog is the wording of the student emails in one language. Its
@@ -27,10 +29,10 @@ type catalog struct {
 	reportAction        string
 	reportFooter        string
 	reportUnsubscribe   string
-	reminderSubject     func(second bool) string
-	reminderBody        func(days int, second bool) string
+	reminderSubject     map[domain.ReminderStage]string
+	reminderBody        map[domain.ReminderStage]func(days int) string
 	reminderAction      string
-	reminderFooter      string
+	reminderFooter      map[domain.ReminderStage]string
 	reminderUnsubscribe string
 }
 
@@ -87,20 +89,28 @@ var english = catalog{
 	reportFooter:      "You get this email on Mondays, after a week in which you practised.",
 	reportUnsubscribe: "Stop progress reports",
 
-	reminderSubject: func(second bool) string {
-		if second {
-			return "Pick up where you left off"
-		}
-		return "A few minutes of practice today?"
+	reminderSubject: map[domain.ReminderStage]string{
+		domain.ReminderStageDaily:           "Time for a little practice?",
+		domain.ReminderStageInactivity:      "A few minutes of practice today?",
+		domain.ReminderStageInactivityAgain: "Pick up where you left off",
 	},
-	reminderBody: func(days int, second bool) string {
-		if second {
+	reminderBody: map[domain.ReminderStage]func(days int) string{
+		domain.ReminderStageDaily: func(int) string {
+			return "You haven't practised yet today. Even five minutes keeps your hands and ears in shape."
+		},
+		domain.ReminderStageInactivity: func(days int) string {
+			return fmt.Sprintf("It's been %d days since your last visit. A short session is enough to keep what you've learned fresh.", days)
+		},
+		domain.ReminderStageInactivityAgain: func(days int) string {
 			return fmt.Sprintf("It's been %d days. Your path is right where you left it, whenever you're ready.", days)
-		}
-		return fmt.Sprintf("It's been %d days since your last visit. A short session is enough to keep what you've learned fresh.", days)
+		},
 	},
-	reminderAction:      "Practise now",
-	reminderFooter:      "You get this email after a few days away from MotifPath.",
+	reminderAction: "Practise now",
+	reminderFooter: map[domain.ReminderStage]string{
+		domain.ReminderStageDaily:           "You get this email in the evening on days you haven't practised yet.",
+		domain.ReminderStageInactivity:      "You get this email after a few days away from MotifPath.",
+		domain.ReminderStageInactivityAgain: "You get this email after a few days away from MotifPath.",
+	},
 	reminderUnsubscribe: "Stop reminders",
 }
 
@@ -136,19 +146,27 @@ var portugueseBrazil = catalog{
 	reportFooter:      "Você recebe este email às segundas-feiras, depois de uma semana em que praticou.",
 	reportUnsubscribe: "Parar os resumos semanais",
 
-	reminderSubject: func(second bool) string {
-		if second {
-			return "Retome de onde parou"
-		}
-		return "Que tal alguns minutos de prática hoje?"
+	reminderSubject: map[domain.ReminderStage]string{
+		domain.ReminderStageDaily:           "Hora de praticar um pouco?",
+		domain.ReminderStageInactivity:      "Que tal alguns minutos de prática hoje?",
+		domain.ReminderStageInactivityAgain: "Retome de onde parou",
 	},
-	reminderBody: func(days int, second bool) string {
-		if second {
+	reminderBody: map[domain.ReminderStage]func(days int) string{
+		domain.ReminderStageDaily: func(int) string {
+			return "Você ainda não praticou hoje. Cinco minutos já bastam para manter as mãos e o ouvido em forma."
+		},
+		domain.ReminderStageInactivity: func(days int) string {
+			return fmt.Sprintf("Já faz %d dias desde a sua última visita. Uma sessão curta já basta para manter vivo o que você aprendeu.", days)
+		},
+		domain.ReminderStageInactivityAgain: func(days int) string {
 			return fmt.Sprintf("Já faz %d dias. Seu caminho está exatamente onde você parou, quando quiser voltar.", days)
-		}
-		return fmt.Sprintf("Já faz %d dias desde a sua última visita. Uma sessão curta já basta para manter vivo o que você aprendeu.", days)
+		},
 	},
-	reminderAction:      "Praticar agora",
-	reminderFooter:      "Você recebe este email depois de alguns dias longe do MotifPath.",
+	reminderAction: "Praticar agora",
+	reminderFooter: map[domain.ReminderStage]string{
+		domain.ReminderStageDaily:           "Você recebe este email à noite, nos dias em que ainda não praticou.",
+		domain.ReminderStageInactivity:      "Você recebe este email depois de alguns dias longe do MotifPath.",
+		domain.ReminderStageInactivityAgain: "Você recebe este email depois de alguns dias longe do MotifPath.",
+	},
 	reminderUnsubscribe: "Parar lembretes",
 }

@@ -117,16 +117,17 @@ func registerEngagementEmailSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)"'s best day streak is (\d+)$`, w.bestStreakEarlier)
 	sc.Step(`^"([^"]+)" started no practice session, completed no lesson and played no song in the week that ended on Sunday$`, w.nothingInReportedWeek)
 	sc.Step(`^"([^"]+)" completed a lesson on Wednesday of the week that ended on Sunday and didn't practise$`, w.completedALessonOnWednesday)
-	sc.Step(`^"([^"]+)" had a day streak of (\d+) that ended on Friday$`, w.streakEndingFriday)
+	sc.Step(`^"([^"]+)" had a day streak of (\d+) that ended on (Friday|Sunday)$`, w.streakEndingOn)
 	sc.Step(`^"([^"]+)"'s last activity was on (Friday|Saturday|Sunday)$`, w.lastActiveOnWeekday)
 	sc.Step(`^"([^"]+)"'s last activity was (\d+) days? ago$`, w.lastActiveDaysAgo)
+	sc.Step(`^"([^"]+)"'s last activity was on Monday at (\d\d):(\d\d)$`, w.lastActiveOnMondayAt)
 	sc.Step(`^"([^"]+)"'s last practice session was on Friday$`, w.lastPracticeOnFriday)
 	sc.Step(`^"([^"]+)" opened a song chart on Sunday$`, func(name string) error { return w.lastActiveOnWeekday(name, "Sunday") })
 	sc.Step(`^"([^"]+)" practised (\d+) days ago and had no activity since$`, w.practisedDaysAgoNothingSince)
 
 	// What was sent before the scenario's run.
 	sc.Step(`^"([^"]+)" was sent a progress report at Monday (\d\d):(\d\d) in "([^"]+)"$`, w.mailerRanAtMonday)
-	sc.Step(`^"([^"]+)" was sent an inactivity reminder at Monday (\d\d):(\d\d) in "([^"]+)"$`, w.mailerRanAtMonday)
+	sc.Step(`^"([^"]+)" was sent an? (?:inactivity|daily) reminder at Monday (\d\d):(\d\d) in "([^"]+)"$`, w.mailerRanAtMonday)
 	sc.Step(`^a student summary was sent at Monday (\d\d):(\d\d) in "([^"]+)"$`, func(hour, minute int, zone string) error { return w.mailerRanAtMonday("", hour, minute, zone) })
 	sc.Step(`^"([^"]+)" was sent an inactivity reminder on the 3rd day$`, func(name string) error { return w.remindedOnDays(name, 3) })
 	sc.Step(`^"([^"]+)" was sent inactivity reminders on the 3rd and the 10th day$`, func(name string) error { return w.remindedOnDays(name, 3, 10) })
@@ -137,9 +138,9 @@ func registerEngagementEmailSteps(sc *godog.ScenarioContext, w *world) {
 
 	// What the run sent.
 	sc.Step(`^"([^"]+)" is sent a progress report(?: at "([^"]+)")?$`, w.isSentKind(domain.EmailKindProgressReport))
-	sc.Step(`^"([^"]+)" is sent an inactivity reminder(?: at "([^"]+)")?$`, w.isSentKind(domain.EmailKindReminders))
+	sc.Step(`^"([^"]+)" is sent an? (inactivity|daily) reminder(?: at "([^"]+)")?$`, w.isSentReminder)
 	sc.Step(`^"([^"]+)" is sent a second inactivity reminder$`, w.isSentSecondReminder)
-	sc.Step(`^"([^"]+)" is not sent (?:another |a |an )?(progress report|inactivity reminder)$`, w.isNotSentKind)
+	sc.Step(`^"([^"]+)" is not sent (?:another |a |an )?(progress report|inactivity reminder|daily reminder)$`, w.isNotSentKind)
 	sc.Step(`^"([^"]+)" is not sent any email$`, w.isNotSentAnyEmail)
 	sc.Step(`^"([^"]+)"'s progress report shows (\d+) practice days and (\d+) minutes, up from (\d+)$`, w.reportShowsFigures)
 	sc.Step(`^"([^"]+)"'s progress report shows a current day streak of (\d+) and a best of (\d+)$`, w.reportShowsStreak)
@@ -147,8 +148,9 @@ func registerEngagementEmailSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)"'s progress report doesn't say a streak was lost or broken$`, w.reportNeverSaysLost)
 	sc.Step(`^"([^"]+)"'s progress report is written in Portuguese \(Brazil\)$`, w.reportInPortuguese)
 	sc.Step(`^"([^"]+)"'s progress report carries an unsubscribe link for progress reports$`, w.carriesUnsubscribeFor(domain.EmailKindProgressReport))
-	sc.Step(`^"([^"]+)"'s inactivity reminder carries an unsubscribe link for reminders$`, w.carriesUnsubscribeFor(domain.EmailKindReminders))
-	sc.Step(`^"([^"]+)"'s inactivity reminder doesn't mention a day streak$`, w.reminderNeverMentionsStreak)
+	sc.Step(`^"([^"]+)"'s (inactivity|daily) reminder carries an unsubscribe link for reminders$`, w.reminderCarriesUnsubscribe)
+	sc.Step(`^"([^"]+)"'s (inactivity|daily) reminder doesn't mention a day streak$`, w.reminderNeverMentionsStreak)
+	sc.Step(`^"([^"]+)"'s daily reminder is written in Portuguese \(Brazil\)$`, w.dailyReminderInPortuguese)
 	sc.Step(`^a student summary is sent to "([^"]+)"$`, w.summarySentTo)
 	sc.Step(`^no (?:other )?student summary is sent$`, w.noSummarySent)
 	sc.Step(`^the student summary has a row for "([^"]+)"$`, w.summaryHasRowFor)
@@ -367,9 +369,9 @@ func (w *world) completedALessonOnWednesday(persona string) error {
 	return nil
 }
 
-func (w *world) streakEndingFriday(persona string, days int) error {
+func (w *world) streakEndingOn(persona string, days int, lastDay string) error {
 	for i := range days {
-		w.addPracticeSession(persona, weekDay(4-i), 10)
+		w.addPracticeSession(persona, weekDay(weekdayOffsets[lastDay]-i), 10)
 	}
 	return nil
 }
@@ -381,6 +383,11 @@ func (w *world) lastActiveOnWeekday(persona, day string) error {
 
 func (w *world) lastActiveDaysAgo(persona string, days int) error {
 	w.setLastActive(persona, mailerMonday.Add(10*time.Hour).AddDate(0, 0, -days))
+	return nil
+}
+
+func (w *world) lastActiveOnMondayAt(persona string, hour, minute int) error {
+	w.setLastActive(persona, mailerMonday.Add(time.Duration(hour)*time.Hour+time.Duration(minute)*time.Minute))
 	return nil
 }
 
@@ -413,6 +420,41 @@ func findKind(sent []domain.Email, address string, kind domain.EmailKind) *domai
 	return nil
 }
 
+// dailyReminderSubjects are the daily reminder's subjects in every
+// language, which tell it apart from an inactivity reminder: both carry the
+// reminders unsubscribe token.
+var dailyReminderSubjects = map[string]bool{"Time for a little practice?": true, "Hora de praticar um pouco?": true}
+
+// findReminder returns the daily or the inactivity reminder, as which
+// names it, that sent holds for address.
+func findReminder(sent []domain.Email, address, which string) *domain.Email {
+	for i, e := range sent {
+		if e.To == address && strings.Contains(e.OneClickUnsubscribeURL, "."+string(domain.EmailKindReminders)+".") &&
+			dailyReminderSubjects[e.Subject] == (which == "daily") {
+			return &sent[i]
+		}
+	}
+	return nil
+}
+
+func (w *world) sentReminder(persona, which string) (*domain.Email, error) {
+	reminder := findReminder(w.mailer().lastRun, w.emailOf(persona), which)
+	if reminder == nil {
+		return nil, fmt.Errorf("expected a %s reminder to %q, the run sent %s", which, persona, describeSent(w.mailer().lastRun))
+	}
+	return reminder, nil
+}
+
+func (w *world) isSentReminder(persona, which, address string) error {
+	if address == "" {
+		address = w.emailOf(persona)
+	}
+	if findReminder(w.mailer().lastRun, address, which) == nil {
+		return fmt.Errorf("expected a %s reminder to %s, the run sent %s", which, address, describeSent(w.mailer().lastRun))
+	}
+	return nil
+}
+
 func (w *world) isSentKind(kind domain.EmailKind) func(string, string) error {
 	return func(persona, address string) error {
 		if address == "" {
@@ -426,7 +468,7 @@ func (w *world) isSentKind(kind domain.EmailKind) func(string, string) error {
 }
 
 func (w *world) isSentSecondReminder(persona string) error {
-	reminder := findKind(w.mailer().lastRun, w.emailOf(persona), domain.EmailKindReminders)
+	reminder := findReminder(w.mailer().lastRun, w.emailOf(persona), "inactivity")
 	if reminder == nil || reminder.Subject != "Pick up where you left off" {
 		return fmt.Errorf("expected the spell's second reminder to %q, the run sent %s", persona, describeSent(w.mailer().lastRun))
 	}
@@ -434,12 +476,18 @@ func (w *world) isSentSecondReminder(persona string) error {
 }
 
 func (w *world) isNotSentKind(persona, what string) error {
-	kind := domain.EmailKindReminders
-	if what == "progress report" {
-		kind = domain.EmailKindProgressReport
+	sent, address := w.mailer().lastRun, w.emailOf(persona)
+	var found bool
+	switch what {
+	case "progress report":
+		found = sentKindTo(sent, address, domain.EmailKindProgressReport)
+	case "daily reminder":
+		found = findReminder(sent, address, "daily") != nil
+	default:
+		found = findReminder(sent, address, "inactivity") != nil
 	}
-	if sentKindTo(w.mailer().lastRun, w.emailOf(persona), kind) {
-		return fmt.Errorf("expected no %s to %q", what, persona)
+	if found {
+		return fmt.Errorf("expected no %s to %q, the run sent %s", what, persona, describeSent(sent))
 	}
 	return nil
 }
@@ -530,10 +578,28 @@ func (w *world) carriesUnsubscribeFor(kind domain.EmailKind) func(string) error 
 	}
 }
 
-func (w *world) reminderNeverMentionsStreak(persona string) error {
-	reminder := findKind(w.mailer().lastRun, w.emailOf(persona), domain.EmailKindReminders)
-	if reminder == nil {
-		return fmt.Errorf("expected a reminder to %q", persona)
+func (w *world) reminderCarriesUnsubscribe(persona, which string) error {
+	if _, err := w.sentReminder(persona, which); err != nil {
+		return err
+	}
+	return w.carriesUnsubscribeFor(domain.EmailKindReminders)(persona)
+}
+
+func (w *world) dailyReminderInPortuguese(persona string) error {
+	reminder, err := w.sentReminder(persona, "daily")
+	if err != nil {
+		return err
+	}
+	if reminder.Subject != "Hora de praticar um pouco?" {
+		return fmt.Errorf("expected the Portuguese subject, got %q", reminder.Subject)
+	}
+	return nil
+}
+
+func (w *world) reminderNeverMentionsStreak(persona, which string) error {
+	reminder, err := w.sentReminder(persona, which)
+	if err != nil {
+		return err
 	}
 	if strings.Contains(strings.ToLower(reminder.Text+reminder.HTML), "streak") {
 		return fmt.Errorf("%q's reminder mentions a streak", persona)

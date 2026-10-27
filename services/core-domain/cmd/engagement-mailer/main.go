@@ -1,8 +1,9 @@
 // Command engagement-mailer sends the platform's engagement emails: the
-// weekly progress report and inactivity reminders to students, and the
-// weekly student summary to the concierge. It runs as its own container
-// beside core-domain, from the same image, so it can be stopped without
-// touching the API. It never applies migrations; core-domain does.
+// weekly progress report and the daily and inactivity reminders to
+// students, and the weekly student summary to the concierge. It runs as its
+// own container beside core-domain, from the same image, so it can be
+// stopped without touching the API. It never applies migrations;
+// core-domain does.
 package main
 
 import (

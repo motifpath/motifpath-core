@@ -23,9 +23,27 @@ const (
 	ConciergeSummaryHour = 8
 )
 
-// ReminderDays are the days without activity on which a student is
-// reminded, once each per inactive spell. A spell's later days get nothing.
-var ReminderDays = []int{3, 10}
+// ReminderStage says which reminder a student gets on a day of an inactive
+// spell: a daily one on its first days, then the inactivity ones.
+type ReminderStage string
+
+const (
+	ReminderStageDaily           ReminderStage = "daily"
+	ReminderStageInactivity      ReminderStage = "inactivity"
+	ReminderStageInactivityAgain ReminderStage = "inactivity_again"
+)
+
+// reminderStages are the days without activity on which a student is
+// reminded, once each per inactive spell, and the reminder each day gets.
+// The daily reminders stop once the inactivity ones start, and the days in
+// between and after get nothing, so a student who stopped isn't emailed
+// every day.
+var reminderStages = map[int]ReminderStage{
+	1:  ReminderStageDaily,
+	2:  ReminderStageDaily,
+	3:  ReminderStageInactivity,
+	10: ReminderStageInactivityAgain,
+}
 
 // EmailSendKind names what an email was sent as, for the record that keeps
 // each one from going out twice.
@@ -86,14 +104,14 @@ type ProgressReportMessage struct {
 	Links            EmailLinks
 }
 
-// ReminderMessage is what an inactivity reminder says. Second is true for
-// the spell's second reminder.
+// ReminderMessage is what a reminder says: Stage names the reminder, on the
+// spell's day DaysWithout.
 type ReminderMessage struct {
 	To          string
 	DisplayName string
 	Locale      string
 	DaysWithout int
-	Second      bool
+	Stage       ReminderStage
 	Links       EmailLinks
 }
 
@@ -138,21 +156,19 @@ func DaysWithoutActivity(lastActive, now time.Time, loc *time.Location) int {
 	return int(calendarDate(now.In(loc)).Sub(calendarDate(lastActive.In(loc))).Hours() / 24)
 }
 
-
 // ReminderDue reports whether a reminder is due at now for a student whose
-// spell began at lastActive: only on one of ReminderDays, from ReminderHour.
-// key names the spell and the day, so each reminder goes out once; second
-// is true past the first of ReminderDays.
-func ReminderDue(lastActive, now time.Time, loc *time.Location) (key string, days int, second bool, ok bool) {
+// spell began at lastActive: only on a day that has a reminder stage, from
+// ReminderHour. key names the spell and the day, so each reminder goes out
+// once, and a student gets at most one a day.
+func ReminderDue(lastActive, now time.Time, loc *time.Location) (key string, days int, stage ReminderStage, ok bool) {
 	if now.In(loc).Hour() < ReminderHour {
-		return "", 0, false, false
+		return "", 0, "", false
 	}
 	days = DaysWithoutActivity(lastActive, now, loc)
-	for i, due := range ReminderDays {
-		if days == due {
-			spell := lastActive.In(loc).Format(time.DateOnly)
-			return fmt.Sprintf("%s/day-%d", spell, due), days, i > 0, true
-		}
+	stage, ok = reminderStages[days]
+	if !ok {
+		return "", days, "", false
 	}
-	return "", days, false, false
+	spell := lastActive.In(loc).Format(time.DateOnly)
+	return fmt.Sprintf("%s/day-%d", spell, days), days, stage, true
 }
