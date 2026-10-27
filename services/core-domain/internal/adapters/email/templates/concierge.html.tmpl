@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1d1b18;font-size:14px;">
+<p>Students, week of {{.WeekStart}}. Inactive longest first.</p>
+<table cellpadding="6" cellspacing="0" style="border-collapse:collapse;">
+<tr style="text-align:left;border-bottom:1px solid #d9d4cc;"><th>Student</th><th>Email</th><th>Practice days</th><th>Minutes</th><th>Last active</th><th>Days inactive</th></tr>
+{{range .Rows}}<tr style="border-bottom:1px solid #ebe8e2;"><td>{{.Name}}</td><td>{{.Email}}</td><td>{{.PracticeDays}}</td><td>{{.Minutes}}</td><td>{{.LastActive}}</td><td>{{.DaysInactive}}</td></tr>
+{{else}}<tr><td colspan="6">No student has started learning yet.</td></tr>
+{{end}}</table>
+</body>
+</html>

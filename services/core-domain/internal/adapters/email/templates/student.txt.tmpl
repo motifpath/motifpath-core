@@ -1,0 +1,11 @@
+{{.Greeting}}
+{{range .Paragraphs}}
+{{.}}
+{{end}}{{if .Stats}}
+{{range .Stats}}{{.Label}}: {{.Value}}
+{{end}}{{end}}
+{{.ActionLabel}}: {{.ActionURL}}
+
+--
+{{.Footer}}
+{{.UnsubscribeLabel}}: {{.UnsubscribeURL}}

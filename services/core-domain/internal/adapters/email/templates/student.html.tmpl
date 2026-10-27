@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body style="margin:0;padding:0;background:#f6f5f2;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f5f2;">
+<tr><td align="center" style="padding:24px 16px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:12px;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1d1b18;">
+<tr><td style="padding:28px 28px 8px;font-size:16px;line-height:24px;">
+<p style="margin:0 0 16px;">{{.Greeting}}</p>
+{{range .Paragraphs}}<p style="margin:0 0 16px;">{{.}}</p>
+{{end}}</td></tr>
+{{if .Stats}}<tr><td style="padding:0 28px 8px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:15px;line-height:22px;">
+{{range .Stats}}<tr><td style="padding:8px 0;border-top:1px solid #ebe8e2;color:#5f5a52;">{{.Label}}</td><td align="right" style="padding:8px 0;border-top:1px solid #ebe8e2;font-weight:600;">{{.Value}}</td></tr>
+{{end}}</table>
+</td></tr>{{end}}
+<tr><td style="padding:16px 28px 28px;">
+<a href="{{.ActionURL}}" style="display:inline-block;background:#1d1b18;color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;padding:12px 20px;border-radius:8px;">{{.ActionLabel}}</a>
+</td></tr>
+</table>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
+<tr><td style="padding:16px 28px;font-size:13px;line-height:20px;color:#7a746b;">
+{{.Footer}} <a href="{{.UnsubscribeURL}}" style="color:#7a746b;">{{.UnsubscribeLabel}}</a>
+</td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>
