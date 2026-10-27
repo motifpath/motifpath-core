@@ -69,8 +69,11 @@ type PracticeSessionService struct {
 	// lastInHand tells the items of a student's last in-hand session; nil
 	// when no songs are installed.
 	lastInHand ports.LastInHandSessionReader
-	newID      func() string
-	now        func() time.Time
+	// sessionEnds tells whether a session's end has been folded; nil when
+	// no session is ever caught up.
+	sessionEnds ports.SessionEndReader
+	newID       func() string
+	now         func() time.Time
 	// shuffle puts equally urgent candidates in random order.
 	shuffle func(n int, swap func(i, j int))
 }
@@ -451,9 +454,14 @@ func (s *PracticeSessionService) newPlan(ctx context.Context, studentID string, 
 	if err != nil {
 		return domain.PracticeSessionPlan{}, err
 	}
+	focus := c.focusNodes(items, nodes)
+	focusRungs, err := s.focusRungs(ctx, studentID, instrumentID, focus)
+	if err != nil {
+		return domain.PracticeSessionPlan{}, err
+	}
 	return domain.PracticeSessionPlan{
 		ID: s.newID(), InstrumentID: instrumentID, Minutes: c.budget / 60, Items: items,
-		FocusSource: source, FocusNodes: c.focusNodes(items, nodes),
+		FocusSource: source, FocusNodes: focus, FocusRungs: focusRungs,
 		FeltQuestions: feltQuestions, TapCheckDue: tapCheckDue,
 	}, nil
 }

@@ -7093,7 +7093,13 @@ type PracticeDay struct {
 	Practised bool `json:"practised"`
 }
 
-// PracticeFocusNode One subject of a practice session.
+// PracticeFocusNode One subject of a practice session, with where the student stood on it when the session
+// was composed: rung is its current rung for the session (the lowest rung with material
+// for the session whose items are not yet accurate; with every rung accurate, the top
+// one), and rung_level the student's level on it, the highest level at least 80% of the
+// subtree's items at that rung that suit the session reach. The session summary compares
+// rung_level with the level read from getPracticeSessionSubjectProgress once the session
+// is caught up.
 type PracticeFocusNode struct {
 	// Names Text in one or more languages, keyed by Language.code — for example
 	// {"en": "Guitar", "pt_BR": "Violão"}. "any" is never a key: a name is
@@ -7103,6 +7109,21 @@ type PracticeFocusNode struct {
 
 	// NodeId The knowledge node practised.
 	NodeId openapi_types.UUID `json:"node_id"`
+
+	// Rung The rung of the practice ladder an item trains, lowest first. know = recall a fact (a
+	// note, a numeral, a shape); hear = recognise it by ear; play_clean = play it cleanly, untimed;
+	// play_in_time = play it at a tempo; move = play it in another key or place; target = aim at it
+	// while the music moves; use = play it in a piece of music. A drill template has one rung;
+	// a play-along and a chord change are play_in_time, a single self-rated chord is play_clean,
+	// a progression key tour is move, and a song is use.
+	Rung PracticeRung `json:"rung"`
+
+	// RungLevel How well a student knows an item, or a knowledge node, derived from the evidence.
+	// new = never practised; learning = practised, not yet accurate; accurate = at least 3
+	// counted attempts with accuracy of 0.8 or more; fluent = at least 5 counted attempts,
+	// accuracy of 0.9 or more and fluency of 0.8 or more; retained = fluent and holding up
+	// over long reviews.
+	RungLevel KnowledgeLevel `json:"rung_level"`
 }
 
 // PracticeFocusSource Who chose a session's subjects. suggested = the composer picked them for Today's mix;
@@ -7366,6 +7387,24 @@ type PracticePickReason string
 // a play-along and a chord change are play_in_time, a single self-rated chord is play_clean,
 // a progression key tour is move, and a song is use.
 type PracticeRung string
+
+// PracticeRungLevel The student's level on one rung of a subject.
+type PracticeRungLevel struct {
+	// Level How well a student knows an item, or a knowledge node, derived from the evidence.
+	// new = never practised; learning = practised, not yet accurate; accurate = at least 3
+	// counted attempts with accuracy of 0.8 or more; fluent = at least 5 counted attempts,
+	// accuracy of 0.9 or more and fluency of 0.8 or more; retained = fluent and holding up
+	// over long reviews.
+	Level KnowledgeLevel `json:"level"`
+
+	// Rung The rung of the practice ladder an item trains, lowest first. know = recall a fact (a
+	// note, a numeral, a shape); hear = recognise it by ear; play_clean = play it cleanly, untimed;
+	// play_in_time = play it at a tempo; move = play it in another key or place; target = aim at it
+	// while the music moves; use = play it in a piece of music. A drill template has one rung;
+	// a play-along and a chord change are play_in_time, a single self-rated chord is play_clean,
+	// a progression key tour is move, and a song is use.
+	Rung PracticeRung `json:"rung"`
+}
 
 // PracticeSessionItem One item of a composed session, with what the client needs to present it. Exactly
 // one of fretboard_cell, exercise, play_along, diagram_shape, generated_choice,
@@ -7672,6 +7711,15 @@ type PracticeSessionPlan struct {
 	TapCheckDue bool `json:"tap_check_due"`
 }
 
+// PracticeSessionSubjectProgress Where the student stands on a session's subjects now, for its summary.
+type PracticeSessionSubjectProgress struct {
+	// CaughtUp True once the session's end has been folded, so the levels include its answers.
+	CaughtUp bool `json:"caught_up"`
+
+	// Subjects One per node_id asked, in the same order.
+	Subjects []PracticeSubjectProgress `json:"subjects"`
+}
+
 // PracticeSubject One knowledge node the student can choose to practise, with where they stand on it.
 type PracticeSubject struct {
 	// CurrentRung The rung of the practice ladder an item trains, lowest first. know = recall a fact (a
@@ -7725,6 +7773,19 @@ type PracticeSubjectList struct {
 
 	// InstrumentId The instrument in hand, or null for a session in the head.
 	InstrumentId *openapi_types.UUID `json:"instrument_id"`
+}
+
+// PracticeSubjectProgress One subject's rungs, read now.
+type PracticeSubjectProgress struct {
+	// CurrentRung Its current rung now, as in the plan's rung. Null when it has no material for the
+	// session any more.
+	CurrentRung *PracticeRung `json:"current_rung"`
+
+	// NodeId The knowledge node.
+	NodeId openapi_types.UUID `json:"node_id"`
+
+	// Rungs Every rung with material for the session, lowest first.
+	Rungs []PracticeRungLevel `json:"rungs"`
 }
 
 // PracticeSummary The home for one instrument, derived from the student's evidence.
@@ -9961,6 +10022,15 @@ type GetPracticeOverviewParams struct {
 	TimeZone *string `form:"time_zone,omitempty" json:"time_zone,omitempty"`
 }
 
+// GetPracticeSessionSubjectProgressParams defines parameters for GetPracticeSessionSubjectProgress.
+type GetPracticeSessionSubjectProgressParams struct {
+	// InstrumentId The instrument the session was practised with. Absent means a session in the head.
+	InstrumentId *openapi_types.UUID `form:"instrument_id,omitempty" json:"instrument_id,omitempty"`
+
+	// NodeId The session's subjects, the plan's focus_nodes, in order.
+	NodeId []openapi_types.UUID `form:"node_id" json:"node_id"`
+}
+
 // ListPracticeSubjectsParams defines parameters for ListPracticeSubjects.
 type ListPracticeSubjectsParams struct {
 	// InstrumentId The instrument in hand. Absent means a session in the head.
@@ -10498,6 +10568,9 @@ type ServerInterface interface {
 	// CreatePracticeSessionPlan Compose a practice session for the authenticated student
 	// (POST /students/me/practice-sessions)
 	CreatePracticeSessionPlan(w http.ResponseWriter, r *http.Request)
+	// GetPracticeSessionSubjectProgress Read where the authenticated student stands on a session's subjects, and whether the session is folded
+	// (GET /students/me/practice-sessions/{practice_session_id}/subject-progress)
+	GetPracticeSessionSubjectProgress(w http.ResponseWriter, r *http.Request, practiceSessionId openapi_types.UUID, params GetPracticeSessionSubjectProgressParams)
 	// ListPracticeSubjects List the subjects the authenticated student can choose to practise
 	// (GET /students/me/practice-subjects)
 	ListPracticeSubjects(w http.ResponseWriter, r *http.Request, params ListPracticeSubjectsParams)
@@ -11155,6 +11228,12 @@ func (_ Unimplemented) GetPracticeOverview(w http.ResponseWriter, r *http.Reques
 // CreatePracticeSessionPlan Compose a practice session for the authenticated student
 // (POST /students/me/practice-sessions)
 func (_ Unimplemented) CreatePracticeSessionPlan(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetPracticeSessionSubjectProgress Read where the authenticated student stands on a session's subjects, and whether the session is folded
+// (GET /students/me/practice-sessions/{practice_session_id}/subject-progress)
+func (_ Unimplemented) GetPracticeSessionSubjectProgress(w http.ResponseWriter, r *http.Request, practiceSessionId openapi_types.UUID, params GetPracticeSessionSubjectProgressParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -14978,6 +15057,61 @@ func (siw *ServerInterfaceWrapper) CreatePracticeSessionPlan(w http.ResponseWrit
 	handler.ServeHTTP(w, r)
 }
 
+// GetPracticeSessionSubjectProgress operation middleware
+func (siw *ServerInterfaceWrapper) GetPracticeSessionSubjectProgress(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "practice_session_id" -------------
+	var practiceSessionId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "practice_session_id", chi.URLParam(r, "practice_session_id"), &practiceSessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "practice_session_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetPracticeSessionSubjectProgressParams
+
+	// ------------- Optional query parameter "instrument_id" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "instrument_id", r.URL.Query(), &params.InstrumentId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "instrument_id"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "instrument_id", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "node_id" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "node_id", r.URL.Query(), &params.NodeId, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "node_id"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "node_id", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetPracticeSessionSubjectProgress(w, r, practiceSessionId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListPracticeSubjects operation middleware
 func (siw *ServerInterfaceWrapper) ListPracticeSubjects(w http.ResponseWriter, r *http.Request) {
 
@@ -15620,6 +15754,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/students/me/practice-sessions", wrapper.CreatePracticeSessionPlan)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/students/me/practice-sessions/{practice_session_id}/subject-progress", wrapper.GetPracticeSessionSubjectProgress)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/students/me/practice-subjects", wrapper.ListPracticeSubjects)
@@ -22445,6 +22582,71 @@ func (response CreatePracticeSessionPlan404JSONResponse) VisitCreatePracticeSess
 	return err
 }
 
+type GetPracticeSessionSubjectProgressRequestObject struct {
+	PracticeSessionId openapi_types.UUID `json:"practice_session_id"`
+	Params            GetPracticeSessionSubjectProgressParams
+}
+
+type GetPracticeSessionSubjectProgressResponseObject interface {
+	VisitGetPracticeSessionSubjectProgressResponse(w http.ResponseWriter) error
+}
+
+type GetPracticeSessionSubjectProgress200JSONResponse PracticeSessionSubjectProgress
+
+func (response GetPracticeSessionSubjectProgress200JSONResponse) VisitGetPracticeSessionSubjectProgressResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPracticeSessionSubjectProgress400JSONResponse ValidationError
+
+func (response GetPracticeSessionSubjectProgress400JSONResponse) VisitGetPracticeSessionSubjectProgressResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPracticeSessionSubjectProgress401JSONResponse UnauthorizedError
+
+func (response GetPracticeSessionSubjectProgress401JSONResponse) VisitGetPracticeSessionSubjectProgressResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPracticeSessionSubjectProgress404JSONResponse NotFoundError
+
+func (response GetPracticeSessionSubjectProgress404JSONResponse) VisitGetPracticeSessionSubjectProgressResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListPracticeSubjectsRequestObject struct {
 	Params ListPracticeSubjectsParams
 }
@@ -23397,6 +23599,9 @@ type StrictServerInterface interface {
 	// CreatePracticeSessionPlan Compose a practice session for the authenticated student
 	// (POST /students/me/practice-sessions)
 	CreatePracticeSessionPlan(ctx context.Context, request CreatePracticeSessionPlanRequestObject) (CreatePracticeSessionPlanResponseObject, error)
+	// GetPracticeSessionSubjectProgress Read where the authenticated student stands on a session's subjects, and whether the session is folded
+	// (GET /students/me/practice-sessions/{practice_session_id}/subject-progress)
+	GetPracticeSessionSubjectProgress(ctx context.Context, request GetPracticeSessionSubjectProgressRequestObject) (GetPracticeSessionSubjectProgressResponseObject, error)
 	// ListPracticeSubjects List the subjects the authenticated student can choose to practise
 	// (GET /students/me/practice-subjects)
 	ListPracticeSubjects(ctx context.Context, request ListPracticeSubjectsRequestObject) (ListPracticeSubjectsResponseObject, error)
@@ -26364,6 +26569,33 @@ func (sh *strictHandler) CreatePracticeSessionPlan(w http.ResponseWriter, r *htt
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(CreatePracticeSessionPlanResponseObject); ok {
 		if err := validResponse.VisitCreatePracticeSessionPlanResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetPracticeSessionSubjectProgress operation middleware
+func (sh *strictHandler) GetPracticeSessionSubjectProgress(w http.ResponseWriter, r *http.Request, practiceSessionId openapi_types.UUID, params GetPracticeSessionSubjectProgressParams) {
+	var request GetPracticeSessionSubjectProgressRequestObject
+
+	request.PracticeSessionId = practiceSessionId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetPracticeSessionSubjectProgress(ctx, request.(GetPracticeSessionSubjectProgressRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetPracticeSessionSubjectProgress")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetPracticeSessionSubjectProgressResponseObject); ok {
+		if err := validResponse.VisitGetPracticeSessionSubjectProgressResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

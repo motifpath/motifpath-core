@@ -327,6 +327,7 @@ func (w *world) requestRefusedNotFound() error {
 		generated.GetContentNode404JSONResponse,
 		generated.GetChord404JSONResponse,
 		generated.GetPracticeSummary404JSONResponse,
+		generated.GetPracticeSessionSubjectProgress404JSONResponse,
 		generated.GetFretboardMap404JSONResponse,
 		generated.UpdateInstrument404JSONResponse,
 		generated.GetAppConfig404JSONResponse,
@@ -538,6 +539,8 @@ func (w *world) validationErrors() ([]struct {
 	case generated.GetPracticeOverview400JSONResponse:
 		return resp.Errors, nil
 	case generated.CreatePracticeSessionPlan400JSONResponse:
+		return resp.Errors, nil
+	case generated.GetPracticeSessionSubjectProgress400JSONResponse:
 		return resp.Errors, nil
 	case generated.ListCatalogPaths400JSONResponse:
 		return resp.Errors, nil

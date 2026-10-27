@@ -64,8 +64,8 @@ type world struct {
 	// guideTonePlans the responses of repeated sessions in the head.
 	pickedGuideTones []generated.PlannedGuideTone
 	guideTonePlans   []generated.CreatePracticeSessionPlan200JSONResponse
-	shapeWorld  *diagramShapeWorld
-	songCharts  *songChartWorld
+	shapeWorld       *diagramShapeWorld
+	songCharts       *songChartWorld
 	// dueDays holds the cells a scenario made due on two days.
 	dueDays *cellsDueOnTwoDays
 	// lastCell is the fretboard cell a step answered, for a following step.
@@ -288,8 +288,13 @@ type world struct {
 	// focusOthers holds the due items a focus scenario seeded outside the
 	// session's subjects, most overdue first, and focusDueKeys the due items
 	// a rung scenario expects reviewed.
-	focusOthers  []string
-	focusDueKeys []string
+	focusOthers []string
+	// subjectProgressStudent is the student whose session a subject
+	// progress scenario recorded, and firstSubjectProgress the first of two
+	// reads of it.
+	subjectProgressStudent string
+	firstSubjectProgress   *generated.PracticeSessionSubjectProgress
+	focusDueKeys           []string
 	// focusNode is the node a scenario's "its" refers to.
 	focusNode string
 }
@@ -372,7 +377,8 @@ func newWorld() *world {
 		WithChordDrills(chordDrillCatalog{}, w.instruments).
 		WithProgressionKeyTours(w.instruments).
 		WithGuideTones(w.instruments).
-		WithSongs(w.songChartRepo, w.practiceActivity)
+		WithSongs(w.songChartRepo, w.practiceActivity).
+		WithSessionEnds(w.practiceActivity)
 	w.summaryNow = fixedNow
 	summaryNow := func() time.Time { return w.summaryNow }
 	summaryRollup := application.NewKnowledgeRollupService(w.knowledge, w.knowledgeEdges, w.practiceItems, w.practiceStates, summaryNow)
