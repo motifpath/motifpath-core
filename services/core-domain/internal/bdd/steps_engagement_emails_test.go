@@ -525,7 +525,7 @@ func (w *world) reportContains(persona string, wants ...string) error {
 }
 
 func (w *world) reportShowsFigures(persona string, days, minutes, previous int) error {
-	return w.reportContains(persona, fmt.Sprintf("%d of 7", days), fmt.Sprintf("%d min (the week before: %d)", minutes, previous))
+	return w.reportContains(persona, fmt.Sprintf("%d of 7", days), fmt.Sprintf("%d min", minutes), fmt.Sprintf("The week before: %d", previous))
 }
 
 func (w *world) reportShowsStreak(persona string, current, best int) error {

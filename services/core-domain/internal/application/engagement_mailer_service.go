@@ -241,7 +241,7 @@ func (s *EngagementMailerService) sendConciergeSummary(ctx context.Context, stud
 		rows = append(rows, row)
 	}
 	slices.SortStableFunc(rows, func(a, b domain.ConciergeRow) int { return cmp.Compare(b.DaysInactive, a.DaysInactive) })
-	email, err := s.deps.Composer.ConciergeSummary(domain.ConciergeSummaryMessage{To: s.cfg.ConciergeAddress, WeekStart: weekStart, Rows: rows})
+	email, err := s.deps.Composer.ConciergeSummary(domain.ConciergeSummaryMessage{To: s.cfg.ConciergeAddress, App: s.cfg.AppBaseURL, WeekStart: weekStart, Rows: rows})
 	if err != nil {
 		return err
 	}
@@ -258,7 +258,7 @@ func (s *EngagementMailerService) conciergeRow(ctx context.Context, student doma
 		return domain.ConciergeRow{}, err
 	}
 	row := domain.ConciergeRow{
-		DisplayName: student.DisplayName, Email: student.Email,
+		DisplayName: student.DisplayName, Email: student.Email, Role: student.Role,
 		PracticeDays: figures.PracticeDaysLast7, Minutes: figures.MinutesPractisedLast7,
 		DaysInactive: domain.DaysWithoutActivity(s.spellStart(student, lastActive), now, loc),
 	}
@@ -306,14 +306,16 @@ func (s *EngagementMailerService) claimAndSend(ctx context.Context, claim domain
 	return errors.Join(sendErr, s.deps.Sends.Release(releaseCtx, claim))
 }
 
-// links builds a student email's links: the app, and both ways to stop
-// receiving kind, which carry the same unsubscribe token.
+// links builds a student email's links: the app, both ways to stop
+// receiving kind, which carry the same unsubscribe token, and the email
+// settings.
 func (s *EngagementMailerService) links(userID string, kind domain.EmailKind) domain.EmailLinks {
 	token := url.QueryEscape(s.deps.Tokens.UnsubscribeToken(userID, kind))
 	return domain.EmailLinks{
 		App:                 s.cfg.AppBaseURL,
 		UnsubscribePage:     s.cfg.AppBaseURL + "/unsubscribe?token=" + token,
 		OneClickUnsubscribe: s.cfg.APIBaseURL + "/email-unsubscribes?token=" + token,
+		Settings:            s.cfg.AppBaseURL + "/settings/emails",
 	}
 }
 

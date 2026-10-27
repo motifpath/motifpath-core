@@ -390,6 +390,7 @@ func TestEngagementMailerService_Reminder(t *testing.T) {
 			require.Len(t, f.composer.reminders, 1)
 			assert.Equal(t, tt.wantStage, f.composer.reminders[0].Stage)
 			assert.Contains(t, f.composer.reminders[0].Links.OneClickUnsubscribe, "token=")
+			assert.Equal(t, "https://app.motifpath.com/settings/emails", f.composer.reminders[0].Links.Settings)
 		})
 	}
 }
@@ -576,6 +577,11 @@ func TestEngagementMailerService_EveryRoleThatLearns(t *testing.T) {
 		listed = append(listed, row.DisplayName)
 	}
 	assert.ElementsMatch(t, []string{"tomas", "marina"}, listed, "the concierge sees every learner, whatever their role")
+	roles := map[string]domain.Role{}
+	for _, row := range f.composer.summaries[0].Rows {
+		roles[row.DisplayName] = row.Role
+	}
+	assert.Equal(t, map[string]domain.Role{"tomas": domain.RoleTeacher, "marina": domain.RoleAdmin}, roles, "each row says the learner's role")
 }
 
 func TestEngagementMailerService_StartedThroughAStandalonePathOrAFinishedCourse(t *testing.T) {
@@ -614,6 +620,7 @@ func TestEngagementMailerService_ConciergeSummary(t *testing.T) {
 	require.Len(t, f.composer.summaries, 1)
 	summary := f.composer.summaries[0]
 	assert.Equal(t, "concierge@motifpath.com", summary.To)
+	assert.Equal(t, "https://app.motifpath.com", summary.App, "the summary's mark is hosted on the app")
 	assert.Equal(t, time.Date(2026, 10, 26, 0, 0, 0, 0, saoPaulo), summary.WeekStart)
 	require.Len(t, summary.Rows, 2, "students who turned their own emails off, or have no address, are still listed")
 	assert.Equal(t, "dani", summary.Rows[0].DisplayName, "the student inactive longest comes first")

@@ -24,6 +24,7 @@ func links(kind string) domain.EmailLinks {
 		App:                 "https://app.motifpath.com",
 		UnsubscribePage:     "https://app.motifpath.com/unsubscribe?token=" + kind,
 		OneClickUnsubscribe: "https://api.motifpath.com/email-unsubscribes?token=" + kind,
+		Settings:            "https://app.motifpath.com/settings/emails",
 	}
 }
 
@@ -61,11 +62,11 @@ func TestComposer_ProgressReport(t *testing.T) {
 	}{
 		{
 			name: "English shows the week's figures", message: report("en"), wantSubject: "Your week on MotifPath",
-			wantIn: []string{"Hi Alice,", "Oct 26", "Nov 1", "4 of 7", "75 min", "50", "3", "Day streak: 2 days", "best: 6"},
+			wantIn: []string{"Your week on MotifPath", "WEEK OF OCT 26 – NOV 1", "Hi Alice,", "Oct 26", "Nov 1", "4 of 7", "75 min", "The week before: 50", "Skills up", "Songs played", "Day streak: 2 days", "best: 6", "Keep practising"},
 		},
 		{
 			name: "Portuguese (Brazil) shows the same figures in Portuguese", message: report("pt_BR"), wantSubject: "Sua semana no MotifPath",
-			wantIn: []string{"Oi, Alice,", "26/10", "1/11", "4 de 7", "75 min", "Sequência de dias: 2", "recorde: 6"},
+			wantIn: []string{"Sua semana no MotifPath", "SEMANA DE 26/10 A 1/11", "Oi, Alice,", "4 de 7", "75 min", "Semana anterior: 50", "Sequência de dias: 2", "recorde: 6", "Configurações de email"},
 		},
 		{
 			name: "any other locale is written in English", message: report("es"), wantSubject: "Your week on MotifPath",
@@ -140,6 +141,8 @@ func TestComposer_StudentEmailsOfferUnsubscribe(t *testing.T) {
 			bothParts(t, tt.email, func(t *testing.T, part string) {
 				assert.Contains(t, part, "https://app.motifpath.com/unsubscribe?token="+tt.kind)
 				assert.Contains(t, part, tt.linkText)
+				assert.Contains(t, part, "https://app.motifpath.com/settings/emails", "every student email links to the email settings")
+				assert.Contains(t, part, "Email settings")
 			})
 		})
 	}
@@ -220,6 +223,20 @@ func TestComposer_ReminderStages(t *testing.T) {
 	})
 }
 
+func TestComposer_StudentEmailsCarryTheMark(t *testing.T) {
+	composer := newTestComposer(t)
+	reportEmail, err := composer.ProgressReport(report("en"))
+	require.NoError(t, err)
+	reminderEmail, err := composer.Reminder(domain.ReminderMessage{To: "alice@example.com", Locale: "en", DaysWithout: 1, Stage: domain.ReminderStageDaily, Links: links("reminders")})
+	require.NoError(t, err)
+
+	for _, e := range []domain.Email{reportEmail, reminderEmail} {
+		assert.Contains(t, e.HTML, `src="https://app.motifpath.com/email/mark.png"`, "the mark is hosted on the app's domain")
+		assert.Contains(t, e.HTML, `alt="MotifPath"`)
+		assert.Contains(t, e.HTML, ">MotifPath<", "the name next to the mark is text, so the header reads with images off")
+	}
+}
+
 func TestComposer_EscapesNamesInHTML(t *testing.T) {
 	m := report("en")
 	m.DisplayName = "<script>alert(1)</script> Bob"
@@ -234,10 +251,11 @@ func TestComposer_EscapesNamesInHTML(t *testing.T) {
 func TestComposer_ConciergeSummary(t *testing.T) {
 	last := time.Date(2026, 11, 1, 18, 0, 0, 0, saoPaulo)
 	message := domain.ConciergeSummaryMessage{
-		To: "concierge@motifpath.com", WeekStart: time.Date(2026, 10, 26, 0, 0, 0, 0, saoPaulo),
+		To: "concierge@motifpath.com", App: "https://app.motifpath.com", WeekStart: time.Date(2026, 10, 26, 0, 0, 0, 0, saoPaulo),
 		Rows: []domain.ConciergeRow{
-			{DisplayName: "Dani Rocha", Email: "", PracticeDays: 0, Minutes: 0, DaysInactive: 12},
-			{DisplayName: "Alice Martins", Email: "alice@example.com", PracticeDays: 4, Minutes: 75, LastActive: &last, DaysInactive: 1},
+			{DisplayName: "Dani Rocha", Email: "", Role: domain.RoleStudent, PracticeDays: 0, Minutes: 0, DaysInactive: 12},
+			{DisplayName: "Tomás Ribeiro", Email: "tomas@example.com", Role: domain.RoleTeacher, PracticeDays: 2, Minutes: 30, LastActive: &last, DaysInactive: 1},
+			{DisplayName: "Alice Martins", Email: "alice@example.com", Role: domain.RoleStudent, PracticeDays: 4, Minutes: 75, LastActive: &last, DaysInactive: 1},
 		},
 	}
 
@@ -252,5 +270,11 @@ func TestComposer_ConciergeSummary(t *testing.T) {
 		assert.Contains(t, part, "never")
 		assert.Contains(t, part, "Nov 1")
 		assert.Contains(t, part, "75")
+		assert.Contains(t, part, "Teacher", "a learner who isn't a student says their role")
+		assert.Equal(t, 1, strings.Count(part, "Teacher"), "students carry no tag")
+		assert.Contains(t, part, "12 days")
 	})
+	assert.Contains(t, e.HTML, `src="https://app.motifpath.com/email/mark.png"`)
+	assert.Contains(t, e.HTML, `data-long-inactive="true"`, "10 days or more without activity stands out")
+	assert.Equal(t, 1, strings.Count(e.HTML, `data-long-inactive="true"`))
 }

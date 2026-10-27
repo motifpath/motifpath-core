@@ -1,12 +1,41 @@
 <!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"></head>
-<body style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1d1b18;font-size:14px;">
-<p>Students, week of {{.WeekStart}}. Inactive longest first.</p>
-<table cellpadding="6" cellspacing="0" style="border-collapse:collapse;">
-<tr style="text-align:left;border-bottom:1px solid #d9d4cc;"><th>Student</th><th>Email</th><th>Practice days</th><th>Minutes</th><th>Last active</th><th>Days inactive</th></tr>
-{{range .Rows}}<tr style="border-bottom:1px solid #ebe8e2;"><td>{{.Name}}</td><td>{{.Email}}</td><td>{{.PracticeDays}}</td><td>{{.Minutes}}</td><td>{{.LastActive}}</td><td>{{.DaysInactive}}</td></tr>
-{{else}}<tr><td colspan="6">No student has started learning yet.</td></tr>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body style="margin:0;padding:0;background:#F3F0FB;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F3F0FB;">
+<tr><td align="center" style="padding:24px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:672px;font-family:Manrope,'Helvetica Neue',Helvetica,Arial,sans-serif;color:#1A1633;">
+<tr><td style="padding:0 0 16px;">
+<table role="presentation" cellpadding="0" cellspacing="0"><tr>
+<td style="padding:0 8px 0 0;"><img src="{{.MarkURL}}" width="24" height="24" alt="{{.BrandName}}" style="display:block;border:0;"></td>
+<td style="font-size:16px;line-height:24px;font-weight:600;color:#1A1633;">{{.BrandName}} · Concierge</td>
+</tr></table>
+</td></tr>
+<tr><td style="background:#FFFFFF;border:1px solid #E4DEF3;border-radius:14px;padding:28px;">
+<p style="margin:0 0 16px;font-size:20px;line-height:28px;font-weight:600;">Students, week of {{.WeekStart}}</p>
+<p style="margin:0 0 16px;font-size:14px;line-height:22px;color:#5B5470;">{{.Count}} {{if eq .Count 1}}learner{{else}}learners{{end}} who have started a course or a path. Inactive longest first.</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;line-height:22px;">
+<tr style="font-size:12px;line-height:18px;font-weight:600;letter-spacing:0.04em;color:#5B5470;text-align:left;">
+<th style="padding:0 8px 10px 0;font-weight:600;">LEARNER</th><th style="padding:0 8px 10px 0;font-weight:600;">PRACTICE DAYS</th><th style="padding:0 8px 10px 0;font-weight:600;">MINUTES</th><th style="padding:0 8px 10px 0;font-weight:600;">LAST ACTIVE</th><th style="padding:0 0 10px 8px;font-weight:600;">INACTIVE</th>
+</tr>
+{{range .Rows}}<tr>
+<td style="padding:10px 8px 10px 0;border-top:1px solid #E4DEF3;"><span style="font-weight:600;">{{.Name}}</span>{{if .Role}} <span style="display:inline-block;background:#F0E9FF;color:#6D28E0;border-radius:9999px;padding:1px 6px;font-size:12px;line-height:18px;font-weight:500;">{{.Role}}</span>{{end}}<br><span style="font-size:12px;line-height:18px;color:#5B5470;">{{.Email}}</span></td>
+<td style="padding:10px 8px 10px 0;border-top:1px solid #E4DEF3;">{{.PracticeDays}}</td>
+<td style="padding:10px 8px 10px 0;border-top:1px solid #E4DEF3;">{{.Minutes}}</td>
+<td style="padding:10px 8px 10px 0;border-top:1px solid #E4DEF3;">{{.LastActive}}</td>
+<td style="padding:10px 0;border-top:1px solid #E4DEF3;">{{if .LongInactive}}<span data-long-inactive="true" style="display:inline-block;background:#FBE8E7;color:#C4362F;border-radius:9999px;padding:2px 8px;font-weight:600;">{{.Inactive}}</span>{{else}}<span style="display:inline-block;padding:2px 8px;">{{.Inactive}}</span>{{end}}</td>
+</tr>
+{{else}}<tr><td colspan="5" style="padding:10px 0;border-top:1px solid #E4DEF3;">No student has started learning yet.</td></tr>
 {{end}}</table>
+</td></tr>
+<tr><td style="padding:16px 8px 0;font-size:12px;line-height:18px;font-weight:500;color:#5B5470;">Sent on Mondays to the concierge's address. Students don't get this email.</td></tr>
+</table>
+</td></tr>
+</table>
 </body>
 </html>
