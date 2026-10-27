@@ -8,9 +8,11 @@
 // Flags let an operator check the emails without waiting for their moment:
 // --once runs a single pass and exits, --at runs that pass as if it were
 // the given moment (an RFC 3339 time, such as 2026-11-02T09:00:00-03:00),
-// and --to limits it to one address's emails, with no concierge summary.
-// Each pass follows the usual rules and records what it sends, so an email
-// already sent for its period isn't sent again.
+// --to limits it to one address's emails (the concierge's address sends
+// only the summary), and --resend, with --once and --to, sends them even if
+// they went out before. Each pass follows the usual rules and records what
+// it sends, so an email already sent for its period isn't sent again; a
+// resend records nothing, so the schedule is left as it was.
 package main
 
 import (
@@ -57,9 +59,10 @@ type config struct {
 
 // runFlags are the operator's flags; none of them is set in a deployment.
 type runFlags struct {
-	once bool
-	at   time.Time
-	to   string
+	once   bool
+	at     time.Time
+	to     string
+	resend bool
 }
 
 func parseRunFlags(args []string) (runFlags, error) {
@@ -68,9 +71,13 @@ func parseRunFlags(args []string) (runFlags, error) {
 	var at string
 	fs.BoolVar(&flags.once, "once", false, "run one pass and exit")
 	fs.StringVar(&at, "at", "", "with --once, run the pass as if it were this RFC 3339 time, such as 2026-11-02T09:00:00-03:00")
-	fs.StringVar(&flags.to, "to", "", "send only the emails due to this address, and no concierge summary")
+	fs.StringVar(&flags.to, "to", "", "send only the emails due to this address; the concierge's address sends only the summary")
+	fs.BoolVar(&flags.resend, "resend", false, "with --once and --to, send the emails even if they went out before, recording nothing")
 	if err := fs.Parse(args); err != nil {
 		return runFlags{}, err
+	}
+	if flags.resend && (!flags.once || flags.to == "") {
+		return runFlags{}, errors.New("--resend needs --once and --to, so it never sends anything twice to everyone")
 	}
 	if at == "" {
 		return flags, nil
@@ -146,6 +153,7 @@ func run(logger *slog.Logger, flags runFlags) error {
 		return err
 	}
 	cfg.mailer.OnlyRecipient = flags.to
+	cfg.mailer.Resend = flags.resend
 	sqlDB, err := sql.Open("postgres", cfg.databaseURL)
 	if err != nil {
 		return fmt.Errorf("connect to postgres: %w", err)
@@ -163,7 +171,7 @@ func run(logger *slog.Logger, flags runFlags) error {
 		return err
 	}
 	if flags.once {
-		logger.Info("engagement mailer single pass", "at", clockFor(flags)().Format(time.RFC3339), "to", flags.to)
+		logger.Info("engagement mailer single pass", "at", clockFor(flags)().Format(time.RFC3339), "to", flags.to, "resend", flags.resend)
 		passCtx, cancel := context.WithTimeout(ctx, runTimeout)
 		defer cancel()
 		return mailer.Run(passCtx)

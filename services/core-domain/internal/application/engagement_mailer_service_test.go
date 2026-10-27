@@ -182,6 +182,7 @@ type mailerFixture struct {
 	now         time.Time
 	concierge   string
 	only        string
+	resend      bool
 }
 
 func newMailerFixture() *mailerFixture {
@@ -214,6 +215,7 @@ func (f *mailerFixture) service() *application.EngagementMailerService {
 		APIBaseURL:       "https://api.motifpath.com",
 		ConciergeAddress: f.concierge,
 		OnlyRecipient:    f.only,
+		Resend:           f.resend,
 	}, func() time.Time { return f.now })
 }
 
@@ -483,6 +485,65 @@ func TestEngagementMailerService_OnlyRecipient(t *testing.T) {
 	assert.Zero(t, f.sender.sentTo("bruno@example.com", "progress report"), "everyone else is left alone")
 	assert.Zero(t, f.sender.sentTo("bruno@example.com", "reminder"))
 	assert.Zero(t, f.sender.sentTo("concierge@motifpath.com", "concierge summary"), "the summary covers everyone, so it is left out")
+}
+
+func TestEngagementMailerService_OnlyTheConcierge(t *testing.T) {
+	f := newMailerFixture()
+	for _, name := range []string{"alice", "bruno"} {
+		id := f.addStudent(t, name)
+		f.activity.lastActive[id] = monday(7, 0, saoPaulo)
+		f.figures.byID[id] = somethingToShow()
+	}
+	f.only = "concierge@motifpath.com"
+	f.now = monday(9, 0, saoPaulo)
+
+	f.run(t)
+
+	assert.Equal(t, 1, f.sender.sentTo("concierge@motifpath.com", "concierge summary"))
+	require.Len(t, f.composer.summaries, 1)
+	assert.Len(t, f.composer.summaries[0].Rows, 2, "the summary still lists every learner")
+	assert.Zero(t, f.sender.sentTo("alice@example.com", "progress report"), "no student email goes out")
+}
+
+func TestEngagementMailerService_Resend(t *testing.T) {
+	f := newMailerFixture()
+	id := f.addStudent(t, "alice")
+	f.activity.lastActive[id] = monday(7, 0, saoPaulo)
+	f.figures.byID[id] = somethingToShow()
+	f.now = monday(9, 0, saoPaulo)
+	f.run(t)
+	require.Equal(t, 1, f.sender.sentTo("alice@example.com", "progress report"))
+	require.Equal(t, 1, f.sender.sentTo("concierge@motifpath.com", "concierge summary"))
+	recorded := len(f.sends.claims)
+
+	f.resend = true
+	f.only = "alice@example.com"
+	f.run(t)
+	f.run(t)
+	assert.Equal(t, 3, f.sender.sentTo("alice@example.com", "progress report"), "each resend pass sends it again")
+
+	f.only = "concierge@motifpath.com"
+	f.run(t)
+	assert.Equal(t, 2, f.sender.sentTo("concierge@motifpath.com", "concierge summary"))
+	assert.Len(t, f.sends.claims, recorded, "a resend isn't recorded, so the schedule is left as it was")
+}
+
+func TestEngagementMailerService_ResendRecordsNothingForANewEmail(t *testing.T) {
+	f := newMailerFixture()
+	id := f.addStudent(t, "alice")
+	f.activity.lastActive[id] = monday(7, 0, saoPaulo)
+	f.figures.byID[id] = somethingToShow()
+	f.now = monday(9, 0, saoPaulo)
+	f.resend = true
+	f.only = "alice@example.com"
+	f.run(t)
+	require.Equal(t, 1, f.sender.sentTo("alice@example.com", "progress report"))
+
+	// The real pass later that morning still sends it: the resend left no record.
+	f.resend, f.only = false, ""
+	f.now = monday(10, 0, saoPaulo)
+	f.run(t)
+	assert.Equal(t, 2, f.sender.sentTo("alice@example.com", "progress report"))
 }
 
 func TestEngagementMailerService_EveryRoleThatLearns(t *testing.T) {

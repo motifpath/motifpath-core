@@ -20,6 +20,9 @@ func TestParseRunFlags(t *testing.T) {
 		{name: "one pass now", args: []string{"--once"}, want: runFlags{once: true}},
 		{name: "one pass as if at a moment", args: []string{"--once", "--at", "2026-11-02T09:00:00-03:00"}, want: runFlags{once: true, at: at}},
 		{name: "one pass for one address", args: []string{"--once", "--to", "alice@example.com"}, want: runFlags{once: true, to: "alice@example.com"}},
+		{name: "a resend for one address", args: []string{"--once", "--to", "alice@example.com", "--resend"}, want: runFlags{once: true, to: "alice@example.com", resend: true}},
+		{name: "a resend needs one address", args: []string{"--once", "--resend"}, wantErr: "--resend needs --once and --to"},
+		{name: "a resend needs a single pass", args: []string{"--to", "alice@example.com", "--resend"}, wantErr: "--resend needs --once and --to"},
 		{name: "a moment needs a single pass", args: []string{"--at", "2026-11-02T09:00:00-03:00"}, wantErr: "--at needs --once"},
 		{name: "a moment must name its offset", args: []string{"--once", "--at", "2026-11-02T09:00"}, wantErr: "--at must be"},
 		{name: "an unknown flag", args: []string{"--now"}, wantErr: "flag provided but not defined"},
@@ -36,6 +39,7 @@ func TestParseRunFlags(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tt.want.once, got.once)
 			assert.Equal(t, tt.want.to, got.to)
+			assert.Equal(t, tt.want.resend, got.resend)
 			assert.True(t, tt.want.at.Equal(got.at), "at: want %v, got %v", tt.want.at, got.at)
 		})
 	}

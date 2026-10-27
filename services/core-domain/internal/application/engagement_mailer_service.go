@@ -35,14 +35,18 @@ type EngagementMailerDeps struct {
 
 // EngagementMailerConfig holds where the emails' links point and who the
 // concierge is. An empty ConciergeAddress sends no concierge summary.
-// OnlyRecipient, when set, limits a run to the student emails due to that
-// one address and sends no concierge summary, which covers everyone: an
-// operator's way to check one user's emails without mailing anyone else.
+//
+// OnlyRecipient and Resend are an operator's way to check the emails without
+// mailing anyone else. OnlyRecipient, when set, limits a run to the emails
+// due to that one address: a learner's emails, or the concierge summary when
+// it is the concierge's address. Resend sends them even when they were sent
+// before, and records nothing, so the schedule is left as it was.
 type EngagementMailerConfig struct {
 	AppBaseURL       string
 	APIBaseURL       string
 	ConciergeAddress string
 	OnlyRecipient    string
+	Resend           bool
 }
 
 // EngagementMailerService decides, each time it runs, which engagement
@@ -75,10 +79,6 @@ func (s *EngagementMailerService) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	only := strings.ToLower(strings.TrimSpace(s.cfg.OnlyRecipient))
-	if only != "" {
-		students = slices.DeleteFunc(students, func(u domain.User) bool { return strings.ToLower(u.Email) != only })
-	}
 	ids := make([]string, len(students))
 	for i, student := range students {
 		ids[i] = student.ID
@@ -90,14 +90,33 @@ func (s *EngagementMailerService) Run(ctx context.Context) error {
 
 	var errs []error
 	for _, student := range students {
+		if !s.mayReach(student.Email) {
+			continue
+		}
 		loc := s.location(student)
 		errs = append(errs, s.sendProgressReport(ctx, student, loc, now))
 		errs = append(errs, s.sendReminder(ctx, student, loc, s.spellStart(student, lastActive), now))
 	}
-	if only == "" {
+	if s.mayReach(s.cfg.ConciergeAddress) {
 		errs = append(errs, s.sendConciergeSummary(ctx, students, lastActive, now))
 	}
 	return errors.Join(errs...)
+}
+
+// mayReach reports whether a run may send to address: any address, unless
+// the run is limited to one.
+func (s *EngagementMailerService) mayReach(address string) bool {
+	only := strings.TrimSpace(s.cfg.OnlyRecipient)
+	return only == "" || strings.EqualFold(only, strings.TrimSpace(address))
+}
+
+// alreadySent reports whether the email of claim went out before; a resend
+// run sends it anyway.
+func (s *EngagementMailerService) alreadySent(ctx context.Context, claim domain.EmailSendClaim) (bool, error) {
+	if s.cfg.Resend {
+		return false, nil
+	}
+	return s.deps.Sends.Claimed(ctx, claim)
 }
 
 // learningRoles are the roles whose users may learn: teachers and admins
@@ -148,7 +167,7 @@ func (s *EngagementMailerService) sendProgressReport(ctx context.Context, studen
 		return nil
 	}
 	claim := domain.EmailSendClaim{Recipient: student.ID, Kind: domain.EmailSendProgressReport, PeriodKey: key, At: now}
-	if sent, err := s.deps.Sends.Claimed(ctx, claim); err != nil || sent {
+	if sent, err := s.alreadySent(ctx, claim); err != nil || sent {
 		return err
 	}
 	figures, err := s.deps.Figures.OverviewAt(ctx, student, loc, endOfWeek(weekStart))
@@ -188,7 +207,7 @@ func (s *EngagementMailerService) sendReminder(ctx context.Context, student doma
 		return nil
 	}
 	claim := domain.EmailSendClaim{Recipient: student.ID, Kind: domain.EmailSendReminder, PeriodKey: key, At: now}
-	if sent, err := s.deps.Sends.Claimed(ctx, claim); err != nil || sent {
+	if sent, err := s.alreadySent(ctx, claim); err != nil || sent {
 		return err
 	}
 	email, err := s.deps.Composer.Reminder(domain.ReminderMessage{
@@ -210,7 +229,7 @@ func (s *EngagementMailerService) sendConciergeSummary(ctx context.Context, stud
 		return nil
 	}
 	claim := domain.EmailSendClaim{Recipient: domain.ConciergeRecipient, Kind: domain.EmailSendConciergeSummary, PeriodKey: key, At: now}
-	if sent, err := s.deps.Sends.Claimed(ctx, claim); err != nil || sent {
+	if sent, err := s.alreadySent(ctx, claim); err != nil || sent {
 		return err
 	}
 	rows := make([]domain.ConciergeRow, 0, len(students))
@@ -254,12 +273,19 @@ func (s *EngagementMailerService) conciergeRow(ctx context.Context, student doma
 // itself was cancelled.
 const releaseTimeout = 5 * time.Second
 
-// claimAndSend claims the email's place in the send record and sends it.
+// claimAndSend claims the email's place in the send record and sends it; a
+// resend run sends it without a claim.
 // A claim someone else already made sends nothing. A failed send gives the
 // claim back, so a later pass tries again, unless the server refused the
 // email for good: that claim is kept, so the refusal is reported once
 // rather than on every pass.
 func (s *EngagementMailerService) claimAndSend(ctx context.Context, claim domain.EmailSendClaim, email domain.Email) error {
+	if s.cfg.Resend {
+		if err := s.deps.Sender.Send(ctx, email); err != nil {
+			return fmt.Errorf("resend %s %s to %s: %w", claim.Kind, claim.PeriodKey, claim.Recipient, err)
+		}
+		return nil
+	}
 	claimed, err := s.deps.Sends.Claim(ctx, claim)
 	if err != nil || !claimed {
 		return err

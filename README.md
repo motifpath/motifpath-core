@@ -238,9 +238,16 @@ go run ./cmd/engagement-mailer --once --at 2026-11-02T09:00:00-03:00 --to alice@
 `--once` runs a single pass and exits; `--at` (RFC 3339, with its offset, only with
 `--once`) sets the pass's clock: a Monday from 09:00 for the progress report, from
 08:00 São Paulo time for the concierge summary, from 18:00 for reminders; `--to` limits
-the pass to that address and leaves the concierge summary out. Sends are recorded in
-`email_sends` as usual, so the same email for the same period goes out once; delete its
-row to send it again.
+the pass to that address: a learner's emails, or only the concierge summary when it is
+the concierge's address (`CONCIERGE_EMAIL`). Sends are recorded in `email_sends` as
+usual, so the same email for the same period goes out once. To send it again, add
+`--resend` (only with `--once` and `--to`): the pass skips that check and records
+nothing, so the regular schedule is left as it was.
+
+```bash
+go run ./cmd/engagement-mailer --once --at 2026-11-02T09:00:00-03:00 --to alice@example.com --resend
+go run ./cmd/engagement-mailer --once --at 2026-11-02T08:00:00-03:00 --to concierge@motifpath.localhost --resend
+```
 
 ### Browser (CORS) access
 
