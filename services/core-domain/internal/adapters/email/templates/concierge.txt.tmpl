@@ -1,7 +1,7 @@
-Students, week of {{.WeekStart}}. Inactive longest first.
+Students, week of {{.WeekStart}}. {{.Count}} {{if eq .Count 1}}learner{{else}}learners{{end}} who have started a course or a path, inactive longest first.
 {{range .Rows}}
-{{.Name}} <{{.Email}}>
-  practice days: {{.PracticeDays}}, minutes: {{.Minutes}}, last active: {{.LastActive}}, days inactive: {{.DaysInactive}}
+{{.Name}} <{{.Email}}>{{if .Role}} · {{.Role}}{{end}}
+  practice days: {{.PracticeDays}}, minutes: {{.Minutes}}, last active: {{.LastActive}}, inactive: {{.Inactive}}
 {{else}}
 No student has started learning yet.
 {{end}}

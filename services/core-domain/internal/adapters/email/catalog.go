@@ -16,11 +16,13 @@ type catalog struct {
 	greeting func(firstName string) string
 
 	reportSubject       string
+	reportWeek          func(from, to string) string
 	reportIntro         func(from, to string) string
 	practiceDaysLabel   string
 	practiceDays        func(days int) string
 	minutesLabel        string
-	minutes             func(minutes, previous int) string
+	minutes             func(minutes int) string
+	previousMinutes     func(previous int) string
 	skillsUpLabel       string
 	songsPlayedLabel    string
 	streak              func(current, best int) string
@@ -34,6 +36,7 @@ type catalog struct {
 	reminderAction      string
 	reminderFooter      map[domain.ReminderStage]string
 	reminderUnsubscribe string
+	settings            string
 }
 
 // catalogs holds every language the emails are written in. A locale with no
@@ -67,17 +70,17 @@ var english = catalog{
 	},
 
 	reportSubject: "Your week on MotifPath",
+	reportWeek:    func(from, to string) string { return fmt.Sprintf("Week of %s – %s", from, to) },
 	reportIntro: func(from, to string) string {
 		return fmt.Sprintf("Here's your week of practice, from %s to %s.", from, to)
 	},
 	practiceDaysLabel: "Practice days",
 	practiceDays:      func(days int) string { return fmt.Sprintf("%d of 7", days) },
 	minutesLabel:      "Minutes practised",
-	minutes: func(minutes, previous int) string {
-		return fmt.Sprintf("%d min (the week before: %d)", minutes, previous)
-	},
-	skillsUpLabel:    "Skills up",
-	songsPlayedLabel: "Songs played",
+	minutes:           func(minutes int) string { return fmt.Sprintf("%d min", minutes) },
+	previousMinutes:   func(previous int) string { return fmt.Sprintf("The week before: %d", previous) },
+	skillsUpLabel:     "Skills up",
+	songsPlayedLabel:  "Songs played",
 	streak: func(current, best int) string {
 		return fmt.Sprintf("Day streak: %d %s (best: %d)", current, plural(current, "day", "days"), best)
 	},
@@ -112,6 +115,7 @@ var english = catalog{
 		domain.ReminderStageInactivityAgain: "You get this email after a few days away from MotifPath.",
 	},
 	reminderUnsubscribe: "Stop reminders",
+	settings:            "Email settings",
 }
 
 var portugueseBrazil = catalog{
@@ -124,17 +128,17 @@ var portugueseBrazil = catalog{
 	},
 
 	reportSubject: "Sua semana no MotifPath",
+	reportWeek:    func(from, to string) string { return fmt.Sprintf("Semana de %s a %s", from, to) },
 	reportIntro: func(from, to string) string {
 		return fmt.Sprintf("Este é o resumo da sua semana de prática, de %s a %s.", from, to)
 	},
 	practiceDaysLabel: "Dias de prática",
 	practiceDays:      func(days int) string { return fmt.Sprintf("%d de 7", days) },
 	minutesLabel:      "Minutos praticados",
-	minutes: func(minutes, previous int) string {
-		return fmt.Sprintf("%d min (semana anterior: %d)", minutes, previous)
-	},
-	skillsUpLabel:    "Habilidades que avançaram",
-	songsPlayedLabel: "Músicas tocadas",
+	minutes:           func(minutes int) string { return fmt.Sprintf("%d min", minutes) },
+	previousMinutes:   func(previous int) string { return fmt.Sprintf("Semana anterior: %d", previous) },
+	skillsUpLabel:     "Habilidades que avançaram",
+	songsPlayedLabel:  "Músicas tocadas",
 	streak: func(current, best int) string {
 		return fmt.Sprintf("Sequência de dias: %d (recorde: %d)", current, best)
 	},
@@ -169,4 +173,5 @@ var portugueseBrazil = catalog{
 		domain.ReminderStageInactivityAgain: "Você recebe este email depois de alguns dias longe do MotifPath.",
 	},
 	reminderUnsubscribe: "Parar lembretes",
+	settings:            "Configurações de email",
 }
