@@ -41,8 +41,8 @@ type EngagementMailerConfig struct {
 }
 
 // EngagementMailerService decides, each time it runs, which engagement
-// emails are due and sends them: a weekly progress report and inactivity
-// reminders to students, in each student's own time zone, and a weekly
+// emails are due and sends them: a weekly progress report and reminders to
+// students, in each student's own time zone, and a weekly
 // summary of every student to the concierge. Every send is claimed in the
 // send record first, so an email goes out at most once however often the
 // service runs; a send that fails gives its claim back, so a later run on
@@ -164,7 +164,7 @@ func (s *EngagementMailerService) sendReminder(ctx context.Context, student doma
 	if !student.EmailPreferences.Reminders || student.Email == "" {
 		return nil
 	}
-	key, days, second, due := domain.ReminderDue(spellStart, now, loc)
+	key, days, stage, due := domain.ReminderDue(spellStart, now, loc)
 	if !due {
 		return nil
 	}
@@ -174,7 +174,7 @@ func (s *EngagementMailerService) sendReminder(ctx context.Context, student doma
 	}
 	email, err := s.deps.Composer.Reminder(domain.ReminderMessage{
 		To: student.Email, DisplayName: student.DisplayName, Locale: student.Locale.Code,
-		DaysWithout: days, Second: second, Links: s.links(student.ID, domain.EmailKindReminders),
+		DaysWithout: days, Stage: stage, Links: s.links(student.ID, domain.EmailKindReminders),
 	})
 	if err != nil {
 		return err

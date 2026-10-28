@@ -122,7 +122,7 @@ func TestComposer_StudentEmailsOfferUnsubscribe(t *testing.T) {
 	composer := newTestComposer(t)
 	reportEmail, err := composer.ProgressReport(report("en"))
 	require.NoError(t, err)
-	reminderEmail, err := composer.Reminder(domain.ReminderMessage{To: "alice@example.com", DisplayName: "Alice", Locale: "en", DaysWithout: 3, Links: links("reminders")})
+	reminderEmail, err := composer.Reminder(domain.ReminderMessage{To: "alice@example.com", DisplayName: "Alice", Locale: "en", DaysWithout: 3, Stage: domain.ReminderStageInactivity, Links: links("reminders")})
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -153,20 +153,32 @@ func TestComposer_Reminder(t *testing.T) {
 		wantIn      []string
 	}{
 		{
-			name:        "the first reminder of a spell",
-			message:     domain.ReminderMessage{To: "alice@example.com", DisplayName: "Alice Martins", Locale: "en", DaysWithout: 3, Links: links("reminders")},
-			wantSubject: "A few minutes of practice today?",
-			wantIn:      []string{"Hi Alice,", "3 days", "Practise now", "https://app.motifpath.com"},
+			name:        "a daily reminder",
+			message:     domain.ReminderMessage{To: "alice@example.com", DisplayName: "Alice Martins", Locale: "en", DaysWithout: 1, Stage: domain.ReminderStageDaily, Links: links("reminders")},
+			wantSubject: "Time for a little practice?",
+			wantIn:      []string{"Hi Alice,", "practised yet today", "Practise now", "https://app.motifpath.com", "in the evening on days"},
 		},
 		{
-			name:        "the second reminder of a spell",
-			message:     domain.ReminderMessage{To: "alice@example.com", DisplayName: "Alice Martins", Locale: "en", DaysWithout: 10, Second: true, Links: links("reminders")},
+			name:        "a daily reminder in Portuguese (Brazil)",
+			message:     domain.ReminderMessage{To: "alice@example.com", DisplayName: "Alice Martins", Locale: "pt_BR", DaysWithout: 2, Stage: domain.ReminderStageDaily, Links: links("reminders")},
+			wantSubject: "Hora de praticar um pouco?",
+			wantIn:      []string{"Oi, Alice,", "Você ainda não praticou hoje", "Praticar agora", "Parar lembretes"},
+		},
+		{
+			name:        "the first inactivity reminder of a spell",
+			message:     domain.ReminderMessage{To: "alice@example.com", DisplayName: "Alice Martins", Locale: "en", DaysWithout: 3, Stage: domain.ReminderStageInactivity, Links: links("reminders")},
+			wantSubject: "A few minutes of practice today?",
+			wantIn:      []string{"Hi Alice,", "3 days", "Practise now", "https://app.motifpath.com", "after a few days away"},
+		},
+		{
+			name:        "the second inactivity reminder of a spell",
+			message:     domain.ReminderMessage{To: "alice@example.com", DisplayName: "Alice Martins", Locale: "en", DaysWithout: 10, Stage: domain.ReminderStageInactivityAgain, Links: links("reminders")},
 			wantSubject: "Pick up where you left off",
 			wantIn:      []string{"10 days"},
 		},
 		{
-			name:        "in Portuguese (Brazil)",
-			message:     domain.ReminderMessage{To: "alice@example.com", DisplayName: "Alice Martins", Locale: "pt_BR", DaysWithout: 3, Links: links("reminders")},
+			name:        "an inactivity reminder in Portuguese (Brazil)",
+			message:     domain.ReminderMessage{To: "alice@example.com", DisplayName: "Alice Martins", Locale: "pt_BR", DaysWithout: 3, Stage: domain.ReminderStageInactivity, Links: links("reminders")},
 			wantSubject: "Que tal alguns minutos de prática hoje?",
 			wantIn:      []string{"Oi, Alice,", "3 dias", "Praticar agora", "Parar lembretes"},
 		},
@@ -186,6 +198,26 @@ func TestComposer_Reminder(t *testing.T) {
 			})
 		})
 	}
+}
+
+func TestComposer_ReminderStages(t *testing.T) {
+	stages := []domain.ReminderStage{domain.ReminderStageDaily, domain.ReminderStageInactivity, domain.ReminderStageInactivityAgain}
+	for _, locale := range []string{"en", "pt_BR"} {
+		for _, stage := range stages {
+			t.Run(locale+" "+string(stage), func(t *testing.T) {
+				e, err := newTestComposer(t).Reminder(domain.ReminderMessage{To: "alice@example.com", Locale: locale, DaysWithout: 3, Stage: stage, Links: links("reminders")})
+
+				require.NoError(t, err)
+				assert.NotEmpty(t, e.Subject)
+			})
+		}
+	}
+
+	t.Run("an unknown stage is refused", func(t *testing.T) {
+		_, err := newTestComposer(t).Reminder(domain.ReminderMessage{To: "alice@example.com", Locale: "en", DaysWithout: 3, Stage: "weekly", Links: links("reminders")})
+
+		require.Error(t, err)
+	})
 }
 
 func TestComposer_EscapesNamesInHTML(t *testing.T) {

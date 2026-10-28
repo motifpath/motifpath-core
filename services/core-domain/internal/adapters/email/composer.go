@@ -4,6 +4,7 @@ package email
 import (
 	"bytes"
 	"embed"
+	"fmt"
 	htmltemplate "html/template"
 	"strconv"
 	"strings"
@@ -92,13 +93,17 @@ func (c *Composer) ProgressReport(m domain.ProgressReportMessage) (domain.Email,
 
 func (c *Composer) Reminder(m domain.ReminderMessage) (domain.Email, error) {
 	words := catalogFor(m.Locale)
+	body, ok := words.reminderBody[m.Stage]
+	if !ok {
+		return domain.Email{}, fmt.Errorf("no reminder wording for stage %q", m.Stage)
+	}
 	view := studentView{
 		Greeting:    words.greeting(firstName(m.DisplayName)),
-		Paragraphs:  []string{words.reminderBody(m.DaysWithout, m.Second)},
+		Paragraphs:  []string{body(m.DaysWithout)},
 		ActionLabel: words.reminderAction, ActionURL: m.Links.App,
-		Footer: words.reminderFooter, UnsubscribeLabel: words.reminderUnsubscribe, UnsubscribeURL: m.Links.UnsubscribePage,
+		Footer: words.reminderFooter[m.Stage], UnsubscribeLabel: words.reminderUnsubscribe, UnsubscribeURL: m.Links.UnsubscribePage,
 	}
-	return c.studentEmail(m.To, words.reminderSubject(m.Second), view, m.Links.OneClickUnsubscribe)
+	return c.studentEmail(m.To, words.reminderSubject[m.Stage], view, m.Links.OneClickUnsubscribe)
 }
 
 func (c *Composer) studentEmail(to, subject string, view studentView, oneClick string) (domain.Email, error) {

@@ -223,9 +223,11 @@ func (f *mailerFixture) run(t *testing.T) {
 type studentOption func(*domain.User)
 
 func withTimeZone(zone string) studentOption { return func(u *domain.User) { u.TimeZone = zone } }
-func withoutEmail() studentOption           { return func(u *domain.User) { u.Email = "" } }
+func withoutEmail() studentOption            { return func(u *domain.User) { u.Email = "" } }
 func withPrefs(report, reminders bool) studentOption {
-	return func(u *domain.User) { u.EmailPreferences = domain.EmailPreferences{ProgressReport: report, Reminders: reminders} }
+	return func(u *domain.User) {
+		u.EmailPreferences = domain.EmailPreferences{ProgressReport: report, Reminders: reminders}
+	}
 }
 func withRole(role domain.Role) studentOption { return func(u *domain.User) { u.Role = role } }
 func registeredAt(at time.Time) studentOption { return func(u *domain.User) { u.RegisteredAt = at } }
@@ -339,24 +341,28 @@ func TestEngagementMailerService_Reminder(t *testing.T) {
 		lastActive *time.Time
 		now        time.Time
 		opts       []studentOption
-		wantSent   bool
-		wantSecond bool
+		wantStage  domain.ReminderStage
 	}{
-		{name: "sent from 18:00 on the 3rd day without activity", lastActive: &friday, now: monday(18, 0, saoPaulo), wantSent: true},
+		{name: "none on a day the student was already active", lastActive: ptrTime(monday(12, 0, saoPaulo)), now: monday(18, 0, saoPaulo)},
+		{name: "a daily one from 18:00 on the 1st day without activity", lastActive: ptrTime(friday.AddDate(0, 0, 2)), now: monday(18, 0, saoPaulo), wantStage: domain.ReminderStageDaily},
+		{name: "no daily one before 18:00", lastActive: ptrTime(friday.AddDate(0, 0, 2)), now: monday(17, 59, saoPaulo)},
+		{name: "a daily one on the 2nd day", lastActive: ptrTime(friday.AddDate(0, 0, 1)), now: monday(18, 0, saoPaulo), wantStage: domain.ReminderStageDaily},
+		{name: "an inactivity one from 18:00 on the 3rd day", lastActive: &friday, now: monday(18, 0, saoPaulo), wantStage: domain.ReminderStageInactivity},
 		{name: "not sent before 18:00 on the 3rd day", lastActive: &friday, now: monday(17, 59, saoPaulo)},
-		{name: "not sent on the 2nd day", lastActive: ptrTime(friday.AddDate(0, 0, 1)), now: monday(18, 0, saoPaulo)},
-		{name: "not sent on the 4th day, a missed 3rd day is skipped", lastActive: ptrTime(friday.AddDate(0, 0, -1)), now: monday(18, 0, saoPaulo)},
-		{name: "a second one on the 10th day", lastActive: ptrTime(monday(10, 0, saoPaulo).AddDate(0, 0, -10)), now: monday(18, 0, saoPaulo), wantSent: true, wantSecond: true},
+		{name: "none on the 4th day, a missed 3rd day is skipped", lastActive: ptrTime(friday.AddDate(0, 0, -1)), now: monday(18, 0, saoPaulo)},
+		{name: "none on the 5th day", lastActive: ptrTime(friday.AddDate(0, 0, -2)), now: monday(18, 0, saoPaulo)},
+		{name: "a second inactivity one on the 10th day", lastActive: ptrTime(monday(10, 0, saoPaulo).AddDate(0, 0, -10)), now: monday(18, 0, saoPaulo), wantStage: domain.ReminderStageInactivityAgain},
 		{name: "none on the 20th day", lastActive: ptrTime(monday(10, 0, saoPaulo).AddDate(0, 0, -20)), now: monday(18, 0, saoPaulo)},
 		{name: "not sent when reminders are off", lastActive: &friday, now: monday(18, 0, saoPaulo), opts: []studentOption{withPrefs(true, false)}},
+		{name: "no daily one when reminders are off", lastActive: ptrTime(friday.AddDate(0, 0, 2)), now: monday(18, 0, saoPaulo), opts: []studentOption{withPrefs(true, false)}},
 		{name: "not sent to a student with no address", lastActive: &friday, now: monday(18, 0, saoPaulo), opts: []studentOption{withoutEmail()}},
 		{
 			name: "a student with no activity at all counts from registration", now: monday(18, 0, saoPaulo),
-			opts: []studentOption{registeredAt(friday)}, wantSent: true,
+			opts: []studentOption{registeredAt(friday)}, wantStage: domain.ReminderStageInactivity,
 		},
 		{
 			name: "counted in the student's own time zone", lastActive: ptrTime(time.Date(2026, 10, 30, 23, 30, 0, 0, saoPaulo)), now: monday(18, 0, mustLocation("Asia/Tokyo")),
-			opts: []studentOption{withTimeZone("Asia/Tokyo")},
+			opts: []studentOption{withTimeZone("Asia/Tokyo")}, wantStage: domain.ReminderStageDaily,
 		},
 	}
 	for _, tt := range tests {
@@ -371,23 +377,21 @@ func TestEngagementMailerService_Reminder(t *testing.T) {
 
 			f.run(t)
 
-			want := 0
-			if tt.wantSent {
-				want = 1
+			if tt.wantStage == "" {
+				assert.Zero(t, f.sender.sentTo("alice@example.com", "reminder"))
+				return
 			}
-			assert.Equal(t, want, f.sender.sentTo("alice@example.com", "reminder"))
-			if tt.wantSent {
-				require.Len(t, f.composer.reminders, 1)
-				assert.Equal(t, tt.wantSecond, f.composer.reminders[0].Second)
-				assert.Contains(t, f.composer.reminders[0].Links.OneClickUnsubscribe, "token=")
-			}
+			assert.Equal(t, 1, f.sender.sentTo("alice@example.com", "reminder"))
+			require.Len(t, f.composer.reminders, 1)
+			assert.Equal(t, tt.wantStage, f.composer.reminders[0].Stage)
+			assert.Contains(t, f.composer.reminders[0].Links.OneClickUnsubscribe, "token=")
 		})
 	}
 }
 
 func ptrTime(t time.Time) *time.Time { return &t }
 
-func TestEngagementMailerService_Reminder_OncePerThresholdAndSpell(t *testing.T) {
+func TestEngagementMailerService_Reminder_OncePerDayAndSpell(t *testing.T) {
 	friday := time.Date(2026, 10, 30, 20, 0, 0, 0, saoPaulo)
 	f := newMailerFixture()
 	f.concierge = ""
@@ -405,6 +409,32 @@ func TestEngagementMailerService_Reminder_OncePerThresholdAndSpell(t *testing.T)
 	f.now = monday(18, 0, saoPaulo).AddDate(0, 0, 4)
 	f.run(t)
 	assert.Equal(t, 2, f.sender.sentTo("alice@example.com", "reminder"))
+}
+
+func TestEngagementMailerService_Reminder_AtMostOneADay(t *testing.T) {
+	sunday := time.Date(2026, 11, 1, 20, 0, 0, 0, saoPaulo)
+	f := newMailerFixture()
+	f.concierge = ""
+	id := f.addStudent(t, "alice")
+	f.activity.lastActive[id] = sunday
+
+	// Every evening of a spell, run three times each: days 1, 2, 3 and 10
+	// get one reminder each, every other day none.
+	for day := 1; day <= 12; day++ {
+		for _, hour := range []int{18, 19, 23} {
+			f.now = time.Date(2026, 11, 1+day, hour, 0, 0, 0, saoPaulo)
+			f.run(t)
+		}
+	}
+
+	stages := make([]domain.ReminderStage, len(f.composer.reminders))
+	days := make([]int, len(f.composer.reminders))
+	for i, r := range f.composer.reminders {
+		stages[i], days[i] = r.Stage, r.DaysWithout
+	}
+	assert.Equal(t, []domain.ReminderStage{domain.ReminderStageDaily, domain.ReminderStageDaily, domain.ReminderStageInactivity, domain.ReminderStageInactivityAgain}, stages)
+	assert.Equal(t, []int{1, 2, 3, 10}, days)
+	assert.Equal(t, 4, f.sender.sentTo("alice@example.com", "reminder"))
 }
 
 func TestEngagementMailerService_NeverStartedStudentsGetNothing(t *testing.T) {
