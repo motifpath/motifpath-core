@@ -4,6 +4,15 @@
 // own container beside core-domain, from the same image, so it can be
 // stopped without touching the API. It never applies migrations;
 // core-domain does.
+//
+// Flags let an operator check the emails without waiting for their moment:
+// --once runs a single pass and exits, --at runs that pass as if it were
+// the given moment (an RFC 3339 time, such as 2026-11-02T09:00:00-03:00),
+// --to limits it to one address's emails (the concierge's address sends
+// only the summary), and --resend, with --once and --to, sends them even if
+// they went out before. Each pass follows the usual rules and records what
+// it sends, so an email already sent for its period isn't sent again; a
+// resend records nothing, so the schedule is left as it was.
 package main
 
 import (
@@ -11,6 +20,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -47,10 +57,51 @@ type config struct {
 	mailer         application.EngagementMailerConfig
 }
 
+// runFlags are the operator's flags; none of them is set in a deployment.
+type runFlags struct {
+	once   bool
+	at     time.Time
+	to     string
+	resend bool
+}
+
+func parseRunFlags(args []string) (runFlags, error) {
+	fs := flag.NewFlagSet("engagement-mailer", flag.ContinueOnError)
+	var flags runFlags
+	var at string
+	fs.BoolVar(&flags.once, "once", false, "run one pass and exit")
+	fs.StringVar(&at, "at", "", "with --once, run the pass as if it were this RFC 3339 time, such as 2026-11-02T09:00:00-03:00")
+	fs.StringVar(&flags.to, "to", "", "send only the emails due to this address; the concierge's address sends only the summary")
+	fs.BoolVar(&flags.resend, "resend", false, "with --once and --to, send the emails even if they went out before, recording nothing")
+	if err := fs.Parse(args); err != nil {
+		return runFlags{}, err
+	}
+	if flags.resend && (!flags.once || flags.to == "") {
+		return runFlags{}, errors.New("--resend needs --once and --to, so it never sends anything twice to everyone")
+	}
+	if at == "" {
+		return flags, nil
+	}
+	if !flags.once {
+		return runFlags{}, errors.New("--at needs --once: a pass that keeps running can't stay at one moment")
+	}
+	parsed, err := time.Parse(time.RFC3339, at)
+	if err != nil {
+		return runFlags{}, fmt.Errorf("--at must be an RFC 3339 time with its offset, such as 2026-11-02T09:00:00-03:00: %w", err)
+	}
+	flags.at = parsed
+	return flags, nil
+}
+
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
-	if err := run(logger); err != nil {
+	flags, err := parseRunFlags(os.Args[1:])
+	if err != nil {
+		logger.Error("engagement mailer flags", "error", err)
+		os.Exit(2)
+	}
+	if err := run(logger, flags); err != nil {
 		logger.Error("engagement mailer stopped", "error", err)
 		os.Exit(1)
 	}
@@ -93,7 +144,7 @@ func loadConfig() (config, error) {
 	}, nil
 }
 
-func run(logger *slog.Logger) error {
+func run(logger *slog.Logger, flags runFlags) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
@@ -101,6 +152,8 @@ func run(logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
+	cfg.mailer.OnlyRecipient = flags.to
+	cfg.mailer.Resend = flags.resend
 	sqlDB, err := sql.Open("postgres", cfg.databaseURL)
 	if err != nil {
 		return fmt.Errorf("connect to postgres: %w", err)
@@ -113,9 +166,15 @@ func run(logger *slog.Logger) error {
 	}
 	defer closeOrLog(logger, "mongodb", func() error { return mongoClient.Disconnect(context.Background()) })
 
-	mailer, err := buildMailer(cfg, entClient, mongoClient.Database(cfg.mongoDatabase))
+	mailer, err := buildMailer(cfg, entClient, mongoClient.Database(cfg.mongoDatabase), clockFor(flags))
 	if err != nil {
 		return err
+	}
+	if flags.once {
+		logger.Info("engagement mailer single pass", "at", clockFor(flags)().Format(time.RFC3339), "to", flags.to, "resend", flags.resend)
+		passCtx, cancel := context.WithTimeout(ctx, runTimeout)
+		defer cancel()
+		return mailer.Run(passCtx)
 	}
 	server := healthServer(cfg.port, repo.NewPostgresPinger(sqlDB), repo.NewMongoCompletionStateReader(mongoClient.Database(cfg.mongoDatabase)))
 	serverErr := make(chan error, 1)
@@ -153,12 +212,21 @@ func runOnce(ctx context.Context, logger *slog.Logger, mailer *application.Engag
 	}
 }
 
-func buildMailer(cfg config, entClient *ent.Client, db *mongo.Database) (*application.EngagementMailerService, error) {
+// clockFor is the time a pass runs at: the --at moment when one is given,
+// the real time otherwise.
+func clockFor(flags runFlags) func() time.Time {
+	if !flags.at.IsZero() {
+		at := flags.at.UTC()
+		return func() time.Time { return at }
+	}
+	return func() time.Time { return time.Now().UTC() }
+}
+
+func buildMailer(cfg config, entClient *ent.Client, db *mongo.Database, now func() time.Time) (*application.EngagementMailerService, error) {
 	composer, err := email.NewComposer()
 	if err != nil {
 		return nil, fmt.Errorf("parse email templates: %w", err)
 	}
-	now := func() time.Time { return time.Now().UTC() }
 	userRepo := repo.NewEntUserRepository(entClient)
 	studentPathRepo := repo.NewEntStudentPathRepository(entClient)
 	enrollmentRepo := repo.NewEntCourseEnrollmentRepository(entClient)

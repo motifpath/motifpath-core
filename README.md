@@ -215,6 +215,40 @@ set -a && . ./.env && set +a
 go run ./cmd
 ```
 
+### Engagement emails (mailer)
+
+The engagement mailer is its own command beside `core-domain`, reading the same `.env`.
+Locally it sends through Mailpit (started by `make dev`); every email shows at
+http://localhost:8025.
+
+```bash
+cd services/core-domain
+set -a && . ./.env && set +a
+go run ./cmd/engagement-mailer   # a pass now, then every MAILER_INTERVAL
+```
+
+Each pass sends only what is due by the clock, in each user's time zone. To check an
+email without waiting for its moment, run one pass as if it were another time, for one
+address:
+
+```bash
+go run ./cmd/engagement-mailer --once --at 2026-11-02T09:00:00-03:00 --to alice@example.com
+```
+
+`--once` runs a single pass and exits; `--at` (RFC 3339, with its offset, only with
+`--once`) sets the pass's clock: a Monday from 09:00 for the progress report, from
+08:00 São Paulo time for the concierge summary, from 18:00 for reminders; `--to` limits
+the pass to that address: a learner's emails, or only the concierge summary when it is
+the concierge's address (`CONCIERGE_EMAIL`). Sends are recorded in `email_sends` as
+usual, so the same email for the same period goes out once. To send it again, add
+`--resend` (only with `--once` and `--to`): the pass skips that check and records
+nothing, so the regular schedule is left as it was.
+
+```bash
+go run ./cmd/engagement-mailer --once --at 2026-11-02T09:00:00-03:00 --to alice@example.com --resend
+go run ./cmd/engagement-mailer --once --at 2026-11-02T08:00:00-03:00 --to concierge@motifpath.localhost --resend
+```
+
 ### Browser (CORS) access
 
 Both services send CORS headers for the origins in `CORS_ALLOWED_ORIGINS`
