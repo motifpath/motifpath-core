@@ -79,12 +79,14 @@ type Email struct {
 	OneClickUnsubscribeURL string
 }
 
-// EmailLinks are the links a student email carries: the app, and the two
-// ways to stop that kind of email.
+// EmailLinks are the links a student email carries: the app, the two ways
+// to stop that kind of email, and the email settings, where every kind can
+// be turned back on.
 type EmailLinks struct {
 	App                 string
 	UnsubscribePage     string
 	OneClickUnsubscribe string
+	Settings            string
 }
 
 // ProgressReportMessage is what a weekly progress report says. The week
@@ -116,9 +118,11 @@ type ReminderMessage struct {
 }
 
 // ConciergeSummaryMessage lists every student who has started learning, for
-// the week from WeekStart, inactive longest first.
+// the week from WeekStart, inactive longest first. App is the app's address,
+// where the summary's mark is hosted.
 type ConciergeSummaryMessage struct {
 	To        string
+	App       string
 	WeekStart time.Time
 	Rows      []ConciergeRow
 }
@@ -127,6 +131,7 @@ type ConciergeSummaryMessage struct {
 // for a student with no activity at all.
 type ConciergeRow struct {
 	DisplayName  string
+	Role         Role
 	Email        string
 	PracticeDays int
 	Minutes      int

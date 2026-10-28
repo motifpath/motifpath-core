@@ -1,11 +1,17 @@
+{{if .Eyebrow}}{{.Eyebrow}}
+{{end}}{{.Title}}
+
 {{.Greeting}}
-{{range .Paragraphs}}
-{{.}}
+{{range .Paragraphs}}{{.}}
 {{end}}{{if .Stats}}
-{{range .Stats}}{{.Label}}: {{.Value}}
-{{end}}{{end}}
+{{range .Stats}}{{.Label}}: {{.Value}}{{if .Note}}
+  {{.Note}}{{end}}
+{{end}}{{end}}{{if .Highlight}}
+{{.Highlight}}
+{{end}}
 {{.ActionLabel}}: {{.ActionURL}}
 
 --
 {{.Footer}}
 {{.UnsubscribeLabel}}: {{.UnsubscribeURL}}
+{{.SettingsLabel}}: {{.SettingsURL}}

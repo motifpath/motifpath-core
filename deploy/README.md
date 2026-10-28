@@ -125,7 +125,7 @@ secrets file, with its last path segment as the variable name. Use
 | `/motifpath/<env>/SMTP_USERNAME` | access key ID of the IAM user that may send only from that environment's mail domain |
 | `/motifpath/<env>/SMTP_PASSWORD` | the SES SMTP password derived from its secret |
 | `/motifpath/<env>/MAIL_FROM_ADDRESS` | `noreply@mail.motifpath.com` (production), `noreply@mail.staging.motifpath.com` (staging) |
-| `/motifpath/<env>/CONCIERGE_EMAIL` | optional, set by hand; the address the weekly student summary goes to. Without it, none is sent |
+| `/motifpath/<env>/CONCIERGE_EMAIL` | the address the weekly student summary goes to (`hello@motifpath.com`), from the environment's `concierge_email` in Terraform. Without it, none is sent |
 | `/motifpath/edge/ACME_EMAIL` | the address Let's Encrypt sends expiry notices to |
 
 A value cannot contain a single quote or a newline; `deploy.sh` refuses it

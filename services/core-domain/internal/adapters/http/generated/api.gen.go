@@ -5522,7 +5522,7 @@ type EmailPreferences struct {
 	// ProgressReport Whether the user gets the weekly progress report.
 	ProgressReport bool `json:"progress_report"`
 
-	// Reminders Whether the user gets reminders after days without learning activity.
+	// Reminders Whether the user gets reminders, both on the first days without learning activity and after 3 and 10 days without it.
 	Reminders bool `json:"reminders"`
 }
 
@@ -5532,7 +5532,7 @@ type EmailPreferencesUpdate struct {
 	// ProgressReport Whether the user gets the weekly progress report.
 	ProgressReport *bool `json:"progress_report,omitempty"`
 
-	// Reminders Whether the user gets reminders after days without learning activity.
+	// Reminders Whether the user gets reminders, both on the first days without learning activity and after 3 and 10 days without it.
 	Reminders *bool `json:"reminders,omitempty"`
 }
 
