@@ -89,13 +89,21 @@ func (s *EngagementMailerService) Run(ctx context.Context) error {
 	return errors.Join(errs...)
 }
 
-// startedStudents lists the students who have started a course or a path,
-// active or not. A student who never started anything is still in the
-// first run, and gets no engagement email.
+// learningRoles are the roles whose users may learn: teachers and admins
+// learn too, and get the same emails as students once they do.
+var learningRoles = []domain.Role{domain.RoleStudent, domain.RoleTeacher, domain.RoleAdmin}
+
+// startedStudents lists the users of any role who have started a course or
+// a path, active or not. A user who never started anything is still in the
+// first run, or only authors, and gets no engagement email.
 func (s *EngagementMailerService) startedStudents(ctx context.Context) ([]domain.User, error) {
-	users, err := s.deps.Users.ListByRole(ctx, domain.RoleStudent)
-	if err != nil {
-		return nil, err
+	var users []domain.User
+	for _, role := range learningRoles {
+		withRole, err := s.deps.Users.ListByRole(ctx, role)
+		if err != nil {
+			return nil, err
+		}
+		users = append(users, withRole...)
 	}
 	started := make([]domain.User, 0, len(users))
 	for _, user := range users {

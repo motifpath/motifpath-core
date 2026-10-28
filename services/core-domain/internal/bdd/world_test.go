@@ -597,7 +597,10 @@ func (w *world) ensureRegistered(name string, role domain.Role) uuid.UUID {
 
 	if role == domain.RoleAdmin {
 		id := deterministicUUID("motif-user", name)
-		w.users.put(domain.User{ID: id.String(), ClerkUserID: clerkSub(name), Role: domain.RoleAdmin, DisplayName: w.nameClaim(name), RegisteredAt: fixedNow})
+		w.users.put(domain.User{
+			ID: id.String(), ClerkUserID: clerkSub(name), Role: domain.RoleAdmin, DisplayName: w.nameClaim(name),
+			EmailPreferences: domain.DefaultEmailPreferences(), RegisteredAt: fixedNow,
+		})
 		w.userMotifID[name] = id
 		return id
 	}

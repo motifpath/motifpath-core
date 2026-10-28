@@ -101,6 +101,7 @@ func registerEngagementEmailSteps(sc *godog.ScenarioContext, w *world) {
 
 	// Who the students are.
 	sc.Step(`^"([^"]+)" has already registered as a teacher$`, func(name string) error { w.ensureRegistered(name, domain.RoleTeacher); return nil })
+	sc.Step(`^"([^"]+)" has already registered as an admin$`, func(name string) error { w.ensureRegistered(name, domain.RoleAdmin); return nil })
 	sc.Step(`^"([^"]+)" is enrolled in the course "([^"]+)"$`, w.isEnrolledInCourse)
 	sc.Step(`^"([^"]+)"'s only course enrolment is completed$`, w.onlyEnrolmentIsCompleted)
 	sc.Step(`^"([^"]+)" has never started a course or a path$`, func(name string) error { w.ensureRegistered(name, domain.RoleStudent); return nil })
