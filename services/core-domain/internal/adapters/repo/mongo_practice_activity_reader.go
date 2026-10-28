@@ -225,6 +225,16 @@ func (r *MongoPracticeActivityReader) LastInHandSessionItemKeys(ctx context.Cont
 	return keys, nil
 }
 
+func (r *MongoPracticeActivityReader) SessionEnded(ctx context.Context, studentID, sessionID string) (bool, error) {
+	// The worker leaves end null until the session's end arrives.
+	n, err := r.sessions.CountDocuments(ctx, bson.D{
+		{Key: "student_id", Value: studentID},
+		{Key: "practice_session_id", Value: sessionID},
+		{Key: "end", Value: bson.D{{Key: "$ne", Value: nil}}},
+	}, options.Count().SetLimit(1))
+	return n > 0, err
+}
+
 func (r *MongoPracticeActivityReader) SessionSpans(ctx context.Context, studentID string, since time.Time) ([]domain.PracticeSessionSpan, error) {
 	// A session whose start hasn't arrived has a null started_at, which
 	// $gte never matches.

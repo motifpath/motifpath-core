@@ -6,5 +6,11 @@ on:
 
 jobs:
   sync:
+    # The reusable workflow pushes the sync branch and opens the PR with the
+    # built-in token, and a called workflow can never have more permissions
+    # than its caller grants: the repository's default token is read-only.
+    permissions:
+      contents: write
+      pull-requests: write
     uses: motifpath/motifpath-specs/.github/workflows/reusable-sync-main-to-dev.yml@main
     secrets: inherit

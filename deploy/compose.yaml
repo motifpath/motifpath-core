@@ -84,6 +84,7 @@ services:
       MEDIA_S3_BUCKET: ${MEDIA_S3_BUCKET:?}
       MEDIA_S3_REGION: ${AWS_REGION:?}
       MEDIA_PUBLIC_BASE_URL: ${MEDIA_PUBLIC_BASE_URL:?}
+      EMAIL_UNSUBSCRIBE_SECRET: ${EMAIL_UNSUBSCRIBE_SECRET:?}
     ports:
       - 127.0.0.1:${CORE_DOMAIN_HOST_PORT:?}:8080
     # Migrations run before the service listens, so a long one on a cold
@@ -136,6 +137,38 @@ services:
         limits:
           cpus: ${AGGREGATION_WORKER_CPUS:?}
           memory: ${AGGREGATION_WORKER_MEMORY:?}
+
+  # The engagement emails. core-domain's image, another entrypoint; it never
+  # applies migrations, and a pass that runs before core-domain has applied
+  # them fails and is simply retried at the next tick. Stop this one
+  # container to stop every engagement email.
+  engagement-mailer:
+    <<: *service
+    image: ${ECR_REGISTRY:?}/motifpath/core-domain:${IMAGE_TAG:?}
+    entrypoint: ["/app/engagement-mailer"]
+    environment:
+      MAILER_PORT: "8083"
+      DATABASE_URL: ${DATABASE_URL:?}
+      MONGO_URI: ${MONGO_URI:?}
+      MONGO_DATABASE: ${MONGO_DATABASE:?}
+      EMAIL_UNSUBSCRIBE_SECRET: ${EMAIL_UNSUBSCRIBE_SECRET:?}
+      SMTP_HOST: ${SMTP_HOST:?}
+      SMTP_USERNAME: ${SMTP_USERNAME:?}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:?}
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:?}
+      APP_BASE_URL: ${APP_BASE_URL:?}
+      API_BASE_URL: ${API_BASE_URL:?}
+      # Optional: without it, no concierge summary is sent.
+      CONCIERGE_EMAIL: ${CONCIERGE_EMAIL:-}
+    # Not routed by the edge; published on loopback only so deploy.sh can
+    # probe its health endpoints like the others.
+    ports:
+      - 127.0.0.1:${ENGAGEMENT_MAILER_HOST_PORT:?}:8083
+    deploy:
+      resources:
+        limits:
+          cpus: ${ENGAGEMENT_MAILER_CPUS:?}
+          memory: ${ENGAGEMENT_MAILER_MEMORY:?}
 
 volumes:
   redpanda_data:

@@ -57,6 +57,74 @@ func (_u *UserUpdate) SetNillableLocaleID(v *uuid.UUID) *UserUpdate {
 	return _u
 }
 
+// SetEmail sets the "email" field.
+func (_u *UserUpdate) SetEmail(v string) *UserUpdate {
+	_u.mutation.SetEmail(v)
+	return _u
+}
+
+// SetNillableEmail sets the "email" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableEmail(v *string) *UserUpdate {
+	if v != nil {
+		_u.SetEmail(*v)
+	}
+	return _u
+}
+
+// ClearEmail clears the value of the "email" field.
+func (_u *UserUpdate) ClearEmail() *UserUpdate {
+	_u.mutation.ClearEmail()
+	return _u
+}
+
+// SetTimeZone sets the "time_zone" field.
+func (_u *UserUpdate) SetTimeZone(v string) *UserUpdate {
+	_u.mutation.SetTimeZone(v)
+	return _u
+}
+
+// SetNillableTimeZone sets the "time_zone" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableTimeZone(v *string) *UserUpdate {
+	if v != nil {
+		_u.SetTimeZone(*v)
+	}
+	return _u
+}
+
+// ClearTimeZone clears the value of the "time_zone" field.
+func (_u *UserUpdate) ClearTimeZone() *UserUpdate {
+	_u.mutation.ClearTimeZone()
+	return _u
+}
+
+// SetEmailProgressReport sets the "email_progress_report" field.
+func (_u *UserUpdate) SetEmailProgressReport(v bool) *UserUpdate {
+	_u.mutation.SetEmailProgressReport(v)
+	return _u
+}
+
+// SetNillableEmailProgressReport sets the "email_progress_report" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableEmailProgressReport(v *bool) *UserUpdate {
+	if v != nil {
+		_u.SetEmailProgressReport(*v)
+	}
+	return _u
+}
+
+// SetEmailReminders sets the "email_reminders" field.
+func (_u *UserUpdate) SetEmailReminders(v bool) *UserUpdate {
+	_u.mutation.SetEmailReminders(v)
+	return _u
+}
+
+// SetNillableEmailReminders sets the "email_reminders" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableEmailReminders(v *bool) *UserUpdate {
+	if v != nil {
+		_u.SetEmailReminders(*v)
+	}
+	return _u
+}
+
 // SetLocale sets the "locale" edge to the Language entity.
 func (_u *UserUpdate) SetLocale(v *Language) *UserUpdate {
 	return _u.SetLocaleID(v.ID)
@@ -127,6 +195,24 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.DisplayName(); ok {
 		_spec.SetField(user.FieldDisplayName, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.Email(); ok {
+		_spec.SetField(user.FieldEmail, field.TypeString, value)
+	}
+	if _u.mutation.EmailCleared() {
+		_spec.ClearField(user.FieldEmail, field.TypeString)
+	}
+	if value, ok := _u.mutation.TimeZone(); ok {
+		_spec.SetField(user.FieldTimeZone, field.TypeString, value)
+	}
+	if _u.mutation.TimeZoneCleared() {
+		_spec.ClearField(user.FieldTimeZone, field.TypeString)
+	}
+	if value, ok := _u.mutation.EmailProgressReport(); ok {
+		_spec.SetField(user.FieldEmailProgressReport, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.EmailReminders(); ok {
+		_spec.SetField(user.FieldEmailReminders, field.TypeBool, value)
 	}
 	if _u.mutation.LocaleCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -201,6 +287,74 @@ func (_u *UserUpdateOne) SetLocaleID(v uuid.UUID) *UserUpdateOne {
 func (_u *UserUpdateOne) SetNillableLocaleID(v *uuid.UUID) *UserUpdateOne {
 	if v != nil {
 		_u.SetLocaleID(*v)
+	}
+	return _u
+}
+
+// SetEmail sets the "email" field.
+func (_u *UserUpdateOne) SetEmail(v string) *UserUpdateOne {
+	_u.mutation.SetEmail(v)
+	return _u
+}
+
+// SetNillableEmail sets the "email" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableEmail(v *string) *UserUpdateOne {
+	if v != nil {
+		_u.SetEmail(*v)
+	}
+	return _u
+}
+
+// ClearEmail clears the value of the "email" field.
+func (_u *UserUpdateOne) ClearEmail() *UserUpdateOne {
+	_u.mutation.ClearEmail()
+	return _u
+}
+
+// SetTimeZone sets the "time_zone" field.
+func (_u *UserUpdateOne) SetTimeZone(v string) *UserUpdateOne {
+	_u.mutation.SetTimeZone(v)
+	return _u
+}
+
+// SetNillableTimeZone sets the "time_zone" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableTimeZone(v *string) *UserUpdateOne {
+	if v != nil {
+		_u.SetTimeZone(*v)
+	}
+	return _u
+}
+
+// ClearTimeZone clears the value of the "time_zone" field.
+func (_u *UserUpdateOne) ClearTimeZone() *UserUpdateOne {
+	_u.mutation.ClearTimeZone()
+	return _u
+}
+
+// SetEmailProgressReport sets the "email_progress_report" field.
+func (_u *UserUpdateOne) SetEmailProgressReport(v bool) *UserUpdateOne {
+	_u.mutation.SetEmailProgressReport(v)
+	return _u
+}
+
+// SetNillableEmailProgressReport sets the "email_progress_report" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableEmailProgressReport(v *bool) *UserUpdateOne {
+	if v != nil {
+		_u.SetEmailProgressReport(*v)
+	}
+	return _u
+}
+
+// SetEmailReminders sets the "email_reminders" field.
+func (_u *UserUpdateOne) SetEmailReminders(v bool) *UserUpdateOne {
+	_u.mutation.SetEmailReminders(v)
+	return _u
+}
+
+// SetNillableEmailReminders sets the "email_reminders" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableEmailReminders(v *bool) *UserUpdateOne {
+	if v != nil {
+		_u.SetEmailReminders(*v)
 	}
 	return _u
 }
@@ -305,6 +459,24 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 	}
 	if value, ok := _u.mutation.DisplayName(); ok {
 		_spec.SetField(user.FieldDisplayName, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.Email(); ok {
+		_spec.SetField(user.FieldEmail, field.TypeString, value)
+	}
+	if _u.mutation.EmailCleared() {
+		_spec.ClearField(user.FieldEmail, field.TypeString)
+	}
+	if value, ok := _u.mutation.TimeZone(); ok {
+		_spec.SetField(user.FieldTimeZone, field.TypeString, value)
+	}
+	if _u.mutation.TimeZoneCleared() {
+		_spec.ClearField(user.FieldTimeZone, field.TypeString)
+	}
+	if value, ok := _u.mutation.EmailProgressReport(); ok {
+		_spec.SetField(user.FieldEmailProgressReport, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.EmailReminders(); ok {
+		_spec.SetField(user.FieldEmailReminders, field.TypeBool, value)
 	}
 	if _u.mutation.LocaleCleared() {
 		edge := &sqlgraph.EdgeSpec{

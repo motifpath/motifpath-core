@@ -24,6 +24,14 @@ const (
 	FieldDisplayName = "display_name"
 	// FieldLocaleID holds the string denoting the locale_id field in the database.
 	FieldLocaleID = "locale_id"
+	// FieldEmail holds the string denoting the email field in the database.
+	FieldEmail = "email"
+	// FieldTimeZone holds the string denoting the time_zone field in the database.
+	FieldTimeZone = "time_zone"
+	// FieldEmailProgressReport holds the string denoting the email_progress_report field in the database.
+	FieldEmailProgressReport = "email_progress_report"
+	// FieldEmailReminders holds the string denoting the email_reminders field in the database.
+	FieldEmailReminders = "email_reminders"
 	// FieldRegisteredAt holds the string denoting the registered_at field in the database.
 	FieldRegisteredAt = "registered_at"
 	// EdgeLocale holds the string denoting the locale edge name in mutations.
@@ -46,6 +54,10 @@ var Columns = []string{
 	FieldRole,
 	FieldDisplayName,
 	FieldLocaleID,
+	FieldEmail,
+	FieldTimeZone,
+	FieldEmailProgressReport,
+	FieldEmailReminders,
 	FieldRegisteredAt,
 }
 
@@ -62,6 +74,10 @@ func ValidColumn(column string) bool {
 var (
 	// DisplayNameValidator is a validator for the "display_name" field. It is called by the builders before save.
 	DisplayNameValidator func(string) error
+	// DefaultEmailProgressReport holds the default value on creation for the "email_progress_report" field.
+	DefaultEmailProgressReport bool
+	// DefaultEmailReminders holds the default value on creation for the "email_reminders" field.
+	DefaultEmailReminders bool
 	// DefaultRegisteredAt holds the default value on creation for the "registered_at" field.
 	DefaultRegisteredAt func() time.Time
 	// DefaultID holds the default value on creation for the "id" field.
@@ -118,6 +134,26 @@ func ByDisplayName(opts ...sql.OrderTermOption) OrderOption {
 // ByLocaleID orders the results by the locale_id field.
 func ByLocaleID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLocaleID, opts...).ToFunc()
+}
+
+// ByEmail orders the results by the email field.
+func ByEmail(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldEmail, opts...).ToFunc()
+}
+
+// ByTimeZone orders the results by the time_zone field.
+func ByTimeZone(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTimeZone, opts...).ToFunc()
+}
+
+// ByEmailProgressReport orders the results by the email_progress_report field.
+func ByEmailProgressReport(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldEmailProgressReport, opts...).ToFunc()
+}
+
+// ByEmailReminders orders the results by the email_reminders field.
+func ByEmailReminders(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldEmailReminders, opts...).ToFunc()
 }
 
 // ByRegisteredAt orders the results by the registered_at field.

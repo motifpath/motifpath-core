@@ -7,6 +7,8 @@ import (
 
 	"github.com/clerk/clerk-sdk-go/v2"
 	clerkhttp "github.com/clerk/clerk-sdk-go/v2/http"
+
+	"github.com/motifpath/core-domain/internal/domain"
 )
 
 // ClerkAuthMiddleware validates the Bearer token via Clerk — JWKS fetching,
@@ -36,7 +38,7 @@ func ClerkAuthMiddleware(next http.Handler) http.Handler {
 		if claims, ok := clerk.SessionClaimsFromContext(r.Context()); ok {
 			ctx := WithClerkUserID(r.Context(), claims.Subject)
 			if custom, ok := claims.Custom.(*sessionCustomClaims); ok {
-				ctx = WithNameClaim(ctx, custom.Name)
+				ctx = WithIdentityClaims(ctx, domain.IdentityClaims{Name: custom.Name, Email: custom.Email})
 			}
 			r = r.WithContext(ctx)
 		}
@@ -46,26 +48,37 @@ func ClerkAuthMiddleware(next http.Handler) http.Handler {
 
 // sessionCustomClaims holds the custom claims this service reads from the
 // Clerk session token, which the Clerk instance's session-token template
-// must add: "name" is the user's full name. A token without it decodes to
-// an empty Name, which registration rejects and caller resolution ignores.
+// must add: "name" is the user's full name and "email" their primary email
+// address. A token without one decodes to an empty value, which
+// registration rejects and caller resolution ignores.
 type sessionCustomClaims struct {
-	Name string
+	Name  string
+	Email string
 }
 
-// UnmarshalJSON keeps "name" only when it is a JSON string. The SDK decodes
-// custom claims while verifying the token, so a decode error here would
-// reject the whole token: a misconfigured template that emits some other
-// type must cost the user their name, never their sign-in.
+// UnmarshalJSON keeps "name" and "email" only when each is a JSON string.
+// The SDK decodes custom claims while verifying the token, so a decode error
+// here would reject the whole token: a misconfigured template that emits
+// some other type must cost the user that claim, never their sign-in.
 func (c *sessionCustomClaims) UnmarshalJSON(data []byte) error {
 	var raw struct {
-		Name json.RawMessage `json:"name"`
+		Name  json.RawMessage `json:"name"`
+		Email json.RawMessage `json:"email"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
-	var name string
-	if err := json.Unmarshal(raw.Name, &name); err == nil {
-		c.Name = name
-	}
+	c.Name = stringClaim(raw.Name)
+	c.Email = stringClaim(raw.Email)
 	return nil
+}
+
+// stringClaim returns raw's value when it is a JSON string, and "" for any
+// other type or an absent claim.
+func stringClaim(raw json.RawMessage) string {
+	var value string
+	if err := json.Unmarshal(raw, &value); err != nil {
+		return ""
+	}
+	return value
 }

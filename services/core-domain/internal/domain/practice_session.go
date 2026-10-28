@@ -370,7 +370,10 @@ type PracticeSessionPlan struct {
 	// names them, the main subject first.
 	FocusSource PracticeFocusSource
 	FocusNodes  []KnowledgeNode
-	Items       []PracticeSessionItem
+	// FocusRungs holds, for each of FocusNodes, its current rung for the
+	// session and the student's level on it when the plan was composed.
+	FocusRungs []RungLevel
+	Items      []PracticeSessionItem
 	// FeltQuestions are the timed drill templates the client asks "How did
 	// it feel?" about at the end, if the student practised them: see
 	// FeltQuestions.

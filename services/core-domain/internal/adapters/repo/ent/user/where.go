@@ -71,6 +71,26 @@ func LocaleID(v uuid.UUID) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldLocaleID, v))
 }
 
+// Email applies equality check predicate on the "email" field. It's identical to EmailEQ.
+func Email(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldEmail, v))
+}
+
+// TimeZone applies equality check predicate on the "time_zone" field. It's identical to TimeZoneEQ.
+func TimeZone(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldTimeZone, v))
+}
+
+// EmailProgressReport applies equality check predicate on the "email_progress_report" field. It's identical to EmailProgressReportEQ.
+func EmailProgressReport(v bool) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldEmailProgressReport, v))
+}
+
+// EmailReminders applies equality check predicate on the "email_reminders" field. It's identical to EmailRemindersEQ.
+func EmailReminders(v bool) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldEmailReminders, v))
+}
+
 // RegisteredAt applies equality check predicate on the "registered_at" field. It's identical to RegisteredAtEQ.
 func RegisteredAt(v time.Time) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldRegisteredAt, v))
@@ -244,6 +264,176 @@ func LocaleIDIn(vs ...uuid.UUID) predicate.User {
 // LocaleIDNotIn applies the NotIn predicate on the "locale_id" field.
 func LocaleIDNotIn(vs ...uuid.UUID) predicate.User {
 	return predicate.User(sql.FieldNotIn(FieldLocaleID, vs...))
+}
+
+// EmailEQ applies the EQ predicate on the "email" field.
+func EmailEQ(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldEmail, v))
+}
+
+// EmailNEQ applies the NEQ predicate on the "email" field.
+func EmailNEQ(v string) predicate.User {
+	return predicate.User(sql.FieldNEQ(FieldEmail, v))
+}
+
+// EmailIn applies the In predicate on the "email" field.
+func EmailIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldIn(FieldEmail, vs...))
+}
+
+// EmailNotIn applies the NotIn predicate on the "email" field.
+func EmailNotIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldNotIn(FieldEmail, vs...))
+}
+
+// EmailGT applies the GT predicate on the "email" field.
+func EmailGT(v string) predicate.User {
+	return predicate.User(sql.FieldGT(FieldEmail, v))
+}
+
+// EmailGTE applies the GTE predicate on the "email" field.
+func EmailGTE(v string) predicate.User {
+	return predicate.User(sql.FieldGTE(FieldEmail, v))
+}
+
+// EmailLT applies the LT predicate on the "email" field.
+func EmailLT(v string) predicate.User {
+	return predicate.User(sql.FieldLT(FieldEmail, v))
+}
+
+// EmailLTE applies the LTE predicate on the "email" field.
+func EmailLTE(v string) predicate.User {
+	return predicate.User(sql.FieldLTE(FieldEmail, v))
+}
+
+// EmailContains applies the Contains predicate on the "email" field.
+func EmailContains(v string) predicate.User {
+	return predicate.User(sql.FieldContains(FieldEmail, v))
+}
+
+// EmailHasPrefix applies the HasPrefix predicate on the "email" field.
+func EmailHasPrefix(v string) predicate.User {
+	return predicate.User(sql.FieldHasPrefix(FieldEmail, v))
+}
+
+// EmailHasSuffix applies the HasSuffix predicate on the "email" field.
+func EmailHasSuffix(v string) predicate.User {
+	return predicate.User(sql.FieldHasSuffix(FieldEmail, v))
+}
+
+// EmailIsNil applies the IsNil predicate on the "email" field.
+func EmailIsNil() predicate.User {
+	return predicate.User(sql.FieldIsNull(FieldEmail))
+}
+
+// EmailNotNil applies the NotNil predicate on the "email" field.
+func EmailNotNil() predicate.User {
+	return predicate.User(sql.FieldNotNull(FieldEmail))
+}
+
+// EmailEqualFold applies the EqualFold predicate on the "email" field.
+func EmailEqualFold(v string) predicate.User {
+	return predicate.User(sql.FieldEqualFold(FieldEmail, v))
+}
+
+// EmailContainsFold applies the ContainsFold predicate on the "email" field.
+func EmailContainsFold(v string) predicate.User {
+	return predicate.User(sql.FieldContainsFold(FieldEmail, v))
+}
+
+// TimeZoneEQ applies the EQ predicate on the "time_zone" field.
+func TimeZoneEQ(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldTimeZone, v))
+}
+
+// TimeZoneNEQ applies the NEQ predicate on the "time_zone" field.
+func TimeZoneNEQ(v string) predicate.User {
+	return predicate.User(sql.FieldNEQ(FieldTimeZone, v))
+}
+
+// TimeZoneIn applies the In predicate on the "time_zone" field.
+func TimeZoneIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldIn(FieldTimeZone, vs...))
+}
+
+// TimeZoneNotIn applies the NotIn predicate on the "time_zone" field.
+func TimeZoneNotIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldNotIn(FieldTimeZone, vs...))
+}
+
+// TimeZoneGT applies the GT predicate on the "time_zone" field.
+func TimeZoneGT(v string) predicate.User {
+	return predicate.User(sql.FieldGT(FieldTimeZone, v))
+}
+
+// TimeZoneGTE applies the GTE predicate on the "time_zone" field.
+func TimeZoneGTE(v string) predicate.User {
+	return predicate.User(sql.FieldGTE(FieldTimeZone, v))
+}
+
+// TimeZoneLT applies the LT predicate on the "time_zone" field.
+func TimeZoneLT(v string) predicate.User {
+	return predicate.User(sql.FieldLT(FieldTimeZone, v))
+}
+
+// TimeZoneLTE applies the LTE predicate on the "time_zone" field.
+func TimeZoneLTE(v string) predicate.User {
+	return predicate.User(sql.FieldLTE(FieldTimeZone, v))
+}
+
+// TimeZoneContains applies the Contains predicate on the "time_zone" field.
+func TimeZoneContains(v string) predicate.User {
+	return predicate.User(sql.FieldContains(FieldTimeZone, v))
+}
+
+// TimeZoneHasPrefix applies the HasPrefix predicate on the "time_zone" field.
+func TimeZoneHasPrefix(v string) predicate.User {
+	return predicate.User(sql.FieldHasPrefix(FieldTimeZone, v))
+}
+
+// TimeZoneHasSuffix applies the HasSuffix predicate on the "time_zone" field.
+func TimeZoneHasSuffix(v string) predicate.User {
+	return predicate.User(sql.FieldHasSuffix(FieldTimeZone, v))
+}
+
+// TimeZoneIsNil applies the IsNil predicate on the "time_zone" field.
+func TimeZoneIsNil() predicate.User {
+	return predicate.User(sql.FieldIsNull(FieldTimeZone))
+}
+
+// TimeZoneNotNil applies the NotNil predicate on the "time_zone" field.
+func TimeZoneNotNil() predicate.User {
+	return predicate.User(sql.FieldNotNull(FieldTimeZone))
+}
+
+// TimeZoneEqualFold applies the EqualFold predicate on the "time_zone" field.
+func TimeZoneEqualFold(v string) predicate.User {
+	return predicate.User(sql.FieldEqualFold(FieldTimeZone, v))
+}
+
+// TimeZoneContainsFold applies the ContainsFold predicate on the "time_zone" field.
+func TimeZoneContainsFold(v string) predicate.User {
+	return predicate.User(sql.FieldContainsFold(FieldTimeZone, v))
+}
+
+// EmailProgressReportEQ applies the EQ predicate on the "email_progress_report" field.
+func EmailProgressReportEQ(v bool) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldEmailProgressReport, v))
+}
+
+// EmailProgressReportNEQ applies the NEQ predicate on the "email_progress_report" field.
+func EmailProgressReportNEQ(v bool) predicate.User {
+	return predicate.User(sql.FieldNEQ(FieldEmailProgressReport, v))
+}
+
+// EmailRemindersEQ applies the EQ predicate on the "email_reminders" field.
+func EmailRemindersEQ(v bool) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldEmailReminders, v))
+}
+
+// EmailRemindersNEQ applies the NEQ predicate on the "email_reminders" field.
+func EmailRemindersNEQ(v bool) predicate.User {
+	return predicate.User(sql.FieldNEQ(FieldEmailReminders, v))
 }
 
 // RegisteredAtEQ applies the EQ predicate on the "registered_at" field.

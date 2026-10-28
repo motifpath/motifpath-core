@@ -36,6 +36,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/drilltemplate"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/drillthreshold"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/emailsend"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseinstrument"
@@ -517,6 +518,20 @@ func init() {
 	drillthresholdDescStudents := drillthresholdFields[7].Descriptor()
 	// drillthreshold.StudentsValidator is a validator for the "students" field. It is called by the builders before save.
 	drillthreshold.StudentsValidator = drillthresholdDescStudents.Validators[0].(func(int) error)
+	emailsendFields := schema.EmailSend{}.Fields()
+	_ = emailsendFields
+	// emailsendDescRecipient is the schema descriptor for recipient field.
+	emailsendDescRecipient := emailsendFields[1].Descriptor()
+	// emailsend.RecipientValidator is a validator for the "recipient" field. It is called by the builders before save.
+	emailsend.RecipientValidator = emailsendDescRecipient.Validators[0].(func(string) error)
+	// emailsendDescPeriodKey is the schema descriptor for period_key field.
+	emailsendDescPeriodKey := emailsendFields[3].Descriptor()
+	// emailsend.PeriodKeyValidator is a validator for the "period_key" field. It is called by the builders before save.
+	emailsend.PeriodKeyValidator = emailsendDescPeriodKey.Validators[0].(func(string) error)
+	// emailsendDescID is the schema descriptor for id field.
+	emailsendDescID := emailsendFields[0].Descriptor()
+	// emailsend.DefaultID holds the default value on creation for the id field.
+	emailsend.DefaultID = emailsendDescID.Default.(func() uuid.UUID)
 	exerciseFields := schema.Exercise{}.Fields()
 	_ = exerciseFields
 	// exerciseDescCreatedAt is the schema descriptor for created_at field.
@@ -777,8 +792,16 @@ func init() {
 	userDescDisplayName := userFields[3].Descriptor()
 	// user.DisplayNameValidator is a validator for the "display_name" field. It is called by the builders before save.
 	user.DisplayNameValidator = userDescDisplayName.Validators[0].(func(string) error)
+	// userDescEmailProgressReport is the schema descriptor for email_progress_report field.
+	userDescEmailProgressReport := userFields[7].Descriptor()
+	// user.DefaultEmailProgressReport holds the default value on creation for the email_progress_report field.
+	user.DefaultEmailProgressReport = userDescEmailProgressReport.Default.(bool)
+	// userDescEmailReminders is the schema descriptor for email_reminders field.
+	userDescEmailReminders := userFields[8].Descriptor()
+	// user.DefaultEmailReminders holds the default value on creation for the email_reminders field.
+	user.DefaultEmailReminders = userDescEmailReminders.Default.(bool)
 	// userDescRegisteredAt is the schema descriptor for registered_at field.
-	userDescRegisteredAt := userFields[5].Descriptor()
+	userDescRegisteredAt := userFields[9].Descriptor()
 	// user.DefaultRegisteredAt holds the default value on creation for the registered_at field.
 	user.DefaultRegisteredAt = userDescRegisteredAt.Default.(func() time.Time)
 	// userDescID is the schema descriptor for id field.

@@ -42,6 +42,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/drilltemplate"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/drillthreshold"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/emailsend"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseinstrument"
@@ -159,6 +160,7 @@ func checkColumn(t, c string) error {
 			diagramskill.Table:            diagramskill.ValidColumn,
 			drilltemplate.Table:           drilltemplate.ValidColumn,
 			drillthreshold.Table:          drillthreshold.ValidColumn,
+			emailsend.Table:               emailsend.ValidColumn,
 			exercise.Table:                exercise.ValidColumn,
 			exerciseconcept.Table:         exerciseconcept.ValidColumn,
 			exerciseinstrument.Table:      exerciseinstrument.ValidColumn,

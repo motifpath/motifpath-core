@@ -33,6 +33,7 @@ func TestFeatures(t *testing.T) {
 				featuresBase + "/content-management",
 				featuresBase + "/learning-paths",
 				featuresBase + "/core-domain",
+				featuresBase + "/engagement",
 				// Only the practice features whose steps run here; grading and
 				// knowledge state run in the Aggregation Worker.
 				featuresBase + "/practice/compose-practice-session.feature",
@@ -41,6 +42,7 @@ func TestFeatures(t *testing.T) {
 				featuresBase + "/practice/progression-catalog.feature",
 				featuresBase + "/practice/fretboard-cells.feature",
 				featuresBase + "/practice/focused-session.feature",
+				featuresBase + "/practice/session-subject-progress.feature",
 				featuresBase + "/practice/fretboard-map.feature",
 				featuresBase + "/practice/guide-tones.feature",
 				featuresBase + "/practice/songs.feature",
@@ -84,6 +86,8 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	registerUserRegistrationSteps(sc, w)
 	registerDisplayNameSteps(sc, w)
 	registerLocaleSteps(sc, w)
+	registerUserEmailPreferencesSteps(sc, w)
+	registerEngagementEmailSteps(sc, w)
 	registerContentNodeSteps(sc, w)
 	registerAuthoringListSteps(sc, w)
 	registerKnowledgeNodeSteps(sc, w)
@@ -129,6 +133,7 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	registerListingSteps(sc, w)
 	registerPracticeSessionSteps(sc, w)
 	registerPracticeFocusSteps(sc, w)
+	registerSessionSubjectProgressSteps(sc, w)
 	registerPracticeSummarySteps(sc, w)
 	registerPracticeDaysSteps(sc, w)
 	registerSongsPlayedSteps(sc, w)

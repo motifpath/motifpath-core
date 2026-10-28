@@ -26,6 +26,9 @@ type fakeUserRepository struct {
 	// displayNameWrites counts UpdateDisplayName calls, so a test can tell
 	// a real refresh from a no-op.
 	displayNameWrites int
+	// emailWrites counts UpdateEmail calls, so a test can tell a real
+	// refresh from a no-op.
+	emailWrites int
 	// displayNameLookups records the ids of every GetDisplayNames call, so a
 	// test can check what the service actually asked for.
 	displayNameLookups [][]string
@@ -82,14 +85,36 @@ func (f *fakeUserRepository) put(user domain.User) {
 	f.byID[user.ID] = user
 }
 
-func (f *fakeUserRepository) UpdateLocale(_ context.Context, id, locale string) error {
+func (f *fakeUserRepository) UpdatePreferences(_ context.Context, id string, update domain.ProfileUpdate) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	user, ok := f.byID[id]
 	if !ok {
 		return domain.ErrNotFound
 	}
-	user.Locale = domain.Language{Code: locale}
+	if update.Locale != nil {
+		user.Locale = domain.Language{Code: *update.Locale}
+	}
+	if update.TimeZone != nil {
+		user.TimeZone = *update.TimeZone
+	}
+	if update.EmailPreferences != nil {
+		user.EmailPreferences = update.EmailPreferences.Apply(user.EmailPreferences)
+	}
+	f.byID[id] = user
+	f.byClerkID[user.ClerkUserID] = user
+	return nil
+}
+
+func (f *fakeUserRepository) UpdateEmail(_ context.Context, id, email string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	user, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	f.emailWrites++
+	user.Email = email
 	f.byID[id] = user
 	f.byClerkID[user.ClerkUserID] = user
 	return nil
