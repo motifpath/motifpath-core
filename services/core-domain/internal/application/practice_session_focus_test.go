@@ -32,7 +32,7 @@ func (f *practiceFixture) exercisesOf(prefix, skillID string, exerciseType domai
 		id := fmt.Sprintf("%s-%02d", prefix, i)
 		require.NoError(f.t, f.exercises.Create(context.Background(), domain.Exercise{
 			ID: id, Title: id, ExerciseType: exerciseType,
-			Skills: []domain.KnowledgeNode{{ID: skillID}}, EstimatedDurationSeconds: &seconds,
+			Skills: []domain.KnowledgeNode{{ID: skillID}}, EstimatedDurationSeconds: &seconds, Languages: anyLanguage(),
 		}))
 		keys[i] = domain.ExerciseItemKey(id)
 	}
@@ -456,7 +456,7 @@ func TestPracticeSessionService_ComposePlan_ChosenSubject(t *testing.T) {
 		for _, id := range []string{"tones-1", "tones-2"} {
 			require.NoError(t, f.exercises.Create(context.Background(), domain.Exercise{
 				ID: id, Title: id, ExerciseType: domain.ExerciseTypeTextResponse,
-				Concepts: []domain.KnowledgeNode{{ID: "concept-tones"}}, EstimatedDurationSeconds: &seconds,
+				Concepts: []domain.KnowledgeNode{{ID: "concept-tones"}}, EstimatedDurationSeconds: &seconds, Languages: anyLanguage(),
 			}))
 		}
 		f.playAlong("tones-riff", "Tones riff", practiceGuitar, "skill-riffs", 100)

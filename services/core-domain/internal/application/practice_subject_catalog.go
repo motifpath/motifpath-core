@@ -11,9 +11,9 @@ import (
 
 // practiceSubjectCatalogFormat is the version of how a catalog's items are
 // tallied: what suits a session, the rung each item, or each way of a drill,
-// trains. A change to any of them bumps it, so catalogs built by older code
+// trains, and the languages an exercise is offered in. A change to any of them bumps it, so catalogs built by older code
 // are rebuilt on their next read.
-const practiceSubjectCatalogFormat = 1
+const practiceSubjectCatalogFormat = 2
 
 // The practice subject catalog is the part of a subjects list that is the
 // same for every student: which items a scope has, under which nodes, what
@@ -158,6 +158,11 @@ func (c *composer) catalogItem(cand practiceCandidate, item domain.ClassifiedIte
 	out := domain.PracticeSubjectCatalogItem{
 		ItemKey: item.ItemKey, NodeIDs: slices.Clone(item.NodeIDs),
 		InHand: cand.suitsSession(true), InHead: cand.suitsSession(false),
+	}
+	if cand.exercise != nil {
+		for _, l := range cand.exercise.Languages {
+			out.Languages = append(out.Languages, l.Code)
+		}
 	}
 	if cand.drill == nil {
 		out.Rung = c.rungOf(cand)

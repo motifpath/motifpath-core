@@ -63,6 +63,8 @@ type PracticeSessionService struct {
 	// harmony is what the harmony drills read; nil when they aren't
 	// installed.
 	harmony *harmonyDrills
+	// locale is the locale of the student composed for, while composing.
+	locale string
 	// subjectCatalogs holds the precomputed practice subject catalog; nil
 	// when subjects are always listed live.
 	subjectCatalogs ports.PracticeSubjectCatalogRepository
@@ -194,6 +196,14 @@ func (c practiceCandidate) suitsSession(inHand bool) bool {
 	return inHand || c.diagram == nil
 }
 
+// offeredIn reports whether c can be offered to a student in locale: an
+// exercise only when it is available in locale or in any language, since
+// its words are the author's; every other item is shown in the student's
+// locale.
+func (c practiceCandidate) offeredIn(locale string) bool {
+	return c.exercise == nil || domain.HasMatchingLanguage(c.exercise.Languages, locale)
+}
+
 // cell is c's fretboard cell; nil when c is no fretboard cell.
 func (c practiceCandidate) cell() *domain.FretboardCell {
 	if cell, ok := c.drill.(domain.FretboardCell); ok {
@@ -271,6 +281,7 @@ func (s *PracticeSessionService) ComposePlan(ctx context.Context, caller domain.
 		return domain.PracticeSessionPlan{}, err
 	}
 	s = s.forComposition()
+	s.locale = caller.Locale.Code
 	instrumentIDs, err := s.sessionInstruments(ctx, caller.ID, instrumentID)
 	if err != nil {
 		return domain.PracticeSessionPlan{}, err
@@ -587,7 +598,7 @@ func (s *PracticeSessionService) pathCandidates(ctx context.Context, skillIDs []
 		}
 		found = append(found, drills...)
 		for _, c := range found {
-			if seen[c.key()] || !c.suitsSession(inHand) {
+			if seen[c.key()] || !c.suitsSession(inHand) || !c.offeredIn(s.locale) {
 				continue
 			}
 			seen[c.key()] = true
@@ -696,7 +707,7 @@ func (s *PracticeSessionService) stretchCandidates(ctx context.Context, knowledg
 			return nil, err
 		}
 		c.nodeID = &pick.nodeID
-		if ok && c.suitsSession(inHand) && !c.endsSessionOnly() && (c.drill == nil || readyFor(knowledge, c.drill)) && fits(c) {
+		if ok && c.suitsSession(inHand) && c.offeredIn(s.locale) && !c.endsSessionOnly() && (c.drill == nil || readyFor(knowledge, c.drill)) && fits(c) {
 			c.instrumentID = instrumentID
 			stretch = append(stretch, c)
 			found += c.seconds()
