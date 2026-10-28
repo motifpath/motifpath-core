@@ -46,6 +46,62 @@ func (_c *UserCreate) SetLocaleID(v uuid.UUID) *UserCreate {
 	return _c
 }
 
+// SetEmail sets the "email" field.
+func (_c *UserCreate) SetEmail(v string) *UserCreate {
+	_c.mutation.SetEmail(v)
+	return _c
+}
+
+// SetNillableEmail sets the "email" field if the given value is not nil.
+func (_c *UserCreate) SetNillableEmail(v *string) *UserCreate {
+	if v != nil {
+		_c.SetEmail(*v)
+	}
+	return _c
+}
+
+// SetTimeZone sets the "time_zone" field.
+func (_c *UserCreate) SetTimeZone(v string) *UserCreate {
+	_c.mutation.SetTimeZone(v)
+	return _c
+}
+
+// SetNillableTimeZone sets the "time_zone" field if the given value is not nil.
+func (_c *UserCreate) SetNillableTimeZone(v *string) *UserCreate {
+	if v != nil {
+		_c.SetTimeZone(*v)
+	}
+	return _c
+}
+
+// SetEmailProgressReport sets the "email_progress_report" field.
+func (_c *UserCreate) SetEmailProgressReport(v bool) *UserCreate {
+	_c.mutation.SetEmailProgressReport(v)
+	return _c
+}
+
+// SetNillableEmailProgressReport sets the "email_progress_report" field if the given value is not nil.
+func (_c *UserCreate) SetNillableEmailProgressReport(v *bool) *UserCreate {
+	if v != nil {
+		_c.SetEmailProgressReport(*v)
+	}
+	return _c
+}
+
+// SetEmailReminders sets the "email_reminders" field.
+func (_c *UserCreate) SetEmailReminders(v bool) *UserCreate {
+	_c.mutation.SetEmailReminders(v)
+	return _c
+}
+
+// SetNillableEmailReminders sets the "email_reminders" field if the given value is not nil.
+func (_c *UserCreate) SetNillableEmailReminders(v *bool) *UserCreate {
+	if v != nil {
+		_c.SetEmailReminders(*v)
+	}
+	return _c
+}
+
 // SetRegisteredAt sets the "registered_at" field.
 func (_c *UserCreate) SetRegisteredAt(v time.Time) *UserCreate {
 	_c.mutation.SetRegisteredAt(v)
@@ -114,6 +170,14 @@ func (_c *UserCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *UserCreate) defaults() {
+	if _, ok := _c.mutation.EmailProgressReport(); !ok {
+		v := user.DefaultEmailProgressReport
+		_c.mutation.SetEmailProgressReport(v)
+	}
+	if _, ok := _c.mutation.EmailReminders(); !ok {
+		v := user.DefaultEmailReminders
+		_c.mutation.SetEmailReminders(v)
+	}
 	if _, ok := _c.mutation.RegisteredAt(); !ok {
 		v := user.DefaultRegisteredAt()
 		_c.mutation.SetRegisteredAt(v)
@@ -147,6 +211,12 @@ func (_c *UserCreate) check() error {
 	}
 	if _, ok := _c.mutation.LocaleID(); !ok {
 		return &ValidationError{Name: "locale_id", err: errors.New(`ent: missing required field "User.locale_id"`)}
+	}
+	if _, ok := _c.mutation.EmailProgressReport(); !ok {
+		return &ValidationError{Name: "email_progress_report", err: errors.New(`ent: missing required field "User.email_progress_report"`)}
+	}
+	if _, ok := _c.mutation.EmailReminders(); !ok {
+		return &ValidationError{Name: "email_reminders", err: errors.New(`ent: missing required field "User.email_reminders"`)}
 	}
 	if _, ok := _c.mutation.RegisteredAt(); !ok {
 		return &ValidationError{Name: "registered_at", err: errors.New(`ent: missing required field "User.registered_at"`)}
@@ -200,6 +270,22 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.DisplayName(); ok {
 		_spec.SetField(user.FieldDisplayName, field.TypeString, value)
 		_node.DisplayName = value
+	}
+	if value, ok := _c.mutation.Email(); ok {
+		_spec.SetField(user.FieldEmail, field.TypeString, value)
+		_node.Email = &value
+	}
+	if value, ok := _c.mutation.TimeZone(); ok {
+		_spec.SetField(user.FieldTimeZone, field.TypeString, value)
+		_node.TimeZone = &value
+	}
+	if value, ok := _c.mutation.EmailProgressReport(); ok {
+		_spec.SetField(user.FieldEmailProgressReport, field.TypeBool, value)
+		_node.EmailProgressReport = value
+	}
+	if value, ok := _c.mutation.EmailReminders(); ok {
+		_spec.SetField(user.FieldEmailReminders, field.TypeBool, value)
+		_node.EmailReminders = value
 	}
 	if value, ok := _c.mutation.RegisteredAt(); ok {
 		_spec.SetField(user.FieldRegisteredAt, field.TypeTime, value)

@@ -38,6 +38,10 @@ func (r *EntUserRepository) Create(ctx context.Context, u domain.User) error {
 		SetRole(user.Role(u.Role)).
 		SetDisplayName(u.DisplayName).
 		SetLocaleID(localeRow.ID).
+		SetNillableEmail(nilIfEmpty(u.Email)).
+		SetNillableTimeZone(nilIfEmpty(u.TimeZone)).
+		SetEmailProgressReport(u.EmailPreferences.ProgressReport).
+		SetEmailReminders(u.EmailPreferences.Reminders).
 		SetRegisteredAt(u.RegisteredAt).
 		Save(ctx)
 	if err != nil {
@@ -75,19 +79,62 @@ func (r *EntUserRepository) GetByID(ctx context.Context, id string) (domain.User
 	return toDomainUser(row), nil
 }
 
-func (r *EntUserRepository) UpdateLocale(ctx context.Context, id, locale string) error {
+func (r *EntUserRepository) UpdatePreferences(ctx context.Context, id string, update domain.ProfileUpdate) error {
 	parsed, err := uuid.Parse(id)
 	if err != nil {
 		return domain.ErrNotFound
 	}
-	localeRow, err := r.client.Language.Query().Where(language.Code(locale)).Only(ctx)
-	if err != nil {
+	mutation := r.client.User.UpdateOneID(parsed)
+	if update.Locale != nil {
+		localeID, err := r.localeID(ctx, *update.Locale)
+		if err != nil {
+			return err
+		}
+		mutation.SetLocaleID(localeID)
+	}
+	if update.TimeZone != nil {
+		mutation.SetTimeZone(*update.TimeZone)
+	}
+	if update.EmailPreferences != nil {
+		setEmailPreferences(mutation, *update.EmailPreferences)
+	}
+	if _, err := mutation.Save(ctx); err != nil {
 		if ent.IsNotFound(err) {
-			return domain.NewValidationError("locale", "must be a known language code")
+			return domain.ErrNotFound
 		}
 		return err
 	}
-	_, err = r.client.User.UpdateOneID(parsed).SetLocaleID(localeRow.ID).Save(ctx)
+	return nil
+}
+
+// localeID returns the id of the Language with code, or a validation error
+// on field "locale" when there is none.
+func (r *EntUserRepository) localeID(ctx context.Context, code string) (uuid.UUID, error) {
+	row, err := r.client.Language.Query().Where(language.Code(code)).Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return uuid.UUID{}, domain.NewValidationError("locale", "must be a known language code")
+		}
+		return uuid.UUID{}, err
+	}
+	return row.ID, nil
+}
+
+func setEmailPreferences(mutation *ent.UserUpdateOne, update domain.EmailPreferencesUpdate) {
+	if update.ProgressReport != nil {
+		mutation.SetEmailProgressReport(*update.ProgressReport)
+	}
+	if update.Reminders != nil {
+		mutation.SetEmailReminders(*update.Reminders)
+	}
+}
+
+func (r *EntUserRepository) UpdateEmail(ctx context.Context, id, email string) error {
+	parsed, err := uuid.Parse(id)
+	if err != nil {
+		return domain.ErrNotFound
+	}
+	_, err = r.client.User.UpdateOneID(parsed).SetEmail(email).Save(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return domain.ErrNotFound
@@ -158,11 +205,32 @@ func toDomainUser(row *ent.User) domain.User {
 		locale = domain.Language{Code: row.Edges.Locale.Code, Name: row.Edges.Locale.Name}
 	}
 	return domain.User{
-		ID:           row.ID.String(),
-		ClerkUserID:  row.ClerkUserID,
-		Role:         domain.Role(row.Role),
-		DisplayName:  row.DisplayName,
-		Locale:       locale,
+		ID:          row.ID.String(),
+		ClerkUserID: row.ClerkUserID,
+		Role:        domain.Role(row.Role),
+		DisplayName: row.DisplayName,
+		Locale:      locale,
+		Email:       valueOrEmpty(row.Email),
+		TimeZone:    valueOrEmpty(row.TimeZone),
+		EmailPreferences: domain.EmailPreferences{
+			ProgressReport: row.EmailProgressReport,
+			Reminders:      row.EmailReminders,
+		},
 		RegisteredAt: row.RegisteredAt,
 	}
+}
+
+// nilIfEmpty stores an absent optional text field as null, not as "".
+func nilIfEmpty(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
+func valueOrEmpty(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }

@@ -67,6 +67,10 @@ type config struct {
 	mediaS3AccessKeyID string // only used when mediaS3Endpoint is set
 	mediaS3SecretKey   string // only used when mediaS3Endpoint is set
 	mediaPublicBaseURL string
+
+	// emailUnsubscribeSecret signs the unsubscribe links in the platform's
+	// emails. Changing it breaks every link already sent.
+	emailUnsubscribeSecret string
 }
 
 // defaultCORSOrigin is the local Vite dev server. Deployed environments override
@@ -94,6 +98,10 @@ func loadConfig() (config, error) {
 	if err != nil {
 		return config{}, err
 	}
+	emailUnsubscribeSecret, err := mustGetenv("EMAIL_UNSUBSCRIBE_SECRET")
+	if err != nil {
+		return config{}, err
+	}
 	return config{
 		port:               getenvDefault("PORT", "8080"),
 		databaseURL:        databaseURL,
@@ -108,6 +116,8 @@ func loadConfig() (config, error) {
 		mediaS3AccessKeyID: os.Getenv("MEDIA_S3_ACCESS_KEY_ID"),
 		mediaS3SecretKey:   os.Getenv("MEDIA_S3_SECRET_ACCESS_KEY"),
 		mediaPublicBaseURL: mediaPublicBaseURL,
+
+		emailUnsubscribeSecret: emailUnsubscribeSecret,
 	}, nil
 }
 
@@ -303,7 +313,8 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 		WithChordDrills(repo.NewEntChordDrillRepository(entClient), instrumentRepo).
 		WithProgressionKeyTours(instrumentRepo).
 		WithGuideTones(instrumentRepo).
-		WithSongs(songChartRepo, practiceActivity)
+		WithSongs(songChartRepo, practiceActivity).
+		WithSessionEnds(practiceActivity)
 	// Every save that changes what a practice subjects list holds writes a
 	// practice reference, so the reference writer also invalidates the
 	// subject catalog.
@@ -338,7 +349,7 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 		repo.NewMongoAlphaActivityReader(mongoClient.Database(cfg.mongoDatabase)), now)
 
 	return appHTTP.NewHandler(identityService, contentService, challengeService, exerciseService, knowledgeNodeService, knowledgeEdgeService, mediaService, pathService, application.NewPathCatalogService(pathRepo, userRepo, knowledgeNodeRepo), studentPathService,
-		courseService, courseEnrollmentService, instrumentService, voiceService, diagramService, practiceSessionService, practiceSummaryService, chordCatalogService, application.NewProgressionCatalogService(repo.NewEntProgressionRepository(entClient)), songChartService, appConfigService, startingPointsService, alphaObservationService, learningGraphPinger, completionReader), practiceSessionService, nil
+		courseService, courseEnrollmentService, instrumentService, voiceService, diagramService, practiceSessionService, practiceSummaryService, chordCatalogService, application.NewProgressionCatalogService(repo.NewEntProgressionRepository(entClient)), songChartService, appConfigService, startingPointsService, alphaObservationService, application.NewEmailPreferencesService(userRepo, []byte(cfg.emailUnsubscribeSecret)), learningGraphPinger, completionReader), practiceSessionService, nil
 }
 
 // newS3Client builds the client MediaService's presigned uploads go

@@ -3,7 +3,11 @@
 package bdd
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"slices"
 	"time"
 
@@ -32,6 +36,11 @@ func registerPracticeFocusSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" is accurate on every know item of "([^"]+)" on guitar$`, w.isAccurateOnKnow)
 	sc.Step(`^(\d+) know items of "([^"]+)" are due$`, w.knowItemsAreDue)
 	sc.Step(`^"([^"]+)" has items only at the know rung$`, w.hasItemsOnlyAtKnow)
+	sc.Step(`^"([^"]+)" has never practised "([^"]+)", which has items at the know, hear and play_clean rungs on guitar$`, w.hasNeverPractisedRungItems)
+	sc.Step(`^"([^"]+)" has items at the know, hear and play_clean rungs on guitar$`, w.hasRungItems)
+	sc.Step(`^"([^"]+)" has items at the know, hear and play_clean rungs, and only its know and hear items need no instrument in hand$`, w.hasRungItems)
+	sc.Step(`^every new item of "([^"]+)" in the session is at the (\w+) rung$`, func(node, a string) error { return w.newItemsAreAt(node, a) })
+	sc.Step(`^every new item of "([^"]+)" in the session is at the (\w+) or (\w+) rung$`, func(node, a, b string) error { return w.newItemsAreAt(node, a, b) })
 	sc.Step(`^"([^"]+)" is accurate on (\d+)% of its cells on guitar, and (\d+) of them are new$`, w.isAccurateOnShareOfCells)
 
 	sc.Step(`^"([^"]+)" composes a (\d+)-minute session with "([a-z-]+)" in hand and "([^"]+)" is a focus node$`, w.composesWithFocusNode)
@@ -67,6 +76,7 @@ func registerPracticeFocusSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" composes a (\d+)-minute session with "([a-z-]+)" in hand, choosing "([^"]+)"$`, w.composesChoosing)
 	sc.Step(`^"([^"]+)" composes a (\d+)-minute session with no instrument in hand, choosing "([^"]+)"$`, w.composesInTheHeadChoosing)
 	sc.Step(`^"([^"]+)" composes a (\d+)-minute session with no instrument in hand, choosing a node that doesn't exist$`, w.composesChoosingMissingNode)
+	sc.Step(`^"([^"]+)" composes a (\d+)-minute session with no instrument in hand, choosing the node "([^"]+)"$`, w.composesChoosingRawNode)
 
 	sc.Step(`^every item in the session practises "([^"]+)"$`, func(a string) error { return w.everyItemPractises(a) })
 	sc.Step(`^every item in the session practises "([^"]+)" or "([^"]+)"$`, func(a, b string) error { return w.everyItemPractises(a, b) })
@@ -224,6 +234,20 @@ func (w *world) putRungItems(name, skill string) (know, hear []string) {
 		hear = append(hear, w.putTypedExercise(fmt.Sprintf("%s-hear-%02d", skill, i), skill, domain.ExerciseTypeAudioRecognition))
 	}
 	return know, hear
+}
+
+// hasRungItems gives skill play_clean items on top of its know and hear
+// ones: every catalog chord voicing, played in hand, which an exercise needn't be.
+func (w *world) hasRungItems(skill string) error {
+	w.putRungItems("alice", skill)
+	w.classifyChords("guitar", skill, allVoicingKeys()...)
+	return nil
+}
+
+func (w *world) hasNeverPractisedRungItems(name, skill string) error {
+	w.putRungItems(name, skill)
+	w.classifyChords("guitar", skill, allVoicingKeys()...)
+	return nil
 }
 
 // accurateItems gives name an accurate state on keys, due in 5 days.
@@ -615,6 +639,49 @@ func (w *world) composesInTheHeadChoosing(_ string, minutes int, node string) er
 
 func (w *world) composesChoosingMissingNode(_ string, minutes int) error {
 	return w.composeChoosing(minutes, nil, uuid.NewSHA1(uuid.NameSpaceOID, []byte("no-such-node")))
+}
+
+// composesChoosingRawNode sends the plan request through the generated
+// router, since only the router can receive a node that is not a UUID.
+func (w *world) composesChoosingRawNode(_ string, minutes int, node string) error {
+	body, err := json.Marshal(struct {
+		Minutes     int    `json:"minutes"`
+		FocusNodeID string `json:"focus_node_id"`
+	}{minutes, node})
+	if err != nil {
+		return err
+	}
+	router := generated.HandlerWithOptions(generated.NewStrictHandler(w.handler, nil), generated.ChiServerOptions{})
+	req := httptest.NewRequestWithContext(w.ctx(), http.MethodPost, "/students/me/practice-sessions", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	w.lastResp, w.lastErr = nil, nil
+	w.lastRouterStatus = rec.Code
+	return nil
+}
+
+// newItemsAreAt checks that the session has new items of node, every one at
+// one of rungs.
+func (w *world) newItemsAreAt(node string, rungs ...string) error {
+	plan, err := w.composedPlan()
+	if err != nil {
+		return err
+	}
+	var seen []string
+	for _, item := range plan.Items {
+		if item.NodeId == nil || *item.NodeId != w.nodeIDByName(node) || item.Reason != generated.PracticePickReasonNew {
+			continue
+		}
+		if !slices.Contains(rungs, string(item.Rung)) {
+			return fmt.Errorf("new item %s of %q is at the %s rung, not %v", item.ItemKey, node, item.Rung, rungs)
+		}
+		seen = append(seen, string(item.Rung))
+	}
+	if len(seen) == 0 {
+		return fmt.Errorf("expected new items of %q in the session, got none", node)
+	}
+	return nil
 }
 
 func (w *world) everyItemPractises(nodes ...string) error {

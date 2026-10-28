@@ -181,6 +181,36 @@ func TestMongoPracticeActivityReader_ReadsAggregationWorkerShape(t *testing.T) {
 		assert.Empty(t, none)
 	})
 
+	t.Run("a session's end is recorded only once its end arrived, and only for its own student", func(t *testing.T) {
+		end := bson.D{{Key: "ended_at", Value: at(5, 10)}, {Key: "left_early", Value: false}, {Key: "answered_count", Value: 6}}
+		session := func(studentID, id string, end any) bson.D {
+			return bson.D{
+				{Key: "student_id", Value: studentID}, {Key: "practice_session_id", Value: id},
+				{Key: "started_at", Value: at(5, 9)}, {Key: "minutes", Value: 10},
+				{Key: "last_event_at", Value: at(5, 10)}, {Key: "end", Value: end}, {Key: "updated_at", Value: at(5, 10)},
+			}
+		}
+		_, err := db.Collection("practice_sessions").InsertMany(ctx, []any{
+			session("gil", "ended", end),
+			session("gil", "running", nil),
+		})
+		require.NoError(t, err)
+
+		for _, tt := range []struct {
+			studentID, sessionID string
+			want                 bool
+		}{
+			{"gil", "ended", true},
+			{"gil", "running", false},
+			{"gil", "never-recorded", false},
+			{"someone-else", "ended", false},
+		} {
+			got, err := reader.SessionEnded(ctx, tt.studentID, tt.sessionID)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got, "%s/%s", tt.studentID, tt.sessionID)
+		}
+	})
+
 	t.Run("completion times are each completion since", func(t *testing.T) {
 		completion := func(eventID, studentID string, completedAt time.Time) bson.D {
 			return bson.D{{Key: "event_id", Value: eventID}, {Key: "student_id", Value: studentID}, {Key: "content_node_id", Value: "node-1"}, {Key: "completed_at", Value: completedAt}}

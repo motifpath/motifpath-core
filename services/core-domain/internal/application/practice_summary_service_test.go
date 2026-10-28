@@ -719,3 +719,37 @@ func TestPracticeSummaryService_FretboardMap(t *testing.T) {
 		require.Error(t, err)
 	})
 }
+
+func TestPracticeSummaryService_OverviewAt(t *testing.T) {
+	saoPaulo, err := time.LoadLocation("America/Sao_Paulo")
+	require.NoError(t, err)
+	// The end of Sunday 1 November: the week reported runs from Monday 26
+	// October. The student also practised on the Monday after.
+	endOfSunday := time.Date(2026, 11, 2, 0, 0, 0, 0, saoPaulo).Add(-time.Nanosecond)
+	at := func(month time.Month, day, hour, minute int) time.Time {
+		return time.Date(2026, month, day, hour, minute, 0, 0, saoPaulo)
+	}
+	finished := func(start time.Time, minutes int) domain.FinishedPracticeSession {
+		return domain.FinishedPracticeSession{EndedAt: start.Add(time.Duration(minutes) * time.Minute)}
+	}
+
+	f := newSummaryFixture(t)
+	f.now = at(time.November, 2, 9, 0)
+	f.activity.sessions = []domain.FinishedPracticeSession{
+		finished(at(time.October, 31, 18, 0), 10), finished(at(time.November, 1, 18, 0), 20), finished(at(time.November, 2, 7, 0), 15),
+	}
+	f.activity.spans = []domain.PracticeSessionSpan{
+		{StartedAt: at(time.October, 30, 18, 0), LastEventAt: at(time.October, 30, 18, 1)},
+		{StartedAt: at(time.October, 31, 18, 0), LastEventAt: at(time.October, 31, 18, 10)},
+		{StartedAt: at(time.November, 1, 18, 0), LastEventAt: at(time.November, 1, 18, 20)},
+		{StartedAt: at(time.November, 2, 7, 0), LastEventAt: at(time.November, 2, 7, 15)},
+	}
+
+	got, err := f.svc.OverviewAt(context.Background(), studentCaller(), saoPaulo, endOfSunday)
+
+	require.NoError(t, err)
+	assert.Equal(t, 2, got.PracticeDaysLast7, "Monday's session belongs to the next week")
+	assert.Equal(t, 31, got.MinutesPractisedLast7)
+	assert.Equal(t, 3, got.SessionsStartedLast7, "a session that ended without a finish still counts as started")
+	assert.Equal(t, 2, got.DayStreakCurrent, "the streak stands as it did at the end of Sunday")
+}

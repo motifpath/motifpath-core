@@ -232,21 +232,23 @@ func wireServices(res resources) (services, seedDeps) {
 // the admin goes through userRepo directly because self-registration can
 // never grant admin (see ensureAdmin).
 func seedStaff(ctx context.Context, svc services, deps *seedDeps) error {
-	teacher, err := svc.identity.RegisterUser(ctx, "seed_teacher_tomas", domain.RoleTeacher, "en", "Tomás Ribeiro")
+	teacher, err := svc.identity.RegisterUser(ctx, "seed_teacher_tomas", domain.RoleTeacher, "en", domain.IdentityClaims{Name: "Tomás Ribeiro", Email: "tomas.ribeiro@example.com"})
 	if err != nil {
 		return fmt.Errorf("register seed teacher: %w", err)
 	}
-	otherTeacher, err := svc.identity.RegisterUser(ctx, "seed_teacher_helena", domain.RoleTeacher, "pt_BR", "Helena Costa")
+	otherTeacher, err := svc.identity.RegisterUser(ctx, "seed_teacher_helena", domain.RoleTeacher, "pt_BR", domain.IdentityClaims{Name: "Helena Costa", Email: "helena.costa@example.com"})
 	if err != nil {
 		return fmt.Errorf("register second seed teacher: %w", err)
 	}
 	synthAdmin := domain.User{
-		ID:           deps.newID(),
-		ClerkUserID:  "seed_admin_marina",
-		Role:         domain.RoleAdmin,
-		DisplayName:  "Marina Alves",
-		Locale:       domain.Language{Code: "en"},
-		RegisteredAt: deps.now(),
+		ID:               deps.newID(),
+		ClerkUserID:      "seed_admin_marina",
+		Role:             domain.RoleAdmin,
+		DisplayName:      "Marina Alves",
+		Locale:           domain.Language{Code: "en"},
+		Email:            "marina.alves@example.com",
+		EmailPreferences: domain.DefaultEmailPreferences(),
+		RegisteredAt:     deps.now(),
 	}
 	if err := deps.userRepo.Create(ctx, synthAdmin); err != nil {
 		return fmt.Errorf("create seed admin: %w", err)
@@ -400,12 +402,15 @@ func ensureAdmin(ctx context.Context, client *ent.Client, userRepo ports.UserRep
 		return domain.User{}, false, err
 	}
 	admin := domain.User{
-		ID:           newID(),
-		ClerkUserID:  clerkUserID,
-		Role:         domain.RoleAdmin,
-		DisplayName:  adminDisplayName(ctx, clerkUserID),
-		Locale:       domain.Language{Code: "en"},
-		RegisteredAt: now(),
+		ID:          newID(),
+		ClerkUserID: clerkUserID,
+		Role:        domain.RoleAdmin,
+		DisplayName: adminDisplayName(ctx, clerkUserID),
+		Locale:      domain.Language{Code: "en"},
+		// No email here: the admin's real address arrives with their first
+		// signed-in request, like a renamed user's name.
+		EmailPreferences: domain.DefaultEmailPreferences(),
+		RegisteredAt:     now(),
 	}
 	if err := userRepo.Create(ctx, admin); err != nil {
 		return domain.User{}, false, fmt.Errorf("create admin %s: %w", clerkUserID, err)
@@ -508,7 +513,8 @@ func seedStudents(ctx context.Context, identity *application.IdentityService) (m
 	}
 	result := make(map[string]domain.User, len(specs))
 	for _, spec := range specs {
-		u, err := identity.RegisterUser(ctx, spec.clerkUserID, domain.RoleStudent, "en", spec.displayName)
+		claims := domain.IdentityClaims{Name: spec.displayName, Email: spec.key + "@example.com"}
+		u, err := identity.RegisterUser(ctx, spec.clerkUserID, domain.RoleStudent, "en", claims)
 		if err != nil {
 			return nil, fmt.Errorf("register student %q: %w", spec.key, err)
 		}

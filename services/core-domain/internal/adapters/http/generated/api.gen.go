@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -1279,6 +1280,24 @@ func (e DiagramShapeDrill) Valid() bool {
 	case FindTheDegree:
 		return true
 	case NameTheShape:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for EmailUnsubscribeResultKind.
+const (
+	ProgressReport EmailUnsubscribeResultKind = "progress_report"
+	Reminders      EmailUnsubscribeResultKind = "reminders"
+)
+
+// Valid indicates whether the value is a known member of the EmailUnsubscribeResultKind enum.
+func (e EmailUnsubscribeResultKind) Valid() bool {
+	switch e {
+	case ProgressReport:
+		return true
+	case Reminders:
 		return true
 	default:
 		return false
@@ -5497,6 +5516,35 @@ type DiagramStackRef struct {
 	Stack []DiagramRef `json:"stack"`
 }
 
+// EmailPreferences Which of the platform's emails this user wants, one switch per kind.
+// Both are on for every new user. Only students are sent these emails.
+type EmailPreferences struct {
+	// ProgressReport Whether the user gets the weekly progress report.
+	ProgressReport bool `json:"progress_report"`
+
+	// Reminders Whether the user gets reminders, both on the first days without learning activity and after 3 and 10 days without it.
+	Reminders bool `json:"reminders"`
+}
+
+// EmailPreferencesUpdate The email preference switches to change. At least one is required; a
+// switch that is left out keeps its value.
+type EmailPreferencesUpdate struct {
+	// ProgressReport Whether the user gets the weekly progress report.
+	ProgressReport *bool `json:"progress_report,omitempty"`
+
+	// Reminders Whether the user gets reminders, both on the first days without learning activity and after 3 and 10 days without it.
+	Reminders *bool `json:"reminders,omitempty"`
+}
+
+// EmailUnsubscribeResult The email kind that was turned off by an unsubscribe link.
+type EmailUnsubscribeResult struct {
+	// Kind The kind of email the user will no longer get.
+	Kind EmailUnsubscribeResultKind `json:"kind"`
+}
+
+// EmailUnsubscribeResultKind The kind of email the user will no longer get.
+type EmailUnsubscribeResultKind string
+
 // EnrollInLearningPathRequest Payload for enrolling the caller in a published learning path.
 type EnrollInLearningPathRequest struct {
 	// LearningPathId The ID of the published learning path to enroll in.
@@ -6156,7 +6204,7 @@ type KnowledgeNodeKind string
 type Language struct {
 	// Code Stable identifier for this language (e.g. "en", "pt_BR"), or the
 	// literal value "any" for language-agnostic content. Used as the
-	// value of UpdateMyLocaleRequest.locale and of
+	// value of UpdateMyProfileRequest.locale and of
 	// ContentNode.languages / Exercise.languages entries.
 	Code string `json:"code"`
 
@@ -7045,7 +7093,13 @@ type PracticeDay struct {
 	Practised bool `json:"practised"`
 }
 
-// PracticeFocusNode One subject of a practice session.
+// PracticeFocusNode One subject of a practice session, with where the student stood on it when the session
+// was composed: rung is its current rung for the session (the lowest rung with material
+// for the session whose items are not yet accurate; with every rung accurate, the top
+// one), and rung_level the student's level on it, the highest level at least 80% of the
+// subtree's items at that rung that suit the session reach. The session summary compares
+// rung_level with the level read from getPracticeSessionSubjectProgress once the session
+// is caught up.
 type PracticeFocusNode struct {
 	// Names Text in one or more languages, keyed by Language.code — for example
 	// {"en": "Guitar", "pt_BR": "Violão"}. "any" is never a key: a name is
@@ -7055,6 +7109,21 @@ type PracticeFocusNode struct {
 
 	// NodeId The knowledge node practised.
 	NodeId openapi_types.UUID `json:"node_id"`
+
+	// Rung The rung of the practice ladder an item trains, lowest first. know = recall a fact (a
+	// note, a numeral, a shape); hear = recognise it by ear; play_clean = play it cleanly, untimed;
+	// play_in_time = play it at a tempo; move = play it in another key or place; target = aim at it
+	// while the music moves; use = play it in a piece of music. A drill template has one rung;
+	// a play-along and a chord change are play_in_time, a single self-rated chord is play_clean,
+	// a progression key tour is move, and a song is use.
+	Rung PracticeRung `json:"rung"`
+
+	// RungLevel How well a student knows an item, or a knowledge node, derived from the evidence.
+	// new = never practised; learning = practised, not yet accurate; accurate = at least 3
+	// counted attempts with accuracy of 0.8 or more; fluent = at least 5 counted attempts,
+	// accuracy of 0.9 or more and fluency of 0.8 or more; retained = fluent and holding up
+	// over long reviews.
+	RungLevel KnowledgeLevel `json:"rung_level"`
 }
 
 // PracticeFocusSource Who chose a session's subjects. suggested = the composer picked them for Today's mix;
@@ -7318,6 +7387,24 @@ type PracticePickReason string
 // a play-along and a chord change are play_in_time, a single self-rated chord is play_clean,
 // a progression key tour is move, and a song is use.
 type PracticeRung string
+
+// PracticeRungLevel The student's level on one rung of a subject.
+type PracticeRungLevel struct {
+	// Level How well a student knows an item, or a knowledge node, derived from the evidence.
+	// new = never practised; learning = practised, not yet accurate; accurate = at least 3
+	// counted attempts with accuracy of 0.8 or more; fluent = at least 5 counted attempts,
+	// accuracy of 0.9 or more and fluency of 0.8 or more; retained = fluent and holding up
+	// over long reviews.
+	Level KnowledgeLevel `json:"level"`
+
+	// Rung The rung of the practice ladder an item trains, lowest first. know = recall a fact (a
+	// note, a numeral, a shape); hear = recognise it by ear; play_clean = play it cleanly, untimed;
+	// play_in_time = play it at a tempo; move = play it in another key or place; target = aim at it
+	// while the music moves; use = play it in a piece of music. A drill template has one rung;
+	// a play-along and a chord change are play_in_time, a single self-rated chord is play_clean,
+	// a progression key tour is move, and a song is use.
+	Rung PracticeRung `json:"rung"`
+}
 
 // PracticeSessionItem One item of a composed session, with what the client needs to present it. Exactly
 // one of fretboard_cell, exercise, play_along, diagram_shape, generated_choice,
@@ -7624,6 +7711,15 @@ type PracticeSessionPlan struct {
 	TapCheckDue bool `json:"tap_check_due"`
 }
 
+// PracticeSessionSubjectProgress Where the student stands on a session's subjects now, for its summary.
+type PracticeSessionSubjectProgress struct {
+	// CaughtUp True once the session's end has been folded, so the levels include its answers.
+	CaughtUp bool `json:"caught_up"`
+
+	// Subjects One per node_id asked, in the same order.
+	Subjects []PracticeSubjectProgress `json:"subjects"`
+}
+
 // PracticeSubject One knowledge node the student can choose to practise, with where they stand on it.
 type PracticeSubject struct {
 	// CurrentRung The rung of the practice ladder an item trains, lowest first. know = recall a fact (a
@@ -7677,6 +7773,19 @@ type PracticeSubjectList struct {
 
 	// InstrumentId The instrument in hand, or null for a session in the head.
 	InstrumentId *openapi_types.UUID `json:"instrument_id"`
+}
+
+// PracticeSubjectProgress One subject's rungs, read now.
+type PracticeSubjectProgress struct {
+	// CurrentRung Its current rung now, as in the plan's rung. Null when it has no material for the
+	// session any more.
+	CurrentRung *PracticeRung `json:"current_rung"`
+
+	// NodeId The knowledge node.
+	NodeId openapi_types.UUID `json:"node_id"`
+
+	// Rungs Every rung with material for the session, lowest first.
+	Rungs []PracticeRungLevel `json:"rungs"`
 }
 
 // PracticeSummary The home for one instrument, derived from the student's evidence.
@@ -9239,13 +9348,22 @@ type UpdateKnowledgeNodeRequest struct {
 	ParentId nullable.Nullable[openapi_types.UUID] `json:"parent_id,omitempty"`
 }
 
-// UpdateMyLocaleRequest Payload for setting the authenticated user's locale preference.
-type UpdateMyLocaleRequest struct {
+// UpdateMyProfileRequest Payload for updating the authenticated user's preferences. At least one
+// field is required; a field that is left out keeps its value.
+type UpdateMyProfileRequest struct {
+	// EmailPreferences The email preference switches to change. At least one is required; a
+	// switch that is left out keeps its value.
+	EmailPreferences *EmailPreferencesUpdate `json:"email_preferences,omitempty"`
+
 	// Locale The Language.code to set as this user's locale preference. Must
 	// be an existing language code; "any" is not a valid locale for a
 	// user, since it names language-agnostic content, not a language
 	// a person reads or speaks.
-	Locale string `json:"locale"`
+	Locale *string `json:"locale,omitempty"`
+
+	// TimeZone The IANA time zone to store for this user, such as
+	// "America/Sao_Paulo". Must be a known IANA time zone.
+	TimeZone *string `json:"time_zone,omitempty"`
 }
 
 // UserProfile The stable MotifPath identity for a registered user. The user_id is the
@@ -9256,6 +9374,17 @@ type UserProfile struct {
 	// session token and refreshed whenever that claim changes. This is
 	// what other users see wherever this user is referenced (UserRef).
 	DisplayName string `json:"display_name"`
+
+	// Email The user's email address, taken from the "email" claim of the
+	// session token and refreshed whenever that claim changes to another
+	// valid address. Null for a user registered before addresses were
+	// stored, until their next signed-in request. Shown only to its
+	// owner; never part of a UserRef.
+	Email *openapi_types.Email `json:"email"`
+
+	// EmailPreferences Which of the platform's emails this user wants, one switch per kind.
+	// Both are on for every new user. Only students are sent these emails.
+	EmailPreferences EmailPreferences `json:"email_preferences"`
 
 	// Locale A language MotifPath content or a user's locale preference can be
 	// tagged with. Includes the literal code "any", which marks content as
@@ -9270,6 +9399,11 @@ type UserProfile struct {
 	// role is provisioned directly in the database and is never returned from
 	// a self-registration flow.
 	Role UserProfileRole `json:"role"`
+
+	// TimeZone The user's IANA time zone, such as "America/Sao_Paulo", or null when
+	// none was ever set. The platform's emails use "America/Sao_Paulo"
+	// when it is null.
+	TimeZone *string `json:"time_zone"`
 
 	// UserId Stable MotifPath identifier for this user. Students must supply this
 	// value as student_id in all tracking events.
@@ -9709,6 +9843,21 @@ type ListDiagramCreatorsParams struct {
 	Q *string `form:"q,omitempty" json:"q,omitempty"`
 }
 
+// UnsubscribeFromEmailsJSONBody defines parameters for UnsubscribeFromEmails.
+type UnsubscribeFromEmailsJSONBody = map[string]interface{}
+
+// UnsubscribeFromEmailsFormdataBody defines parameters for UnsubscribeFromEmails.
+type UnsubscribeFromEmailsFormdataBody struct {
+	// ListUnsubscribe Always "One-Click".
+	ListUnsubscribe *string `form:"List-Unsubscribe,omitempty" json:"List-Unsubscribe,omitempty"`
+}
+
+// UnsubscribeFromEmailsParams defines parameters for UnsubscribeFromEmails.
+type UnsubscribeFromEmailsParams struct {
+	// Token The unsubscribe token from the email.
+	Token string `form:"token" json:"token"`
+}
+
 // ListExercisesParams defines parameters for ListExercises.
 type ListExercisesParams struct {
 	// Q Case-insensitive substring match against the item's title (and summary, where it has one).
@@ -9873,6 +10022,15 @@ type GetPracticeOverviewParams struct {
 	TimeZone *string `form:"time_zone,omitempty" json:"time_zone,omitempty"`
 }
 
+// GetPracticeSessionSubjectProgressParams defines parameters for GetPracticeSessionSubjectProgress.
+type GetPracticeSessionSubjectProgressParams struct {
+	// InstrumentId The instrument the session was practised with. Absent means a session in the head.
+	InstrumentId *openapi_types.UUID `form:"instrument_id,omitempty" json:"instrument_id,omitempty"`
+
+	// NodeId The session's subjects, the plan's focus_nodes, in order.
+	NodeId []openapi_types.UUID `form:"node_id" json:"node_id"`
+}
+
 // ListPracticeSubjectsParams defines parameters for ListPracticeSubjects.
 type ListPracticeSubjectsParams struct {
 	// InstrumentId The instrument in hand. Absent means a session in the head.
@@ -9919,6 +10077,12 @@ type CreateDiagramJSONRequestBody = CreateDiagramRequest
 
 // UpdateDiagramJSONRequestBody defines body for UpdateDiagram for application/json ContentType.
 type UpdateDiagramJSONRequestBody = UpdateDiagramRequest
+
+// UnsubscribeFromEmailsJSONRequestBody defines body for UnsubscribeFromEmails for application/json ContentType.
+type UnsubscribeFromEmailsJSONRequestBody = UnsubscribeFromEmailsJSONBody
+
+// UnsubscribeFromEmailsFormdataRequestBody defines body for UnsubscribeFromEmails for application/x-www-form-urlencoded ContentType.
+type UnsubscribeFromEmailsFormdataRequestBody UnsubscribeFromEmailsFormdataBody
 
 // CreateExerciseJSONRequestBody defines body for CreateExercise for application/json ContentType.
 type CreateExerciseJSONRequestBody = CreateExerciseRequest
@@ -9989,8 +10153,8 @@ type AssignLearningPathJSONRequestBody = AssignLearningPathRequest
 // RegisterUserJSONRequestBody defines body for RegisterUser for application/json ContentType.
 type RegisterUserJSONRequestBody = RegisterUserRequest
 
-// UpdateMyLocaleJSONRequestBody defines body for UpdateMyLocale for application/json ContentType.
-type UpdateMyLocaleJSONRequestBody = UpdateMyLocaleRequest
+// UpdateMyProfileJSONRequestBody defines body for UpdateMyProfile for application/json ContentType.
+type UpdateMyProfileJSONRequestBody = UpdateMyProfileRequest
 
 // AsStartingPointsConfig returns the union data inside the AppConfigValue as a StartingPointsConfig
 func (t AppConfigValue) AsStartingPointsConfig() (StartingPointsConfig, error) {
@@ -10233,6 +10397,9 @@ type ServerInterface interface {
 	// UpdateDiagram Update a diagram's name, positions, or classification
 	// (PATCH /diagrams/{diagram_id})
 	UpdateDiagram(w http.ResponseWriter, r *http.Request, diagramId openapi_types.UUID)
+	// UnsubscribeFromEmails Turn off one kind of email with an unsubscribe token
+	// (POST /email-unsubscribes)
+	UnsubscribeFromEmails(w http.ResponseWriter, r *http.Request, params UnsubscribeFromEmailsParams)
 	// ListExercises List standalone exercises for authoring
 	// (GET /exercises)
 	ListExercises(w http.ResponseWriter, r *http.Request, params ListExercisesParams)
@@ -10401,6 +10568,9 @@ type ServerInterface interface {
 	// CreatePracticeSessionPlan Compose a practice session for the authenticated student
 	// (POST /students/me/practice-sessions)
 	CreatePracticeSessionPlan(w http.ResponseWriter, r *http.Request)
+	// GetPracticeSessionSubjectProgress Read where the authenticated student stands on a session's subjects, and whether the session is folded
+	// (GET /students/me/practice-sessions/{practice_session_id}/subject-progress)
+	GetPracticeSessionSubjectProgress(w http.ResponseWriter, r *http.Request, practiceSessionId openapi_types.UUID, params GetPracticeSessionSubjectProgressParams)
 	// ListPracticeSubjects List the subjects the authenticated student can choose to practise
 	// (GET /students/me/practice-subjects)
 	ListPracticeSubjects(w http.ResponseWriter, r *http.Request, params ListPracticeSubjectsParams)
@@ -10425,9 +10595,9 @@ type ServerInterface interface {
 	// GetMyProfile Get the authenticated user's profile
 	// (GET /users/me)
 	GetMyProfile(w http.ResponseWriter, r *http.Request)
-	// UpdateMyLocale Set the authenticated user's locale preference
+	// UpdateMyProfile Update the authenticated user's preferences
 	// (PATCH /users/me)
-	UpdateMyLocale(w http.ResponseWriter, r *http.Request)
+	UpdateMyProfile(w http.ResponseWriter, r *http.Request)
 	// ListVoices List the voices diagrams can be played with
 	// (GET /voices)
 	ListVoices(w http.ResponseWriter, r *http.Request)
@@ -10716,6 +10886,12 @@ func (_ Unimplemented) GetDiagram(w http.ResponseWriter, r *http.Request, diagra
 // UpdateDiagram Update a diagram's name, positions, or classification
 // (PATCH /diagrams/{diagram_id})
 func (_ Unimplemented) UpdateDiagram(w http.ResponseWriter, r *http.Request, diagramId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UnsubscribeFromEmails Turn off one kind of email with an unsubscribe token
+// (POST /email-unsubscribes)
+func (_ Unimplemented) UnsubscribeFromEmails(w http.ResponseWriter, r *http.Request, params UnsubscribeFromEmailsParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -11055,6 +11231,12 @@ func (_ Unimplemented) CreatePracticeSessionPlan(w http.ResponseWriter, r *http.
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// GetPracticeSessionSubjectProgress Read where the authenticated student stands on a session's subjects, and whether the session is folded
+// (GET /students/me/practice-sessions/{practice_session_id}/subject-progress)
+func (_ Unimplemented) GetPracticeSessionSubjectProgress(w http.ResponseWriter, r *http.Request, practiceSessionId openapi_types.UUID, params GetPracticeSessionSubjectProgressParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // ListPracticeSubjects List the subjects the authenticated student can choose to practise
 // (GET /students/me/practice-subjects)
 func (_ Unimplemented) ListPracticeSubjects(w http.ResponseWriter, r *http.Request, params ListPracticeSubjectsParams) {
@@ -11103,9 +11285,9 @@ func (_ Unimplemented) GetMyProfile(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// UpdateMyLocale Set the authenticated user's locale preference
+// UpdateMyProfile Update the authenticated user's preferences
 // (PATCH /users/me)
-func (_ Unimplemented) UpdateMyLocale(w http.ResponseWriter, r *http.Request) {
+func (_ Unimplemented) UpdateMyProfile(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -13202,6 +13384,39 @@ func (siw *ServerInterfaceWrapper) UpdateDiagram(w http.ResponseWriter, r *http.
 	handler.ServeHTTP(w, r)
 }
 
+// UnsubscribeFromEmails operation middleware
+func (siw *ServerInterfaceWrapper) UnsubscribeFromEmails(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params UnsubscribeFromEmailsParams
+
+	// ------------- Required query parameter "token" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "token", r.URL.Query(), &params.Token, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "token"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "token", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UnsubscribeFromEmails(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListExercises operation middleware
 func (siw *ServerInterfaceWrapper) ListExercises(w http.ResponseWriter, r *http.Request) {
 
@@ -14842,6 +15057,61 @@ func (siw *ServerInterfaceWrapper) CreatePracticeSessionPlan(w http.ResponseWrit
 	handler.ServeHTTP(w, r)
 }
 
+// GetPracticeSessionSubjectProgress operation middleware
+func (siw *ServerInterfaceWrapper) GetPracticeSessionSubjectProgress(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "practice_session_id" -------------
+	var practiceSessionId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "practice_session_id", chi.URLParam(r, "practice_session_id"), &practiceSessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "practice_session_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetPracticeSessionSubjectProgressParams
+
+	// ------------- Optional query parameter "instrument_id" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "instrument_id", r.URL.Query(), &params.InstrumentId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "instrument_id"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "instrument_id", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "node_id" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "node_id", r.URL.Query(), &params.NodeId, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "node_id"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "node_id", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetPracticeSessionSubjectProgress(w, r, practiceSessionId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListPracticeSubjects operation middleware
 func (siw *ServerInterfaceWrapper) ListPracticeSubjects(w http.ResponseWriter, r *http.Request) {
 
@@ -15029,11 +15299,11 @@ func (siw *ServerInterfaceWrapper) GetMyProfile(w http.ResponseWriter, r *http.R
 	handler.ServeHTTP(w, r)
 }
 
-// UpdateMyLocale operation middleware
-func (siw *ServerInterfaceWrapper) UpdateMyLocale(w http.ResponseWriter, r *http.Request) {
+// UpdateMyProfile operation middleware
+func (siw *ServerInterfaceWrapper) UpdateMyProfile(w http.ResponseWriter, r *http.Request) {
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.UpdateMyLocale(w, r)
+		siw.Handler.UpdateMyProfile(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -15486,6 +15756,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/students/me/practice-sessions", wrapper.CreatePracticeSessionPlan)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/students/me/practice-sessions/{practice_session_id}/subject-progress", wrapper.GetPracticeSessionSubjectProgress)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/students/me/practice-subjects", wrapper.ListPracticeSubjects)
 	})
 	r.Group(func(r chi.Router) {
@@ -15501,7 +15774,10 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/users/me", wrapper.GetMyProfile)
 	})
 	r.Group(func(r chi.Router) {
-		r.Patch(options.BaseURL+"/users/me", wrapper.UpdateMyLocale)
+		r.Patch(options.BaseURL+"/users/me", wrapper.UpdateMyProfile)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/email-unsubscribes", wrapper.UnsubscribeFromEmails)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/healthz", wrapper.LivenessCheck)
@@ -18536,6 +18812,44 @@ func (response UpdateDiagram409JSONResponse) VisitUpdateDiagramResponse(w http.R
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UnsubscribeFromEmailsRequestObject struct {
+	Params       UnsubscribeFromEmailsParams
+	JSONBody     *UnsubscribeFromEmailsJSONRequestBody
+	FormdataBody *UnsubscribeFromEmailsFormdataRequestBody
+}
+
+type UnsubscribeFromEmailsResponseObject interface {
+	VisitUnsubscribeFromEmailsResponse(w http.ResponseWriter) error
+}
+
+type UnsubscribeFromEmails200JSONResponse EmailUnsubscribeResult
+
+func (response UnsubscribeFromEmails200JSONResponse) VisitUnsubscribeFromEmailsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UnsubscribeFromEmails400JSONResponse ValidationError
+
+func (response UnsubscribeFromEmails400JSONResponse) VisitUnsubscribeFromEmailsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -22268,6 +22582,71 @@ func (response CreatePracticeSessionPlan404JSONResponse) VisitCreatePracticeSess
 	return err
 }
 
+type GetPracticeSessionSubjectProgressRequestObject struct {
+	PracticeSessionId openapi_types.UUID `json:"practice_session_id"`
+	Params            GetPracticeSessionSubjectProgressParams
+}
+
+type GetPracticeSessionSubjectProgressResponseObject interface {
+	VisitGetPracticeSessionSubjectProgressResponse(w http.ResponseWriter) error
+}
+
+type GetPracticeSessionSubjectProgress200JSONResponse PracticeSessionSubjectProgress
+
+func (response GetPracticeSessionSubjectProgress200JSONResponse) VisitGetPracticeSessionSubjectProgressResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPracticeSessionSubjectProgress400JSONResponse ValidationError
+
+func (response GetPracticeSessionSubjectProgress400JSONResponse) VisitGetPracticeSessionSubjectProgressResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPracticeSessionSubjectProgress401JSONResponse UnauthorizedError
+
+func (response GetPracticeSessionSubjectProgress401JSONResponse) VisitGetPracticeSessionSubjectProgressResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPracticeSessionSubjectProgress404JSONResponse NotFoundError
+
+func (response GetPracticeSessionSubjectProgress404JSONResponse) VisitGetPracticeSessionSubjectProgressResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListPracticeSubjectsRequestObject struct {
 	Params ListPracticeSubjectsParams
 }
@@ -22793,17 +23172,17 @@ func (response GetMyProfile404JSONResponse) VisitGetMyProfileResponse(w http.Res
 	return err
 }
 
-type UpdateMyLocaleRequestObject struct {
-	Body *UpdateMyLocaleJSONRequestBody
+type UpdateMyProfileRequestObject struct {
+	Body *UpdateMyProfileJSONRequestBody
 }
 
-type UpdateMyLocaleResponseObject interface {
-	VisitUpdateMyLocaleResponse(w http.ResponseWriter) error
+type UpdateMyProfileResponseObject interface {
+	VisitUpdateMyProfileResponse(w http.ResponseWriter) error
 }
 
-type UpdateMyLocale200JSONResponse UserProfile
+type UpdateMyProfile200JSONResponse UserProfile
 
-func (response UpdateMyLocale200JSONResponse) VisitUpdateMyLocaleResponse(w http.ResponseWriter) error {
+func (response UpdateMyProfile200JSONResponse) VisitUpdateMyProfileResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -22815,9 +23194,9 @@ func (response UpdateMyLocale200JSONResponse) VisitUpdateMyLocaleResponse(w http
 	return err
 }
 
-type UpdateMyLocale400JSONResponse ValidationError
+type UpdateMyProfile400JSONResponse ValidationError
 
-func (response UpdateMyLocale400JSONResponse) VisitUpdateMyLocaleResponse(w http.ResponseWriter) error {
+func (response UpdateMyProfile400JSONResponse) VisitUpdateMyProfileResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -22829,9 +23208,9 @@ func (response UpdateMyLocale400JSONResponse) VisitUpdateMyLocaleResponse(w http
 	return err
 }
 
-type UpdateMyLocale401JSONResponse UnauthorizedError
+type UpdateMyProfile401JSONResponse UnauthorizedError
 
-func (response UpdateMyLocale401JSONResponse) VisitUpdateMyLocaleResponse(w http.ResponseWriter) error {
+func (response UpdateMyProfile401JSONResponse) VisitUpdateMyProfileResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -22843,9 +23222,9 @@ func (response UpdateMyLocale401JSONResponse) VisitUpdateMyLocaleResponse(w http
 	return err
 }
 
-type UpdateMyLocale404JSONResponse NotFoundError
+type UpdateMyProfile404JSONResponse NotFoundError
 
-func (response UpdateMyLocale404JSONResponse) VisitUpdateMyLocaleResponse(w http.ResponseWriter) error {
+func (response UpdateMyProfile404JSONResponse) VisitUpdateMyProfileResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -23049,6 +23428,9 @@ type StrictServerInterface interface {
 	// UpdateDiagram Update a diagram's name, positions, or classification
 	// (PATCH /diagrams/{diagram_id})
 	UpdateDiagram(ctx context.Context, request UpdateDiagramRequestObject) (UpdateDiagramResponseObject, error)
+	// UnsubscribeFromEmails Turn off one kind of email with an unsubscribe token
+	// (POST /email-unsubscribes)
+	UnsubscribeFromEmails(ctx context.Context, request UnsubscribeFromEmailsRequestObject) (UnsubscribeFromEmailsResponseObject, error)
 	// ListExercises List standalone exercises for authoring
 	// (GET /exercises)
 	ListExercises(ctx context.Context, request ListExercisesRequestObject) (ListExercisesResponseObject, error)
@@ -23217,6 +23599,9 @@ type StrictServerInterface interface {
 	// CreatePracticeSessionPlan Compose a practice session for the authenticated student
 	// (POST /students/me/practice-sessions)
 	CreatePracticeSessionPlan(ctx context.Context, request CreatePracticeSessionPlanRequestObject) (CreatePracticeSessionPlanResponseObject, error)
+	// GetPracticeSessionSubjectProgress Read where the authenticated student stands on a session's subjects, and whether the session is folded
+	// (GET /students/me/practice-sessions/{practice_session_id}/subject-progress)
+	GetPracticeSessionSubjectProgress(ctx context.Context, request GetPracticeSessionSubjectProgressRequestObject) (GetPracticeSessionSubjectProgressResponseObject, error)
 	// ListPracticeSubjects List the subjects the authenticated student can choose to practise
 	// (GET /students/me/practice-subjects)
 	ListPracticeSubjects(ctx context.Context, request ListPracticeSubjectsRequestObject) (ListPracticeSubjectsResponseObject, error)
@@ -23241,9 +23626,9 @@ type StrictServerInterface interface {
 	// GetMyProfile Get the authenticated user's profile
 	// (GET /users/me)
 	GetMyProfile(ctx context.Context, request GetMyProfileRequestObject) (GetMyProfileResponseObject, error)
-	// UpdateMyLocale Set the authenticated user's locale preference
+	// UpdateMyProfile Update the authenticated user's preferences
 	// (PATCH /users/me)
-	UpdateMyLocale(ctx context.Context, request UpdateMyLocaleRequestObject) (UpdateMyLocaleResponseObject, error)
+	UpdateMyProfile(ctx context.Context, request UpdateMyProfileRequestObject) (UpdateMyProfileResponseObject, error)
 	// ListVoices List the voices diagrams can be played with
 	// (GET /voices)
 	ListVoices(ctx context.Context, request ListVoicesRequestObject) (ListVoicesResponseObject, error)
@@ -24570,6 +24955,56 @@ func (sh *strictHandler) UpdateDiagram(w http.ResponseWriter, r *http.Request, d
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(UpdateDiagramResponseObject); ok {
 		if err := validResponse.VisitUpdateDiagramResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UnsubscribeFromEmails operation middleware
+func (sh *strictHandler) UnsubscribeFromEmails(w http.ResponseWriter, r *http.Request, params UnsubscribeFromEmailsParams) {
+	var request UnsubscribeFromEmailsRequestObject
+
+	request.Params = params
+	if strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
+
+		var body UnsubscribeFromEmailsJSONRequestBody
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			if !errors.Is(err, io.EOF) {
+				sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+				return
+			}
+		} else {
+			request.JSONBody = &body
+		}
+	}
+	if strings.HasPrefix(r.Header.Get("Content-Type"), "application/x-www-form-urlencoded") {
+		if err := r.ParseForm(); err != nil {
+			sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode formdata: %w", err))
+			return
+		}
+		var body UnsubscribeFromEmailsFormdataRequestBody
+		if err := runtime.BindForm(&body, r.Form, nil, nil); err != nil {
+			sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't bind formdata: %w", err))
+			return
+		}
+		request.FormdataBody = &body
+	}
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UnsubscribeFromEmails(ctx, request.(UnsubscribeFromEmailsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UnsubscribeFromEmails")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UnsubscribeFromEmailsResponseObject); ok {
+		if err := validResponse.VisitUnsubscribeFromEmailsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -26141,6 +26576,33 @@ func (sh *strictHandler) CreatePracticeSessionPlan(w http.ResponseWriter, r *htt
 	}
 }
 
+// GetPracticeSessionSubjectProgress operation middleware
+func (sh *strictHandler) GetPracticeSessionSubjectProgress(w http.ResponseWriter, r *http.Request, practiceSessionId openapi_types.UUID, params GetPracticeSessionSubjectProgressParams) {
+	var request GetPracticeSessionSubjectProgressRequestObject
+
+	request.PracticeSessionId = practiceSessionId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetPracticeSessionSubjectProgress(ctx, request.(GetPracticeSessionSubjectProgressRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetPracticeSessionSubjectProgress")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetPracticeSessionSubjectProgressResponseObject); ok {
+		if err := validResponse.VisitGetPracticeSessionSubjectProgressResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // ListPracticeSubjects operation middleware
 func (sh *strictHandler) ListPracticeSubjects(w http.ResponseWriter, r *http.Request, params ListPracticeSubjectsParams) {
 	var request ListPracticeSubjectsRequestObject
@@ -26362,11 +26824,11 @@ func (sh *strictHandler) GetMyProfile(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// UpdateMyLocale operation middleware
-func (sh *strictHandler) UpdateMyLocale(w http.ResponseWriter, r *http.Request) {
-	var request UpdateMyLocaleRequestObject
+// UpdateMyProfile operation middleware
+func (sh *strictHandler) UpdateMyProfile(w http.ResponseWriter, r *http.Request) {
+	var request UpdateMyProfileRequestObject
 
-	var body UpdateMyLocaleJSONRequestBody
+	var body UpdateMyProfileJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
 		return
@@ -26374,18 +26836,18 @@ func (sh *strictHandler) UpdateMyLocale(w http.ResponseWriter, r *http.Request) 
 	request.Body = &body
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.UpdateMyLocale(ctx, request.(UpdateMyLocaleRequestObject))
+		return sh.ssi.UpdateMyProfile(ctx, request.(UpdateMyProfileRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "UpdateMyLocale")
+		handler = middleware(handler, "UpdateMyProfile")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(UpdateMyLocaleResponseObject); ok {
-		if err := validResponse.VisitUpdateMyLocaleResponse(w); err != nil {
+	} else if validResponse, ok := response.(UpdateMyProfileResponseObject); ok {
+		if err := validResponse.VisitUpdateMyProfileResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

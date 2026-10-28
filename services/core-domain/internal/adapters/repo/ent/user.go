@@ -27,6 +27,14 @@ type User struct {
 	DisplayName string `json:"display_name,omitempty"`
 	// LocaleID holds the value of the "locale_id" field.
 	LocaleID uuid.UUID `json:"locale_id,omitempty"`
+	// Email holds the value of the "email" field.
+	Email *string `json:"email,omitempty"`
+	// TimeZone holds the value of the "time_zone" field.
+	TimeZone *string `json:"time_zone,omitempty"`
+	// EmailProgressReport holds the value of the "email_progress_report" field.
+	EmailProgressReport bool `json:"email_progress_report,omitempty"`
+	// EmailReminders holds the value of the "email_reminders" field.
+	EmailReminders bool `json:"email_reminders,omitempty"`
 	// RegisteredAt holds the value of the "registered_at" field.
 	RegisteredAt time.Time `json:"registered_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -60,7 +68,9 @@ func (*User) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case user.FieldClerkUserID, user.FieldRole, user.FieldDisplayName:
+		case user.FieldEmailProgressReport, user.FieldEmailReminders:
+			values[i] = new(sql.NullBool)
+		case user.FieldClerkUserID, user.FieldRole, user.FieldDisplayName, user.FieldEmail, user.FieldTimeZone:
 			values[i] = new(sql.NullString)
 		case user.FieldRegisteredAt:
 			values[i] = new(sql.NullTime)
@@ -110,6 +120,32 @@ func (_m *User) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field locale_id", values[i])
 			} else if value != nil {
 				_m.LocaleID = *value
+			}
+		case user.FieldEmail:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field email", values[i])
+			} else if value.Valid {
+				_m.Email = new(string)
+				*_m.Email = value.String
+			}
+		case user.FieldTimeZone:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field time_zone", values[i])
+			} else if value.Valid {
+				_m.TimeZone = new(string)
+				*_m.TimeZone = value.String
+			}
+		case user.FieldEmailProgressReport:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field email_progress_report", values[i])
+			} else if value.Valid {
+				_m.EmailProgressReport = value.Bool
+			}
+		case user.FieldEmailReminders:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field email_reminders", values[i])
+			} else if value.Valid {
+				_m.EmailReminders = value.Bool
 			}
 		case user.FieldRegisteredAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -169,6 +205,22 @@ func (_m *User) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("locale_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.LocaleID))
+	builder.WriteString(", ")
+	if v := _m.Email; v != nil {
+		builder.WriteString("email=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.TimeZone; v != nil {
+		builder.WriteString("time_zone=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	builder.WriteString("email_progress_report=")
+	builder.WriteString(fmt.Sprintf("%v", _m.EmailProgressReport))
+	builder.WriteString(", ")
+	builder.WriteString("email_reminders=")
+	builder.WriteString(fmt.Sprintf("%v", _m.EmailReminders))
 	builder.WriteString(", ")
 	builder.WriteString("registered_at=")
 	builder.WriteString(_m.RegisteredAt.Format(time.ANSIC))

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+@media (max-width: 480px) {
+  .outer { padding: 16px 12px !important; }
+  .card { padding: 24px 20px !important; }
+  .tile { display: block !important; width: 100% !important; box-sizing: border-box !important; margin-bottom: 8px !important; }
+  .gap, .spacer { display: none !important; }
+}
+</style>
+</head>
+<body style="margin:0;padding:0;background:#F3F0FB;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F3F0FB;">
+<tr><td align="center" class="outer" style="padding:24px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:552px;font-family:Manrope,'Helvetica Neue',Helvetica,Arial,sans-serif;color:#1A1633;">
+<tr><td style="padding:0 0 16px;">
+<table role="presentation" cellpadding="0" cellspacing="0"><tr>
+<td style="padding:0 8px 0 0;"><img src="{{.MarkURL}}" width="24" height="24" alt="{{.BrandName}}" style="display:block;border:0;"></td>
+<td style="font-size:16px;line-height:24px;font-weight:600;color:#1A1633;">{{.BrandName}}</td>
+</tr></table>
+</td></tr>
+<tr><td class="card" style="background:#FFFFFF;border:1px solid #E4DEF3;border-radius:14px;padding:32px;">
+{{if .Eyebrow}}<p style="margin:0 0 20px;font-size:12px;line-height:18px;font-weight:600;letter-spacing:0.04em;color:#6D28E0;">{{.Eyebrow}}</p>
+{{end}}<p style="margin:0 0 20px;font-size:20px;line-height:28px;font-weight:600;color:#1A1633;">{{.Title}}</p>
+<p style="margin:0;font-size:16px;line-height:24px;">{{.Greeting}}</p>
+{{range .Paragraphs}}<p style="margin:0 0 20px;font-size:16px;line-height:24px;">{{.}}</p>
+{{end}}{{if .Stats}}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 12px;">
+{{range .StatRows}}<tr>{{range $i, $s := .}}{{if $i}}<td class="gap" width="8" style="width:8px;font-size:0;line-height:0;">&nbsp;</td>{{end}}<td class="tile" width="50%" valign="top" style="width:50%;background:#F0E9FF;border-radius:10px;padding:16px;">
+<div style="font-size:20px;line-height:28px;font-weight:600;color:#1A1633;">{{$s.Value}}</div>
+<div style="font-size:14px;line-height:22px;color:#5B5470;">{{$s.Label}}</div>{{if $s.Note}}
+<div style="font-size:12px;line-height:18px;font-weight:500;color:#5B5470;">{{$s.Note}}</div>{{end}}
+</td>{{end}}</tr>
+<tr class="spacer"><td colspan="3" style="height:8px;font-size:0;line-height:0;">&nbsp;</td></tr>
+{{end}}</table>
+{{end}}{{if .Highlight}}<p style="margin:0 0 20px;font-size:16px;line-height:24px;font-weight:600;">{{.Highlight}}</p>
+{{end}}<a href="{{.ActionURL}}" style="display:inline-block;background:#6D28E0;color:#FFFFFF;text-decoration:none;font-size:16px;line-height:24px;font-weight:600;padding:12px 24px;border-radius:9999px;">{{.ActionLabel}}</a>
+</td></tr>
+<tr><td style="padding:16px 8px 0;font-size:12px;line-height:18px;font-weight:500;color:#5B5470;">
+{{.Footer}} <a href="{{.UnsubscribeURL}}" style="color:#5B5470;text-decoration:underline;">{{.UnsubscribeLabel}}</a> · <a href="{{.SettingsURL}}" style="color:#5B5470;text-decoration:underline;">{{.SettingsLabel}}</a>
+<p style="margin:8px 0 0;color:#70698A;">{{.BrandName}} · motifpath.com</p>
+</td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>

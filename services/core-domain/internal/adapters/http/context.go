@@ -1,12 +1,16 @@
 package http
 
-import "context"
+import (
+	"context"
+
+	"github.com/motifpath/core-domain/internal/domain"
+)
 
 type contextKey int
 
 const (
 	clerkUserIDContextKey contextKey = iota
-	nameClaimContextKey
+	identityClaimsContextKey
 	acceptLanguageContextKey
 )
 
@@ -22,17 +26,18 @@ func ClerkUserIDFromContext(ctx context.Context) (string, bool) {
 	return v, ok
 }
 
-// WithNameClaim stores the "name" claim of the caller's session token — the
-// user's full name as the identity provider holds it — in ctx. Populated by
-// ClerkAuthMiddleware; read by registration and caller resolution to record
-// and refresh the user's display name.
-func WithNameClaim(ctx context.Context, name string) context.Context {
-	return context.WithValue(ctx, nameClaimContextKey, name)
+// WithIdentityClaims stores the claims of the caller's session token — the
+// user's name and email address as the identity provider holds them — in
+// ctx. Populated by ClerkAuthMiddleware; read by registration and caller
+// resolution to record and refresh them.
+func WithIdentityClaims(ctx context.Context, claims domain.IdentityClaims) context.Context {
+	return context.WithValue(ctx, identityClaimsContextKey, claims)
 }
 
-// NameClaimFromContext returns "" if the session token carried no name.
-func NameClaimFromContext(ctx context.Context) string {
-	v, _ := ctx.Value(nameClaimContextKey).(string)
+// IdentityClaimsFromContext returns empty claims if the session token
+// carried none.
+func IdentityClaimsFromContext(ctx context.Context) domain.IdentityClaims {
+	v, _ := ctx.Value(identityClaimsContextKey).(domain.IdentityClaims)
 	return v
 }
 

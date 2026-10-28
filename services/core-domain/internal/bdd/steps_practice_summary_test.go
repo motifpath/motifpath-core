@@ -32,6 +32,7 @@ type fakePracticeActivity struct {
 // is nil until it ends, which an abandoned session never does, and
 // startedAt is nil until its start arrives.
 type fakePracticeSession struct {
+	sessionID    string
 	instrumentID *string
 	startedAt    *time.Time
 	lastEventAt  time.Time
@@ -62,6 +63,32 @@ func (f *fakePracticeActivity) FinishedSessions(_ context.Context, studentID str
 		}
 	}
 	return out, nil
+}
+
+func (f *fakePracticeActivity) SessionEnded(_ context.Context, studentID, sessionID string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, s := range f.sessions[studentID] {
+		if s.sessionID == sessionID && s.endedAt != nil {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// endSession records the end of the session sessionID, whoever's it is.
+func (f *fakePracticeActivity) endSession(sessionID string, at time.Time) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for student, sessions := range f.sessions {
+		for i, s := range sessions {
+			if s.sessionID == sessionID {
+				f.sessions[student][i].endedAt = &at
+				return nil
+			}
+		}
+	}
+	return fmt.Errorf("no session %s was recorded", sessionID)
 }
 
 func (f *fakePracticeActivity) LastInHandSessionItemKeys(_ context.Context, studentID string) ([]string, error) {

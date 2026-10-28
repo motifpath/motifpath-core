@@ -50,9 +50,18 @@ type User struct {
 	// Locale is this user's resolved locale preference, never LanguageCodeAny
 	// (a user reads or speaks a language; they aren't language-agnostic
 	// content). Every user has one: resolved at registration time in the
-	// application layer, settable afterwards via UpdateLocale.
-	Locale       Language
-	RegisteredAt time.Time
+	// application layer, settable afterwards through a profile update.
+	Locale Language
+	// Email is the user's address as held by the identity provider, already
+	// normalized (see NormalizeEmail), or "" for a user registered before
+	// addresses were stored who hasn't signed in since. It is shown only to
+	// its owner and used only to send the platform's own email.
+	Email string
+	// TimeZone is the IANA time zone the user's client reported, or "" when
+	// none ever was.
+	TimeZone         string
+	EmailPreferences EmailPreferences
+	RegisteredAt     time.Time
 }
 
 // NewUser validates role and locale and constructs a User. Only student and
@@ -92,11 +101,12 @@ func NewUser(id, clerkUserID string, role Role, displayName string, locale Langu
 	}
 
 	return User{
-		ID:           id,
-		ClerkUserID:  clerkUserID,
-		Role:         role,
-		DisplayName:  name,
-		Locale:       locale,
-		RegisteredAt: registeredAt,
+		ID:               id,
+		ClerkUserID:      clerkUserID,
+		Role:             role,
+		DisplayName:      name,
+		Locale:           locale,
+		EmailPreferences: DefaultEmailPreferences(),
+		RegisteredAt:     registeredAt,
 	}, nil
 }

@@ -89,6 +89,14 @@ services:
         aws s3api head-bucket --bucket $$B 2>/dev/null || aws s3 mb s3://$$B
         aws s3api put-bucket-policy --bucket $$B --policy '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":"*","Action":"s3:GetObject","Resource":"arn:aws:s3:::motifpath-content-media/*"}]}'
 
+  # Catches every email the services send locally and shows it at
+  # http://localhost:8025, so nothing reaches a real inbox.
+  mailpit:
+    image: axllent/mailpit:v1.21.8
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
   redpanda:
     image: redpandadata/redpanda:v24.2.7
     command:

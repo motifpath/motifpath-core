@@ -45,8 +45,28 @@ func (User) Fields() []ent.Field {
 		// LocaleID is the user's resolved locale preference. Required —
 		// every user has one, defaulted in the application layer at
 		// registration time rather than via a DB default, matching how role
-		// is handled. Mutable afterwards via UpdateLocale.
+		// is handled. Mutable afterwards through a profile update.
 		field.UUID("locale_id", uuid.UUID{}),
+
+		// Email is the user's address as held by the identity provider,
+		// refreshed from the session token whenever it changes. Nullable:
+		// users registered before addresses were stored have none until
+		// their next signed-in request.
+		field.String("email").
+			Optional().
+			Nillable(),
+
+		// TimeZone is the IANA time zone the user's client last reported,
+		// or null when none ever was.
+		field.String("time_zone").
+			Optional().
+			Nillable(),
+
+		// One switch per kind of email a student can get. Both start on.
+		field.Bool("email_progress_report").
+			Default(true),
+		field.Bool("email_reminders").
+			Default(true),
 
 		field.Time("registered_at").
 			Immutable().

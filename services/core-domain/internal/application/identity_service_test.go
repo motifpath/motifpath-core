@@ -24,12 +24,27 @@ func newIdentityServiceWithLanguages(users *fakeUserRepository, languages *fakeL
 	return application.NewIdentityService(users, languages, idSequence(), func() time.Time { return fixedRegisteredAt })
 }
 
+// registrationClaims are the claims of an identity token that registration
+// accepts: the given name and a valid email address.
+func registrationClaims(name string) domain.IdentityClaims {
+	return domain.IdentityClaims{Name: name, Email: "user@example.com"}
+}
+
+// nameClaims are the claims of an identity token that carries only a name.
+func nameClaims(name string) domain.IdentityClaims {
+	return domain.IdentityClaims{Name: name}
+}
+
+func localeUpdate(code string) domain.ProfileUpdate {
+	return domain.ProfileUpdate{Locale: &code}
+}
+
 func TestIdentityService_RegisterUser(t *testing.T) {
 	t.Run("student registers successfully", func(t *testing.T) {
 		users := newFakeUserRepository()
 		svc := newIdentityService(users)
 
-		user, err := svc.RegisterUser(context.Background(), "clerk-alice", domain.RoleStudent, "", "Test User")
+		user, err := svc.RegisterUser(context.Background(), "clerk-alice", domain.RoleStudent, "", registrationClaims("Test User"))
 
 		require.NoError(t, err)
 		assert.Equal(t, "id-1", user.ID)
@@ -41,7 +56,7 @@ func TestIdentityService_RegisterUser(t *testing.T) {
 		users := newFakeUserRepository()
 		svc := newIdentityService(users)
 
-		user, err := svc.RegisterUser(context.Background(), "clerk-bob", domain.RoleTeacher, "", "Test User")
+		user, err := svc.RegisterUser(context.Background(), "clerk-bob", domain.RoleTeacher, "", registrationClaims("Test User"))
 
 		require.NoError(t, err)
 		assert.Equal(t, domain.RoleTeacher, user.Role)
@@ -51,10 +66,10 @@ func TestIdentityService_RegisterUser(t *testing.T) {
 		users := newFakeUserRepository()
 		svc := newIdentityService(users)
 
-		_, err := svc.RegisterUser(context.Background(), "clerk-alice", domain.RoleStudent, "", "Test User")
+		_, err := svc.RegisterUser(context.Background(), "clerk-alice", domain.RoleStudent, "", registrationClaims("Test User"))
 		require.NoError(t, err)
 
-		_, err = svc.RegisterUser(context.Background(), "clerk-alice", domain.RoleStudent, "", "Test User")
+		_, err = svc.RegisterUser(context.Background(), "clerk-alice", domain.RoleStudent, "", registrationClaims("Test User"))
 		assert.ErrorIs(t, err, domain.ErrAlreadyExists)
 	})
 
@@ -62,10 +77,10 @@ func TestIdentityService_RegisterUser(t *testing.T) {
 		users := newFakeUserRepository()
 		svc := newIdentityService(users)
 
-		_, err := svc.RegisterUser(context.Background(), "clerk-alice", domain.RoleStudent, "", "Test User")
+		_, err := svc.RegisterUser(context.Background(), "clerk-alice", domain.RoleStudent, "", registrationClaims("Test User"))
 		require.NoError(t, err)
 
-		_, err = svc.RegisterUser(context.Background(), "clerk-alice", domain.RoleTeacher, "", "Test User")
+		_, err = svc.RegisterUser(context.Background(), "clerk-alice", domain.RoleTeacher, "", registrationClaims("Test User"))
 		assert.ErrorIs(t, err, domain.ErrAlreadyExists)
 	})
 
@@ -73,7 +88,7 @@ func TestIdentityService_RegisterUser(t *testing.T) {
 		users := newFakeUserRepository()
 		svc := newIdentityService(users)
 
-		_, err := svc.RegisterUser(context.Background(), "clerk-alice", domain.Role("moderator"), "", "Test User")
+		_, err := svc.RegisterUser(context.Background(), "clerk-alice", domain.Role("moderator"), "", registrationClaims("Test User"))
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -84,7 +99,7 @@ func TestIdentityService_RegisterUser(t *testing.T) {
 		users := newFakeUserRepository()
 		svc := newIdentityService(users)
 
-		_, err := svc.RegisterUser(context.Background(), "clerk-alice", domain.RoleAdmin, "", "Test User")
+		_, err := svc.RegisterUser(context.Background(), "clerk-alice", domain.RoleAdmin, "", registrationClaims("Test User"))
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -95,7 +110,7 @@ func TestIdentityService_RegisterUser(t *testing.T) {
 		users := newFakeUserRepository()
 		svc := newIdentityService(users)
 
-		user, err := svc.RegisterUser(context.Background(), "clerk-alice", domain.RoleStudent, "", "Test User")
+		user, err := svc.RegisterUser(context.Background(), "clerk-alice", domain.RoleStudent, "", registrationClaims("Test User"))
 
 		require.NoError(t, err)
 		assert.Equal(t, "en", user.Locale.Code)
@@ -105,7 +120,7 @@ func TestIdentityService_RegisterUser(t *testing.T) {
 		users := newFakeUserRepository()
 		svc := newIdentityService(users)
 
-		user, err := svc.RegisterUser(context.Background(), "clerk-alice", domain.RoleStudent, "pt_BR", "Test User")
+		user, err := svc.RegisterUser(context.Background(), "clerk-alice", domain.RoleStudent, "pt_BR", registrationClaims("Test User"))
 
 		require.NoError(t, err)
 		assert.Equal(t, "pt_BR", user.Locale.Code)
@@ -115,7 +130,7 @@ func TestIdentityService_RegisterUser(t *testing.T) {
 		users := newFakeUserRepository()
 		svc := newIdentityService(users)
 
-		user, err := svc.RegisterUser(context.Background(), "clerk-alice", domain.RoleStudent, "fr", "Test User")
+		user, err := svc.RegisterUser(context.Background(), "clerk-alice", domain.RoleStudent, "fr", registrationClaims("Test User"))
 
 		require.NoError(t, err)
 		assert.Equal(t, "en", user.Locale.Code)
@@ -125,7 +140,7 @@ func TestIdentityService_RegisterUser(t *testing.T) {
 		users := newFakeUserRepository()
 		svc := newIdentityService(users)
 
-		user, err := svc.RegisterUser(context.Background(), "clerk-alice", domain.RoleStudent, domain.LanguageCodeAny, "Test User")
+		user, err := svc.RegisterUser(context.Background(), "clerk-alice", domain.RoleStudent, domain.LanguageCodeAny, registrationClaims("Test User"))
 
 		require.NoError(t, err)
 		assert.Equal(t, "en", user.Locale.Code)
@@ -137,10 +152,10 @@ func TestIdentityService_ResolveCaller(t *testing.T) {
 		users := newFakeUserRepository()
 		svc := newIdentityService(users)
 
-		registered, err := svc.RegisterUser(context.Background(), "clerk-alice", domain.RoleStudent, "", "Test User")
+		registered, err := svc.RegisterUser(context.Background(), "clerk-alice", domain.RoleStudent, "", registrationClaims("Test User"))
 		require.NoError(t, err)
 
-		profile, err := svc.ResolveCaller(context.Background(), "clerk-alice", "")
+		profile, err := svc.ResolveCaller(context.Background(), "clerk-alice", nameClaims(""))
 
 		require.NoError(t, err)
 		assert.Equal(t, registered, profile)
@@ -150,25 +165,25 @@ func TestIdentityService_ResolveCaller(t *testing.T) {
 		users := newFakeUserRepository()
 		svc := newIdentityService(users)
 
-		_, err := svc.ResolveCaller(context.Background(), "clerk-charlie", "")
+		_, err := svc.ResolveCaller(context.Background(), "clerk-charlie", nameClaims(""))
 
 		assert.ErrorIs(t, err, domain.ErrNotFound)
 	})
 }
 
-func TestIdentityService_UpdateLocale(t *testing.T) {
+func TestIdentityService_UpdateProfile_Locale(t *testing.T) {
 	t.Run("a registered user updates their locale to a known code", func(t *testing.T) {
 		users := newFakeUserRepository()
 		svc := newIdentityService(users)
-		_, err := svc.RegisterUser(context.Background(), "clerk-alice", domain.RoleStudent, "", "Test User")
+		_, err := svc.RegisterUser(context.Background(), "clerk-alice", domain.RoleStudent, "", registrationClaims("Test User"))
 		require.NoError(t, err)
 
-		user, err := svc.UpdateLocale(context.Background(), "clerk-alice", "pt_BR")
+		user, err := svc.UpdateProfile(context.Background(), "clerk-alice", localeUpdate("pt_BR"))
 
 		require.NoError(t, err)
 		assert.Equal(t, "pt_BR", user.Locale.Code)
 
-		profile, err := svc.ResolveCaller(context.Background(), "clerk-alice", "")
+		profile, err := svc.ResolveCaller(context.Background(), "clerk-alice", nameClaims(""))
 		require.NoError(t, err)
 		assert.Equal(t, "pt_BR", profile.Locale.Code)
 	})
@@ -176,10 +191,10 @@ func TestIdentityService_UpdateLocale(t *testing.T) {
 	t.Run("an unknown language code is rejected", func(t *testing.T) {
 		users := newFakeUserRepository()
 		svc := newIdentityService(users)
-		_, err := svc.RegisterUser(context.Background(), "clerk-alice", domain.RoleStudent, "", "Test User")
+		_, err := svc.RegisterUser(context.Background(), "clerk-alice", domain.RoleStudent, "", registrationClaims("Test User"))
 		require.NoError(t, err)
 
-		_, err = svc.UpdateLocale(context.Background(), "clerk-alice", "xx")
+		_, err = svc.UpdateProfile(context.Background(), "clerk-alice", localeUpdate("xx"))
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -189,10 +204,10 @@ func TestIdentityService_UpdateLocale(t *testing.T) {
 	t.Run("any is rejected as a user locale", func(t *testing.T) {
 		users := newFakeUserRepository()
 		svc := newIdentityService(users)
-		_, err := svc.RegisterUser(context.Background(), "clerk-alice", domain.RoleStudent, "", "Test User")
+		_, err := svc.RegisterUser(context.Background(), "clerk-alice", domain.RoleStudent, "", registrationClaims("Test User"))
 		require.NoError(t, err)
 
-		_, err = svc.UpdateLocale(context.Background(), "clerk-alice", domain.LanguageCodeAny)
+		_, err = svc.UpdateProfile(context.Background(), "clerk-alice", localeUpdate(domain.LanguageCodeAny))
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -203,7 +218,7 @@ func TestIdentityService_UpdateLocale(t *testing.T) {
 		users := newFakeUserRepository()
 		svc := newIdentityService(users)
 
-		_, err := svc.UpdateLocale(context.Background(), "clerk-charlie", "pt_BR")
+		_, err := svc.UpdateProfile(context.Background(), "clerk-charlie", localeUpdate("pt_BR"))
 
 		assert.ErrorIs(t, err, domain.ErrNotFound)
 	})
@@ -228,7 +243,7 @@ func TestIdentityService_RegisterUser_DisplayName(t *testing.T) {
 			users := newFakeUserRepository()
 			svc := newIdentityService(users)
 
-			user, err := svc.RegisterUser(context.Background(), "clerk-alice", domain.RoleStudent, "", tt.claimedName)
+			user, err := svc.RegisterUser(context.Background(), "clerk-alice", domain.RoleStudent, "", registrationClaims(tt.claimedName))
 
 			if tt.wantInvalid {
 				var valErr *domain.ValidationError
@@ -265,10 +280,10 @@ func TestIdentityService_ResolveCaller_RefreshesDisplayName(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			users := newFakeUserRepository()
 			svc := newIdentityService(users)
-			_, err := svc.RegisterUser(context.Background(), "clerk-bob", domain.RoleTeacher, "", "Bob Ferreira")
+			_, err := svc.RegisterUser(context.Background(), "clerk-bob", domain.RoleTeacher, "", registrationClaims("Bob Ferreira"))
 			require.NoError(t, err)
 
-			caller, err := svc.ResolveCaller(context.Background(), "clerk-bob", tt.claimedName)
+			caller, err := svc.ResolveCaller(context.Background(), "clerk-bob", nameClaims(tt.claimedName))
 
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantName, caller.DisplayName)
@@ -285,9 +300,9 @@ func TestIdentityService_DisplayNames(t *testing.T) {
 		t.Helper()
 		users := newFakeUserRepository()
 		svc := newIdentityService(users)
-		alice, err := svc.RegisterUser(context.Background(), "clerk-alice", domain.RoleStudent, "", "Alice Martins")
+		alice, err := svc.RegisterUser(context.Background(), "clerk-alice", domain.RoleStudent, "", registrationClaims("Alice Martins"))
 		require.NoError(t, err)
-		bob, err := svc.RegisterUser(context.Background(), "clerk-bob", domain.RoleTeacher, "", "Bob Ferreira")
+		bob, err := svc.RegisterUser(context.Background(), "clerk-bob", domain.RoleTeacher, "", registrationClaims("Bob Ferreira"))
 		require.NoError(t, err)
 		return svc, users, alice, bob
 	}

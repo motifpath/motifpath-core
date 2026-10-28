@@ -64,8 +64,8 @@ type world struct {
 	// guideTonePlans the responses of repeated sessions in the head.
 	pickedGuideTones []generated.PlannedGuideTone
 	guideTonePlans   []generated.CreatePracticeSessionPlan200JSONResponse
-	shapeWorld  *diagramShapeWorld
-	songCharts  *songChartWorld
+	shapeWorld       *diagramShapeWorld
+	songCharts       *songChartWorld
 	// dueDays holds the cells a scenario made due on two days.
 	dueDays *cellsDueOnTwoDays
 	// lastCell is the fretboard cell a step answered, for a following step.
@@ -127,6 +127,23 @@ type world struct {
 	// carries, set by the "is named" steps. A persona with no entry carries
 	// defaultNameClaim(persona); an entry of "" is a token with no name.
 	nameClaims map[string]string
+	// emailClaims holds the "email" claim each persona's session token
+	// carries. A persona with no entry carries defaultEmailClaim(persona);
+	// an entry of "" is a token with no email.
+	emailClaims map[string]string
+
+	// emailPreferences issues the unsubscribe tokens a scenario's emails
+	// would carry, with the same secret the handler verifies them with.
+	emailPreferences *application.EmailPreferencesService
+	// unsubscribeToken is the token of the unsubscribe link a persona holds.
+	unsubscribeToken string
+
+	// practiceSummary is the service behind the home overview, which the
+	// engagement mailer reads a week's figures from.
+	practiceSummary *application.PracticeSummaryService
+	// mail is the engagement mailer's state: its clock, configuration, send
+	// record and what it sent. Nil until a scenario first needs it.
+	mail *mailWorld
 
 	// lastResp holds whichever generated ...ResponseObject the most recent
 	// handler call returned — one of dozens of distinct generated types
@@ -271,8 +288,13 @@ type world struct {
 	// focusOthers holds the due items a focus scenario seeded outside the
 	// session's subjects, most overdue first, and focusDueKeys the due items
 	// a rung scenario expects reviewed.
-	focusOthers  []string
-	focusDueKeys []string
+	focusOthers []string
+	// subjectProgressStudent is the student whose session a subject
+	// progress scenario recorded, and firstSubjectProgress the first of two
+	// reads of it.
+	subjectProgressStudent string
+	firstSubjectProgress   *generated.PracticeSessionSubjectProgress
+	focusDueKeys           []string
 	// focusNode is the node a scenario's "its" refers to.
 	focusNode string
 }
@@ -315,6 +337,7 @@ func newWorld() *world {
 		conceptIDByName: map[string]uuid.UUID{},
 		courseIDBySlug:  map[string]uuid.UUID{},
 		nameClaims:      map[string]string{},
+		emailClaims:     map[string]string{},
 
 		courseEnrollmentIDByKey:     map[string]string{},
 		courseEnrollmentIDByStudent: map[string]string{},
@@ -354,13 +377,16 @@ func newWorld() *world {
 		WithChordDrills(chordDrillCatalog{}, w.instruments).
 		WithProgressionKeyTours(w.instruments).
 		WithGuideTones(w.instruments).
-		WithSongs(w.songChartRepo, w.practiceActivity)
+		WithSongs(w.songChartRepo, w.practiceActivity).
+		WithSessionEnds(w.practiceActivity)
 	w.summaryNow = fixedNow
 	summaryNow := func() time.Time { return w.summaryNow }
 	summaryRollup := application.NewKnowledgeRollupService(w.knowledge, w.knowledgeEdges, w.practiceItems, w.practiceStates, summaryNow)
 	practiceSummary := application.NewPracticeSummaryService(w.instruments, w.studentPaths, w.courseEnrollments, w.paths, w.courseVersions, w.nodes, summaryRollup, w.practiceActivity, w.songChartRepo, summaryNow)
+	w.practiceSummary = practiceSummary
 
 	w.alpha = newAlphaWorld()
+	w.emailPreferences = application.NewEmailPreferencesService(w.users, []byte("bdd-unsubscribe-secret-long-enough-to-sign"))
 	alphaObservation := application.NewAlphaObservationService(w.users, w.studentPaths, w.nodes, w.completion, w.alpha.activity, func() time.Time { return w.alpha.now })
 
 	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, knowledgeNode, knowledgeEdge, media, path, application.NewPathCatalogService(w.paths, w.users, w.knowledge), studentPath, course, courseEnrollment, instrument, voice, diagram, practiceSession, practiceSummary, application.NewChordCatalogService(w.chords), application.NewProgressionCatalogService(catalogProgressions{}),
@@ -368,6 +394,7 @@ func newWorld() *world {
 		application.NewAppConfigService(w.appConfig, now, application.NewStartingPointsKey(w.instruments, newFakeLanguageRepo(), w.paths, w.courses)),
 		application.NewStartingPointsService(w.appConfig, newFakeLanguageRepo(), w.paths, w.courses),
 		alphaObservation,
+		w.emailPreferences,
 		w.pgPinger, w.mongoPinger)
 	return w
 }
@@ -400,14 +427,28 @@ func (w *world) ctx() context.Context {
 }
 
 // identityCtx builds the context of a request made with persona's session
-// token: its Clerk sub, plus its "name" claim when it carries one — what
+// token: its Clerk sub, plus its "name" and "email" claims — what
 // ClerkAuthMiddleware would attach to a real request.
 func (w *world) identityCtx(persona string) context.Context {
 	ctx := appHTTP.WithClerkUserID(context.Background(), clerkSub(persona))
-	if name := w.nameClaim(persona); name != "" {
-		ctx = appHTTP.WithNameClaim(ctx, name)
+	return appHTTP.WithIdentityClaims(ctx, domain.IdentityClaims{Name: w.nameClaim(persona), Email: w.emailClaim(persona)})
+}
+
+// emailClaim returns the "email" claim persona's session token carries.
+func (w *world) emailClaim(persona string) string {
+	if email, ok := w.emailClaims[persona]; ok {
+		return email
 	}
-	return ctx
+	return defaultEmailClaim(persona)
+}
+
+// defaultEmailClaim gives every persona an address without a step having to
+// set one — registration requires it.
+func defaultEmailClaim(persona string) string {
+	if persona == "" {
+		return ""
+	}
+	return strings.ReplaceAll(persona, " ", ".") + "@example.com"
 }
 
 // nameClaim returns the "name" claim persona's session token carries.
@@ -556,7 +597,10 @@ func (w *world) ensureRegistered(name string, role domain.Role) uuid.UUID {
 
 	if role == domain.RoleAdmin {
 		id := deterministicUUID("motif-user", name)
-		w.users.put(domain.User{ID: id.String(), ClerkUserID: clerkSub(name), Role: domain.RoleAdmin, DisplayName: w.nameClaim(name), RegisteredAt: fixedNow})
+		w.users.put(domain.User{
+			ID: id.String(), ClerkUserID: clerkSub(name), Role: domain.RoleAdmin, DisplayName: w.nameClaim(name),
+			EmailPreferences: domain.DefaultEmailPreferences(), RegisteredAt: fixedNow,
+		})
 		w.userMotifID[name] = id
 		return id
 	}

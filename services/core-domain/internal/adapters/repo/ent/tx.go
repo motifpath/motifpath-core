@@ -74,6 +74,8 @@ type Tx struct {
 	DrillTemplate *DrillTemplateClient
 	// DrillThreshold is the client for interacting with the DrillThreshold builders.
 	DrillThreshold *DrillThresholdClient
+	// EmailSend is the client for interacting with the EmailSend builders.
+	EmailSend *EmailSendClient
 	// Exercise is the client for interacting with the Exercise builders.
 	Exercise *ExerciseClient
 	// ExerciseConcept is the client for interacting with the ExerciseConcept builders.
@@ -289,6 +291,7 @@ func (tx *Tx) init() {
 	tx.DiagramSkill = NewDiagramSkillClient(tx.config)
 	tx.DrillTemplate = NewDrillTemplateClient(tx.config)
 	tx.DrillThreshold = NewDrillThresholdClient(tx.config)
+	tx.EmailSend = NewEmailSendClient(tx.config)
 	tx.Exercise = NewExerciseClient(tx.config)
 	tx.ExerciseConcept = NewExerciseConceptClient(tx.config)
 	tx.ExerciseInstrument = NewExerciseInstrumentClient(tx.config)
