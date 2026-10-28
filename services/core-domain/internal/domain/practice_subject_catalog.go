@@ -1,6 +1,9 @@
 package domain
 
-import "time"
+import (
+	"slices"
+	"time"
+)
 
 // PracticeSubjectCatalog is what a list of practice subjects needs of the
 // items classified for one scope that is the same for every student, built
@@ -30,6 +33,9 @@ type PracticeSubjectCatalogItem struct {
 	// Ways are a drill item's ways of being asked, in order, each with the
 	// rung it trains.
 	Ways []PracticeSubjectCatalogWay
+	// Languages are the language codes an exercise is available in; empty
+	// for any other item, which is shown in every locale.
+	Languages []string
 }
 
 // PracticeSubjectCatalogWay is one way a drill item is asked, and the rung it
@@ -46,6 +52,14 @@ func (i PracticeSubjectCatalogItem) Suits(inHand bool) bool {
 		return i.InHand
 	}
 	return i.InHead
+}
+
+// OfferedIn reports whether the item can be offered to a student in locale:
+// an exercise only when it is available in locale or in any language.
+func (i PracticeSubjectCatalogItem) OfferedIn(locale string) bool {
+	return len(i.Languages) == 0 || slices.ContainsFunc(i.Languages, func(code string) bool {
+		return code == locale || code == LanguageCodeAny
+	})
 }
 
 // RungFor is the rung the item trains for a student whose state on it is

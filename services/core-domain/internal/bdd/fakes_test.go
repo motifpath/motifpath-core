@@ -649,6 +649,11 @@ func (f *fakeExerciseRepo) Update(_ context.Context, e domain.Exercise) error {
 func (f *fakeExerciseRepo) put(e domain.Exercise) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	// Every stored exercise is tagged with a language; one seeded without
+	// any is language-agnostic, so it is offered whatever the locale.
+	if len(e.Languages) == 0 {
+		e.Languages = []domain.Language{{Code: domain.LanguageCodeAny}}
+	}
 	f.byID[e.ID] = e
 	for _, challengeID := range e.ChallengeIDs {
 		f.byChallengeOrder[challengeID] = append(f.byChallengeOrder[challengeID], e.ID)
