@@ -100,7 +100,14 @@ func run() error {
 		return fmt.Errorf("seed staff: %w", err)
 	}
 
-	return seedAll(ctx, svc, deps, resources, admin, adminIsFresh)
+	if err := seedAll(ctx, svc, deps, resources, admin, adminIsFresh); err != nil {
+		return err
+	}
+	if err := seedPortugueseExercises(ctx, deps.teacher, svc.exercise); err != nil {
+		return fmt.Errorf("seed Portuguese exercises: %w", err)
+	}
+	log.Println("done")
+	return nil
 }
 
 // resources bundles the raw connections and their ent/mongo clients —
@@ -346,7 +353,6 @@ func seedAll(ctx context.Context, svc services, deps seedDeps, res resources, ad
 		}
 	}
 
-	log.Println("done")
 	return nil
 }
 
@@ -1027,11 +1033,13 @@ func seedAdminZeroUser(ctx context.Context, svc services, deps seedDeps, admin d
 // shapes are seeded.
 func seedVideoBeginnerChallenge(ctx context.Context, teacher domain.User, challengeSvc *application.ChallengeService, exerciseSvc *application.ExerciseService, classifier *classificationSeeder, node domain.ContentNode) error {
 	return seedTextChallenge(ctx, teacher, challengeSvc, exerciseSvc, classifier, node,
-		exerciseClassification{skill: "play-major-scale-open", concept: "major-scale"},
-		[]textQuestion{
-			{"Which note is the root of a C major scale in open position?", "C", "G"},
-			{"How many notes does a major scale have before it repeats an octave higher?", "Seven", "Five"},
-		})
+		exerciseClassification{skill: "play-major-scale-open", concept: "major-scale"}, videoBeginnerQuestions)
+}
+
+// videoBeginnerQuestions are the exercises of video-beginner's challenge.
+var videoBeginnerQuestions = []textQuestion{
+	{"Which note is the root of a C major scale in open position?", "C", "G"},
+	{"How many notes does a major scale have before it repeats an octave higher?", "Seven", "Five"},
 }
 
 // seedTimedCues attaches two short image cues to a video content node, so

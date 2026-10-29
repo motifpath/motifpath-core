@@ -246,6 +246,7 @@ func (f *practiceFixture) exercise(id, skillID string, seconds int, instrumentID
 		Skills:                   []domain.KnowledgeNode{{ID: skillID}},
 		EstimatedDurationSeconds: &seconds,
 		InstrumentIDs:            instrumentIDs,
+		Languages:                anyLanguage(),
 	}))
 }
 
