@@ -21,7 +21,7 @@ func TestPracticeSessionService_ComposePlan_RungsAndFocus(t *testing.T) {
 		f.skill("skill-ears")
 		require.NoError(t, f.exercises.Create(ctx, domain.Exercise{
 			ID: "ex-ear", Title: "ex-ear", ExerciseType: domain.ExerciseTypeAudioRecognition,
-			Skills: []domain.KnowledgeNode{{ID: "skill-ears"}}, EstimatedDurationSeconds: &seconds,
+			Skills: []domain.KnowledgeNode{{ID: "skill-ears"}}, EstimatedDurationSeconds: &seconds, Languages: anyLanguage(),
 		}))
 		f.onPathFor([]string{practiceGuitar}, "skill-cells", "skill-shapes", "skill-ears")
 

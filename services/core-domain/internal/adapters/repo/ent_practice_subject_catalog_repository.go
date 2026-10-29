@@ -131,6 +131,8 @@ type catalogItemRow struct {
 	InHead  bool            `json:"in_head"`
 	Rung    string          `json:"rung,omitempty"`
 	Ways    []catalogWayRow `json:"ways,omitempty"`
+	// Languages are an exercise's language codes; none for any other item.
+	Languages []string `json:"languages,omitempty"`
 }
 
 type catalogWayRow struct {
@@ -141,7 +143,7 @@ type catalogWayRow struct {
 func toCatalogItemRows(items []domain.PracticeSubjectCatalogItem) []catalogItemRow {
 	rows := make([]catalogItemRow, len(items))
 	for i, item := range items {
-		rows[i] = catalogItemRow{ItemKey: item.ItemKey, NodeIDs: item.NodeIDs, InHand: item.InHand, InHead: item.InHead, Rung: string(item.Rung)}
+		rows[i] = catalogItemRow{ItemKey: item.ItemKey, NodeIDs: item.NodeIDs, InHand: item.InHand, InHead: item.InHead, Rung: string(item.Rung), Languages: item.Languages}
 		for _, w := range item.Ways {
 			rows[i].Ways = append(rows[i].Ways, catalogWayRow{Way: w.Way, Rung: string(w.Rung)})
 		}
@@ -156,7 +158,7 @@ func toDomainPracticeSubjectCatalog(row *ent.PracticeSubjectCatalog) (domain.Pra
 	}
 	items := make([]domain.PracticeSubjectCatalogItem, len(stored))
 	for i, s := range stored {
-		items[i] = domain.PracticeSubjectCatalogItem{ItemKey: s.ItemKey, NodeIDs: s.NodeIDs, InHand: s.InHand, InHead: s.InHead, Rung: domain.PracticeRung(s.Rung)}
+		items[i] = domain.PracticeSubjectCatalogItem{ItemKey: s.ItemKey, NodeIDs: s.NodeIDs, InHand: s.InHand, InHead: s.InHead, Rung: domain.PracticeRung(s.Rung), Languages: s.Languages}
 		for _, w := range s.Ways {
 			items[i].Ways = append(items[i].Ways, domain.PracticeSubjectCatalogWay{Way: w.Way, Rung: domain.PracticeRung(w.Rung)})
 		}

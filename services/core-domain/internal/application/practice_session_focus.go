@@ -354,6 +354,7 @@ func (c *composer) chained(group []domain.PracticeSessionItem) []domain.Practice
 // domain.SubjectRungs. An instrumentID that doesn't exist is not found.
 func (s *PracticeSessionService) ListSubjects(ctx context.Context, caller domain.User, instrumentID *string) (domain.PracticeSubjectList, error) {
 	s = s.forComposition()
+	s.locale = caller.Locale.Code
 	tally, maps, err := s.tallySubjects(ctx, caller.ID, instrumentID)
 	if err != nil {
 		return domain.PracticeSubjectList{}, err
@@ -390,7 +391,7 @@ func (s *PracticeSessionService) tallySubjects(ctx context.Context, studentID st
 		if maps[i], err = s.rollup.MapWith(ctx, studentID, id, classified); err != nil {
 			return subjectTally{}, nil, err
 		}
-		tallyCatalog(maps[i], items, instrumentID != nil, tally, now)
+		tallyCatalog(maps[i], items, instrumentID != nil, s.locale, tally, now)
 	}
 	return tally, maps, nil
 }
@@ -431,6 +432,7 @@ func (s *PracticeSessionService) SessionSubjectProgress(ctx context.Context, cal
 		return domain.PracticeSessionSubjectProgress{}, domain.NewValidationError("node_id", fmt.Sprintf("give 1 to %d subjects", domain.MaxFocusNodes))
 	}
 	s = s.forComposition()
+	s.locale = caller.Locale.Code
 	tally, maps, err := s.tallySubjects(ctx, caller.ID, instrumentID)
 	if err != nil {
 		return domain.PracticeSessionSubjectProgress{}, err
@@ -455,10 +457,10 @@ func (s *PracticeSessionService) SessionSubjectProgress(ctx context.Context, cal
 // tallyCatalog tallies in tally the items of a catalog that suit a session
 // with the instrument in hand (inHand) or in the head, under every node of
 // m, the student's knowledge map over them, whose subtree holds them.
-func tallyCatalog(m KnowledgeMap, items []domain.PracticeSubjectCatalogItem, inHand bool, tally subjectTally, now time.Time) {
+func tallyCatalog(m KnowledgeMap, items []domain.PracticeSubjectCatalogItem, inHand bool, locale string, tally subjectTally, now time.Time) {
 	suits := map[string]bool{}
 	for _, item := range items {
-		if !item.Suits(inHand) {
+		if !item.Suits(inHand) || !item.OfferedIn(locale) {
 			continue
 		}
 		suits[item.ItemKey] = true

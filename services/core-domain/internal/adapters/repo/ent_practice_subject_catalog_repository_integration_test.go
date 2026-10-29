@@ -22,7 +22,7 @@ func TestEntPracticeSubjectCatalogRepository(t *testing.T) {
 		}
 		return domain.PracticeSubjectCatalog{Scope: scope, ContentVersion: version, FormatVersion: 1, BuiltAt: built, Items: items}
 	}
-	exercise := domain.PracticeSubjectCatalogItem{ItemKey: "exercise:e1", NodeIDs: []string{"n1", "n2"}, InHand: true, InHead: true, Rung: domain.PracticeRungKnow}
+	exercise := domain.PracticeSubjectCatalogItem{ItemKey: "exercise:e1", NodeIDs: []string{"n1", "n2"}, InHand: true, InHead: true, Rung: domain.PracticeRungKnow, Languages: []string{"pt_BR", "en"}}
 	cell := domain.PracticeSubjectCatalogItem{ItemKey: "fretboard_cell:g:1:3", NodeIDs: []string{"n3"}, InHead: true, Ways: []domain.PracticeSubjectCatalogWay{
 		{Way: "name_the_note", Rung: domain.PracticeRungKnow}, {Way: "find_the_note", Rung: domain.PracticeRungHear},
 	}}
