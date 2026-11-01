@@ -1,22 +1,26 @@
 #!/usr/bin/env bash
-# voice-samples.sh — renders every voice's samples and uploads them to the
-# LOCAL dev object store, where the voice list says players download them from
-# (audio/voices/{voice_id}/{midi}.mp3 under the content-media bucket).
+# voice-samples.sh — renders any voice sample not yet committed under
+# assets/voice-samples/ and uploads that folder to the LOCAL dev object store,
+# where the voice list says players download them from
+# (audio/voices/{voice_id}/{midi}.mp3 under the content-media bucket). Hosted
+# environments get the same committed files from every deploy.
 #
 # Which pitches a voice has is read from the local database's voices table,
 # which the migrations fill, so this script never keeps its own copy of it.
 # Each pitch is rendered from the nearest recording in tonejs-instruments
 # (CC BY 3.0, github.com/nbrosowsky/tonejs-instruments), re-pitched to match,
-# then trimmed to 3 s with a 0.6 s fade, mono, MP3 96 kbps.
+# then trimmed to 3 s with a 0.6 s fade, mono, MP3 96 kbps. Commit newly
+# rendered files with the migration that lists them.
 #
-# Rendering needs ffmpeg and Bash 4+ (neither is provided by mise; see the
-# README). Rendered files are cached in .voice-samples/
-# (gitignored), so later runs upload without ffmpeg or network access.
+# Only rendering needs ffmpeg and Bash 4+ (neither is provided by mise; see the
+# README); with every sample committed, the script just uploads. Downloaded
+# recordings are cached in .voice-samples/ (gitignored).
 #
 # Usage: scripts/voice-samples.sh   (make db:reset runs it after seeding)
 set -euo pipefail
 
-CACHE_DIR=".voice-samples"
+SAMPLES_DIR="assets/voice-samples"
+ORIGINALS_DIR=".voice-samples/.originals"
 BUCKET="motifpath-content-media"
 FFMPEG="${FFMPEG:-ffmpeg}"
 
@@ -63,22 +67,22 @@ download() {
   mv "$staging" "$dir"
 }
 
-# render VOICE PITCHES... writes CACHE_DIR/VOICE/PITCH.mp3 for every pitch
+# render VOICE PITCHES... writes SAMPLES_DIR/VOICE/PITCH.mp3 for every pitch
 # not rendered yet, and fails if any of them couldn't be. It runs as the
 # left side of `||`, where bash ignores `set -e`, so every failure is checked
 # explicitly.
 render() {
   local voice="$1"; shift
-  local upstream="${UPSTREAM[$voice]:-}" originals="$CACHE_DIR/.originals/$voice"
+  local upstream="${UPSTREAM[$voice]:-}" originals="$ORIGINALS_DIR/$voice"
   if [ -z "$upstream" ]; then
     echo "   no recordings known for voice '$voice'; skipping it" >&2
     return 0
   fi
-  mkdir -p "$CACHE_DIR/$voice"
+  mkdir -p "$SAMPLES_DIR/$voice"
 
   local missing=()
   for pitch in "$@"; do
-    [ -f "$CACHE_DIR/$voice/$pitch.mp3" ] || missing+=("$pitch")
+    [ -f "$SAMPLES_DIR/$voice/$pitch.mp3" ] || missing+=("$pitch")
   done
   [ "${#missing[@]}" -eq 0 ] && return 0
 
@@ -115,7 +119,7 @@ render() {
     shift=$((pitch - nearest))
     # Rendered under a temporary name, so a failed or interrupted render never
     # leaves a broken file that later runs would take as done.
-    output="$CACHE_DIR/$voice/$pitch.mp3" partial="$CACHE_DIR/$voice/$pitch.partial.mp3"
+    output="$SAMPLES_DIR/$voice/$pitch.mp3" partial="$SAMPLES_DIR/$voice/$pitch.partial.mp3"
     if "$FFMPEG" -v error -y -i "${recording[$nearest]}" \
       -af "aresample=44100,asetrate=44100*pow(2\,${shift}/12),aresample=44100,atrim=0:3,afade=t=out:st=2.4:d=0.6" \
       -ac 1 -b:a 96k "$partial" && mv "$partial" "$output"; then
@@ -141,9 +145,10 @@ done < <(docker compose exec -T postgres psql -U motifpath -d core_domain -tA \
 
 echo "==> Uploading voice samples to the local object store"
 docker compose up -d objectstore >/dev/null
-docker compose run --rm -v "$(pwd)/$CACHE_DIR:/samples:ro" --entrypoint sh objectstore-init -c "
+docker compose run --rm -v "$(pwd)/$SAMPLES_DIR:/samples:ro" --entrypoint sh objectstore-init -c "
   aws s3api head-bucket --bucket $BUCKET 2>/dev/null || aws s3 mb s3://$BUCKET >/dev/null
-  aws s3 sync /samples s3://$BUCKET/audio/voices --exclude '.originals/*' --exclude '*.partial.mp3' --only-show-errors
+  aws s3 sync /samples s3://$BUCKET/audio/voices --exclude '*' --include '*.mp3' --exclude '*.partial.mp3' \
+    --content-type audio/mpeg --only-show-errors
 "
 echo "==> voice samples done"
 exit "$failed"
