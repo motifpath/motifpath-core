@@ -104,10 +104,10 @@ NEVER access the database directly from the domain layer.
   `ADMIN_CLERK_USER_ID=<your clerk user id>` to also bootstrap your own real identity as admin —
   self-registration can never create an admin role (`domain.NewUser` refuses it), so this goes
   through the user repository directly, the same way a hand-run SQL insert would.
-  It finishes by uploading the voice samples diagrams play with (`scripts/voice-samples.sh`).
-  Rendering them needs ffmpeg and Bash 4+, which mise doesn't provide: without them (and no
-  `.voice-samples/` cache) the reset still succeeds but warns, and diagrams stay silent;
-  see README → Voice samples.
+  It finishes by uploading the committed voice samples diagrams play with
+  (`assets/voice-samples/`, via `scripts/voice-samples.sh`, which needs Bash 4+). Only a
+  sample not committed yet needs rendering, with ffmpeg; every deploy publishes the same
+  folder to the environment's media bucket. See README → Voice samples.
 - `go run ./cmd/seed-dev-data` → seeds one realistic path for whichever student already exists
   (sign in once through the SPA first). Lighter than `db:reset` + `seed-full`; doesn't touch
   courses.
