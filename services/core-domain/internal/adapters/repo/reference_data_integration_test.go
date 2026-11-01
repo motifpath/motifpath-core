@@ -5,7 +5,9 @@ package repo
 import (
 	"context"
 	"database/sql"
+	"maps"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -62,6 +64,15 @@ func TestFreshInstall(t *testing.T) {
 		assert.Equal(t, map[string]string{"acoustic-guitar": "fretted", "electric-bass": "fretted", "piano": "keyboard"},
 			stringPairs(t, ctx, db, "SELECT id, family FROM voices"))
 		assert.LessOrEqual(t, count(t, "SELECT min(p::int) FROM voices, jsonb_array_elements_text(pitches) AS p WHERE id = 'electric-bass'"), 28)
+	})
+
+	// Hosted environments get exactly the committed samples on every deploy,
+	// so a listed pitch without a file is a sound no environment can play.
+	t.Run("every voice pitch has a committed sample, and every sample a pitch", func(t *testing.T) {
+		listed := slices.Sorted(maps.Keys(stringPairs(t, ctx, db,
+			"SELECT id || '/' || p || '.mp3', '' FROM voices, jsonb_array_elements_text(pitches) AS p")))
+		committed := committedVoiceSamples(t)
+		assert.Equal(t, listed, committed)
 	})
 
 	t.Run("the catalog instruments have their fixed ids, names, voices and icons", func(t *testing.T) {
@@ -202,6 +213,25 @@ func TestFreshInstall(t *testing.T) {
 }
 
 // stringPairs runs a two-column query and returns its rows as a map.
+// voiceSamplesDir is where the rendered samples are committed, from this
+// package's directory.
+const voiceSamplesDir = "../../../../../assets/voice-samples"
+
+// committedVoiceSamples lists every committed sample as voice/pitch.mp3, sorted.
+func committedVoiceSamples(t *testing.T) []string {
+	t.Helper()
+	files, err := filepath.Glob(filepath.Join(voiceSamplesDir, "*", "*.mp3"))
+	require.NoError(t, err)
+	samples := make([]string, 0, len(files))
+	for _, file := range files {
+		rel, err := filepath.Rel(voiceSamplesDir, file)
+		require.NoError(t, err)
+		samples = append(samples, filepath.ToSlash(rel))
+	}
+	slices.Sort(samples)
+	return samples
+}
+
 func stringPairs(t *testing.T, ctx context.Context, db *sql.DB, query string) map[string]string {
 	t.Helper()
 	rows, err := db.QueryContext(ctx, query)

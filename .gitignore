@@ -37,3 +37,6 @@ plans/
 
 # Python bytecode (scripts/*)
 __pycache__/
+
+# A sample rendered under its temporary name, never committed
+assets/voice-samples/**/*.partial.mp3

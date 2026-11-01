@@ -38,6 +38,10 @@ WORKDIR /app
 COPY --from=build /out/core-domain /app/core-domain
 COPY --from=build /out/engagement-mailer /app/engagement-mailer
 COPY --from=build /src/services/core-domain/internal/adapters/repo/ent/migrate/migrations /app/internal/adapters/repo/ent/migrate/migrations
+# Not read by the service: deploy/deploy.sh copies them out of the image and
+# publishes them to the environment's media bucket, so every release carries
+# the samples of the voices its migrations list.
+COPY --from=build /src/assets/voice-samples /app/voice-samples
 
 USER nonroot:nonroot
 EXPOSE 8080

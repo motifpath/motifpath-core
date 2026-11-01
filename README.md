@@ -161,8 +161,8 @@ the repo — there is no shell to enter.
 - **Progress stops saving after `make db:reset`** — `event-ingestion` still holds the user ids
   from before the reset. Run `process-compose process restart event-ingestion` from the repo
   and reload the browser.
-- **Diagrams play no sound** — the voice samples aren't in the local object store. Install
-  ffmpeg and Bash 4+, then run `scripts/voice-samples.sh` (or `make db:reset`).
+- **Diagrams play no sound** — the voice samples aren't in the local object store. Run
+  `scripts/voice-samples.sh` (or `make db:reset`); it needs Bash 4+.
 - **Sign-in ends at `/welcome/error`, or every API call returns 401** — `CLERK_SECRET_KEY` is
   missing, is a `pk_test_…` key, or belongs to a different Clerk instance than the web app's
   publishable key.
@@ -260,18 +260,22 @@ Deployed environments set this explicitly.
 
 `GET /voices` lists each voice's samples at
 `{MEDIA_PUBLIC_BASE_URL}/audio/voices/{voice_id}/{midi}.mp3`. The voices and
-their pitches come from the migrations; the audio files don't, so a diagram
-stays silent wherever they haven't been uploaded.
+their pitches come from the migrations; the audio files are committed in
+[`assets/voice-samples/`](assets/voice-samples/README.md), and a reference-data
+integration test fails when the two disagree.
 
-- **Local:** `make db:reset` runs `scripts/voice-samples.sh`, which renders the
-  samples into `.voice-samples/` (gitignored) and uploads them to the local object store.
-  Rendering needs ffmpeg and Bash 4+, which mise doesn't provide (see Prerequisites).
-  Later runs upload from the cache without ffmpeg.
-- **Deployed environments:** before (or with) the first deploy that includes
-  a new voice or new pitches, render locally as above and copy the files to
-  the environment's media bucket under the same path, with long-lived caching
-  since a sample never changes:
-  `aws s3 sync .voice-samples/ s3://<media-bucket>/audio/voices/ --exclude '.originals/*' --cache-control 'public, max-age=31536000, immutable'`
+- **Local:** `make db:reset` runs `scripts/voice-samples.sh`, which uploads the
+  committed samples to the local object store.
+- **Deployed environments:** every deploy copies the samples out of the
+  core-domain image and syncs them to the environment's media bucket before the
+  new containers start, then checks each one answers at the public media URL.
+  Nothing to do by hand.
+- **A new voice or new pitches:** add them in the migration, then run
+  `scripts/voice-samples.sh` to render the missing files into
+  `assets/voice-samples/` and commit them with it. Rendering needs ffmpeg and
+  Bash 4+, which mise doesn't provide (see Prerequisites). Never re-render a
+  sample in place: players cache it as immutable, so a changed sound needs a
+  new voice id.
 
 ## Commands
 
