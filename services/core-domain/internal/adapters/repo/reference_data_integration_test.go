@@ -84,10 +84,14 @@ func TestFreshInstall(t *testing.T) {
 	})
 
 	t.Run("the knowledge map has its nodes and edges, with fixed ids", func(t *testing.T) {
-		assert.Equal(t, map[string]string{"skill": "219", "concept": "125"}, stringPairs(t, ctx, db, "SELECT kind, count(*)::text FROM knowledge_nodes GROUP BY kind"))
-		assert.Equal(t, map[string]string{"applies": "366", "requires": "144"}, stringPairs(t, ctx, db, "SELECT type, count(*)::text FROM knowledge_edges GROUP BY type"))
+		assert.Equal(t, map[string]string{"skill": "221", "concept": "125"}, stringPairs(t, ctx, db, "SELECT kind, count(*)::text FROM knowledge_nodes GROUP BY kind"))
+		assert.Equal(t, map[string]string{"applies": "370", "requires": "144"}, stringPairs(t, ctx, db, "SELECT type, count(*)::text FROM knowledge_edges GROUP BY type"))
 		assert.Equal(t, 1, count(t, "SELECT count(*) FROM knowledge_nodes WHERE key = 'scales' AND id = '"+catalogID("knowledge-node/scales")+"'"))
 		assert.Equal(t, 1, count(t, "SELECT count(*) FROM knowledge_edges WHERE id = '"+catalogID("knowledge-edge/requires/change-chords/play-open-chords")+"'"))
+	})
+
+	t.Run("the universal note skills have their fixed classification", func(t *testing.T) {
+		assertFirstNotesSkills(t, ctx, db)
 	})
 
 	invariants := []struct {

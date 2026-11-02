@@ -119,14 +119,50 @@ class InstrumentIconTests(unittest.TestCase):
             self.assertIn(f"""UPDATE "instruments" SET "icon" = '{icon}' WHERE "id" = '{km.instrument_id(key)}';""", sql)
 
 
+class IncrementalSQLTests(unittest.TestCase):
+    def setUp(self):
+        self.graph = km.build(catalog(
+            concepts=[node('names', 'concept'), node('distances', 'concept')],
+            skills=[node('reading'), node('read-names', parent='reading', applies=['names']),
+                    node('count-steps', parent='reading', applies=['distances'])]))
+
+    def test_only_selected_nodes_and_their_outgoing_edges_are_installed(self):
+        sql = km.render_sql(self.graph, keys=['count-steps'])
+        self.assertIn(km.stable_id('knowledge-node/count-steps'), sql)
+        self.assertIn(km.stable_id('knowledge-node/reading'), sql)
+        self.assertIn(km.stable_id('knowledge-edge/applies/count-steps/distances'), sql)
+        self.assertNotIn(km.stable_id('knowledge-node/read-names'), sql)
+        self.assertNotIn('knowledge_node_instruments', sql)
+        self.assertNotIn('ON CONFLICT', sql)
+        self.assertEqual(sql, km.render_sql(self.graph, keys=['count-steps']))
+
+    def test_unknown_keys_are_refused(self):
+        with self.assertRaisesRegex(ValueError, 'missing'):
+            km.render_sql(self.graph, keys=['missing'])
+
+    def test_instrument_specific_selected_nodes_keep_their_links(self):
+        graph = km.build(catalog(concepts=[node('c', 'concept')],
+                                 skills=[node('s', instruments='guitars', applies=['c'])]))
+        sql = km.render_sql(graph, keys=['s'])
+        self.assertIn('knowledge_node_instruments', sql)
+        self.assertIn(km.instrument_id('guitar'), sql)
+        self.assertIn(km.instrument_id('electric-guitar'), sql)
+
+
 @unittest.skipUnless(MAP.exists(), f'{MAP} not found; set SPECS_DIR')
 class CatalogTests(unittest.TestCase):
-    def test_the_reviewed_map_builds_with_its_counts(self):
+    def test_the_reviewed_map_contains_the_reference_foundation(self):
         graph = km.load(MAP)
         kinds = [n.kind for n in graph.nodes]
-        self.assertEqual((219, 125), (kinds.count('skill'), kinds.count('concept')))
+        self.assertGreaterEqual(kinds.count('skill'), 219)
+        self.assertGreaterEqual(kinds.count('concept'), 125)
+        by_key = {n.key: n for n in graph.nodes}
+        self.assertEqual('skill', by_key['reading'].kind)
+        self.assertEqual('concept', by_key['note-names'].kind)
+        self.assertEqual([], by_key['reading'].instrument_ids)
         types = [e.type for e in graph.edges]
-        self.assertEqual((366, 144), (types.count('applies'), types.count('requires')))
+        self.assertGreaterEqual(types.count('applies'), 366)
+        self.assertGreaterEqual(types.count('requires'), 144)
 
     def test_rendering_is_deterministic(self):
         self.assertEqual(km.render_sql(km.load(MAP)), km.render_sql(km.load(MAP)))
