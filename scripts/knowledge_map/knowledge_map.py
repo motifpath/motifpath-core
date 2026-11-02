@@ -284,7 +284,14 @@ def render_instrument_icons_sql():
             '-- instruments\' fixed ids.\n' + '\n'.join(rows) + '\n')
 
 
-def render_sql(graph):
+def render_sql(graph, keys=None):
+    if keys is not None:
+        selected = set(keys)
+        missing = selected - {n.key for n in graph.nodes}
+        if not selected or missing:
+            raise ValueError(f'unknown or empty node selection: {sorted(missing)}')
+        graph = Graph([n for n in graph.nodes if n.key in selected],
+                      [e for e in graph.edges if e.source in selected])
     out = ['-- Frozen knowledge map, compiled from motifpath-specs catalogs/knowledge-map.yaml by',
            '-- scripts/knowledge_map. Each id is the UUID v5 of knowledge-node/<key> or',
            '-- knowledge-edge/<type>/<from key>/<to key>. A key or id already in use stops the migration.']
@@ -295,21 +302,27 @@ def render_sql(graph):
         rows.append(f"  ({sql_text(n.id)}, '{n.kind}', {sql_text(n.key)}, {sql_text(compact(n.names))}, {parent})")
     out.append(',\n'.join(rows) + ';')
     links = [(n, i) for n in graph.nodes for i in n.instruments]
-    out.append('INSERT INTO "knowledge_node_instruments" ("knowledge_node_id", "instrument_id", "linked_at") VALUES')
-    out.append(',\n'.join(f"  ({sql_text(n.id)}, {sql_text(instrument_id(i))}, '{INSTALLED_AT}')" for n, i in links) + ';')
-    out.append('INSERT INTO "knowledge_edges" ("id", "type", "from_id", "to_id", "level") VALUES')
-    out.append(',\n'.join(
-        f"  ({sql_text(e.id)}, '{e.type}', {sql_text(stable_id('knowledge-node/' + e.source))}, "
-        f"{sql_text(stable_id('knowledge-node/' + e.target))}, {sql_text(e.level) if e.level else 'NULL'})"
-        for e in graph.edges) + ';')
+    if links:
+        out.append('INSERT INTO "knowledge_node_instruments" ("knowledge_node_id", "instrument_id", "linked_at") VALUES')
+        out.append(',\n'.join(f"  ({sql_text(n.id)}, {sql_text(instrument_id(i))}, '{INSTALLED_AT}')" for n, i in links) + ';')
+    if graph.edges:
+        out.append('INSERT INTO "knowledge_edges" ("id", "type", "from_id", "to_id", "level") VALUES')
+        out.append(',\n'.join(
+            f"  ({sql_text(e.id)}, '{e.type}', {sql_text(stable_id('knowledge-node/' + e.source))}, "
+            f"{sql_text(stable_id('knowledge-node/' + e.target))}, {sql_text(e.level) if e.level else 'NULL'})"
+            for e in graph.edges) + ';')
     return '\n'.join(out) + '\n'
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--specs', type=Path, default=Path(__file__).resolve().parents[3] / 'motifpath-specs')
+    parser.add_argument('--only-keys', nargs='+', help='render additive SQL for these nodes; their parents and targets must already be installed')
     args = parser.parse_args()
     graph = load(args.specs / 'catalogs/knowledge-map.yaml')
+    if args.only_keys is not None:
+        print(render_sql(graph, keys=args.only_keys), end='')
+        return
     kinds = [n.kind for n in graph.nodes]
     types = [e.type for e in graph.edges]
     print(json.dumps(dict(skills=kinds.count('skill'), concepts=kinds.count('concept'),

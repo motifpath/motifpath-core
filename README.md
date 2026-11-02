@@ -323,6 +323,31 @@ ADMIN_TOKEN=... scripts/app-config.sh set starting_points starting-points.local.
 A refused value comes back 400 with every problem listed and nothing stored. Until production
 exists, `make db:reset` wipes the settings with everything else — set them again afterwards.
 
+## Adding knowledge-map reference data
+
+Applied migrations stay unchanged. After a catalog addition is approved in specs, generate
+an additive migration for only the new keys. Their parent nodes and edge targets must
+already exist, or be included in the same selection. From the repository root:
+
+```bash
+python3 scripts/knowledge_map/knowledge_map.py --specs ../motifpath-specs \
+  --only-keys interpret-note-names count-semitone-steps \
+  > services/core-domain/internal/adapters/repo/ent/migrate/migrations/20261102150000_first_notes_skills_reference_data.up.sql
+atlas migrate hash --dir file://services/core-domain/internal/adapters/repo/ent/migrate/migrations
+```
+
+Use the approved specs revision when reproducing an existing migration. The first-notes
+addition comes from specs `b734ea3474e4cd5937713ce26d7c798c9cac66f6`. Generate future
+additions into a new timestamped file, never over an applied file. The renderer validates
+the full source graph, emits selected nodes and their outgoing edges, and refuses unknown
+keys. Inserts fail on a duplicate ID/key rather than silently accepting a different row.
+
+The two new universal skill IDs are `b172ca6a-311a-5ad6-ae5c-f249e7ecd55c`
+(`interpret-note-names`) and `e63e430c-3569-5916-8ad5-850a4380a79d`
+(`count-semitone-steps`). Source-generated IDs do not prove that an environment has applied
+the migration. Verify the installed nodes, bilingual names, parent and concept links before
+using them in authored content.
+
 ## Architecture
 
 Each service follows hexagonal architecture:
