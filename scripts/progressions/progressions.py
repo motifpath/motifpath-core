@@ -88,10 +88,28 @@ def build(raw, node_keys):
     return list(built.values())
 
 
+# The catalog's progressions. A new one is created and added to the drills in
+# production: a migration can't know which progressions admins have created there,
+# so inserting one could break their (mode, bars) uniqueness and abort the install.
+CATALOG_KEYS = frozenset({
+    'I-IV-V-I', 'I-IV-I-V', 'I-V-vi-IV', 'vi-IV-I-V', 'I-vi-IV-V', 'I-vi-ii-V', 'ii-V-I', 'IV-V-I',
+    '12-bar-blues', '12-bar-blues-quick-change',
+})
+
+
+def check_closed(progressions):
+    """Refuses a key the catalog didn't have when it closed to new rows."""
+    new = sorted(p.key for p in progressions if p.key not in CATALOG_KEYS)
+    if new:
+        raise ValueError(f'the progression catalog takes no new rows: {", ".join(new)}')
+
+
 def load(path, map_path):
     with open(path, encoding='utf-8') as f:
         raw = yaml.safe_load(f) or {}
-    return build(raw, {n.key for n in km.load(map_path).nodes})
+    built = build(raw, {n.key for n in km.load(map_path).nodes})
+    check_closed(built)
+    return built
 
 
 def node_ids(map_path):

@@ -36,6 +36,13 @@ class ValidationTests(unittest.TestCase):
         self.assertEqual(['I', 'V', 'vi', 'IV'], built[0].bars)
         self.assertEqual(['I-vi-IV-V'], built[0].confusable)
 
+    def test_the_catalog_is_closed_to_new_keys(self):
+        with self.assertRaisesRegex(ValueError, 'I-bVII-IV-I'):
+            pg.check_closed(pg.build(catalog(entry('I-bVII-IV-I', ['I', 'IV', 'V', 'vi'])), NODES))
+
+    def test_the_catalogs_own_keys_pass_the_closed_check(self):
+        pg.check_closed(pg.build(catalog(POP, DOO_WOP), NODES))
+
     def test_ids_are_uuid5_of_the_key_under_the_catalog_namespace(self):
         self.assertEqual(str(uuid.uuid5(uuid.UUID('4ac75155-7804-5527-a6ba-01b73c0e3e1a'), 'progression/ii-V-I')),
                          pg.progression_id('ii-V-I'))
