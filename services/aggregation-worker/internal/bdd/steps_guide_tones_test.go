@@ -18,6 +18,8 @@ func registerGuideToneSteps(sc *godog.ScenarioContext, w *world) {
 	// ── Grading ────────────────────────────────────────────────────────────────
 	sc.Step(`^"([^"]*)" taps the third of each bar of "([^"]*)" in ([A-G][b#]?) at (\d+) BPM within its bar$`, w.tapsEveryThird)
 	sc.Step(`^"([^"]*)" taps the third of "([^"]*)" at (\d+) milliseconds and of "([^"]*)" at (\d+) milliseconds in a take of "([^"]*)" in ([A-G][b#]?) at (\d+) BPM in ([a-z_]+)$`, w.tapsTwoThirdsInNoteValue)
+	sc.Step(`^the drills have the created progression "([^"]*)" with the bars ((?:\S+ ?)+)$`, w.drillsHaveCreatedProgression)
+	sc.Step(`^"([^"]*)" taps the sevenths "([^"]*)" within their bars in a take of "([^"]*)" in ([A-G][b#]?) at (\d+) BPM$`, w.tapsTheSevenths)
 	sc.Step(`^"([^"]*)" has auto-graded evidence for that guide tone that is (right|wrong)$`, w.hasGuideToneEvidence)
 	sc.Step(`^the evidence's answer key marks all (\d+) bars hit$`, w.answerKeyMarksAllBarsHit)
 	sc.Step(`^the evidence's answer key marks only the first bar hit$`, w.answerKeyMarksOnlyTheFirstBarHit)
@@ -35,6 +37,35 @@ func registerGuideToneSteps(sc *godog.ScenarioContext, w *world) {
 var guideProgressions = map[string][]string{
 	"ii-V-I":    {"ii", "V", "I", "I"},
 	"I-V-vi-IV": {"I", "V", "vi", "IV"},
+}
+
+// drillsHaveCreatedProgression puts a progression an admin added to the drills in
+// the reference snapshot, as a guide tone on the scenario's guitar.
+func (w *world) drillsHaveCreatedProgression(key, bars string) error {
+	id := stableUUID("instrument", "guitar")
+	w.reference.instruments[id] = domain.InstrumentReference{ID: id, Tuning: standardGuitar}
+	w.reference.progressions[key] = domain.ProgressionReference{Key: key, Bars: strings.Fields(bars)}
+	w.guideKey = "guide_tone:" + id + ":" + key
+	return nil
+}
+
+// tapsTheSevenths answers a take of tone 7 in the created progression, one named
+// note per bar, each well inside its bar.
+func (w *world) tapsTheSevenths(student, notes, _, key string, bpm int) error {
+	sharps := map[string]int{"C": 0, "C#": 1, "D": 2, "D#": 3, "E": 4, "F": 5, "F#": 6, "G": 7, "G#": 8, "A": 9, "A#": 10, "B": 11}
+	barMs := 4 * 60_000 / bpm
+	var taps []domain.TimedTap
+	for bar, note := range strings.Fields(notes) {
+		pitch, ok := sharps[note]
+		if !ok {
+			return fmt.Errorf("no note %q", note)
+		}
+		taps = append(taps, guitarTap(pitch, bar*barMs+100))
+	}
+	tempo := bpm
+	return w.answer(student, w.guideKey, domain.PracticeResponse{
+		Type: domain.PracticeResponseTimedTaps, MusicKey: key, Tone: "7", TempoBPM: &tempo, Taps: taps,
+	})
 }
 
 // guideToneOnGuitar is the guide tone of progression on the scenario's guitar; the
