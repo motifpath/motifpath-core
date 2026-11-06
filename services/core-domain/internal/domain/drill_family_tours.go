@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 	"slices"
-	"strings"
 )
 
 // PracticeItemKindProgressionKeys is a progression key tour: a progression of
@@ -220,14 +219,20 @@ func tourMinTempo() int {
 }
 
 // chordThirdAndFifth are the semitones from chord's root to its third and its
-// fifth: minor and diminished chords have a minor third, a diminished one a
-// flat fifth, and a seventh keeps its triad's.
+// fifth: its triad's, since a seventh keeps the triad under it. Minor and
+// diminished triads have a minor third, a diminished one a flat fifth.
 func chordThirdAndFifth(chord string) (third, fifth int) {
-	switch {
-	case strings.HasSuffix(chord, "dim"):
+	reading := ParseChordSymbol(chord)
+	if reading.Parsed == nil {
+		return 4, 7
+	}
+	switch triadOf[reading.Parsed.Quality] {
+	case triadDiminished:
 		return 3, 6
-	case strings.HasSuffix(chord, "m"):
+	case triadMinor:
 		return 3, 7
+	case triadMajor, triadNone:
+		return 4, 7
 	}
 	return 4, 7
 }

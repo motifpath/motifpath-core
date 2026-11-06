@@ -1,9 +1,6 @@
 package domain
 
-import (
-	"slices"
-	"strings"
-)
+import "slices"
 
 // MusicKeys are the twelve major keys, spelled as the chord catalog spells
 // roots, by pitch class from C: a chord's root is always written this way,
@@ -26,23 +23,12 @@ const (
 // them.
 var ChordFunctions = []ChordFunction{ChordFunctionTonic, ChordFunctionSubdominant, ChordFunctionDominant}
 
-// diatonicTriad is a scale degree's triad in a major key: semitones above
-// the tonic, the chord symbol's suffix and its function.
-type diatonicTriad struct {
-	semitones int
-	suffix    string
-	function  ChordFunction
-}
-
-// diatonicTriads are the major key's triads by numeral, viio being vii°.
-var diatonicTriads = map[string]diatonicTriad{
-	"I":    {0, "", ChordFunctionTonic},
-	"ii":   {2, "m", ChordFunctionSubdominant},
-	"iii":  {4, "m", ChordFunctionTonic},
-	"IV":   {5, "", ChordFunctionSubdominant},
-	"V":    {7, "", ChordFunctionDominant},
-	"vi":   {9, "m", ChordFunctionTonic},
-	"viio": {11, "dim", ChordFunctionDominant},
+// numeralFunctions are the major key's triads' functions by numeral, viio being
+// vii°.
+var numeralFunctions = map[string]ChordFunction{
+	"I": ChordFunctionTonic, "iii": ChordFunctionTonic, "vi": ChordFunctionTonic,
+	"ii": ChordFunctionSubdominant, "IV": ChordFunctionSubdominant,
+	"V": ChordFunctionDominant, "viio": ChordFunctionDominant,
 }
 
 // ChordNumerals are the major key's numerals, in scale order.
@@ -69,30 +55,25 @@ func keyPitchClass(key string) (int, bool) {
 	return i, i >= 0
 }
 
-// NumeralChord is the chord symbol of numeral in the major key: its triad
-// (Em, Bdim), or a dominant seventh for a progression's I7, IV7 or V7 (G7).
-// Empty for a key or numeral it doesn't know.
+// NumeralChord is the chord symbol of numeral in the major key, for any numeral
+// a progression can hold: Em for vi, Bb for ♭VII, Dm7b5 for iiø7. Empty for a key
+// or numeral it doesn't know.
 func NumeralChord(key, numeral string) string {
 	tonic, ok := keyPitchClass(key)
 	if !ok {
 		return ""
 	}
-	base, seventh := strings.CutSuffix(numeral, "7")
-	triad, ok := diatonicTriads[base]
+	parsed, ok := ParseProgressionNumeral(numeral, ProgressionModeMajor)
 	if !ok {
 		return ""
 	}
-	root := MusicKeys[(tonic+triad.semitones)%12]
-	if seventh {
-		return root + "7"
-	}
-	return root + triad.suffix
+	return MusicKeys[(tonic+parsed.RootSemitones)%12] + parsed.Quality.CanonicalSuffix()
 }
 
 // NumeralFunction is numeral's function in a major key; empty for a
 // numeral it doesn't know.
 func NumeralFunction(numeral string) ChordFunction {
-	return diatonicTriads[numeral].function
+	return numeralFunctions[numeral]
 }
 
 // ProgressionChart is a progression's chart in key: the chord symbol of each
