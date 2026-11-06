@@ -151,8 +151,8 @@ func (s *PracticeReferenceService) SyncChangeTargets(ctx context.Context) (int, 
 }
 
 // SyncProgressions writes every progression in the drills, all in one write, and
-// returns how many it wrote. Progressions come only from migrations, so this
-// sync is the only way they reach the snapshot.
+// returns how many it wrote. A progression for song charts only is never in the
+// snapshot.
 func (s *PracticeReferenceService) SyncProgressions(ctx context.Context) (int, error) {
 	progressions, err := s.progressions.ListInDrills(ctx)
 	if err != nil || len(progressions) == 0 {
