@@ -53,7 +53,7 @@ func TestProgressionCatalogService_List(t *testing.T) {
 	}
 
 	t.Run("a catalog that can't be read is an error", func(t *testing.T) {
-		_, err := application.NewProgressionCatalogService(&failingProgressions{}, fixedProgressionUses{}, newFakeLanguageRepository(), func() string { return "new-id" }, func() time.Time { return progressionNow }).List(context.Background(), progressionAdmin)
+		_, err := application.NewProgressionCatalogService(&failingProgressions{}, fixedProgressionUses{}, newFakeLanguageRepository(), newFakeKnowledgeNodeRepository(), newFakePracticeReferenceWriter(), func() string { return "new-id" }, func() time.Time { return progressionNow }).List(context.Background(), progressionAdmin)
 
 		assert.Error(t, err)
 	})

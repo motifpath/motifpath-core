@@ -307,7 +307,8 @@ func (i ChartProgressionItem) Plan(way string, planning DrillPlanning) PlannedDr
 }
 
 // confusableProgressions is progression, then its confusables in catalog,
-// then theirs, as many as fit in the options, all of its length. A tie at
+// then theirs, as many as fit in the options, all of its length and each with
+// a chart of its own, since two with one chart can't be told apart. A tie at
 // the last ring that doesn't fit whole is broken by pick.
 func confusableProgressions(progression Progression, catalog []Progression, pick func(int) int) []Progression {
 	byKey := map[string]Progression{}
@@ -316,14 +317,16 @@ func confusableProgressions(progression Progression, catalog []Progression, pick
 	}
 	offered := []Progression{progression}
 	seen := map[string]bool{progression.Key: true}
+	charts := map[string]bool{comparableChart(progression): true}
 	ring := []Progression{progression}
 	for len(ring) > 0 && len(offered) < harmonyOptions {
 		var next []Progression
 		for _, p := range ring {
 			for _, key := range p.Confusable {
 				c, ok := byKey[key]
-				if ok && !seen[key] && len(c.Bars) == len(progression.Bars) {
+				if ok && !seen[key] && len(c.Bars) == len(progression.Bars) && !charts[comparableChart(c)] {
 					seen[key] = true
+					charts[comparableChart(c)] = true
 					next = append(next, c)
 				}
 			}
@@ -332,6 +335,12 @@ func confusableProgressions(progression Progression, catalog []Progression, pick
 		ring = next
 	}
 	return offered
+}
+
+// comparableChart is p's chart in one key, as a value two progressions can
+// compare.
+func comparableChart(p Progression) string {
+	return strings.Join(ProgressionChart(p.Bars, drillComparisonKey), " ")
 }
 
 // draw sets how the question draws chords: boxes on a guitar reading when

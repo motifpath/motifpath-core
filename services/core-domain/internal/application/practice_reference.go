@@ -27,6 +27,16 @@ func putDiagramReference(ctx context.Context, references ports.PracticeReference
 	}
 }
 
+// putProgressionReference writes p's practice reference after p enters the drills,
+// under the same rules as putDiagramReference.
+func putProgressionReference(ctx context.Context, references ports.PracticeReferenceWriter, p domain.Progression) {
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), referenceWriteTimeout)
+	defer cancel()
+	if err := references.PutProgressions(ctx, []domain.Progression{p}); err != nil {
+		slog.ErrorContext(ctx, "write the progression's practice reference", "progression_key", p.Key, "error", err)
+	}
+}
+
 // putInstrumentReference writes i's practice reference after i is created,
 // under the same rules as putDiagramReference.
 func putInstrumentReference(ctx context.Context, references ports.PracticeReferenceWriter, i domain.Instrument) {
