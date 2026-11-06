@@ -40,8 +40,8 @@ func harmonyChordCatalog() *fakeChordCatalogRepository {
 }
 
 var harmonyProgressions = fakeProgressions{
-	{Key: "I-V-vi-IV", Bars: []string{"I", "V", "vi", "IV"}, Confusable: []string{"I-vi-IV-V"}, NodeIDs: []string{"skill-progressions"}, Names: domain.LocalizedText{"en": "I–V–vi–IV (pop)"}},
-	{Key: "I-vi-IV-V", Bars: []string{"I", "vi", "IV", "V"}, Confusable: []string{"I-V-vi-IV"}, NodeIDs: []string{"skill-progressions"}, Names: domain.LocalizedText{"en": "I–vi–IV–V (doo-wop)"}},
+	{InDrills: true, Key: "I-V-vi-IV", Bars: []string{"I", "V", "vi", "IV"}, Confusable: []string{"I-vi-IV-V"}, NodeIDs: []string{"skill-progressions"}, Names: domain.LocalizedText{"en": "I–V–vi–IV (pop)"}},
+	{InDrills: true, Key: "I-vi-IV-V", Bars: []string{"I", "vi", "IV", "V"}, Confusable: []string{"I-V-vi-IV"}, NodeIDs: []string{"skill-progressions"}, Names: domain.LocalizedText{"en": "I–vi–IV–V (doo-wop)"}},
 }
 
 // harmonyFixture is a practice fixture with the harmony drills installed,

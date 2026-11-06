@@ -674,9 +674,14 @@ func (catalogProgressions) List(context.Context) ([]domain.Progression, error) {
 		for j, key := range p.Nodes {
 			nodes[j] = deterministicUUID(string(domain.KnowledgeNodeKindSkill), key).String()
 		}
-		progressions[i] = domain.Progression{ID: p.ID, Key: p.Key, Mode: "major", Bars: p.Bars, NodeIDs: nodes, Confusable: p.Confusable, Names: domain.LocalizedText(p.Names)}
+		progressions[i] = domain.Progression{InDrills: true, ID: p.ID, Key: p.Key, Mode: "major", Bars: p.Bars, NodeIDs: nodes, Confusable: p.Confusable, Names: domain.LocalizedText(p.Names)}
 	}
 	return progressions, nil
+}
+
+// ListInDrills is the whole catalog: every catalog progression is in the drills.
+func (c catalogProgressions) ListInDrills(ctx context.Context) ([]domain.Progression, error) {
+	return c.List(ctx)
 }
 
 func catalogChartItem(progression string) (domain.ChartProgressionItem, error) {

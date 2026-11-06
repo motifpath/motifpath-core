@@ -19,6 +19,10 @@ func (failingProgressions) List(context.Context) ([]domain.Progression, error) {
 	return nil, errors.New("catalog unavailable")
 }
 
+func (failingProgressions) ListInDrills(context.Context) ([]domain.Progression, error) {
+	return nil, errors.New("catalog unavailable")
+}
+
 func TestProgressionCatalogService_List(t *testing.T) {
 	pop := domain.Progression{Key: "I-V-vi-IV", Bars: []string{"I", "V", "vi", "IV"}, Confusable: []string{"I-vi-IV-V"}}
 	blues := domain.Progression{Key: "12-bar-blues", Bars: []string{"I7", "I7", "I7", "I7", "IV7", "IV7", "I7", "I7", "V7", "IV7", "I7", "V7"}}

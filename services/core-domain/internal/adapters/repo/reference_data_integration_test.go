@@ -198,6 +198,7 @@ func TestFreshInstall(t *testing.T) {
 
 	t.Run("the progressions are installed by number, with fixed ids and their nodes' ids", func(t *testing.T) {
 		assert.Equal(t, 10, count(t, "SELECT count(*) FROM progressions WHERE mode = 'major'"))
+		assert.Equal(t, 10, count(t, "SELECT count(*) FROM progressions WHERE in_drills AND created_by IS NULL AND created_at IS NULL"))
 		assert.Equal(t, 1, count(t, "SELECT count(*) FROM progressions WHERE key = 'ii-V-I' AND id = '"+catalogID("progression/ii-V-I")+
 			"' AND bars = '[\"ii\",\"V\",\"I\",\"I\"]' AND confusable = '[\"IV-V-I\"]'"+
 			" AND node_ids = '[\""+catalogID("knowledge-node/common-progressions")+"\",\""+catalogID("knowledge-node/cadences")+"\"]'"))

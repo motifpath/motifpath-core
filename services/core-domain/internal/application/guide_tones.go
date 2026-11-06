@@ -62,7 +62,7 @@ func (src guideToneSource) Item(ctx context.Context, itemKey string) (domain.Dri
 	if !ok {
 		return nil, false, nil
 	}
-	progressions, err := src.harmony.progressions.List(ctx)
+	progressions, err := src.harmony.progressions.ListInDrills(ctx)
 	if err != nil {
 		return nil, false, err
 	}

@@ -193,17 +193,17 @@ func (c *composingInstruments) GetByID(ctx context.Context, id string) (domain.I
 	return instrument, err
 }
 
-// composingProgressions is the progression catalog, read once for one
+// composingProgressions is the drills' progressions, read once for one
 // composition.
 type composingProgressions struct {
-	progressions ports.ProgressionRepository
+	progressions ports.DrillProgressions
 	once         sync.Once
 	list         []domain.Progression
 	err          error
 }
 
-func (c *composingProgressions) List(ctx context.Context) ([]domain.Progression, error) {
-	c.once.Do(func() { c.list, c.err = c.progressions.List(ctx) })
+func (c *composingProgressions) ListInDrills(ctx context.Context) ([]domain.Progression, error) {
+	c.once.Do(func() { c.list, c.err = c.progressions.ListInDrills(ctx) })
 	return c.list, c.err
 }
 
