@@ -6940,7 +6940,7 @@ type PlannedGuideTone struct {
 		// is shown and sounded.
 		Chord string `json:"chord"`
 
-		// Numeral The bar's numeral in the progression catalog; a 7 marks a dominant seventh.
+		// Numeral The bar's numeral as the progression stores it; viio is vii° in the catalog's spelling.
 		Numeral string `json:"numeral"`
 	} `json:"bars"`
 
@@ -6984,8 +6984,10 @@ type PlannedGuideTone struct {
 	TempoBpm int `json:"tempo_bpm"`
 
 	// Tone The chord tone asked of every chord: 3 = its third, until the student is accurate on the
-	// item; 7 = its seventh in the key from then on (the major seventh of I and IV, the minor
-	// seventh of every other chord and of a dominant seventh).
+	// item; 7 = its seventh from then on:
+	// a written suffix decides (maj7 is the major seventh, 7 and ø7 the minor seventh, °7 the
+	// diminished seventh); a chord with no written seventh takes the major seventh on I and IV
+	// and the minor seventh on any other numeral, in or out of the key.
 	Tone PlannedGuideToneTone `json:"tone"`
 
 	// Voicings One voicing per distinct chord of bars.
@@ -7000,8 +7002,10 @@ type PlannedGuideTone struct {
 }
 
 // PlannedGuideToneTone The chord tone asked of every chord: 3 = its third, until the student is accurate on the
-// item; 7 = its seventh in the key from then on (the major seventh of I and IV, the minor
-// seventh of every other chord and of a dominant seventh).
+// item; 7 = its seventh from then on:
+// a written suffix decides (maj7 is the major seventh, 7 and ø7 the minor seventh, °7 the
+// diminished seventh); a chord with no written seventh takes the major seventh on I and IV
+// and the minor seventh on any other numeral, in or out of the key.
 type PlannedGuideToneTone string
 
 // PlannedProgressionKeys A progression played along with, key after key around the cycle of fourths (kind

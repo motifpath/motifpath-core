@@ -2194,16 +2194,20 @@ type TimedTapsResponse struct {
 	// TempoBpm The tempo the progression played at, in beats per minute.
 	TempoBpm int `json:"tempo_bpm"`
 
-	// Tone The chord tone asked for every chord: 3 = its third; 7 = its seventh in the key (the
-	// major seventh of I and IV, the minor seventh of every other chord).
+	// Tone The chord tone asked for every chord: 3 = its third; 7 = its seventh:
+	// a written suffix decides (maj7 is the major seventh, 7 and ø7 the minor seventh, °7 the
+	// diminished seventh); a chord with no written seventh takes the major seventh on I and IV
+	// and the minor seventh on any other numeral, in or out of the key.
 	Tone TimedTapsResponseTone `json:"tone"`
 }
 
 // TimedTapsResponseResponseType Discriminator. The student tapped along with a progression's playback.
 type TimedTapsResponseResponseType string
 
-// TimedTapsResponseTone The chord tone asked for every chord: 3 = its third; 7 = its seventh in the key (the
-// major seventh of I and IV, the minor seventh of every other chord).
+// TimedTapsResponseTone The chord tone asked for every chord: 3 = its third; 7 = its seventh:
+// a written suffix decides (maj7 is the major seventh, 7 and ø7 the minor seventh, °7 the
+// diminished seventh); a chord with no written seventh takes the major seventh on I and IV
+// and the minor seventh on any other numeral, in or out of the key.
 type TimedTapsResponseTone string
 
 // TrackingEvent A student tracking event submitted by the Vue 3 SPA to the Event Ingestion Service.
