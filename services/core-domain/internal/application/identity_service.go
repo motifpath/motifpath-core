@@ -144,6 +144,21 @@ func (s *IdentityService) refreshEmail(ctx context.Context, user domain.User, cl
 // recorded from an authenticated caller — so a missing one is reported as
 // domain.ErrNotFound rather than shown without a name.
 func (s *IdentityService) DisplayNames(ctx context.Context, ids []string) (map[string]string, error) {
+	names, err := s.KnownDisplayNames(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	for _, id := range ids {
+		if _, ok := names[id]; !ok {
+			return nil, fmt.Errorf("display name for user %s: %w", id, domain.ErrNotFound)
+		}
+	}
+	return names, nil
+}
+
+// KnownDisplayNames is DisplayNames leaving out any id that names no user: for a
+// response so widely needed that one missing user must not fail it.
+func (s *IdentityService) KnownDisplayNames(ctx context.Context, ids []string) (map[string]string, error) {
 	unique := make([]string, 0, len(ids))
 	seen := make(map[string]bool, len(ids))
 	for _, id := range ids {
@@ -155,16 +170,7 @@ func (s *IdentityService) DisplayNames(ctx context.Context, ids []string) (map[s
 	if len(unique) == 0 {
 		return map[string]string{}, nil
 	}
-	names, err := s.users.GetDisplayNames(ctx, unique)
-	if err != nil {
-		return nil, err
-	}
-	for _, id := range unique {
-		if _, ok := names[id]; !ok {
-			return nil, fmt.Errorf("display name for user %s: %w", id, domain.ErrNotFound)
-		}
-	}
-	return names, nil
+	return s.users.GetDisplayNames(ctx, unique)
 }
 
 // UpdateProfile applies update to the authenticated user's locale, time

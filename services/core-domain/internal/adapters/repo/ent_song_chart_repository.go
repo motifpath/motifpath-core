@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/schema"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/songchart"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/songchartrevision"
@@ -428,7 +429,7 @@ func toDomainSongChart(row *ent.SongChart) (domain.SongChart, error) {
 			CapoFret: row.CapoFret, TempoBPM: row.TempoBpm, TimeSignature: toDomainTimeSignature(row.TimeSignature),
 			Body: body, Warnings: toDomainWarnings(row.Warnings),
 			UnplayedProgressions: toDomainSectionProgressions(row.UnplayedProgressions),
-			UpdatedBy: row.UpdatedBy.String(), UpdatedAt: row.UpdatedAt,
+			UpdatedBy:            row.UpdatedBy.String(), UpdatedAt: row.UpdatedAt,
 		},
 	}
 	if row.RightsConfirmedBy != nil && row.RightsConfirmedAt != nil {
@@ -541,4 +542,76 @@ func (r *EntSongChartRepository) PublishedRevisions(ctx context.Context) ([]doma
 		})
 	}
 	return revisions, nil
+}
+
+// taggedBodyMarker is how a stored body with a tagged section reads. Students ask
+// for progressions on every page load and most bodies have no tag, so the queries
+// below leave those bodies in the database.
+const taggedBodyMarker = `"progression_keys":["`
+
+// ProgressionUses returns every section tagged in a chart's draft or latest
+// published revision, in no set order. Older revisions never change and don't
+// count.
+func (r *EntSongChartRepository) ProgressionUses(ctx context.Context) ([]domain.ProgressionUse, error) {
+	drafts, err := r.client.SongChart.Query().
+		Where(songchart.BodyContains(taggedBodyMarker)).
+		Select(songchart.FieldID, songchart.FieldTitle, songchart.FieldBody).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var uses []domain.ProgressionUse
+	for _, chart := range drafts {
+		drafted, err := progressionUsesOf(chart.Body, chart.ID, chart.Title, domain.ProgressionUseDraft)
+		if err != nil {
+			return nil, err
+		}
+		uses = append(uses, drafted...)
+	}
+	published, err := r.client.SongChart.Query().
+		Where(songchart.PublishedRevisionNumberNotNil()).
+		Select(songchart.FieldID, songchart.FieldPublishedRevisionNumber).
+		All(ctx)
+	if err != nil || len(published) == 0 {
+		return uses, err
+	}
+	latest := make([]predicate.SongChartRevision, len(published))
+	for i, chart := range published {
+		latest[i] = songchartrevision.And(
+			songchartrevision.SongChartID(chart.ID),
+			songchartrevision.RevisionNumber(*chart.PublishedRevisionNumber),
+		)
+	}
+	revisions, err := r.client.SongChartRevision.Query().
+		Where(songchartrevision.BodyContains(taggedBodyMarker), songchartrevision.Or(latest...)).
+		Select(songchartrevision.FieldSongChartID, songchartrevision.FieldTitle, songchartrevision.FieldBody).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, rev := range revisions {
+		tagged, err := progressionUsesOf(rev.Body, rev.SongChartID, rev.Title, domain.ProgressionUsePublished)
+		if err != nil {
+			return nil, err
+		}
+		uses = append(uses, tagged...)
+	}
+	return uses, nil
+}
+
+func progressionUsesOf(body string, chartID uuid.UUID, title string, revision domain.ProgressionUseRevision) ([]domain.ProgressionUse, error) {
+	doc, err := domain.ParseSongChartDocument([]byte(body))
+	if err != nil {
+		return nil, err
+	}
+	var uses []domain.ProgressionUse
+	for i, section := range doc.Sections {
+		for _, key := range section.ProgressionKeys {
+			uses = append(uses, domain.ProgressionUse{
+				ProgressionKey: key, SongChartID: chartID.String(), Title: title, Revision: revision,
+				SectionIndex: i, SectionLabel: section.Label,
+			})
+		}
+	}
+	return uses, nil
 }

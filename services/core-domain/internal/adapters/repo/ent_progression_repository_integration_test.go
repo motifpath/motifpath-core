@@ -110,3 +110,67 @@ func TestEntProgressionRepository_List(t *testing.T) {
 		assert.NoError(t, err)
 	})
 }
+
+func TestEntProgressionRepository_Authoring(t *testing.T) {
+	ctx := context.Background()
+	client := setupPostgres(t)
+	repository := NewEntProgressionRepository(client)
+	creator := uuid.NewString()
+	now := time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)
+	rock := domain.Progression{
+		ID: uuid.NewString(), Key: "major/I-bVII-IV-I", Mode: "major", Bars: []string{"I", "♭VII", "IV", "I"}, NodeIDs: []string{}, Confusable: []string{},
+		Names: domain.LocalizedText{"en": "I–♭VII–IV–I"}, CreatedBy: &creator, CreatedAt: &now,
+	}
+	require.NoError(t, repository.Create(ctx, rock))
+
+	t.Run("it reads back by id and by numerals", func(t *testing.T) {
+		byID, err := repository.GetByID(ctx, rock.ID)
+		require.NoError(t, err)
+		assert.Equal(t, rock.Key, byID.Key)
+		assert.Equal(t, creator, *byID.CreatedBy)
+
+		byNumerals, err := repository.FindByNumerals(ctx, "major", rock.Bars)
+		require.NoError(t, err)
+		assert.Equal(t, rock.ID, byNumerals.ID)
+	})
+
+	t.Run("not found is said so", func(t *testing.T) {
+		_, err := repository.GetByID(ctx, uuid.NewString())
+		assert.ErrorIs(t, err, domain.ErrNotFound)
+		_, err = repository.GetByID(ctx, "not-a-uuid")
+		assert.ErrorIs(t, err, domain.ErrNotFound)
+		_, err = repository.FindByNumerals(ctx, "minor", rock.Bars)
+		assert.ErrorIs(t, err, domain.ErrNotFound)
+	})
+
+	t.Run("the same mode and numerals conflict", func(t *testing.T) {
+		twin := rock
+		twin.ID, twin.Key = uuid.NewString(), "major/other"
+		assert.ErrorIs(t, repository.Create(ctx, twin), domain.ErrConflict)
+	})
+
+	t.Run("nicknames and names change and can be removed", func(t *testing.T) {
+		named := rock
+		named.Names, named.Nicknames = domain.LocalizedText{"en": "I–♭VII–IV–I (rock)"}, map[string]string{"en": "rock"}
+		require.NoError(t, repository.SaveNames(ctx, named))
+		got, err := repository.GetByID(ctx, rock.ID)
+		require.NoError(t, err)
+		assert.Equal(t, map[string]string{"en": "rock"}, got.Nicknames)
+		assert.Equal(t, "I–♭VII–IV–I (rock)", got.Names["en"])
+
+		named.Nicknames = nil
+		require.NoError(t, repository.SaveNames(ctx, named))
+		got, err = repository.GetByID(ctx, rock.ID)
+		require.NoError(t, err)
+		assert.Empty(t, got.Nicknames)
+		assert.Equal(t, rock.Key, got.Key)
+	})
+
+	t.Run("deleting frees its numerals", func(t *testing.T) {
+		require.NoError(t, repository.Delete(ctx, rock.ID))
+		_, err := repository.GetByID(ctx, rock.ID)
+		assert.ErrorIs(t, err, domain.ErrNotFound)
+		assert.ErrorIs(t, repository.Delete(ctx, rock.ID), domain.ErrNotFound)
+		assert.NoError(t, repository.Create(ctx, rock))
+	})
+}

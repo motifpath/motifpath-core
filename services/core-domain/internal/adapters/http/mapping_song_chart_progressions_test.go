@@ -42,3 +42,21 @@ func TestToGeneratedSongChartRevision_ProgressionKeys(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, untagged.ProgressionKeys, "empty, never null")
 }
+
+func TestToGeneratedProgression_Creator(t *testing.T) {
+	creator := "11111111-1111-1111-1111-111111111111"
+	progression := domain.Progression{ID: "22222222-2222-2222-2222-222222222222", Key: "major/I", Mode: "major", Bars: []string{"I"}, CreatedBy: &creator}
+
+	t.Run("a known creator is named", func(t *testing.T) {
+		got := toGeneratedProgression(progression, userNames{creator: "Ana Souza"})
+
+		require.NotNil(t, got.CreatedBy)
+		assert.Equal(t, "Ana Souza", got.CreatedBy.DisplayName)
+	})
+
+	t.Run("a creator who can't be found is left out", func(t *testing.T) {
+		got := toGeneratedProgression(progression, userNames{})
+
+		assert.Nil(t, got.CreatedBy)
+	})
+}
