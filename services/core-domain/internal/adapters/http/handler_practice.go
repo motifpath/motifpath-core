@@ -590,7 +590,10 @@ func toGeneratedProgression(p domain.Progression) generated.Progression {
 	return generated.Progression{
 		ProgressionId: mustUUID(p.ID),
 		Key:           p.Key,
+		Mode:          generated.ProgressionMode(p.Mode),
 		Bars:          nonNilStrings(p.Bars),
+		BorrowedBars:  p.BorrowedBars(),
+		InDrills:      p.InDrills,
 		Confusable:    nonNilStrings(p.Confusable),
 		Names:         generated.LocalizedNames(p.Names),
 	}
