@@ -1385,18 +1385,29 @@ var (
 	// ProgressionsColumns holds the columns for the "progressions" table.
 	ProgressionsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
-		{Name: "key", Type: field.TypeString, Unique: true, Size: 64},
+		{Name: "key", Type: field.TypeString, Unique: true, Size: 160},
 		{Name: "mode", Type: field.TypeString, Size: 16},
 		{Name: "bars", Type: field.TypeJSON},
 		{Name: "node_ids", Type: field.TypeJSON},
 		{Name: "confusable", Type: field.TypeJSON},
 		{Name: "names", Type: field.TypeJSON},
+		{Name: "in_drills", Type: field.TypeBool, Default: false},
+		{Name: "nicknames", Type: field.TypeJSON, Nullable: true},
+		{Name: "created_by", Type: field.TypeUUID, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime, Nullable: true},
 	}
 	// ProgressionsTable holds the schema information for the "progressions" table.
 	ProgressionsTable = &schema.Table{
 		Name:       "progressions",
 		Columns:    ProgressionsColumns,
 		PrimaryKey: []*schema.Column{ProgressionsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "progression_mode_bars",
+				Unique:  true,
+				Columns: []*schema.Column{ProgressionsColumns[2], ProgressionsColumns[3]},
+			},
+		},
 	}
 	// SongChartsColumns holds the columns for the "song_charts" table.
 	SongChartsColumns = []*schema.Column{

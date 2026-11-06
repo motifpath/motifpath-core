@@ -42160,6 +42160,10 @@ type ProgressionMutation struct {
 	confusable       *[]string
 	appendconfusable []string
 	names            *map[string]string
+	in_drills        *bool
+	nicknames        *map[string]string
+	created_by       *uuid.UUID
+	created_at       *time.Time
 	clearedFields    map[string]struct{}
 	done             bool
 	oldValue         func(context.Context) (*Progression, error)
@@ -42531,6 +42535,189 @@ func (m *ProgressionMutation) ResetNames() {
 	m.names = nil
 }
 
+// SetInDrills sets the "in_drills" field.
+func (m *ProgressionMutation) SetInDrills(b bool) {
+	m.in_drills = &b
+}
+
+// InDrills returns the value of the "in_drills" field in the mutation.
+func (m *ProgressionMutation) InDrills() (r bool, exists bool) {
+	v := m.in_drills
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldInDrills returns the old "in_drills" field's value of the Progression entity.
+// If the Progression object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProgressionMutation) OldInDrills(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldInDrills is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldInDrills requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldInDrills: %w", err)
+	}
+	return oldValue.InDrills, nil
+}
+
+// ResetInDrills resets all changes to the "in_drills" field.
+func (m *ProgressionMutation) ResetInDrills() {
+	m.in_drills = nil
+}
+
+// SetNicknames sets the "nicknames" field.
+func (m *ProgressionMutation) SetNicknames(value map[string]string) {
+	m.nicknames = &value
+}
+
+// Nicknames returns the value of the "nicknames" field in the mutation.
+func (m *ProgressionMutation) Nicknames() (r map[string]string, exists bool) {
+	v := m.nicknames
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldNicknames returns the old "nicknames" field's value of the Progression entity.
+// If the Progression object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProgressionMutation) OldNicknames(ctx context.Context) (v map[string]string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldNicknames is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldNicknames requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldNicknames: %w", err)
+	}
+	return oldValue.Nicknames, nil
+}
+
+// ClearNicknames clears the value of the "nicknames" field.
+func (m *ProgressionMutation) ClearNicknames() {
+	m.nicknames = nil
+	m.clearedFields[progression.FieldNicknames] = struct{}{}
+}
+
+// NicknamesCleared returns if the "nicknames" field was cleared in this mutation.
+func (m *ProgressionMutation) NicknamesCleared() bool {
+	_, ok := m.clearedFields[progression.FieldNicknames]
+	return ok
+}
+
+// ResetNicknames resets all changes to the "nicknames" field.
+func (m *ProgressionMutation) ResetNicknames() {
+	m.nicknames = nil
+	delete(m.clearedFields, progression.FieldNicknames)
+}
+
+// SetCreatedBy sets the "created_by" field.
+func (m *ProgressionMutation) SetCreatedBy(u uuid.UUID) {
+	m.created_by = &u
+}
+
+// CreatedBy returns the value of the "created_by" field in the mutation.
+func (m *ProgressionMutation) CreatedBy() (r uuid.UUID, exists bool) {
+	v := m.created_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedBy returns the old "created_by" field's value of the Progression entity.
+// If the Progression object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProgressionMutation) OldCreatedBy(ctx context.Context) (v *uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedBy is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedBy requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedBy: %w", err)
+	}
+	return oldValue.CreatedBy, nil
+}
+
+// ClearCreatedBy clears the value of the "created_by" field.
+func (m *ProgressionMutation) ClearCreatedBy() {
+	m.created_by = nil
+	m.clearedFields[progression.FieldCreatedBy] = struct{}{}
+}
+
+// CreatedByCleared returns if the "created_by" field was cleared in this mutation.
+func (m *ProgressionMutation) CreatedByCleared() bool {
+	_, ok := m.clearedFields[progression.FieldCreatedBy]
+	return ok
+}
+
+// ResetCreatedBy resets all changes to the "created_by" field.
+func (m *ProgressionMutation) ResetCreatedBy() {
+	m.created_by = nil
+	delete(m.clearedFields, progression.FieldCreatedBy)
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *ProgressionMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *ProgressionMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the Progression entity.
+// If the Progression object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProgressionMutation) OldCreatedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ClearCreatedAt clears the value of the "created_at" field.
+func (m *ProgressionMutation) ClearCreatedAt() {
+	m.created_at = nil
+	m.clearedFields[progression.FieldCreatedAt] = struct{}{}
+}
+
+// CreatedAtCleared returns if the "created_at" field was cleared in this mutation.
+func (m *ProgressionMutation) CreatedAtCleared() bool {
+	_, ok := m.clearedFields[progression.FieldCreatedAt]
+	return ok
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *ProgressionMutation) ResetCreatedAt() {
+	m.created_at = nil
+	delete(m.clearedFields, progression.FieldCreatedAt)
+}
+
 // Where appends a list predicates to the ProgressionMutation builder.
 func (m *ProgressionMutation) Where(ps ...predicate.Progression) {
 	m.predicates = append(m.predicates, ps...)
@@ -42565,7 +42752,7 @@ func (m *ProgressionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ProgressionMutation) Fields() []string {
-	fields := make([]string, 0, 6)
+	fields := make([]string, 0, 10)
 	if m.key != nil {
 		fields = append(fields, progression.FieldKey)
 	}
@@ -42583,6 +42770,18 @@ func (m *ProgressionMutation) Fields() []string {
 	}
 	if m.names != nil {
 		fields = append(fields, progression.FieldNames)
+	}
+	if m.in_drills != nil {
+		fields = append(fields, progression.FieldInDrills)
+	}
+	if m.nicknames != nil {
+		fields = append(fields, progression.FieldNicknames)
+	}
+	if m.created_by != nil {
+		fields = append(fields, progression.FieldCreatedBy)
+	}
+	if m.created_at != nil {
+		fields = append(fields, progression.FieldCreatedAt)
 	}
 	return fields
 }
@@ -42604,6 +42803,14 @@ func (m *ProgressionMutation) Field(name string) (ent.Value, bool) {
 		return m.Confusable()
 	case progression.FieldNames:
 		return m.Names()
+	case progression.FieldInDrills:
+		return m.InDrills()
+	case progression.FieldNicknames:
+		return m.Nicknames()
+	case progression.FieldCreatedBy:
+		return m.CreatedBy()
+	case progression.FieldCreatedAt:
+		return m.CreatedAt()
 	}
 	return nil, false
 }
@@ -42625,6 +42832,14 @@ func (m *ProgressionMutation) OldField(ctx context.Context, name string) (ent.Va
 		return m.OldConfusable(ctx)
 	case progression.FieldNames:
 		return m.OldNames(ctx)
+	case progression.FieldInDrills:
+		return m.OldInDrills(ctx)
+	case progression.FieldNicknames:
+		return m.OldNicknames(ctx)
+	case progression.FieldCreatedBy:
+		return m.OldCreatedBy(ctx)
+	case progression.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
 	}
 	return nil, fmt.Errorf("unknown Progression field %s", name)
 }
@@ -42676,6 +42891,34 @@ func (m *ProgressionMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetNames(v)
 		return nil
+	case progression.FieldInDrills:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetInDrills(v)
+		return nil
+	case progression.FieldNicknames:
+		v, ok := value.(map[string]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetNicknames(v)
+		return nil
+	case progression.FieldCreatedBy:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedBy(v)
+		return nil
+	case progression.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Progression field %s", name)
 }
@@ -42705,7 +42948,17 @@ func (m *ProgressionMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *ProgressionMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(progression.FieldNicknames) {
+		fields = append(fields, progression.FieldNicknames)
+	}
+	if m.FieldCleared(progression.FieldCreatedBy) {
+		fields = append(fields, progression.FieldCreatedBy)
+	}
+	if m.FieldCleared(progression.FieldCreatedAt) {
+		fields = append(fields, progression.FieldCreatedAt)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -42718,6 +42971,17 @@ func (m *ProgressionMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *ProgressionMutation) ClearField(name string) error {
+	switch name {
+	case progression.FieldNicknames:
+		m.ClearNicknames()
+		return nil
+	case progression.FieldCreatedBy:
+		m.ClearCreatedBy()
+		return nil
+	case progression.FieldCreatedAt:
+		m.ClearCreatedAt()
+		return nil
+	}
 	return fmt.Errorf("unknown Progression nullable field %s", name)
 }
 
@@ -42742,6 +43006,18 @@ func (m *ProgressionMutation) ResetField(name string) error {
 		return nil
 	case progression.FieldNames:
 		m.ResetNames()
+		return nil
+	case progression.FieldInDrills:
+		m.ResetInDrills()
+		return nil
+	case progression.FieldNicknames:
+		m.ResetNicknames()
+		return nil
+	case progression.FieldCreatedBy:
+		m.ResetCreatedBy()
+		return nil
+	case progression.FieldCreatedAt:
+		m.ResetCreatedAt()
 		return nil
 	}
 	return fmt.Errorf("unknown Progression field %s", name)

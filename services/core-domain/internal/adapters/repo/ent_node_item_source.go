@@ -117,7 +117,7 @@ func (s *EntNodeItemSource) songItems(ctx context.Context, instrumentID uuid.UUI
 	if err != nil || len(revisions) == 0 {
 		return nil, err
 	}
-	progressions, err := NewEntProgressionRepository(s.client).List(ctx)
+	progressions, err := NewEntProgressionRepository(s.client).ListInDrills(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -183,7 +183,7 @@ func (s *EntNodeItemSource) guideToneItems(ctx context.Context, instrumentID uui
 		family = append(family, n.ID)
 	}
 	family = append(family, skill.ID)
-	progressions, err := NewEntProgressionRepository(s.client).List(ctx)
+	progressions, err := NewEntProgressionRepository(s.client).ListInDrills(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -238,7 +238,7 @@ func (s *EntNodeItemSource) tourItems(ctx context.Context, instrumentID uuid.UUI
 		family = append(family, n.ID)
 	}
 	family = append(family, skill.ID)
-	progressions, err := NewEntProgressionRepository(s.client).List(ctx)
+	progressions, err := NewEntProgressionRepository(s.client).ListInDrills(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -406,7 +406,7 @@ func (s *EntNodeItemSource) harmonyItems(ctx context.Context) ([]domain.Classifi
 	for _, numeral := range domain.HarmonyItemNumerals {
 		items = append(items, domain.ClassifiedItem{ItemKey: domain.HeardChordItem{Numeral: numeral}.ItemKey(), NodeIDs: nodes[domain.PracticeItemKindHeardChord]})
 	}
-	progressions, err := NewEntProgressionRepository(s.client).List(ctx)
+	progressions, err := NewEntProgressionRepository(s.client).ListInDrills(ctx)
 	if err != nil {
 		return nil, err
 	}

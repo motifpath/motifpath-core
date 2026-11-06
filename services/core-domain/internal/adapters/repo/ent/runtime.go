@@ -700,6 +700,10 @@ func init() {
 			return nil
 		}
 	}()
+	// progressionDescInDrills is the schema descriptor for in_drills field.
+	progressionDescInDrills := progressionFields[7].Descriptor()
+	// progression.DefaultInDrills holds the default value on creation for the in_drills field.
+	progression.DefaultInDrills = progressionDescInDrills.Default.(bool)
 	songchartFields := schema.SongChart{}.Fields()
 	_ = songchartFields
 	// songchartDescTitle is the schema descriptor for title field.

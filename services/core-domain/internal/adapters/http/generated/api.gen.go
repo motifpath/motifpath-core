@@ -2054,6 +2054,102 @@ func (e PracticeRung) Valid() bool {
 	}
 }
 
+// Defines values for ProgressionMode.
+const (
+	ProgressionModeMajor ProgressionMode = "major"
+	ProgressionModeMinor ProgressionMode = "minor"
+)
+
+// Valid indicates whether the value is a known member of the ProgressionMode enum.
+func (e ProgressionMode) Valid() bool {
+	switch e {
+	case ProgressionModeMajor:
+		return true
+	case ProgressionModeMinor:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ProgressionInUseErrorReason.
+const (
+	InDrills ProgressionInUseErrorReason = "in_drills"
+	InUse    ProgressionInUseErrorReason = "in_use"
+)
+
+// Valid indicates whether the value is a known member of the ProgressionInUseErrorReason enum.
+func (e ProgressionInUseErrorReason) Valid() bool {
+	switch e {
+	case InDrills:
+		return true
+	case InUse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ProgressionInputMode.
+const (
+	ProgressionInputModeMajor ProgressionInputMode = "major"
+	ProgressionInputModeMinor ProgressionInputMode = "minor"
+)
+
+// Valid indicates whether the value is a known member of the ProgressionInputMode enum.
+func (e ProgressionInputMode) Valid() bool {
+	switch e {
+	case ProgressionInputModeMajor:
+		return true
+	case ProgressionInputModeMinor:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ProgressionNotAddableErrorReasons.
+const (
+	AlreadyInDrills         ProgressionNotAddableErrorReasons = "already_in_drills"
+	NoOtherDrillProgression ProgressionNotAddableErrorReasons = "no_other_drill_progression"
+	UnsupportedBarCount     ProgressionNotAddableErrorReasons = "unsupported_bar_count"
+	UnsupportedMode         ProgressionNotAddableErrorReasons = "unsupported_mode"
+)
+
+// Valid indicates whether the value is a known member of the ProgressionNotAddableErrorReasons enum.
+func (e ProgressionNotAddableErrorReasons) Valid() bool {
+	switch e {
+	case AlreadyInDrills:
+		return true
+	case NoOtherDrillProgression:
+		return true
+	case UnsupportedBarCount:
+		return true
+	case UnsupportedMode:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ProgressionUseRevision.
+const (
+	ProgressionUseRevisionDraft     ProgressionUseRevision = "draft"
+	ProgressionUseRevisionPublished ProgressionUseRevision = "published"
+)
+
+// Valid indicates whether the value is a known member of the ProgressionUseRevision enum.
+func (e ProgressionUseRevision) Valid() bool {
+	switch e {
+	case ProgressionUseRevisionDraft:
+		return true
+	case ProgressionUseRevisionPublished:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PromptDocumentType.
 const (
 	PromptDocumentTypeDoc PromptDocumentType = "doc"
@@ -5812,7 +5908,7 @@ type FretboardMapCell struct {
 	//   head: picking the chord for the numeral, or the numeral for the chord.
 	// - chord_function:<key>:<numeral> — a numeral's harmonic function in a major key: picking
 	//   the function of its chord, or its chord for the function.
-	// - chart_progression:<progression key> — a progression of the progression catalog read
+	// - chart_progression:<progression key> — a drill progression read
 	//   as a chart: picking the progression for four chords, or its chart for the progression.
 	//   The key is picked each time it is asked, so one item covers every key.
 	// - heard_chord:<numeral> — a numeral recognised by ear in a key a cadence sets. The key is
@@ -5836,7 +5932,8 @@ type FretboardMapCell struct {
 	// In these keys, <key> is a major key spelled as one of C Db D Eb E F F# G Ab A Bb B;
 	// <numeral> is one of I ii iii IV V vi viio (viio is vii°); <chord> is a root spelled the
 	// same way, followed by m (minor), dim (diminished), 7 (dominant seventh) or nothing
-	// (major); <progression key> is a key of the progression catalog.
+	// (major); <progression key> is the key of a drill progression: a catalog handle such as
+	// I-V-vi-IV, or a created progression's mode and ASCII numerals such as major/I-bVII-IV-I.
 	//
 	// Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
 	// grader, and its golden cases.
@@ -5951,7 +6048,7 @@ type GeneratedChoiceQuestion struct {
 
 	// Progression The progression asked for, for numbers_to_chart. Null for every other way.
 	Progression *struct {
-		// Key The progression's key in the progression catalog, such as I-V-vi-IV.
+		// Key The progression's key, such as I-V-vi-IV or major/I-bVII-IV-I.
 		Key string `json:"key"`
 
 		// Name The progression's name in the student's language, such as "I–V–vi–IV (pop)".
@@ -6867,7 +6964,7 @@ type PlannedGuideTone struct {
 
 	// Progression The progression played.
 	Progression struct {
-		// Key The progression's key in the progression catalog, such as ii-V-I.
+		// Key The progression's key, such as ii-V-I or major/I-bVII-IV-I.
 		Key string `json:"key"`
 
 		// Name The progression's name in the student's language, such as "ii–V–I".
@@ -6972,7 +7069,7 @@ type PlannedProgressionKeys struct {
 
 	// Progression The progression played.
 	Progression struct {
-		// Key The progression's key in the progression catalog, such as I-V-vi-IV.
+		// Key The progression's key, such as I-V-vi-IV or major/I-bVII-IV-I.
 		Key string `json:"key"`
 
 		// Name The progression's name in the student's language, such as "I–V–vi–IV (pop)".
@@ -7064,7 +7161,7 @@ type PlannedSong struct {
 	// layout; roots = the root of each chord, on a bass layout.
 	Plays PlannedSongPlays `json:"plays"`
 
-	// ProgressionKey The key, in the progression catalog, of the progression the chart plays that practises
+	// ProgressionKey The key of the progression the chart plays that practises
 	// the session's subject, shown as why this song was picked.
 	ProgressionKey string `json:"progression_key"`
 
@@ -7170,7 +7267,7 @@ type PracticeInstrumentCard struct {
 //   - chord_function:<key>:<numeral> — a numeral's harmonic function in a major key: picking
 //     the function of its chord, or its chord for the function.
 //
-//   - chart_progression:<progression key> — a progression of the progression catalog read
+//   - chart_progression:<progression key> — a drill progression read
 //     as a chart: picking the progression for four chords, or its chart for the progression.
 //     The key is picked each time it is asked, so one item covers every key.
 //
@@ -7202,7 +7299,8 @@ type PracticeInstrumentCard struct {
 // In these keys, <key> is a major key spelled as one of C Db D Eb E F F# G Ab A Bb B;
 // <numeral> is one of I ii iii IV V vi viio (viio is vii°); <chord> is a root spelled the
 // same way, followed by m (minor), dim (diminished), 7 (dominant seventh) or nothing
-// (major); <progression key> is a key of the progression catalog.
+// (major); <progression key> is the key of a drill progression: a catalog handle such as
+// I-V-vi-IV, or a created progression's mode and ASCII numerals such as major/I-bVII-IV-I.
 //
 // Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
 // grader, and its golden cases.
@@ -7547,7 +7645,7 @@ type PracticeSessionItem struct {
 	//   head: picking the chord for the numeral, or the numeral for the chord.
 	// - chord_function:<key>:<numeral> — a numeral's harmonic function in a major key: picking
 	//   the function of its chord, or its chord for the function.
-	// - chart_progression:<progression key> — a progression of the progression catalog read
+	// - chart_progression:<progression key> — a drill progression read
 	//   as a chart: picking the progression for four chords, or its chart for the progression.
 	//   The key is picked each time it is asked, so one item covers every key.
 	// - heard_chord:<numeral> — a numeral recognised by ear in a key a cadence sets. The key is
@@ -7571,7 +7669,8 @@ type PracticeSessionItem struct {
 	// In these keys, <key> is a major key spelled as one of C Db D Eb E F F# G Ab A Bb B;
 	// <numeral> is one of I ii iii IV V vi viio (viio is vii°); <chord> is a root spelled the
 	// same way, followed by m (minor), dim (diminished), 7 (dominant seventh) or nothing
-	// (major); <progression key> is a key of the progression catalog.
+	// (major); <progression key> is the key of a drill progression: a catalog handle such as
+	// I-V-vi-IV, or a created progression's mode and ASCII numerals such as major/I-bVII-IV-I.
 	//
 	// Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
 	// grader, and its golden cases.
@@ -7826,25 +7925,175 @@ type PracticeSummary struct {
 	StudentInstrumentIds []openapi_types.UUID `json:"student_instrument_ids"`
 }
 
-// Progression A common chord progression of the progression catalog, by number: one numeral per bar of
-// a major key, asked in whatever key a drill picks.
+// Progression A chord progression by number: one numeral per bar of a major or minor key, asked or
+// spelled in whatever key a drill or a chart picks. The catalog's progressions and those
+// admins create are listed together; in_drills tells the drill progressions apart from
+// those for song charts only.
 type Progression struct {
 	// Bars One numeral per bar, such as I V vi IV, or I7 IV7 V7 for a dominant seventh. A
 	// four-bar progression has four, a 12-bar form twelve.
-	Bars []string `json:"bars"`
+	Bars []ProgressionNumeral `json:"bars"`
 
-	// Confusable The keys of the progressions a learner mistakes it for; each lists it back.
-	Confusable []string `json:"confusable"`
+	// BorrowedBars The bars, numbered from 0, whose numeral is outside the mode's diatonic chords, judged
+	// by root and triad (a seventh doesn't change it); empty when none is.
+	BorrowedBars []int `json:"borrowed_bars"`
 
-	// Key The progression's key in the catalog, such as I-V-vi-IV, as item keys and answers name it.
-	Key string `json:"key"`
+	// Confusable The keys of the drill progressions drills offer as its wrong answers, closest first;
+	// empty for a progression that isn't in the drills.
+	Confusable []ProgressionKey `json:"confusable"`
+
+	// CreatedAt When it was created; null for the catalog's progressions.
+	CreatedAt *time.Time `json:"created_at"`
+
+	// CreatedBy The admin who created it; null for the catalog's progressions.
+	CreatedBy *UserRef `json:"created_by"`
+
+	// InDrills True for a drill progression: drills, practice and songs on it use it. False for a
+	// progression for song charts only, which is never a practice subject.
+	InDrills bool `json:"in_drills"`
+
+	// Key A progression's key, as item keys, answers and song chart tags name it: a catalog
+	// progression's handle, such as I-V-vi-IV or 12-bar-blues, or a created progression's mode
+	// and numerals in ASCII (b for ♭, # for ♯, o for °, h for ø), such as major/I-bVII-IV-I.
+	Key ProgressionKey `json:"key"`
+
+	// Mode The mode its numerals are read in.
+	Mode ProgressionMode `json:"mode"`
 
 	// Names The progression's name in each language, such as "I–V–vi–IV (pop)".
 	Names LocalizedNames `json:"names"`
 
+	// Nicknames A created progression's nickname in each language, shown after its numerals in its
+	// name; absent for one with no nickname and for the catalog's progressions.
+	Nicknames *map[string]string `json:"nicknames,omitempty"`
+
 	// ProgressionId The progression's fixed identifier.
 	ProgressionId openapi_types.UUID `json:"progression_id"`
+
+	// SongChartCount How many song charts tag it in their draft or latest published revision.
+	SongChartCount int `json:"song_chart_count"`
 }
+
+// ProgressionMode The mode its numerals are read in.
+type ProgressionMode string
+
+// ProgressionDrillsInput What a progression practises once it is in the drills; at least one skill or concept.
+type ProgressionDrillsInput struct {
+	// ConceptIds The concepts it practises.
+	ConceptIds *[]openapi_types.UUID `json:"concept_ids,omitempty"`
+
+	// SkillIds The skills it practises.
+	SkillIds *[]openapi_types.UUID `json:"skill_ids,omitempty"`
+}
+
+// ProgressionExistsError Returned when a progression with the same mode and numerals already exists.
+type ProgressionExistsError struct {
+	// Message Human-readable reason for the refusal.
+	Message string `json:"message"`
+
+	// Progression A chord progression by number: one numeral per bar of a major or minor key, asked or
+	// spelled in whatever key a drill or a chart picks. The catalog's progressions and those
+	// admins create are listed together; in_drills tells the drill progressions apart from
+	// those for song charts only.
+	Progression Progression `json:"progression"`
+}
+
+// ProgressionInUseError Returned when a progression can't be removed.
+type ProgressionInUseError struct {
+	// Message Human-readable summary of the refusal.
+	Message string `json:"message"`
+
+	// Reason in_use: a song chart's draft or latest published revision tags it (see uses).
+	// in_drills: it is a drill progression, which is never removed.
+	Reason ProgressionInUseErrorReason `json:"reason"`
+
+	// Uses The sections that tag it; empty unless reason is in_use.
+	Uses []ProgressionUse `json:"uses"`
+}
+
+// ProgressionInUseErrorReason in_use: a song chart's draft or latest published revision tags it (see uses).
+// in_drills: it is a drill progression, which is never removed.
+type ProgressionInUseErrorReason string
+
+// ProgressionInput A progression to create.
+type ProgressionInput struct {
+	// Bars One numeral per bar, as ProgressionNumeral describes, where b, #, o and h may stand
+	// for ♭, ♯, ° and ø.
+	Bars []string `json:"bars"`
+
+	// ConceptIds The concepts it practises in the drills; used only when in_drills is true.
+	ConceptIds *[]openapi_types.UUID `json:"concept_ids,omitempty"`
+
+	// InDrills True to add it to the drills as it is created.
+	InDrills *bool `json:"in_drills,omitempty"`
+
+	// Mode The mode its numerals are read in.
+	Mode ProgressionInputMode `json:"mode"`
+
+	// Nicknames An optional nickname per language, keyed by Language.code.
+	Nicknames *map[string]string `json:"nicknames,omitempty"`
+
+	// SkillIds The skills it practises in the drills; used only when in_drills is true.
+	SkillIds *[]openapi_types.UUID `json:"skill_ids,omitempty"`
+}
+
+// ProgressionInputMode The mode its numerals are read in.
+type ProgressionInputMode string
+
+// ProgressionKey A progression's key, as item keys, answers and song chart tags name it: a catalog
+// progression's handle, such as I-V-vi-IV or 12-bar-blues, or a created progression's mode
+// and numerals in ASCII (b for ♭, # for ♯, o for °, h for ø), such as major/I-bVII-IV-I.
+type ProgressionKey = string
+
+// ProgressionNicknamesInput A created progression's new nicknames.
+type ProgressionNicknamesInput struct {
+	// Nicknames The nickname per language, keyed by Language.code; empty to remove them.
+	Nicknames map[string]string `json:"nicknames"`
+}
+
+// ProgressionNotAddableError Returned when a progression can't be added to the drills, with every reason.
+type ProgressionNotAddableError struct {
+	// Message Human-readable summary of the refusal.
+	Message string `json:"message"`
+
+	// Reasons already_in_drills: it is a drill progression already. unsupported_bar_count: drills
+	// ask 4- and 12-bar progressions only. unsupported_mode: drills don't ask its mode yet.
+	// no_other_drill_progression: no other drill progression has its bar count, so drills
+	// have no wrong answer to offer.
+	Reasons []ProgressionNotAddableErrorReasons `json:"reasons"`
+}
+
+// ProgressionNotAddableErrorReasons defines model for ProgressionNotAddableError.Reasons.
+type ProgressionNotAddableErrorReasons string
+
+// ProgressionNumeral A chord by number: a root I to VII, optionally ♭ or ♯, upper case for a major chord (7 a
+// dominant seventh, maj7 a major seventh), lower case for a minor chord (7 a minor
+// seventh), or lower case with ° for a diminished chord (ø7 half-diminished, °7 diminished
+// seventh).
+type ProgressionNumeral = string
+
+// ProgressionUse A song chart section tagged with a progression.
+type ProgressionUse struct {
+	// Revision draft: the chart's draft tags it. published: its latest published revision does. A
+	// section tagged in both is listed once for each.
+	Revision ProgressionUseRevision `json:"revision"`
+
+	// SectionIndex The section, numbered from 0 in document order.
+	SectionIndex int `json:"section_index"`
+
+	// SectionLabel The section's label as the chart shows it, such as "Verse 1"; null for an unlabelled section.
+	SectionLabel *string `json:"section_label"`
+
+	// SongChartId The chart.
+	SongChartId openapi_types.UUID `json:"song_chart_id"`
+
+	// Title The chart's title.
+	Title string `json:"title"`
+}
+
+// ProgressionUseRevision draft: the chart's draft tags it. published: its latest published revision does. A
+// section tagged in both is listed once for each.
+type ProgressionUseRevision string
 
 // PromptDocument A structured rich-text document, authored with MotifPath's
 // Tiptap-based content-authoring editor and persisted exactly as the
@@ -8498,14 +8747,16 @@ type SongChartNotPublishableError struct {
 // SongChartNotPublishableErrorReasons defines model for SongChartNotPublishableError.Reasons.
 type SongChartNotPublishableErrorReasons string
 
-// SongChartProgressionKeys The progressions a section plays, by their key in the progression
-// catalog (e.g. "I-IV-V-I"), as its author tagged them. A chart with
-// a tagged section is practised as a song on those progressions'
-// knowledge nodes, played whole; an untagged chart never is. On
-// input, absent means none, and a key the catalog doesn't have is
-// refused. The server always writes it, empty for an untagged
+// SongChartProgressionKeys The progressions a section plays, by their key (e.g. "I-IV-V-I" or
+// "major/I-bVII-IV-I"), as its author tagged them. A chart with a
+// section tagged with a drill progression is practised as a song on
+// that progression's knowledge nodes, played whole; an untagged chart,
+// or one tagged only with progressions for song charts, never is. On
+// input, absent means none, and a key no progression has is refused.
+// A published revision keeps its keys even after a progression is
+// removed; a client shows such a key as the numerals it spells. The server always writes it, empty for an untagged
 // section.
-type SongChartProgressionKeys = []string
+type SongChartProgressionKeys = []ProgressionKey
 
 // SongChartRevision A published revision of a song chart. A revision never changes: a
 // correction is published as a new revision.
@@ -8612,12 +8863,14 @@ type SongChartSection struct {
 		// "Refrão"); null shows no heading.
 		Label *string `json:"label"`
 
-		// ProgressionKeys The progressions a section plays, by their key in the progression
-		// catalog (e.g. "I-IV-V-I"), as its author tagged them. A chart with
-		// a tagged section is practised as a song on those progressions'
-		// knowledge nodes, played whole; an untagged chart never is. On
-		// input, absent means none, and a key the catalog doesn't have is
-		// refused. The server always writes it, empty for an untagged
+		// ProgressionKeys The progressions a section plays, by their key (e.g. "I-IV-V-I" or
+		// "major/I-bVII-IV-I"), as its author tagged them. A chart with a
+		// section tagged with a drill progression is practised as a song on
+		// that progression's knowledge nodes, played whole; an untagged chart,
+		// or one tagged only with progressions for song charts, never is. On
+		// input, absent means none, and a key no progression has is refused.
+		// A published revision keeps its keys even after a progression is
+		// removed; a client shows such a key as the numerals it spells. The server always writes it, empty for an untagged
 		// section.
 		ProgressionKeys *SongChartProgressionKeys `json:"progression_keys,omitempty"`
 	} `json:"attrs"`
@@ -8705,8 +8958,10 @@ type SongChartTextType string
 
 // SongChartUnplayedProgression A progression a section is tagged with but doesn't play.
 type SongChartUnplayedProgression struct {
-	// ProgressionKey The tagged progression, by its key in the progression catalog.
-	ProgressionKey string `json:"progression_key"`
+	// ProgressionKey A progression's key, as item keys, answers and song chart tags name it: a catalog
+	// progression's handle, such as I-V-vi-IV or 12-bar-blues, or a created progression's mode
+	// and numerals in ASCII (b for ♭, # for ♯, o for °, h for ø), such as major/I-bVII-IV-I.
+	ProgressionKey ProgressionKey `json:"progression_key"`
 
 	// SectionIndex The section, numbered from 0 in document order.
 	SectionIndex int `json:"section_index"`
@@ -9986,6 +10241,11 @@ type ListLearningPathCreatorsParams struct {
 	Q *string `form:"q,omitempty" json:"q,omitempty"`
 }
 
+// CreateProgression409JSONResponseBody defines parameters for CreateProgression.
+type CreateProgression409JSONResponseBody struct {
+	union json.RawMessage
+}
+
 // ListSongChartsParams defines parameters for ListSongCharts.
 type ListSongChartsParams struct {
 	// Limit Maximum number of items to return in this page (ADR-031).
@@ -10120,6 +10380,15 @@ type ReplaceLearningPathJSONRequestBody = ReplaceLearningPathRequest
 // CreateMediaUploadUrlJSONRequestBody defines body for CreateMediaUploadUrl for application/json ContentType.
 type CreateMediaUploadUrlJSONRequestBody = CreateMediaUploadUrlRequest
 
+// CreateProgressionJSONRequestBody defines body for CreateProgression for application/json ContentType.
+type CreateProgressionJSONRequestBody = ProgressionInput
+
+// UpdateProgressionJSONRequestBody defines body for UpdateProgression for application/json ContentType.
+type UpdateProgressionJSONRequestBody = ProgressionNicknamesInput
+
+// AddProgressionToDrillsJSONRequestBody defines body for AddProgressionToDrills for application/json ContentType.
+type AddProgressionToDrillsJSONRequestBody = ProgressionDrillsInput
+
 // CreateSongChartJSONRequestBody defines body for CreateSongChart for application/json ContentType.
 type CreateSongChartJSONRequestBody = SongChartDraftInput
 
@@ -10250,6 +10519,68 @@ func (t SongChartSection_Content_Item) MarshalJSON() ([]byte, error) {
 }
 
 func (t *SongChartSection_Content_Item) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsProgressionExistsError returns the union data inside the CreateProgression409JSONResponseBody as a ProgressionExistsError
+func (t CreateProgression409JSONResponseBody) AsProgressionExistsError() (ProgressionExistsError, error) {
+	var body ProgressionExistsError
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromProgressionExistsError overwrites any union data inside the CreateProgression409JSONResponseBody as the provided ProgressionExistsError
+func (t *CreateProgression409JSONResponseBody) FromProgressionExistsError(v ProgressionExistsError) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeProgressionExistsError performs a merge with any union data inside the CreateProgression409JSONResponseBody, using the provided ProgressionExistsError
+func (t *CreateProgression409JSONResponseBody) MergeProgressionExistsError(v ProgressionExistsError) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsProgressionNotAddableError returns the union data inside the CreateProgression409JSONResponseBody as a ProgressionNotAddableError
+func (t CreateProgression409JSONResponseBody) AsProgressionNotAddableError() (ProgressionNotAddableError, error) {
+	var body ProgressionNotAddableError
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromProgressionNotAddableError overwrites any union data inside the CreateProgression409JSONResponseBody as the provided ProgressionNotAddableError
+func (t *CreateProgression409JSONResponseBody) FromProgressionNotAddableError(v ProgressionNotAddableError) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeProgressionNotAddableError performs a merge with any union data inside the CreateProgression409JSONResponseBody, using the provided ProgressionNotAddableError
+func (t *CreateProgression409JSONResponseBody) MergeProgressionNotAddableError(v ProgressionNotAddableError) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateProgression409JSONResponseBody) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateProgression409JSONResponseBody) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }
@@ -10490,9 +10821,21 @@ type ServerInterface interface {
 	// CreateMediaUploadUrl Request a presigned URL to upload a content-authoring media asset
 	// (POST /media/upload-url)
 	CreateMediaUploadUrl(w http.ResponseWriter, r *http.Request)
-	// ListProgressions List the progression catalog
+	// ListProgressions List the progressions
 	// (GET /progressions)
 	ListProgressions(w http.ResponseWriter, r *http.Request)
+	// CreateProgression Create a progression for song charts
+	// (POST /progressions)
+	CreateProgression(w http.ResponseWriter, r *http.Request)
+	// DeleteProgression Remove a progression created by mistake
+	// (DELETE /progressions/{progression_id})
+	DeleteProgression(w http.ResponseWriter, r *http.Request, progressionId openapi_types.UUID)
+	// UpdateProgression Change a created progression's nickname
+	// (PATCH /progressions/{progression_id})
+	UpdateProgression(w http.ResponseWriter, r *http.Request, progressionId openapi_types.UUID)
+	// AddProgressionToDrills Add a created progression to the drills
+	// (POST /progressions/{progression_id}/drills)
+	AddProgressionToDrills(w http.ResponseWriter, r *http.Request, progressionId openapi_types.UUID)
 	// ReadinessCheck Readiness probe
 	// (GET /readyz)
 	ReadinessCheck(w http.ResponseWriter, r *http.Request)
@@ -11075,9 +11418,33 @@ func (_ Unimplemented) CreateMediaUploadUrl(w http.ResponseWriter, r *http.Reque
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// ListProgressions List the progression catalog
+// ListProgressions List the progressions
 // (GET /progressions)
 func (_ Unimplemented) ListProgressions(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CreateProgression Create a progression for song charts
+// (POST /progressions)
+func (_ Unimplemented) CreateProgression(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// DeleteProgression Remove a progression created by mistake
+// (DELETE /progressions/{progression_id})
+func (_ Unimplemented) DeleteProgression(w http.ResponseWriter, r *http.Request, progressionId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UpdateProgression Change a created progression's nickname
+// (PATCH /progressions/{progression_id})
+func (_ Unimplemented) UpdateProgression(w http.ResponseWriter, r *http.Request, progressionId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// AddProgressionToDrills Add a created progression to the drills
+// (POST /progressions/{progression_id}/drills)
+func (_ Unimplemented) AddProgressionToDrills(w http.ResponseWriter, r *http.Request, progressionId openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -14443,6 +14810,98 @@ func (siw *ServerInterfaceWrapper) ListProgressions(w http.ResponseWriter, r *ht
 	handler.ServeHTTP(w, r)
 }
 
+// CreateProgression operation middleware
+func (siw *ServerInterfaceWrapper) CreateProgression(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateProgression(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteProgression operation middleware
+func (siw *ServerInterfaceWrapper) DeleteProgression(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "progression_id" -------------
+	var progressionId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "progression_id", chi.URLParam(r, "progression_id"), &progressionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "progression_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteProgression(w, r, progressionId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateProgression operation middleware
+func (siw *ServerInterfaceWrapper) UpdateProgression(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "progression_id" -------------
+	var progressionId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "progression_id", chi.URLParam(r, "progression_id"), &progressionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "progression_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateProgression(w, r, progressionId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AddProgressionToDrills operation middleware
+func (siw *ServerInterfaceWrapper) AddProgressionToDrills(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "progression_id" -------------
+	var progressionId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "progression_id", chi.URLParam(r, "progression_id"), &progressionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "progression_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AddProgressionToDrills(w, r, progressionId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ReadinessCheck operation middleware
 func (siw *ServerInterfaceWrapper) ReadinessCheck(w http.ResponseWriter, r *http.Request) {
 
@@ -15583,6 +16042,18 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/progressions", wrapper.ListProgressions)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/progressions", wrapper.CreateProgression)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/progressions/{progression_id}", wrapper.DeleteProgression)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/progressions/{progression_id}", wrapper.UpdateProgression)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/progressions/{progression_id}/drills", wrapper.AddProgressionToDrills)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/chords", wrapper.SearchChords)
@@ -20901,6 +21372,356 @@ func (response ListProgressions401JSONResponse) VisitListProgressionsResponse(w 
 	return err
 }
 
+type CreateProgressionRequestObject struct {
+	Body *CreateProgressionJSONRequestBody
+}
+
+type CreateProgressionResponseObject interface {
+	VisitCreateProgressionResponse(w http.ResponseWriter) error
+}
+
+type CreateProgression201JSONResponse Progression
+
+func (response CreateProgression201JSONResponse) VisitCreateProgressionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateProgression400JSONResponse ValidationError
+
+func (response CreateProgression400JSONResponse) VisitCreateProgressionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateProgression401JSONResponse UnauthorizedError
+
+func (response CreateProgression401JSONResponse) VisitCreateProgressionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateProgression403JSONResponse ForbiddenError
+
+func (response CreateProgression403JSONResponse) VisitCreateProgressionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateProgression409JSONResponse = CreateProgression409JSONResponseBody
+
+func (response CreateProgression409JSONResponse) VisitCreateProgressionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.union); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteProgressionRequestObject struct {
+	ProgressionId openapi_types.UUID `json:"progression_id"`
+}
+
+type DeleteProgressionResponseObject interface {
+	VisitDeleteProgressionResponse(w http.ResponseWriter) error
+}
+
+type DeleteProgression204Response struct {
+}
+
+func (response DeleteProgression204Response) VisitDeleteProgressionResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteProgression400JSONResponse ValidationError
+
+func (response DeleteProgression400JSONResponse) VisitDeleteProgressionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteProgression401JSONResponse UnauthorizedError
+
+func (response DeleteProgression401JSONResponse) VisitDeleteProgressionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteProgression403JSONResponse ForbiddenError
+
+func (response DeleteProgression403JSONResponse) VisitDeleteProgressionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteProgression404JSONResponse NotFoundError
+
+func (response DeleteProgression404JSONResponse) VisitDeleteProgressionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteProgression409JSONResponse ProgressionInUseError
+
+func (response DeleteProgression409JSONResponse) VisitDeleteProgressionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateProgressionRequestObject struct {
+	ProgressionId openapi_types.UUID `json:"progression_id"`
+	Body          *UpdateProgressionJSONRequestBody
+}
+
+type UpdateProgressionResponseObject interface {
+	VisitUpdateProgressionResponse(w http.ResponseWriter) error
+}
+
+type UpdateProgression200JSONResponse Progression
+
+func (response UpdateProgression200JSONResponse) VisitUpdateProgressionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateProgression400JSONResponse ValidationError
+
+func (response UpdateProgression400JSONResponse) VisitUpdateProgressionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateProgression401JSONResponse UnauthorizedError
+
+func (response UpdateProgression401JSONResponse) VisitUpdateProgressionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateProgression403JSONResponse ForbiddenError
+
+func (response UpdateProgression403JSONResponse) VisitUpdateProgressionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateProgression404JSONResponse NotFoundError
+
+func (response UpdateProgression404JSONResponse) VisitUpdateProgressionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateProgression409JSONResponse ConflictError
+
+func (response UpdateProgression409JSONResponse) VisitUpdateProgressionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddProgressionToDrillsRequestObject struct {
+	ProgressionId openapi_types.UUID `json:"progression_id"`
+	Body          *AddProgressionToDrillsJSONRequestBody
+}
+
+type AddProgressionToDrillsResponseObject interface {
+	VisitAddProgressionToDrillsResponse(w http.ResponseWriter) error
+}
+
+type AddProgressionToDrills200JSONResponse Progression
+
+func (response AddProgressionToDrills200JSONResponse) VisitAddProgressionToDrillsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddProgressionToDrills400JSONResponse ValidationError
+
+func (response AddProgressionToDrills400JSONResponse) VisitAddProgressionToDrillsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddProgressionToDrills401JSONResponse UnauthorizedError
+
+func (response AddProgressionToDrills401JSONResponse) VisitAddProgressionToDrillsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddProgressionToDrills403JSONResponse ForbiddenError
+
+func (response AddProgressionToDrills403JSONResponse) VisitAddProgressionToDrillsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddProgressionToDrills404JSONResponse NotFoundError
+
+func (response AddProgressionToDrills404JSONResponse) VisitAddProgressionToDrillsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddProgressionToDrills409JSONResponse ProgressionNotAddableError
+
+func (response AddProgressionToDrills409JSONResponse) VisitAddProgressionToDrillsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ReadinessCheckRequestObject struct {
 }
 
@@ -23521,9 +24342,21 @@ type StrictServerInterface interface {
 	// CreateMediaUploadUrl Request a presigned URL to upload a content-authoring media asset
 	// (POST /media/upload-url)
 	CreateMediaUploadUrl(ctx context.Context, request CreateMediaUploadUrlRequestObject) (CreateMediaUploadUrlResponseObject, error)
-	// ListProgressions List the progression catalog
+	// ListProgressions List the progressions
 	// (GET /progressions)
 	ListProgressions(ctx context.Context, request ListProgressionsRequestObject) (ListProgressionsResponseObject, error)
+	// CreateProgression Create a progression for song charts
+	// (POST /progressions)
+	CreateProgression(ctx context.Context, request CreateProgressionRequestObject) (CreateProgressionResponseObject, error)
+	// DeleteProgression Remove a progression created by mistake
+	// (DELETE /progressions/{progression_id})
+	DeleteProgression(ctx context.Context, request DeleteProgressionRequestObject) (DeleteProgressionResponseObject, error)
+	// UpdateProgression Change a created progression's nickname
+	// (PATCH /progressions/{progression_id})
+	UpdateProgression(ctx context.Context, request UpdateProgressionRequestObject) (UpdateProgressionResponseObject, error)
+	// AddProgressionToDrills Add a created progression to the drills
+	// (POST /progressions/{progression_id}/drills)
+	AddProgressionToDrills(ctx context.Context, request AddProgressionToDrillsRequestObject) (AddProgressionToDrillsResponseObject, error)
 	// ReadinessCheck Readiness probe
 	// (GET /readyz)
 	ReadinessCheck(ctx context.Context, request ReadinessCheckRequestObject) (ReadinessCheckResponseObject, error)
@@ -25877,6 +26710,129 @@ func (sh *strictHandler) ListProgressions(w http.ResponseWriter, r *http.Request
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ListProgressionsResponseObject); ok {
 		if err := validResponse.VisitListProgressionsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateProgression operation middleware
+func (sh *strictHandler) CreateProgression(w http.ResponseWriter, r *http.Request) {
+	var request CreateProgressionRequestObject
+
+	var body CreateProgressionJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateProgression(ctx, request.(CreateProgressionRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateProgression")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateProgressionResponseObject); ok {
+		if err := validResponse.VisitCreateProgressionResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteProgression operation middleware
+func (sh *strictHandler) DeleteProgression(w http.ResponseWriter, r *http.Request, progressionId openapi_types.UUID) {
+	var request DeleteProgressionRequestObject
+
+	request.ProgressionId = progressionId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteProgression(ctx, request.(DeleteProgressionRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteProgression")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteProgressionResponseObject); ok {
+		if err := validResponse.VisitDeleteProgressionResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateProgression operation middleware
+func (sh *strictHandler) UpdateProgression(w http.ResponseWriter, r *http.Request, progressionId openapi_types.UUID) {
+	var request UpdateProgressionRequestObject
+
+	request.ProgressionId = progressionId
+
+	var body UpdateProgressionJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateProgression(ctx, request.(UpdateProgressionRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateProgression")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateProgressionResponseObject); ok {
+		if err := validResponse.VisitUpdateProgressionResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AddProgressionToDrills operation middleware
+func (sh *strictHandler) AddProgressionToDrills(w http.ResponseWriter, r *http.Request, progressionId openapi_types.UUID) {
+	var request AddProgressionToDrillsRequestObject
+
+	request.ProgressionId = progressionId
+
+	var body AddProgressionToDrillsJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AddProgressionToDrills(ctx, request.(AddProgressionToDrillsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AddProgressionToDrills")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AddProgressionToDrillsResponseObject); ok {
+		if err := validResponse.VisitAddProgressionToDrillsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

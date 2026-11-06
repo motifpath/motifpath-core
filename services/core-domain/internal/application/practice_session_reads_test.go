@@ -18,9 +18,9 @@ type countingProgressions struct {
 	reads        int
 }
 
-func (c *countingProgressions) List(ctx context.Context) ([]domain.Progression, error) {
+func (c *countingProgressions) ListInDrills(ctx context.Context) ([]domain.Progression, error) {
 	c.reads++
-	return c.progressions.List(ctx)
+	return c.progressions.ListInDrills(ctx)
 }
 
 // countingChordDrills is a ports.ChordDrillRepository over catalog that

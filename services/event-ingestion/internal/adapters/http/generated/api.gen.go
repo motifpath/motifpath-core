@@ -1573,7 +1573,7 @@ type PlannedPracticeItem struct {
 	//   head: picking the chord for the numeral, or the numeral for the chord.
 	// - chord_function:<key>:<numeral> — a numeral's harmonic function in a major key: picking
 	//   the function of its chord, or its chord for the function.
-	// - chart_progression:<progression key> — a progression of the progression catalog read
+	// - chart_progression:<progression key> — a drill progression read
 	//   as a chart: picking the progression for four chords, or its chart for the progression.
 	//   The key is picked each time it is asked, so one item covers every key.
 	// - heard_chord:<numeral> — a numeral recognised by ear in a key a cadence sets. The key is
@@ -1597,7 +1597,8 @@ type PlannedPracticeItem struct {
 	// In these keys, <key> is a major key spelled as one of C Db D Eb E F F# G Ab A Bb B;
 	// <numeral> is one of I ii iii IV V vi viio (viio is vii°); <chord> is a root spelled the
 	// same way, followed by m (minor), dim (diminished), 7 (dominant seventh) or nothing
-	// (major); <progression key> is a key of the progression catalog.
+	// (major); <progression key> is the key of a drill progression: a catalog handle such as
+	// I-V-vi-IV, or a created progression's mode and ASCII numerals such as major/I-bVII-IV-I.
 	//
 	// Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
 	// grader, and its golden cases.
@@ -1646,7 +1647,7 @@ type PracticeItemAnsweredEvent struct {
 	//   head: picking the chord for the numeral, or the numeral for the chord.
 	// - chord_function:<key>:<numeral> — a numeral's harmonic function in a major key: picking
 	//   the function of its chord, or its chord for the function.
-	// - chart_progression:<progression key> — a progression of the progression catalog read
+	// - chart_progression:<progression key> — a drill progression read
 	//   as a chart: picking the progression for four chords, or its chart for the progression.
 	//   The key is picked each time it is asked, so one item covers every key.
 	// - heard_chord:<numeral> — a numeral recognised by ear in a key a cadence sets. The key is
@@ -1670,7 +1671,8 @@ type PracticeItemAnsweredEvent struct {
 	// In these keys, <key> is a major key spelled as one of C Db D Eb E F F# G Ab A Bb B;
 	// <numeral> is one of I ii iii IV V vi viio (viio is vii°); <chord> is a root spelled the
 	// same way, followed by m (minor), dim (diminished), 7 (dominant seventh) or nothing
-	// (major); <progression key> is a key of the progression catalog.
+	// (major); <progression key> is the key of a drill progression: a catalog handle such as
+	// I-V-vi-IV, or a created progression's mode and ASCII numerals such as major/I-bVII-IV-I.
 	//
 	// Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
 	// grader, and its golden cases.
@@ -1750,7 +1752,7 @@ type PracticeItemAnsweredEvent1 = interface{}
 //   - chord_function:<key>:<numeral> — a numeral's harmonic function in a major key: picking
 //     the function of its chord, or its chord for the function.
 //
-//   - chart_progression:<progression key> — a progression of the progression catalog read
+//   - chart_progression:<progression key> — a drill progression read
 //     as a chart: picking the progression for four chords, or its chart for the progression.
 //     The key is picked each time it is asked, so one item covers every key.
 //
@@ -1782,7 +1784,8 @@ type PracticeItemAnsweredEvent1 = interface{}
 // In these keys, <key> is a major key spelled as one of C Db D Eb E F F# G Ab A Bb B;
 // <numeral> is one of I ii iii IV V vi viio (viio is vii°); <chord> is a root spelled the
 // same way, followed by m (minor), dim (diminished), 7 (dominant seventh) or nothing
-// (major); <progression key> is a key of the progression catalog.
+// (major); <progression key> is the key of a drill progression: a catalog handle such as
+// I-V-vi-IV, or a created progression's mode and ASCII numerals such as major/I-bVII-IV-I.
 //
 // Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
 // grader, and its golden cases.

@@ -77,7 +77,7 @@ func (c *composingSongs) read(ctx context.Context) (songLibrary, error) {
 		for _, rev := range revisions {
 			c.library.revisions[rev.SongChartID] = rev
 		}
-		if c.library.catalog, c.err = c.source.harmony.progressions.List(ctx); c.err != nil {
+		if c.library.catalog, c.err = c.source.harmony.progressions.ListInDrills(ctx); c.err != nil {
 			return
 		}
 		c.library.guitar, c.err = c.source.harmony.guitarLayoutID(ctx)

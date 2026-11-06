@@ -176,9 +176,9 @@ func (c *composer) catalogItem(cand practiceCandidate, item domain.ClassifiedIte
 }
 
 // CatalogInvalidatingReferences is references, invalidating the practice
-// subject catalog through catalogs after each diagram, exercise, instrument
-// or song chart reference it writes: those are written after every save that
-// changes what a subjects list holds.
+// subject catalog through catalogs after each diagram, exercise, instrument,
+// progression or song chart reference it writes: those are written after every
+// save that changes what a subjects list holds.
 func CatalogInvalidatingReferences(references ports.PracticeReferenceWriter, catalogs SubjectCatalogInvalidator) ports.PracticeReferenceWriter {
 	return catalogInvalidatingReferences{PracticeReferenceWriter: references, catalogs: catalogs}
 }
@@ -206,6 +206,14 @@ func (r catalogInvalidatingReferences) PutExercises(ctx context.Context, refs []
 
 func (r catalogInvalidatingReferences) PutInstruments(ctx context.Context, refs []domain.InstrumentReference) error {
 	if err := r.PracticeReferenceWriter.PutInstruments(ctx, refs); err != nil {
+		return err
+	}
+	r.catalogs.InvalidateSubjectCatalogs(ctx)
+	return nil
+}
+
+func (r catalogInvalidatingReferences) PutProgressions(ctx context.Context, progressions []domain.Progression) error {
+	if err := r.PracticeReferenceWriter.PutProgressions(ctx, progressions); err != nil {
 		return err
 	}
 	r.catalogs.InvalidateSubjectCatalogs(ctx)

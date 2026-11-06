@@ -66,13 +66,13 @@ type PracticeReferenceService struct {
 	exercises    ports.ExerciseRepository
 	instruments  ports.InstrumentRepository
 	thresholds   ports.DrillThresholdRepository
-	progressions ports.ProgressionRepository
+	progressions ports.DrillProgressions
 	chordDrills  ports.ChordDrillRepository
 	songCharts   ports.SongChartRepository
 	references   ports.PracticeReferenceWriter
 }
 
-func NewPracticeReferenceService(diagrams ports.DiagramRepository, exercises ports.ExerciseRepository, instruments ports.InstrumentRepository, thresholds ports.DrillThresholdRepository, progressions ports.ProgressionRepository, chordDrills ports.ChordDrillRepository, songCharts ports.SongChartRepository, references ports.PracticeReferenceWriter) *PracticeReferenceService {
+func NewPracticeReferenceService(diagrams ports.DiagramRepository, exercises ports.ExerciseRepository, instruments ports.InstrumentRepository, thresholds ports.DrillThresholdRepository, progressions ports.DrillProgressions, chordDrills ports.ChordDrillRepository, songCharts ports.SongChartRepository, references ports.PracticeReferenceWriter) *PracticeReferenceService {
 	return &PracticeReferenceService{diagrams: diagrams, exercises: exercises, instruments: instruments, thresholds: thresholds, progressions: progressions, chordDrills: chordDrills, songCharts: songCharts, references: references}
 }
 
@@ -150,11 +150,11 @@ func (s *PracticeReferenceService) SyncChangeTargets(ctx context.Context) (int, 
 	return len(catalog.Targets), nil
 }
 
-// SyncProgressions writes every installed progression, all in one write, and
-// returns how many it wrote. Progressions come only from migrations, so this
-// sync is the only way they reach the snapshot.
+// SyncProgressions writes every progression in the drills, all in one write, and
+// returns how many it wrote. A progression for song charts only is never in the
+// snapshot.
 func (s *PracticeReferenceService) SyncProgressions(ctx context.Context) (int, error) {
-	progressions, err := s.progressions.List(ctx)
+	progressions, err := s.progressions.ListInDrills(ctx)
 	if err != nil || len(progressions) == 0 {
 		return 0, err
 	}
