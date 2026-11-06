@@ -3,6 +3,8 @@
 package progression
 
 import (
+	"time"
+
 	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
@@ -61,6 +63,21 @@ func Key(v string) predicate.Progression {
 // Mode applies equality check predicate on the "mode" field. It's identical to ModeEQ.
 func Mode(v string) predicate.Progression {
 	return predicate.Progression(sql.FieldEQ(FieldMode, v))
+}
+
+// InDrills applies equality check predicate on the "in_drills" field. It's identical to InDrillsEQ.
+func InDrills(v bool) predicate.Progression {
+	return predicate.Progression(sql.FieldEQ(FieldInDrills, v))
+}
+
+// CreatedBy applies equality check predicate on the "created_by" field. It's identical to CreatedByEQ.
+func CreatedBy(v uuid.UUID) predicate.Progression {
+	return predicate.Progression(sql.FieldEQ(FieldCreatedBy, v))
+}
+
+// CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
+func CreatedAt(v time.Time) predicate.Progression {
+	return predicate.Progression(sql.FieldEQ(FieldCreatedAt, v))
 }
 
 // KeyEQ applies the EQ predicate on the "key" field.
@@ -191,6 +208,126 @@ func ModeEqualFold(v string) predicate.Progression {
 // ModeContainsFold applies the ContainsFold predicate on the "mode" field.
 func ModeContainsFold(v string) predicate.Progression {
 	return predicate.Progression(sql.FieldContainsFold(FieldMode, v))
+}
+
+// InDrillsEQ applies the EQ predicate on the "in_drills" field.
+func InDrillsEQ(v bool) predicate.Progression {
+	return predicate.Progression(sql.FieldEQ(FieldInDrills, v))
+}
+
+// InDrillsNEQ applies the NEQ predicate on the "in_drills" field.
+func InDrillsNEQ(v bool) predicate.Progression {
+	return predicate.Progression(sql.FieldNEQ(FieldInDrills, v))
+}
+
+// NicknamesIsNil applies the IsNil predicate on the "nicknames" field.
+func NicknamesIsNil() predicate.Progression {
+	return predicate.Progression(sql.FieldIsNull(FieldNicknames))
+}
+
+// NicknamesNotNil applies the NotNil predicate on the "nicknames" field.
+func NicknamesNotNil() predicate.Progression {
+	return predicate.Progression(sql.FieldNotNull(FieldNicknames))
+}
+
+// CreatedByEQ applies the EQ predicate on the "created_by" field.
+func CreatedByEQ(v uuid.UUID) predicate.Progression {
+	return predicate.Progression(sql.FieldEQ(FieldCreatedBy, v))
+}
+
+// CreatedByNEQ applies the NEQ predicate on the "created_by" field.
+func CreatedByNEQ(v uuid.UUID) predicate.Progression {
+	return predicate.Progression(sql.FieldNEQ(FieldCreatedBy, v))
+}
+
+// CreatedByIn applies the In predicate on the "created_by" field.
+func CreatedByIn(vs ...uuid.UUID) predicate.Progression {
+	return predicate.Progression(sql.FieldIn(FieldCreatedBy, vs...))
+}
+
+// CreatedByNotIn applies the NotIn predicate on the "created_by" field.
+func CreatedByNotIn(vs ...uuid.UUID) predicate.Progression {
+	return predicate.Progression(sql.FieldNotIn(FieldCreatedBy, vs...))
+}
+
+// CreatedByGT applies the GT predicate on the "created_by" field.
+func CreatedByGT(v uuid.UUID) predicate.Progression {
+	return predicate.Progression(sql.FieldGT(FieldCreatedBy, v))
+}
+
+// CreatedByGTE applies the GTE predicate on the "created_by" field.
+func CreatedByGTE(v uuid.UUID) predicate.Progression {
+	return predicate.Progression(sql.FieldGTE(FieldCreatedBy, v))
+}
+
+// CreatedByLT applies the LT predicate on the "created_by" field.
+func CreatedByLT(v uuid.UUID) predicate.Progression {
+	return predicate.Progression(sql.FieldLT(FieldCreatedBy, v))
+}
+
+// CreatedByLTE applies the LTE predicate on the "created_by" field.
+func CreatedByLTE(v uuid.UUID) predicate.Progression {
+	return predicate.Progression(sql.FieldLTE(FieldCreatedBy, v))
+}
+
+// CreatedByIsNil applies the IsNil predicate on the "created_by" field.
+func CreatedByIsNil() predicate.Progression {
+	return predicate.Progression(sql.FieldIsNull(FieldCreatedBy))
+}
+
+// CreatedByNotNil applies the NotNil predicate on the "created_by" field.
+func CreatedByNotNil() predicate.Progression {
+	return predicate.Progression(sql.FieldNotNull(FieldCreatedBy))
+}
+
+// CreatedAtEQ applies the EQ predicate on the "created_at" field.
+func CreatedAtEQ(v time.Time) predicate.Progression {
+	return predicate.Progression(sql.FieldEQ(FieldCreatedAt, v))
+}
+
+// CreatedAtNEQ applies the NEQ predicate on the "created_at" field.
+func CreatedAtNEQ(v time.Time) predicate.Progression {
+	return predicate.Progression(sql.FieldNEQ(FieldCreatedAt, v))
+}
+
+// CreatedAtIn applies the In predicate on the "created_at" field.
+func CreatedAtIn(vs ...time.Time) predicate.Progression {
+	return predicate.Progression(sql.FieldIn(FieldCreatedAt, vs...))
+}
+
+// CreatedAtNotIn applies the NotIn predicate on the "created_at" field.
+func CreatedAtNotIn(vs ...time.Time) predicate.Progression {
+	return predicate.Progression(sql.FieldNotIn(FieldCreatedAt, vs...))
+}
+
+// CreatedAtGT applies the GT predicate on the "created_at" field.
+func CreatedAtGT(v time.Time) predicate.Progression {
+	return predicate.Progression(sql.FieldGT(FieldCreatedAt, v))
+}
+
+// CreatedAtGTE applies the GTE predicate on the "created_at" field.
+func CreatedAtGTE(v time.Time) predicate.Progression {
+	return predicate.Progression(sql.FieldGTE(FieldCreatedAt, v))
+}
+
+// CreatedAtLT applies the LT predicate on the "created_at" field.
+func CreatedAtLT(v time.Time) predicate.Progression {
+	return predicate.Progression(sql.FieldLT(FieldCreatedAt, v))
+}
+
+// CreatedAtLTE applies the LTE predicate on the "created_at" field.
+func CreatedAtLTE(v time.Time) predicate.Progression {
+	return predicate.Progression(sql.FieldLTE(FieldCreatedAt, v))
+}
+
+// CreatedAtIsNil applies the IsNil predicate on the "created_at" field.
+func CreatedAtIsNil() predicate.Progression {
+	return predicate.Progression(sql.FieldIsNull(FieldCreatedAt))
+}
+
+// CreatedAtNotNil applies the NotNil predicate on the "created_at" field.
+func CreatedAtNotNil() predicate.Progression {
+	return predicate.Progression(sql.FieldNotNull(FieldCreatedAt))
 }
 
 // And groups predicates with the AND operator between them.

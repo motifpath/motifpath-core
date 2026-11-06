@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
@@ -29,7 +30,15 @@ type Progression struct {
 	// Confusable holds the value of the "confusable" field.
 	Confusable []string `json:"confusable,omitempty"`
 	// Names holds the value of the "names" field.
-	Names        map[string]string `json:"names,omitempty"`
+	Names map[string]string `json:"names,omitempty"`
+	// InDrills holds the value of the "in_drills" field.
+	InDrills bool `json:"in_drills,omitempty"`
+	// Nicknames holds the value of the "nicknames" field.
+	Nicknames map[string]string `json:"nicknames,omitempty"`
+	// CreatedBy holds the value of the "created_by" field.
+	CreatedBy *uuid.UUID `json:"created_by,omitempty"`
+	// CreatedAt holds the value of the "created_at" field.
+	CreatedAt    *time.Time `json:"created_at,omitempty"`
 	selectValues sql.SelectValues
 }
 
@@ -38,10 +47,16 @@ func (*Progression) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case progression.FieldBars, progression.FieldNodeIds, progression.FieldConfusable, progression.FieldNames:
+		case progression.FieldCreatedBy:
+			values[i] = &sql.NullScanner{S: new(uuid.UUID)}
+		case progression.FieldBars, progression.FieldNodeIds, progression.FieldConfusable, progression.FieldNames, progression.FieldNicknames:
 			values[i] = new([]byte)
+		case progression.FieldInDrills:
+			values[i] = new(sql.NullBool)
 		case progression.FieldKey, progression.FieldMode:
 			values[i] = new(sql.NullString)
+		case progression.FieldCreatedAt:
+			values[i] = new(sql.NullTime)
 		case progression.FieldID:
 			values[i] = new(uuid.UUID)
 		default:
@@ -109,6 +124,34 @@ func (_m *Progression) assignValues(columns []string, values []any) error {
 					return fmt.Errorf("unmarshal field names: %w", err)
 				}
 			}
+		case progression.FieldInDrills:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field in_drills", values[i])
+			} else if value.Valid {
+				_m.InDrills = value.Bool
+			}
+		case progression.FieldNicknames:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field nicknames", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.Nicknames); err != nil {
+					return fmt.Errorf("unmarshal field nicknames: %w", err)
+				}
+			}
+		case progression.FieldCreatedBy:
+			if value, ok := values[i].(*sql.NullScanner); !ok {
+				return fmt.Errorf("unexpected type %T for field created_by", values[i])
+			} else if value.Valid {
+				_m.CreatedBy = new(uuid.UUID)
+				*_m.CreatedBy = *value.S.(*uuid.UUID)
+			}
+		case progression.FieldCreatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field created_at", values[i])
+			} else if value.Valid {
+				_m.CreatedAt = new(time.Time)
+				*_m.CreatedAt = value.Time
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -162,6 +205,22 @@ func (_m *Progression) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("names=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Names))
+	builder.WriteString(", ")
+	builder.WriteString("in_drills=")
+	builder.WriteString(fmt.Sprintf("%v", _m.InDrills))
+	builder.WriteString(", ")
+	builder.WriteString("nicknames=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Nicknames))
+	builder.WriteString(", ")
+	if v := _m.CreatedBy; v != nil {
+		builder.WriteString("created_by=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
+	builder.WriteString(", ")
+	if v := _m.CreatedAt; v != nil {
+		builder.WriteString("created_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
 	builder.WriteByte(')')
 	return builder.String()
 }

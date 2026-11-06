@@ -9,6 +9,7 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/progression"
@@ -24,6 +25,50 @@ type ProgressionUpdate struct {
 // Where appends a list predicates to the ProgressionUpdate builder.
 func (_u *ProgressionUpdate) Where(ps ...predicate.Progression) *ProgressionUpdate {
 	_u.mutation.Where(ps...)
+	return _u
+}
+
+// SetNodeIds sets the "node_ids" field.
+func (_u *ProgressionUpdate) SetNodeIds(v []string) *ProgressionUpdate {
+	_u.mutation.SetNodeIds(v)
+	return _u
+}
+
+// AppendNodeIds appends value to the "node_ids" field.
+func (_u *ProgressionUpdate) AppendNodeIds(v []string) *ProgressionUpdate {
+	_u.mutation.AppendNodeIds(v)
+	return _u
+}
+
+// SetNames sets the "names" field.
+func (_u *ProgressionUpdate) SetNames(v map[string]string) *ProgressionUpdate {
+	_u.mutation.SetNames(v)
+	return _u
+}
+
+// SetInDrills sets the "in_drills" field.
+func (_u *ProgressionUpdate) SetInDrills(v bool) *ProgressionUpdate {
+	_u.mutation.SetInDrills(v)
+	return _u
+}
+
+// SetNillableInDrills sets the "in_drills" field if the given value is not nil.
+func (_u *ProgressionUpdate) SetNillableInDrills(v *bool) *ProgressionUpdate {
+	if v != nil {
+		_u.SetInDrills(*v)
+	}
+	return _u
+}
+
+// SetNicknames sets the "nicknames" field.
+func (_u *ProgressionUpdate) SetNicknames(v map[string]string) *ProgressionUpdate {
+	_u.mutation.SetNicknames(v)
+	return _u
+}
+
+// ClearNicknames clears the value of the "nicknames" field.
+func (_u *ProgressionUpdate) ClearNicknames() *ProgressionUpdate {
+	_u.mutation.ClearNicknames()
 	return _u
 }
 
@@ -68,6 +113,32 @@ func (_u *ProgressionUpdate) sqlSave(ctx context.Context) (_node int, err error)
 			}
 		}
 	}
+	if value, ok := _u.mutation.NodeIds(); ok {
+		_spec.SetField(progression.FieldNodeIds, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedNodeIds(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, progression.FieldNodeIds, value)
+		})
+	}
+	if value, ok := _u.mutation.Names(); ok {
+		_spec.SetField(progression.FieldNames, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.InDrills(); ok {
+		_spec.SetField(progression.FieldInDrills, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.Nicknames(); ok {
+		_spec.SetField(progression.FieldNicknames, field.TypeJSON, value)
+	}
+	if _u.mutation.NicknamesCleared() {
+		_spec.ClearField(progression.FieldNicknames, field.TypeJSON)
+	}
+	if _u.mutation.CreatedByCleared() {
+		_spec.ClearField(progression.FieldCreatedBy, field.TypeUUID)
+	}
+	if _u.mutation.CreatedAtCleared() {
+		_spec.ClearField(progression.FieldCreatedAt, field.TypeTime)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{progression.Label}
@@ -86,6 +157,50 @@ type ProgressionUpdateOne struct {
 	fields   []string
 	hooks    []Hook
 	mutation *ProgressionMutation
+}
+
+// SetNodeIds sets the "node_ids" field.
+func (_u *ProgressionUpdateOne) SetNodeIds(v []string) *ProgressionUpdateOne {
+	_u.mutation.SetNodeIds(v)
+	return _u
+}
+
+// AppendNodeIds appends value to the "node_ids" field.
+func (_u *ProgressionUpdateOne) AppendNodeIds(v []string) *ProgressionUpdateOne {
+	_u.mutation.AppendNodeIds(v)
+	return _u
+}
+
+// SetNames sets the "names" field.
+func (_u *ProgressionUpdateOne) SetNames(v map[string]string) *ProgressionUpdateOne {
+	_u.mutation.SetNames(v)
+	return _u
+}
+
+// SetInDrills sets the "in_drills" field.
+func (_u *ProgressionUpdateOne) SetInDrills(v bool) *ProgressionUpdateOne {
+	_u.mutation.SetInDrills(v)
+	return _u
+}
+
+// SetNillableInDrills sets the "in_drills" field if the given value is not nil.
+func (_u *ProgressionUpdateOne) SetNillableInDrills(v *bool) *ProgressionUpdateOne {
+	if v != nil {
+		_u.SetInDrills(*v)
+	}
+	return _u
+}
+
+// SetNicknames sets the "nicknames" field.
+func (_u *ProgressionUpdateOne) SetNicknames(v map[string]string) *ProgressionUpdateOne {
+	_u.mutation.SetNicknames(v)
+	return _u
+}
+
+// ClearNicknames clears the value of the "nicknames" field.
+func (_u *ProgressionUpdateOne) ClearNicknames() *ProgressionUpdateOne {
+	_u.mutation.ClearNicknames()
+	return _u
 }
 
 // Mutation returns the ProgressionMutation object of the builder.
@@ -158,6 +273,32 @@ func (_u *ProgressionUpdateOne) sqlSave(ctx context.Context) (_node *Progression
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := _u.mutation.NodeIds(); ok {
+		_spec.SetField(progression.FieldNodeIds, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedNodeIds(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, progression.FieldNodeIds, value)
+		})
+	}
+	if value, ok := _u.mutation.Names(); ok {
+		_spec.SetField(progression.FieldNames, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.InDrills(); ok {
+		_spec.SetField(progression.FieldInDrills, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.Nicknames(); ok {
+		_spec.SetField(progression.FieldNicknames, field.TypeJSON, value)
+	}
+	if _u.mutation.NicknamesCleared() {
+		_spec.ClearField(progression.FieldNicknames, field.TypeJSON)
+	}
+	if _u.mutation.CreatedByCleared() {
+		_spec.ClearField(progression.FieldCreatedBy, field.TypeUUID)
+	}
+	if _u.mutation.CreatedAtCleared() {
+		_spec.ClearField(progression.FieldCreatedAt, field.TypeTime)
 	}
 	_node = &Progression{config: _u.config}
 	_spec.Assign = _node.assignValues

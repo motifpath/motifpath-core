@@ -23,6 +23,14 @@ const (
 	FieldConfusable = "confusable"
 	// FieldNames holds the string denoting the names field in the database.
 	FieldNames = "names"
+	// FieldInDrills holds the string denoting the in_drills field in the database.
+	FieldInDrills = "in_drills"
+	// FieldNicknames holds the string denoting the nicknames field in the database.
+	FieldNicknames = "nicknames"
+	// FieldCreatedBy holds the string denoting the created_by field in the database.
+	FieldCreatedBy = "created_by"
+	// FieldCreatedAt holds the string denoting the created_at field in the database.
+	FieldCreatedAt = "created_at"
 	// Table holds the table name of the progression in the database.
 	Table = "progressions"
 )
@@ -36,6 +44,10 @@ var Columns = []string{
 	FieldNodeIds,
 	FieldConfusable,
 	FieldNames,
+	FieldInDrills,
+	FieldNicknames,
+	FieldCreatedBy,
+	FieldCreatedAt,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -53,6 +65,8 @@ var (
 	KeyValidator func(string) error
 	// ModeValidator is a validator for the "mode" field. It is called by the builders before save.
 	ModeValidator func(string) error
+	// DefaultInDrills holds the default value on creation for the "in_drills" field.
+	DefaultInDrills bool
 )
 
 // OrderOption defines the ordering options for the Progression queries.
@@ -71,4 +85,19 @@ func ByKey(opts ...sql.OrderTermOption) OrderOption {
 // ByMode orders the results by the mode field.
 func ByMode(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldMode, opts...).ToFunc()
+}
+
+// ByInDrills orders the results by the in_drills field.
+func ByInDrills(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldInDrills, opts...).ToFunc()
+}
+
+// ByCreatedBy orders the results by the created_by field.
+func ByCreatedBy(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCreatedBy, opts...).ToFunc()
+}
+
+// ByCreatedAt orders the results by the created_at field.
+func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
 }
