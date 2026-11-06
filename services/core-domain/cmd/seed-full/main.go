@@ -77,6 +77,7 @@ type services struct {
 	instrument  *application.InstrumentService
 	diagram     *application.DiagramService
 	songChart   *application.SongChartService
+	progression *application.ProgressionCatalogService
 	chords      *application.ChordCatalogService
 }
 
@@ -106,6 +107,10 @@ func run() error {
 	if err := seedPortugueseExercises(ctx, deps.teacher, svc.exercise); err != nil {
 		return fmt.Errorf("seed Portuguese exercises: %w", err)
 	}
+	if err := seedCreatedProgressions(ctx, svc.progression, deps.synthAdmin, deps.classifier); err != nil {
+		return fmt.Errorf("seed created progressions: %w", err)
+	}
+	log.Println("seeded two created progressions: one for song charts only, one in the drills")
 	log.Println("done")
 	return nil
 }
@@ -222,6 +227,7 @@ func wireServices(res resources) (services, seedDeps) {
 		instrument:  application.NewInstrumentService(instrumentRepo, voiceRepo, languageRepo, repo.NewMongoPracticeReferenceWriter(res.mongoDB, now), newID),
 		diagram:     application.NewDiagramService(diagramRepo, instrumentRepo, knowledgeRepo, languageRepo, userRepo, repo.NewMongoPracticeReferenceWriter(res.mongoDB, now), repo.NewEntChordCatalogRepository(entClient), exerciseRepo, newID, now),
 		songChart:   application.NewSongChartService(repo.NewEntSongChartRepository(entClient), repo.NewEntChordCatalogRepository(entClient), diagramRepo, languageRepo, repo.NewEntProgressionRepository(entClient), repo.NewMongoPracticeReferenceWriter(res.mongoDB, now), newID, now),
+		progression: application.NewProgressionCatalogService(repo.NewEntProgressionRepository(entClient), repo.NewEntSongChartRepository(entClient), languageRepo, knowledgeRepo, repo.NewMongoPracticeReferenceWriter(res.mongoDB, now), newID, now),
 		chords:      application.NewChordCatalogService(repo.NewEntChordCatalogRepository(entClient)),
 	}
 
