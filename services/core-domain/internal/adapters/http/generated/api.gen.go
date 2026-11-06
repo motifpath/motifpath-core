@@ -7945,7 +7945,8 @@ type Progression struct {
 	// CreatedAt When it was created; null for the catalog's progressions.
 	CreatedAt *time.Time `json:"created_at"`
 
-	// CreatedBy The admin who created it; null for the catalog's progressions.
+	// CreatedBy The admin who created it, shown only to an admin; null for any other caller, and for
+	// the catalog's progressions.
 	CreatedBy *UserRef `json:"created_by"`
 
 	// InDrills True for a drill progression: drills, practice and songs on it use it. False for a
