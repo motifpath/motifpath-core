@@ -21,6 +21,9 @@ type Progression struct {
 	// CreatedBy and CreatedAt are nil on the catalog's progressions.
 	CreatedBy *string
 	CreatedAt *time.Time
+	// SongChartCount is how many charts tag it in their draft or latest published
+	// revision. The catalog service fills it in; stored rows don't hold it.
+	SongChartCount int
 }
 
 // BorrowedBars are the bars, numbered from 0, whose numeral is outside the

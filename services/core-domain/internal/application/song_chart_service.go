@@ -21,7 +21,7 @@ type SongChartService struct {
 	chords       ports.ChordCatalogRepository
 	diagrams     ports.DiagramRepository
 	languages    ports.LanguageRepository
-	progressions ports.ProgressionRepository
+	progressions ports.ProgressionLister
 	refs         ports.PracticeReferenceWriter
 	// catalogs is invalidated on a withdrawal; nil invalidates nothing.
 	catalogs SubjectCatalogInvalidator
@@ -42,7 +42,7 @@ func NewSongChartService(
 	chords ports.ChordCatalogRepository,
 	diagrams ports.DiagramRepository,
 	languages ports.LanguageRepository,
-	progressions ports.ProgressionRepository,
+	progressions ports.ProgressionLister,
 	refs ports.PracticeReferenceWriter,
 	newID func() string,
 	now func() time.Time,

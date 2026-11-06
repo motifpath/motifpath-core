@@ -83,6 +83,7 @@ func TestFeatures(t *testing.T) {
 func InitializeScenario(sc *godog.ScenarioContext) {
 	w := newWorld()
 	registerCommonSteps(sc, w)
+	registerProgressionAuthoringSteps(sc, w)
 	registerUserRegistrationSteps(sc, w)
 	registerDisplayNameSteps(sc, w)
 	registerLocaleSteps(sc, w)

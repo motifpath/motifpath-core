@@ -278,3 +278,48 @@ func TestEntSongChartRepository_PublishedRevisions(t *testing.T) {
 	assert.Equal(t, []domain.SectionProgression{{SectionIndex: 0, ProgressionKey: "tag-2"}}, rev.SectionProgressions)
 	assert.Empty(t, rev.Body.Sections, "the body isn't read")
 }
+
+func TestEntSongChartRepository_ProgressionUses(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	charts := NewEntSongChartRepository(client)
+	publishTagged := func(chart domain.SongChart, keys ...string) domain.SongChart {
+		published, rev, err := tagged(chart, keys...).Publish(uuid.NewString(), fixedAt)
+		require.NoError(t, err)
+		require.NoError(t, charts.Publish(ctx, published, rev))
+		return published
+	}
+	newPublishable := func(title string) domain.SongChart {
+		chart := newSongChart(title, fixedAt)
+		chart.Draft.RightsConfirmation = &domain.RightsConfirmation{ConfirmedBy: uuid.NewString(), ConfirmedAt: fixedAt}
+		require.NoError(t, charts.Create(ctx, chart))
+		return chart
+	}
+
+	require.NoError(t, charts.Create(ctx, newSongChart("Untagged", fixedAt)))
+
+	drafted := newPublishable("Drafted")
+	require.NoError(t, charts.Save(ctx, tagged(drafted, "major/in-draft")))
+
+	corrected := publishTagged(publishTagged(newPublishable("Corrected"), "major/old"), "major/latest")
+	require.NoError(t, charts.Save(ctx, tagged(corrected)))
+
+	withdrawn, err := publishTagged(newPublishable("Withdrawn"), "major/withdrawn").Withdraw(uuid.NewString(), fixedAt, "Rights disputed")
+	require.NoError(t, err)
+	require.NoError(t, charts.Save(ctx, tagged(withdrawn)))
+
+	got, err := charts.ProgressionUses(ctx)
+	require.NoError(t, err)
+
+	byKey := map[string][]domain.ProgressionUse{}
+	for _, use := range got {
+		byKey[use.ProgressionKey] = append(byKey[use.ProgressionKey], use)
+	}
+	label := drafted.Draft.Body.Sections[0].Label
+	assert.Equal(t, []domain.ProgressionUse{{ProgressionKey: "major/in-draft", SongChartID: drafted.ID, Title: "Drafted", Revision: domain.ProgressionUseDraft, SectionLabel: label}}, byKey["major/in-draft"])
+	assert.Equal(t, []domain.ProgressionUse{{ProgressionKey: "major/latest", SongChartID: corrected.ID, Title: "Corrected", Revision: domain.ProgressionUsePublished, SectionLabel: label}}, byKey["major/latest"],
+		"the draft dropped it, the latest revision keeps it")
+	assert.NotContains(t, byKey, "major/old", "an older revision doesn't count")
+	assert.Len(t, byKey["major/withdrawn"], 1, "a withdrawn chart's latest revision still counts")
+	assert.Len(t, got, 3)
+}

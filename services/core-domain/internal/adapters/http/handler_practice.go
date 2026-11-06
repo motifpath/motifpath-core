@@ -577,24 +577,41 @@ func (h *Handler) ListProgressions(ctx context.Context, _ generated.ListProgress
 	if err != nil {
 		return nil, err
 	}
+	names, err := h.loadUserNames(ctx, progressionUserIDs(progressions...))
+	if err != nil {
+		return nil, err
+	}
 	out := make(generated.ListProgressions200JSONResponse, len(progressions))
 	for i, p := range progressions {
-		out[i] = toGeneratedProgression(p)
+		out[i] = toGeneratedProgression(p, names)
 	}
 	return out, nil
 }
 
-// toGeneratedProgression maps a catalog progression; its lists are never
-// null.
-func toGeneratedProgression(p domain.Progression) generated.Progression {
+// toGeneratedProgression maps a progression, its creator named from names; its
+// lists are never null.
+func toGeneratedProgression(p domain.Progression, names userNames) generated.Progression {
+	var createdBy *generated.UserRef
+	if p.CreatedBy != nil {
+		ref := names.ref(*p.CreatedBy)
+		createdBy = &ref
+	}
+	var nicknames *map[string]string
+	if len(p.Nicknames) > 0 {
+		nicknames = &p.Nicknames
+	}
 	return generated.Progression{
-		ProgressionId: mustUUID(p.ID),
-		Key:           p.Key,
-		Mode:          generated.ProgressionMode(p.Mode),
-		Bars:          nonNilStrings(p.Bars),
-		BorrowedBars:  p.BorrowedBars(),
-		InDrills:      p.InDrills,
-		Confusable:    nonNilStrings(p.Confusable),
-		Names:         generated.LocalizedNames(p.Names),
+		ProgressionId:  mustUUID(p.ID),
+		Key:            p.Key,
+		Mode:           generated.ProgressionMode(p.Mode),
+		Bars:           nonNilStrings(p.Bars),
+		BorrowedBars:   p.BorrowedBars(),
+		InDrills:       p.InDrills,
+		Confusable:     nonNilStrings(p.Confusable),
+		Names:          generated.LocalizedNames(p.Names),
+		Nicknames:      nicknames,
+		SongChartCount: p.SongChartCount,
+		CreatedBy:      createdBy,
+		CreatedAt:      p.CreatedAt,
 	}
 }
