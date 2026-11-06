@@ -577,7 +577,7 @@ func (h *Handler) ListProgressions(ctx context.Context, _ generated.ListProgress
 	if err != nil {
 		return nil, err
 	}
-	names, err := h.loadUserNames(ctx, progressionUserIDs(progressions...))
+	names, err := h.identity.KnownDisplayNames(ctx, progressionUserIDs(progressions...))
 	if err != nil {
 		return nil, err
 	}
@@ -588,13 +588,16 @@ func (h *Handler) ListProgressions(ctx context.Context, _ generated.ListProgress
 	return out, nil
 }
 
-// toGeneratedProgression maps a progression, its creator named from names; its
-// lists are never null.
+// toGeneratedProgression maps a progression, its creator named from names and left
+// out when names doesn't hold them: every client needs this list to grade drills,
+// so one missing user must not fail it. Its lists are never null.
 func toGeneratedProgression(p domain.Progression, names userNames) generated.Progression {
 	var createdBy *generated.UserRef
 	if p.CreatedBy != nil {
-		ref := names.ref(*p.CreatedBy)
-		createdBy = &ref
+		if _, known := names[*p.CreatedBy]; known {
+			ref := names.ref(*p.CreatedBy)
+			createdBy = &ref
+		}
 	}
 	var nicknames *map[string]string
 	if len(p.Nicknames) > 0 {

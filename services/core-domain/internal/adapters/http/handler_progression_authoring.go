@@ -137,7 +137,7 @@ func toGeneratedProgressionInUse(e *domain.ProgressionNotRemovableError) generat
 
 // toGeneratedProgressionWithCreator maps one progression, looking up its creator.
 func (h *Handler) toGeneratedProgressionWithCreator(ctx context.Context, p domain.Progression) (generated.Progression, error) {
-	names, err := h.loadUserNames(ctx, progressionUserIDs(p))
+	names, err := h.identity.KnownDisplayNames(ctx, progressionUserIDs(p))
 	if err != nil {
 		return generated.Progression{}, err
 	}
