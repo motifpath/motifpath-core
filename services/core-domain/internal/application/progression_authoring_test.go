@@ -130,6 +130,19 @@ func TestProgressionCatalogService_Create(t *testing.T) {
 		assert.Equal(t, 1, exists.Existing.SongChartCount)
 	})
 
+	t.Run("the same chords spelled differently are another progression: harmonic analysis reads them apart", func(t *testing.T) {
+		repo := &memoryProgressions{}
+		service := progressionService(repo, nil)
+		_, err := service.Create(ctx, progressionAdmin, rock)
+		require.NoError(t, err)
+
+		twin, err := service.Create(ctx, progressionAdmin, application.ProgressionInput{Mode: "major", Bars: []string{"I", "#VI", "IV", "I"}})
+
+		require.NoError(t, err)
+		assert.Equal(t, "major/I-#VI-IV-I", twin.Key)
+		assert.Len(t, repo.fakeProgressions, 2)
+	})
+
 	t.Run("losing a race to another admin returns their progression", func(t *testing.T) {
 		repo := &racingProgressions{memoryProgressions: memoryProgressions{createErr: domain.ErrConflict}}
 		service := application.NewProgressionCatalogService(repo, fixedProgressionUses{}, newFakeLanguageRepository(), func() string { return "new-id" }, func() time.Time { return progressionNow })
