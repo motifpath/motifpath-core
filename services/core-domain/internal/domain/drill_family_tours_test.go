@@ -128,6 +128,32 @@ func TestADominantSeventhKeepsItsRootThirdAndFifthOnBass(t *testing.T) {
 	assert.Equal(t, domain.ChordTonePlaces{Chord: "E7", Root: domain.Place{String: 4, Fret: 0}, Third: domain.Place{String: 1, Fret: 1}, Fifth: domain.Place{String: 3, Fret: 2}}, e.ChordTones[0])
 }
 
+func TestOnBassASeventhKeepsItsTriadsThirdAndFifth(t *testing.T) {
+	tests := []struct {
+		name         string
+		numeral      string
+		chord        string
+		third, fifth domain.Place
+	}{
+		// Strings count from 1 (G2) to 4 (E1); each tone at its lowest fret, then lowest string.
+		{name: "a minor seventh has a minor third", numeral: "ii7", chord: "Dm7", third: domain.Place{String: 4, Fret: 1}, fifth: domain.Place{String: 3, Fret: 0}},
+		{name: "a half-diminished seventh has a minor third and a flat fifth", numeral: "iiø7", chord: "Dm7b5", third: domain.Place{String: 4, Fret: 1}, fifth: domain.Place{String: 1, Fret: 1}},
+		{name: "a diminished seventh has a minor third and a flat fifth", numeral: "vii°7", chord: "Bdim7", third: domain.Place{String: 2, Fret: 0}, fifth: domain.Place{String: 4, Fret: 1}},
+		{name: "a major seventh has a major third", numeral: "♭VImaj7", chord: "Abmaj7", third: domain.Place{String: 3, Fret: 3}, fifth: domain.Place{String: 2, Fret: 1}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tour := plannedTour(t, domain.ProgressionKeysItem{Layout: standardBass, Bass: true, Progression: domain.Progression{Key: "major/x", Bars: []string{tt.numeral}}}, nil)
+			c := tourKey(t, tour, "C")
+			require.Len(t, c.ChordTones, 1)
+			tones := c.ChordTones[0]
+			assert.Equal(t, tt.chord, tones.Chord)
+			assert.Equal(t, tt.third, tones.Third)
+			assert.Equal(t, tt.fifth, tones.Fifth)
+		})
+	}
+}
+
 func TestATourStartsWhereTheLastTakeLeftIt(t *testing.T) {
 	eighths, triplets := domain.TempoNoteValueEighths, domain.TempoNoteValueTriplets
 	cases := []struct {

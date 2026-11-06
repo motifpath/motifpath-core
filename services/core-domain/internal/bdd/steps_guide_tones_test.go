@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/cucumber/godog"
+	"github.com/google/uuid"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 
 	"github.com/motifpath/core-domain/internal/adapters/http/generated"
@@ -23,6 +24,7 @@ func registerGuideToneSteps(sc *godog.ScenarioContext, w *world) {
 	// ── The catalog ────────────────────────────────────────────────────────────
 	sc.Step(`^the progression catalog has "([^"]+)" with the bars ((?:\S+ ?)+)$`, w.catalogHasProgressionBars)
 	sc.Step(`^the progression catalog has "([^"]+)" with (\d+) bars$`, w.catalogHasProgressionOfLength)
+	sc.Step(`^the drills have the created progression "([^"]+)" with the bars ((?:\S+ ?)+)$`, w.drillsHaveCreatedProgression)
 
 	// ── Givens ─────────────────────────────────────────────────────────────────
 	sc.Step(`^"([^"]+)"'s path skill "target-chord-tones" has new guide tones on guitar$`, w.hasNewGuideTones)
@@ -87,6 +89,17 @@ func (w *world) catalogHasProgressionBars(key, bars string) error {
 		return err
 	}
 	return expectChord(slices.Equal(p.Bars, strings.Fields(bars)), "%s has the bars %v", key, p.Bars)
+}
+
+// drillsHaveCreatedProgression stores a progression an admin added to the drills.
+func (w *world) drillsHaveCreatedProgression(key, bars string) error {
+	created := "an-admin"
+	w.progressions.created = append(w.progressions.created, domain.Progression{
+		ID: uuid.NewString(), Key: key, Mode: string(domain.ProgressionModeMajor), Bars: strings.Fields(bars),
+		Names: domain.LocalizedText{"en": bars}, NodeIDs: []string{}, Confusable: []string{},
+		InDrills: true, CreatedBy: &created,
+	})
+	return nil
 }
 
 func (w *world) catalogHasProgressionOfLength(key string, bars int) error {

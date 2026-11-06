@@ -39,8 +39,10 @@ const (
 	// musicKeyPattern is a major key, its root spelled as the chord catalog spells roots.
 	musicKeyPattern = `(C|Db|D|Eb|E|F|F#|G|Ab|A|Bb|B)`
 	// numeralPattern is a degree of a major key; viio stands for vii°.
-	numeralPattern        = `(I|ii|iii|IV|V|vi|viio)`
-	progressionKeyPattern = `[0-9A-Za-z][0-9A-Za-z-]*`
+	numeralPattern = `(I|ii|iii|IV|V|vi|viio)`
+	// progressionKeyPattern is a catalog handle, or a created progression's mode and
+	// numerals in ASCII.
+	progressionKeyPattern = `([0-9A-Za-z][0-9A-Za-z-]*|(major|minor)/[0-9A-Za-z#-]+)`
 	// chordPattern is a root, then minor, diminished, dominant seventh or nothing (major).
 	chordPattern = musicKeyPattern + `(m|dim|7)?`
 )
