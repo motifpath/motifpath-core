@@ -162,6 +162,26 @@ func registerProgressionAuthoringSteps(sc *godog.ScenarioContext, w *world) {
 		return nil
 	})
 
+	sc.Step(`^"([^"]+)" was created by "([^"]+)"$`, func(key, admin string) error {
+		p, err := w.listedProgression(key)
+		if err != nil {
+			return err
+		}
+		if p.CreatedBy == nil || p.CreatedBy.UserId != w.userMotifID[admin] {
+			return fmt.Errorf("%s was created by %+v", key, p.CreatedBy)
+		}
+		return nil
+	})
+	sc.Step(`^"([^"]+)" names no creator$`, func(key string) error {
+		p, err := w.listedProgression(key)
+		if err != nil {
+			return err
+		}
+		if p.CreatedBy != nil {
+			return fmt.Errorf("%s names %+v", key, p.CreatedBy)
+		}
+		return nil
+	})
 	sc.Step(`^the creation is refused because the progression exists$`, func() error {
 		_, err := w.existingProgression()
 		return err

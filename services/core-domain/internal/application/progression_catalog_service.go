@@ -33,8 +33,9 @@ func NewProgressionCatalogService(
 }
 
 // List returns every progression, ordered by key: the catalog keeps no
-// position of its own, so key order is the one that stays put.
-func (s *ProgressionCatalogService) List(ctx context.Context) ([]domain.Progression, error) {
+// position of its own, so key order is the one that stays put. Only an admin
+// sees who created one, so learners never get admins' names.
+func (s *ProgressionCatalogService) List(ctx context.Context, caller domain.User) ([]domain.Progression, error) {
 	progressions, err := s.progressions.List(ctx)
 	if err != nil {
 		return nil, err
@@ -47,6 +48,9 @@ func (s *ProgressionCatalogService) List(ctx context.Context) ([]domain.Progress
 	slices.SortFunc(sorted, func(a, b domain.Progression) int { return strings.Compare(a.Key, b.Key) })
 	for i := range sorted {
 		sorted[i].SongChartCount = songChartCount(uses, sorted[i].Key)
+		if caller.Role != domain.RoleAdmin {
+			sorted[i].CreatedBy = nil
+		}
 	}
 	return sorted, nil
 }

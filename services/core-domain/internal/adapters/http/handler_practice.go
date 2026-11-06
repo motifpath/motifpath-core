@@ -570,10 +570,11 @@ func toGeneratedDiagramShape(d domain.PlannedDiagramShape, locale string) *gener
 
 // ListProgressions lists the progression catalog to any signed-in user.
 func (h *Handler) ListProgressions(ctx context.Context, _ generated.ListProgressionsRequestObject) (generated.ListProgressionsResponseObject, error) {
-	if _, ok := h.resolveCaller(ctx); !ok {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
 		return generated.ListProgressions401JSONResponse(unauthorizedError()), nil
 	}
-	progressions, err := h.progressionCatalog.List(ctx)
+	progressions, err := h.progressionCatalog.List(ctx, caller)
 	if err != nil {
 		return nil, err
 	}

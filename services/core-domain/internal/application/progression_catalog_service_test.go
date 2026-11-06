@@ -41,7 +41,7 @@ func TestProgressionCatalogService_List(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := progressionService(&memoryProgressions{fakeProgressions: tt.catalog}, nil).List(context.Background())
+			got, err := progressionService(&memoryProgressions{fakeProgressions: tt.catalog}, nil).List(context.Background(), progressionAdmin)
 
 			require.NoError(t, err)
 			keys := make([]string, len(got))
@@ -53,7 +53,7 @@ func TestProgressionCatalogService_List(t *testing.T) {
 	}
 
 	t.Run("a catalog that can't be read is an error", func(t *testing.T) {
-		_, err := application.NewProgressionCatalogService(&failingProgressions{}, fixedProgressionUses{}, newFakeLanguageRepository(), func() string { return "new-id" }, func() time.Time { return progressionNow }).List(context.Background())
+		_, err := application.NewProgressionCatalogService(&failingProgressions{}, fixedProgressionUses{}, newFakeLanguageRepository(), func() string { return "new-id" }, func() time.Time { return progressionNow }).List(context.Background(), progressionAdmin)
 
 		assert.Error(t, err)
 	})

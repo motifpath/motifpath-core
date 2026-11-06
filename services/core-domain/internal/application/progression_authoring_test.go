@@ -275,6 +275,35 @@ func TestProgressionCatalogService_Delete(t *testing.T) {
 	})
 }
 
+func TestProgressionCatalogService_ListCreator(t *testing.T) {
+	creator := "admin-1"
+	rows := func() *memoryProgressions {
+		return &memoryProgressions{fakeProgressions: fakeProgressions{{Key: "major/I", CreatedBy: &creator}}}
+	}
+
+	tests := []struct {
+		name   string
+		caller domain.User
+		want   *string
+	}{
+		{"an admin sees who created it", domain.User{Role: domain.RoleAdmin}, &creator},
+		{"a teacher doesn't", domain.User{Role: domain.RoleTeacher}, nil},
+		{"a student doesn't", domain.User{Role: domain.RoleStudent}, nil},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := rows()
+
+			got, err := progressionService(repo, nil).List(context.Background(), tc.caller)
+
+			require.NoError(t, err)
+			require.Len(t, got, 1)
+			assert.Equal(t, tc.want, got[0].CreatedBy)
+			assert.Equal(t, &creator, repo.fakeProgressions[0].CreatedBy, "the stored row keeps its creator")
+		})
+	}
+}
+
 func TestProgressionCatalogService_ListCountsCharts(t *testing.T) {
 	repo := &memoryProgressions{fakeProgressions: fakeProgressions{catalogPop()}}
 	uses := fixedProgressionUses{
@@ -283,7 +312,7 @@ func TestProgressionCatalogService_ListCountsCharts(t *testing.T) {
 		{ProgressionKey: "I-V-vi-IV", SongChartID: "c2"},
 	}
 
-	got, err := progressionService(repo, uses).List(context.Background())
+	got, err := progressionService(repo, uses).List(context.Background(), progressionAdmin)
 
 	require.NoError(t, err)
 	require.Len(t, got, 1)
