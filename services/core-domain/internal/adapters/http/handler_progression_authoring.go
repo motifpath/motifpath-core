@@ -28,6 +28,8 @@ func (h *Handler) CreateProgression(ctx context.Context, request generated.Creat
 	if body.InDrills != nil {
 		input.InDrills = *body.InDrills
 	}
+	input.SkillIDs = optionalUUIDStrings(body.SkillIds)
+	input.ConceptIDs = optionalUUIDStrings(body.ConceptIds)
 	created, err := h.progressionCatalog.Create(ctx, caller, input)
 	if err == nil {
 		out, mapErr := h.toGeneratedProgressionWithCreator(ctx, created)
@@ -36,6 +38,14 @@ func (h *Handler) CreateProgression(ctx context.Context, request generated.Creat
 	var exists *domain.ProgressionExistsError
 	if errors.As(err, &exists) {
 		return h.progressionExistsResponse(ctx, exists)
+	}
+	var notAddable *domain.ProgressionNotAddableError
+	if errors.As(err, &notAddable) {
+		var out generated.CreateProgression409JSONResponse
+		if err := out.FromProgressionNotAddableError(toGeneratedProgressionNotAddable(notAddable)); err != nil {
+			return nil, err
+		}
+		return out, nil
 	}
 	kind, valErr := classify(err)
 	switch kind {
@@ -115,6 +125,14 @@ func (h *Handler) DeleteProgression(ctx context.Context, request generated.Delet
 // AddProgressionToDrills isn't served yet.
 func (h *Handler) AddProgressionToDrills(context.Context, generated.AddProgressionToDrillsRequestObject) (generated.AddProgressionToDrillsResponseObject, error) {
 	return nil, errProgressionDrillsUnavailable
+}
+
+func toGeneratedProgressionNotAddable(e *domain.ProgressionNotAddableError) generated.ProgressionNotAddableError {
+	reasons := make([]generated.ProgressionNotAddableErrorReasons, len(e.Reasons))
+	for i, reason := range e.Reasons {
+		reasons[i] = generated.ProgressionNotAddableErrorReasons(reason)
+	}
+	return generated.ProgressionNotAddableError{Message: e.Error(), Reasons: reasons}
 }
 
 func toGeneratedProgressionInUse(e *domain.ProgressionNotRemovableError) generated.DeleteProgression409JSONResponse {

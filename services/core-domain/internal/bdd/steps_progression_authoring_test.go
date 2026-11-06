@@ -71,6 +71,70 @@ func registerProgressionAuthoringSteps(sc *godog.ScenarioContext, w *world) {
 		}
 		return nil
 	})
+	sc.Step(`^"([^"]+)" creates a major progression with the bars `+quotedList+`, in the drills, practising the concept "([^"]+)"$`, func(admin, bars, concept string) error {
+		return w.createsInDrills(admin, quotedItems(bars), concept)
+	})
+	sc.Step(`^"([^"]+)" has added the major progression "([^"]+)" to the drills$`, func(admin, numerals string) error {
+		if err := w.createsInDrills(admin, strings.Split(numerals, "-"), drillProgressionConcept); err != nil {
+			return err
+		}
+		_, err := w.createdProgression()
+		return err
+	})
+	sc.Step(`^the progression "([^"]+)" is in the drills$`, func(key string) error {
+		stored, err := w.storedProgression(key)
+		if err != nil {
+			return err
+		}
+		if !stored.InDrills {
+			return fmt.Errorf("%s isn't in the drills", key)
+		}
+		return nil
+	})
+	sc.Step(`^it practises the concept "([^"]+)"$`, func(concept string) error {
+		stored, err := w.storedProgression(w.authoredProgressionKey())
+		if err != nil {
+			return err
+		}
+		if !slices.Contains(stored.NodeIDs, w.conceptIDFor(concept).String()) {
+			return fmt.Errorf("%s practises %v", stored.Key, stored.NodeIDs)
+		}
+		return nil
+	})
+	sc.Step(`^"([^"]+)" doesn't list "([^"]+)" as a wrong answer$`, func(key, other string) error {
+		p, err := w.listedProgression(key)
+		if err != nil {
+			return err
+		}
+		if len(p.Confusable) == 0 || slices.Contains(p.Confusable, other) {
+			return fmt.Errorf("%s lists the wrong answers %v", key, p.Confusable)
+		}
+		return nil
+	})
+	sc.Step(`^"([^"]+)" still lists "([^"]+)" and "([^"]+)" as its wrong answers$`, func(key, first, second string) error {
+		p, err := w.listedProgression(key)
+		if err != nil {
+			return err
+		}
+		if !slices.Equal(p.Confusable, []string{first, second}) {
+			return fmt.Errorf("%s lists the wrong answers %v", key, p.Confusable)
+		}
+		return nil
+	})
+	sc.Step(`^the creation is refused because "([^"]+)"$`, func(reason string) error {
+		resp, ok := w.lastResp.(generated.CreateProgression409JSONResponse)
+		if !ok {
+			return fmt.Errorf("expected a refusal, got %#v (err=%v)", w.lastResp, w.lastErr)
+		}
+		refused, err := resp.AsProgressionNotAddableError()
+		if err != nil {
+			return err
+		}
+		if !slices.Contains(refused.Reasons, generated.ProgressionNotAddableErrorReasons(reason)) {
+			return fmt.Errorf("refused because %v", refused.Reasons)
+		}
+		return nil
+	})
 	sc.Step(`^it is not in the drills$`, func() error {
 		created, err := w.createdProgression()
 		if err != nil {
@@ -324,6 +388,23 @@ func (w *world) hasCreatedProgression(admin, mode, numerals string, nicknames ma
 	}
 	_, err := w.createdProgression()
 	return err
+}
+
+// drillProgressionConcept is the concept a progression added to the drills
+// practises when a scenario doesn't say.
+const drillProgressionConcept = "common-progressions"
+
+// createsInDrills creates a major progression in the drills, practising concept.
+func (w *world) createsInDrills(admin string, bars []string, concept string) error {
+	inDrills, concepts := true, []uuid.UUID{w.conceptIDFor(concept)}
+	input := generated.ProgressionInput{Mode: generated.ProgressionInputModeMajor, Bars: bars, InDrills: &inDrills, ConceptIds: &concepts}
+	w.authenticateAs(admin, domain.RoleAdmin)
+	resp, err := w.handler.CreateProgression(w.ctx(), generated.CreateProgressionRequestObject{Body: &input})
+	w.lastResp, w.lastErr = resp, err
+	if created, ok := resp.(generated.CreateProgression201JSONResponse); ok {
+		w.authoredKey = created.Key
+	}
+	return nil
 }
 
 func (w *world) createdProgression() (generated.Progression, error) {

@@ -79,7 +79,7 @@ func catalogPop() domain.Progression {
 }
 
 func progressionService(repo *memoryProgressions, uses fixedProgressionUses) *application.ProgressionCatalogService {
-	return application.NewProgressionCatalogService(repo, uses, newFakeLanguageRepository(), func() string { return "new-id" }, func() time.Time { return progressionNow })
+	return application.NewProgressionCatalogService(repo, uses, newFakeLanguageRepository(), newFakeKnowledgeNodeRepository(), newFakePracticeReferenceWriter(), func() string { return "new-id" }, func() time.Time { return progressionNow })
 }
 
 func TestProgressionCatalogService_Create(t *testing.T) {
@@ -106,16 +106,6 @@ func TestProgressionCatalogService_Create(t *testing.T) {
 		_, err := progressionService(&memoryProgressions{}, nil).Create(ctx, domain.User{Role: domain.RoleTeacher}, rock)
 
 		assert.ErrorIs(t, err, domain.ErrForbidden)
-	})
-
-	t.Run("in the drills isn't offered yet", func(t *testing.T) {
-		repo := &memoryProgressions{}
-
-		_, err := progressionService(repo, nil).Create(ctx, progressionAdmin, application.ProgressionInput{Mode: "major", Bars: []string{"I"}, InDrills: true})
-
-		var invalid *domain.ValidationError
-		require.ErrorAs(t, err, &invalid)
-		assert.Empty(t, repo.fakeProgressions)
 	})
 
 	t.Run("the same numerals return the existing one, with its chart count", func(t *testing.T) {
@@ -145,7 +135,7 @@ func TestProgressionCatalogService_Create(t *testing.T) {
 
 	t.Run("losing a race to another admin returns their progression", func(t *testing.T) {
 		repo := &racingProgressions{memoryProgressions: memoryProgressions{createErr: domain.ErrConflict}}
-		service := application.NewProgressionCatalogService(repo, fixedProgressionUses{}, newFakeLanguageRepository(), func() string { return "new-id" }, func() time.Time { return progressionNow })
+		service := application.NewProgressionCatalogService(repo, fixedProgressionUses{}, newFakeLanguageRepository(), newFakeKnowledgeNodeRepository(), newFakePracticeReferenceWriter(), func() string { return "new-id" }, func() time.Time { return progressionNow })
 
 		_, err := service.Create(ctx, progressionAdmin, rock)
 
@@ -317,4 +307,138 @@ func TestProgressionCatalogService_ListCountsCharts(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, got, 1)
 	assert.Equal(t, 2, got[0].SongChartCount, "two sections of one chart count once")
+}
+
+func TestProgressionCatalogService_CreateInDrills(t *testing.T) {
+	ctx := context.Background()
+	input := application.ProgressionInput{Mode: "major", Bars: []string{"I", "♭VII", "IV", "V"}, InDrills: true, ConceptIDs: []string{"common-progressions"}}
+
+	fixture := func() (*application.ProgressionCatalogService, *memoryProgressions, *fakePracticeReferenceWriter) {
+		repo := &memoryProgressions{fakeProgressions: fakeProgressions{catalogPop()}}
+		nodes := newFakeKnowledgeNodeRepository()
+		nodes.put(domain.KnowledgeNode{ID: "common-progressions", Kind: domain.KnowledgeNodeKindConcept, Key: "common-progressions"})
+		nodes.put(domain.KnowledgeNode{ID: "target-chord-tones", Kind: domain.KnowledgeNodeKindSkill, Key: "target-chord-tones"})
+		references := newFakePracticeReferenceWriter()
+		service := application.NewProgressionCatalogService(repo, fixedProgressionUses{}, newFakeLanguageRepository(), nodes, references, func() string { return "new-id" }, func() time.Time { return progressionNow })
+		return service, repo, references
+	}
+
+	t.Run("it is stored in the drills, with its nodes and wrong answers", func(t *testing.T) {
+		service, repo, _ := fixture()
+		both := input
+		both.SkillIDs = []string{"target-chord-tones"}
+
+		got, err := service.Create(ctx, progressionAdmin, both)
+
+		require.NoError(t, err)
+		assert.True(t, got.InDrills)
+		assert.ElementsMatch(t, []string{"target-chord-tones", "common-progressions"}, got.NodeIDs)
+		assert.Equal(t, []string{"I-V-vi-IV"}, got.Confusable)
+		assert.Equal(t, got, repo.fakeProgressions[1])
+	})
+
+	t.Run("it reaches the practice snapshot", func(t *testing.T) {
+		service, _, references := fixture()
+
+		got, err := service.Create(ctx, progressionAdmin, input)
+
+		require.NoError(t, err)
+		require.Len(t, references.progs, 1)
+		assert.Equal(t, got.Key, references.progs[0].Key)
+	})
+
+	t.Run("a progression for charts only stays out of the snapshot and takes no nodes", func(t *testing.T) {
+		service, _, references := fixture()
+		chartOnly := input
+		chartOnly.InDrills = false
+
+		got, err := service.Create(ctx, progressionAdmin, chartOnly)
+
+		require.NoError(t, err)
+		assert.Empty(t, references.progs)
+		assert.False(t, got.InDrills)
+		assert.Empty(t, got.NodeIDs)
+	})
+
+	t.Run("a snapshot that can't be written doesn't undo the progression", func(t *testing.T) {
+		service, repo, references := fixture()
+		references.err = errors.New("mongo down")
+
+		_, err := service.Create(ctx, progressionAdmin, input)
+
+		require.NoError(t, err)
+		assert.Len(t, repo.fakeProgressions, 2)
+	})
+
+	refused := []struct {
+		name  string
+		in    func(application.ProgressionInput) application.ProgressionInput
+		field string
+	}{
+		{"no skill and no concept", func(in application.ProgressionInput) application.ProgressionInput {
+			in.ConceptIDs = nil
+			return in
+		}, "skill_ids"},
+		{"a skill that doesn't exist", func(in application.ProgressionInput) application.ProgressionInput {
+			in.SkillIDs = []string{"nope"}
+			return in
+		}, "skill_ids"},
+		{"a concept that doesn't exist", func(in application.ProgressionInput) application.ProgressionInput {
+			in.ConceptIDs = []string{"nope"}
+			return in
+		}, "concept_ids"},
+		{"a skill sent as a concept", func(in application.ProgressionInput) application.ProgressionInput {
+			in.ConceptIDs = []string{"target-chord-tones"}
+			return in
+		}, "concept_ids"},
+	}
+	for _, tt := range refused {
+		t.Run("invalid: "+tt.name, func(t *testing.T) {
+			service, repo, references := fixture()
+
+			_, err := service.Create(ctx, progressionAdmin, tt.in(input))
+
+			var invalid *domain.ValidationError
+			require.ErrorAs(t, err, &invalid)
+			require.NotEmpty(t, invalid.Fields)
+			assert.Equal(t, tt.field, invalid.Fields[0].Field)
+			assert.Len(t, repo.fakeProgressions, 1, "nothing is created")
+			assert.Empty(t, references.progs)
+		})
+	}
+
+	t.Run("what can't be added creates nothing and says why", func(t *testing.T) {
+		service, repo, references := fixture()
+		threeBars := input
+		threeBars.Bars = []string{"I", "IV", "V"}
+
+		_, err := service.Create(ctx, progressionAdmin, threeBars)
+
+		var notAddable *domain.ProgressionNotAddableError
+		require.ErrorAs(t, err, &notAddable)
+		assert.Contains(t, notAddable.Reasons, domain.ProgressionNotAddableUnsupportedBarCount)
+		assert.Len(t, repo.fakeProgressions, 1)
+		assert.Empty(t, references.progs)
+	})
+
+	t.Run("numerals another progression has are refused as existing, not as unaddable", func(t *testing.T) {
+		service, _, _ := fixture()
+		same := input
+		same.Bars = catalogPop().Bars
+
+		_, err := service.Create(ctx, progressionAdmin, same)
+
+		var exists *domain.ProgressionExistsError
+		require.ErrorAs(t, err, &exists)
+	})
+
+	t.Run("wrong answers come only from the drills", func(t *testing.T) {
+		service, repo, _ := fixture()
+		repo.fakeProgressions = append(repo.fakeProgressions, domain.Progression{ID: "chart", Key: "major/I-iii-IV-V", Mode: "major", Bars: []string{"I", "iii", "IV", "V"}})
+
+		got, err := service.Create(ctx, progressionAdmin, input)
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{"I-V-vi-IV"}, got.Confusable)
+	})
 }

@@ -18,6 +18,8 @@ type ProgressionCatalogService struct {
 	progressions ports.ProgressionRepository
 	uses         ports.ProgressionUseReader
 	languages    ports.LanguageRepository
+	knowledge    ports.KnowledgeNodeRepository
+	references   ports.PracticeReferenceWriter
 	newID        func() string
 	now          func() time.Time
 }
@@ -26,10 +28,12 @@ func NewProgressionCatalogService(
 	progressions ports.ProgressionRepository,
 	uses ports.ProgressionUseReader,
 	languages ports.LanguageRepository,
+	knowledge ports.KnowledgeNodeRepository,
+	references ports.PracticeReferenceWriter,
 	newID func() string,
 	now func() time.Time,
 ) *ProgressionCatalogService {
-	return &ProgressionCatalogService{progressions: progressions, uses: uses, languages: languages, newID: newID, now: now}
+	return &ProgressionCatalogService{progressions: progressions, uses: uses, languages: languages, knowledge: knowledge, references: references, newID: newID, now: now}
 }
 
 // List returns every progression, ordered by key: the catalog keeps no
@@ -55,32 +59,27 @@ func (s *ProgressionCatalogService) List(ctx context.Context, caller domain.User
 	return sorted, nil
 }
 
-// ProgressionInput is a progression an admin creates.
+// ProgressionInput is a progression an admin creates. SkillIDs and ConceptIDs
+// are what it practises, and count only when it enters the drills.
 type ProgressionInput struct {
-	Mode      string
-	Bars      []string
-	Nicknames map[string]string
-	InDrills  bool
+	Mode       string
+	Bars       []string
+	Nicknames  map[string]string
+	InDrills   bool
+	SkillIDs   []string
+	ConceptIDs []string
 }
 
-// Create stores a new progression for song charts. Mode and numerals another one
-// has are refused with a *domain.ProgressionExistsError naming it.
+// Create stores a new progression, for song charts and, when in.InDrills, for the
+// drills too. Mode and numerals another one has are refused with a
+// *domain.ProgressionExistsError naming it; one that can't enter the drills, with a
+// *domain.ProgressionNotAddableError, and nothing is created.
 func (s *ProgressionCatalogService) Create(ctx context.Context, caller domain.User, in ProgressionInput) (domain.Progression, error) {
 	if err := requireAdmin(caller); err != nil {
 		return domain.Progression{}, err
 	}
-	if in.InDrills {
-		return domain.Progression{}, domain.NewValidationError("in_drills", "a progression can't be added to the drills yet")
-	}
-	languages, err := s.nameLanguages(ctx)
+	created, err := s.newProgression(ctx, in)
 	if err != nil {
-		return domain.Progression{}, err
-	}
-	created, err := domain.NewCreatedProgression(in.Mode, in.Bars, in.Nicknames, languages)
-	if err != nil {
-		return domain.Progression{}, err
-	}
-	if err := s.refuseExisting(ctx, created); err != nil {
 		return domain.Progression{}, err
 	}
 	now := s.now()
@@ -95,7 +94,49 @@ func (s *ProgressionCatalogService) Create(ctx context.Context, caller domain.Us
 	if err != nil {
 		return domain.Progression{}, err
 	}
+	if created.InDrills {
+		putProgressionReference(ctx, s.references, created)
+	}
 	return created, nil
+}
+
+// newProgression reads in as a progression no other has, ready to store, in the
+// drills when in.InDrills says so.
+func (s *ProgressionCatalogService) newProgression(ctx context.Context, in ProgressionInput) (domain.Progression, error) {
+	if in.InDrills {
+		if err := s.checkDrillNodes(ctx, in.SkillIDs, in.ConceptIDs); err != nil {
+			return domain.Progression{}, err
+		}
+	}
+	languages, err := s.nameLanguages(ctx)
+	if err != nil {
+		return domain.Progression{}, err
+	}
+	created, err := domain.NewCreatedProgression(in.Mode, in.Bars, in.Nicknames, languages)
+	if err != nil {
+		return domain.Progression{}, err
+	}
+	if err := s.refuseExisting(ctx, created); err != nil {
+		return domain.Progression{}, err
+	}
+	if !in.InDrills {
+		return created, nil
+	}
+	drills, err := s.progressions.ListInDrills(ctx)
+	if err != nil {
+		return domain.Progression{}, err
+	}
+	return created.AddedToDrills(slices.Concat(in.SkillIDs, in.ConceptIDs), drills)
+}
+
+// checkDrillNodes refuses a progression for the drills that practises nothing,
+// or something the knowledge map doesn't have. Any instrument may play a
+// progression, so a node for one instrument is as good as any.
+func (s *ProgressionCatalogService) checkDrillNodes(ctx context.Context, skillIDs, conceptIDs []string) error {
+	if len(skillIDs) == 0 && len(conceptIDs) == 0 {
+		return domain.NewValidationError("skill_ids", "a progression in the drills needs a skill or a concept")
+	}
+	return checkClassificationSuits(ctx, s.knowledge, skillIDs, conceptIDs, nil)
 }
 
 // UpdateNicknames replaces a created progression's nicknames. Nothing else about
