@@ -65,9 +65,6 @@ var triadOf = map[ChordQuality]triad{
 	ChordQualityDiminished: triadDiminished, ChordQualityDiminished7: triadDiminished, ChordQualityHalfDiminished7: triadDiminished,
 }
 
-// numeralTriads is the triad each numeral of a major key is.
-var numeralTriads = map[string]triad{"": triadMajor, "m": triadMinor, "dim": triadDiminished}
-
 // heardChord is a chord as it sounds: its root's pitch class and its triad.
 // A chord with no triad, or one that can't be read, matches nothing.
 type heardChord struct {
@@ -95,7 +92,7 @@ func UnplayedProgressions(doc SongChartDocument, concertKey *string, capoFret in
 		chords := sectionChords(section, capoFret)
 		for _, key := range section.ProgressionKeys {
 			i := slices.IndexFunc(catalog, func(p Progression) bool { return p.Key == key })
-			if major && i >= 0 {
+			if major && i >= 0 && catalog[i].Mode == string(ProgressionModeMajor) {
 				if run := progressionChords(catalog[i].Bars, tonic); len(run) > 0 && containsRun(chords, run) {
 					continue
 				}
@@ -138,13 +135,12 @@ func sectionChords(section SongChartSection, capoFret int) []heardChord {
 // with a numeral repeated in a row kept once.
 func progressionChords(bars []string, tonic int) []heardChord {
 	var chords []heardChord
-	for _, numeral := range bars {
-		base, _ := strings.CutSuffix(numeral, "7")
-		t, ok := diatonicTriads[base]
+	for _, bar := range bars {
+		numeral, ok := ParseProgressionNumeral(bar, ProgressionModeMajor)
 		if !ok {
 			return nil
 		}
-		chords = appendChanged(chords, heardChord{root: (tonic + t.semitones) % 12, triad: numeralTriads[t.suffix]})
+		chords = appendChanged(chords, heardChord{root: (tonic + numeral.RootSemitones) % 12, triad: triadOf[numeral.Quality]})
 	}
 	return chords
 }
