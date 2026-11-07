@@ -283,6 +283,23 @@ func TestProgressionCatalogService_Uses(t *testing.T) {
 		assert.Len(t, repo.fakeProgressions, 1)
 	})
 
+	t.Run("lists them by chart title, whatever the case, then draft first, then section", func(t *testing.T) {
+		use := func(chart, title string, revision domain.ProgressionUseRevision, section int) domain.ProgressionUse {
+			return domain.ProgressionUse{ProgressionKey: rock.Key, SongChartID: chart, Title: title, Revision: revision, SectionIndex: section}
+		}
+		zebraDraft := use("c1", "Zebra", domain.ProgressionUseDraft, 0)
+		applePublished := use("c2", "apple", domain.ProgressionUsePublished, 0)
+		appleDraftChorus := use("c2", "apple", domain.ProgressionUseDraft, 1)
+		appleDraftVerse := use("c2", "apple", domain.ProgressionUseDraft, 0)
+		sameTitleOtherChart := use("c3", "Apple", domain.ProgressionUseDraft, 0)
+		repo := &memoryProgressions{fakeProgressions: fakeProgressions{rock}}
+
+		got, err := progressionService(repo, fixedProgressionUses{zebraDraft, sameTitleOtherChart, applePublished, appleDraftChorus, appleDraftVerse}).Uses(ctx, progressionAdmin, rock.ID)
+
+		require.NoError(t, err)
+		assert.Equal(t, []domain.ProgressionUse{appleDraftVerse, appleDraftChorus, applePublished, sameTitleOtherChart, zebraDraft}, got)
+	})
+
 	t.Run("a progression no chart tags has none", func(t *testing.T) {
 		repo := &memoryProgressions{fakeProgressions: fakeProgressions{rock}}
 
