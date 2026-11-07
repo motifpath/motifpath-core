@@ -1,9 +1,6 @@
 package domain
 
-import (
-	"slices"
-	"strings"
-)
+import "slices"
 
 // MaxSongChartProgressions is how many progressions a section can be tagged
 // with.
@@ -79,21 +76,20 @@ type heardChord struct {
 //     up by the capo, each counted by its root and triad. N.C. is skipped, and
 //     a chord repeated in a row counts once. Another section's chords never
 //     count;
-//   - the progression's numerals are spelled in the concert key, a dominant
-//     seventh counting as major, and a numeral repeated in a row counts once;
-//   - the concert key must be stated and major, as every progression of the
-//     catalog is in a major key; otherwise every tag is unplayed.
+//   - the progression's numerals are spelled in the concert key when their modes
+//     match and in its relative key when they don't, a dominant seventh counting
+//     as major, and a numeral repeated in a row counts once;
+//   - the concert key must be stated; otherwise every tag is unplayed.
 //
 // A tag missing from catalog is unplayed.
 func UnplayedProgressions(doc SongChartDocument, concertKey *string, capoFret int, catalog []Progression) []SectionProgression {
 	unplayed := []SectionProgression{}
-	tonic, major := majorTonic(concertKey)
 	for si, section := range doc.Sections {
 		chords := sectionChords(section, capoFret)
 		for _, key := range section.ProgressionKeys {
 			i := slices.IndexFunc(catalog, func(p Progression) bool { return p.Key == key })
-			if major && i >= 0 && catalog[i].Mode == string(ProgressionModeMajor) {
-				if run := progressionChords(catalog[i].Bars, tonic); len(run) > 0 && containsRun(chords, run) {
+			if i >= 0 {
+				if run := progressionChords(catalog[i], concertKey); len(run) > 0 && containsRun(chords, run) {
 					continue
 				}
 			}
@@ -103,14 +99,26 @@ func UnplayedProgressions(doc SongChartDocument, concertKey *string, capoFret in
 	return unplayed
 }
 
-// majorTonic is the pitch class of a stated major concert key's tonic; false
-// for a minor key or none.
-func majorTonic(concertKey *string) (int, bool) {
-	if concertKey == nil || strings.HasSuffix(*concertKey, "m") {
+// spellingTonic is the pitch class a progression in mode is spelled on: the
+// concert key's tonic when their modes match, its relative key's when they don't.
+// False for a key that isn't stated or can't be read.
+func spellingTonic(concertKey *string, mode ProgressionMode) (int, bool) {
+	if concertKey == nil {
 		return 0, false
 	}
-	_, pc, rest, ok := leadingNote(*concertKey)
-	return pc, ok && rest == ""
+	_, tonic, rest, ok := leadingNote(*concertKey)
+	if !ok {
+		return 0, false
+	}
+	switch {
+	case rest == "" && mode == ProgressionModeMajor, rest == "m" && mode == ProgressionModeMinor:
+		return tonic, true
+	case rest == "" && mode == ProgressionModeMinor:
+		return (tonic + 9) % 12, true
+	case rest == "m" && mode == ProgressionModeMajor:
+		return (tonic + 3) % 12, true
+	}
+	return 0, false
 }
 
 // sectionChords is the section's chords as they sound, in document order,
@@ -131,12 +139,17 @@ func sectionChords(section SongChartSection, capoFret int) []heardChord {
 	return chords
 }
 
-// progressionChords is the progression's chords in the major key on tonic,
-// with a numeral repeated in a row kept once.
-func progressionChords(bars []string, tonic int) []heardChord {
+// progressionChords is the progression's chords as spelled for concertKey, with a
+// numeral repeated in a row kept once; nil when it can't be spelled.
+func progressionChords(p Progression, concertKey *string) []heardChord {
+	mode := ProgressionMode(p.Mode)
+	tonic, ok := spellingTonic(concertKey, mode)
+	if !ok {
+		return nil
+	}
 	var chords []heardChord
-	for _, bar := range bars {
-		numeral, ok := ParseProgressionNumeral(bar, ProgressionModeMajor)
+	for _, bar := range p.Bars {
+		numeral, ok := ParseProgressionNumeral(bar, mode)
 		if !ok {
 			return nil
 		}
