@@ -1,6 +1,7 @@
 package application
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"slices"
@@ -209,7 +210,21 @@ func (s *ProgressionCatalogService) usesOf(ctx context.Context, key string) ([]d
 	if err != nil {
 		return nil, err
 	}
-	return slices.DeleteFunc(all, func(u domain.ProgressionUse) bool { return u.ProgressionKey != key }), nil
+	uses := slices.DeleteFunc(all, func(u domain.ProgressionUse) bool { return u.ProgressionKey != key })
+	slices.SortFunc(uses, compareProgressionUses)
+	return uses, nil
+}
+
+// compareProgressionUses keeps a chart's sections together and in the same order
+// every time, since an admin works through them to untag each one: by title,
+// whatever the case, with a chart's draft before its published revision.
+func compareProgressionUses(a, b domain.ProgressionUse) int {
+	return cmp.Or(
+		strings.Compare(strings.ToLower(a.Title), strings.ToLower(b.Title)),
+		strings.Compare(a.SongChartID, b.SongChartID),
+		strings.Compare(string(a.Revision), string(b.Revision)),
+		cmp.Compare(a.SectionIndex, b.SectionIndex),
+	)
 }
 
 func (s *ProgressionCatalogService) refuseExisting(ctx context.Context, p domain.Progression) error {
