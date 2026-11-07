@@ -84,10 +84,19 @@ func TestFreshInstall(t *testing.T) {
 	})
 
 	t.Run("the knowledge map has its nodes and edges, with fixed ids", func(t *testing.T) {
-		assert.Equal(t, map[string]string{"skill": "219", "concept": "125"}, stringPairs(t, ctx, db, "SELECT kind, count(*)::text FROM knowledge_nodes GROUP BY kind"))
-		assert.Equal(t, map[string]string{"applies": "366", "requires": "144"}, stringPairs(t, ctx, db, "SELECT type, count(*)::text FROM knowledge_edges GROUP BY type"))
+		assert.Equal(t, map[string]string{"skill": "221", "concept": "125"}, stringPairs(t, ctx, db, "SELECT kind, count(*)::text FROM knowledge_nodes GROUP BY kind"))
+		assert.Equal(t, map[string]string{"applies": "370", "requires": "144"}, stringPairs(t, ctx, db, "SELECT type, count(*)::text FROM knowledge_edges GROUP BY type"))
 		assert.Equal(t, 1, count(t, "SELECT count(*) FROM knowledge_nodes WHERE key = 'scales' AND id = '"+catalogID("knowledge-node/scales")+"'"))
 		assert.Equal(t, 1, count(t, "SELECT count(*) FROM knowledge_edges WHERE id = '"+catalogID("knowledge-edge/requires/change-chords/play-open-chords")+"'"))
+		for key, applied := range map[string][]string{
+			"interpret-note-names": {"note-names", "octaves"},
+			"count-semitone-steps": {"tones-and-semitones", "sharps-and-flats"},
+		} {
+			assert.Equal(t, 1, count(t, "SELECT count(*) FROM knowledge_nodes n JOIN knowledge_nodes p ON p.id = n.parent_id WHERE n.key = '"+key+"' AND n.id = '"+catalogID("knowledge-node/"+key)+"' AND p.key = 'reading'"), key)
+			for _, concept := range applied {
+				assert.Equal(t, 1, count(t, "SELECT count(*) FROM knowledge_edges e JOIN knowledge_nodes t ON t.id = e.to_id WHERE e.id = '"+catalogID("knowledge-edge/applies/"+key+"/"+concept)+"' AND e.from_id = '"+catalogID("knowledge-node/"+key)+"' AND t.key = '"+concept+"'"), key+" applies "+concept)
+			}
+		}
 	})
 
 	invariants := []struct {
