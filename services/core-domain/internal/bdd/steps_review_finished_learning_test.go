@@ -264,7 +264,7 @@ func (w *world) readsEnrollmentPart(name string, position int, courseSlug string
 // readsStudentPathThroughRouter sends the read through the generated
 // router, since only the router can receive an id that is not a UUID.
 func (w *world) readsStudentPathThroughRouter(_, rawID string) error {
-	router := generated.HandlerWithOptions(generated.NewStrictHandler(w.handler, nil), generated.ChiServerOptions{})
+	router := generated.HandlerWithOptions(appHTTP.NewStrictHandler(w.handler), generated.ChiServerOptions{})
 	req := httptest.NewRequestWithContext(w.ctx(), http.MethodGet, "/students/me/student-paths/"+rawID, nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
