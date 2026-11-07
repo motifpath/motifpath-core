@@ -10835,6 +10835,9 @@ type ServerInterface interface {
 	// DeleteProgression Remove a progression created by mistake
 	// (DELETE /progressions/{progression_id})
 	DeleteProgression(w http.ResponseWriter, r *http.Request, progressionId openapi_types.UUID)
+	// GetProgressionUses Read which song chart sections tag a progression
+	// (GET /progressions/{progression_id})
+	GetProgressionUses(w http.ResponseWriter, r *http.Request, progressionId openapi_types.UUID)
 	// UpdateProgression Change a created progression's nickname
 	// (PATCH /progressions/{progression_id})
 	UpdateProgression(w http.ResponseWriter, r *http.Request, progressionId openapi_types.UUID)
@@ -11438,6 +11441,12 @@ func (_ Unimplemented) CreateProgression(w http.ResponseWriter, r *http.Request)
 // DeleteProgression Remove a progression created by mistake
 // (DELETE /progressions/{progression_id})
 func (_ Unimplemented) DeleteProgression(w http.ResponseWriter, r *http.Request, progressionId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetProgressionUses Read which song chart sections tag a progression
+// (GET /progressions/{progression_id})
+func (_ Unimplemented) GetProgressionUses(w http.ResponseWriter, r *http.Request, progressionId openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -14855,6 +14864,32 @@ func (siw *ServerInterfaceWrapper) DeleteProgression(w http.ResponseWriter, r *h
 	handler.ServeHTTP(w, r)
 }
 
+// GetProgressionUses operation middleware
+func (siw *ServerInterfaceWrapper) GetProgressionUses(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "progression_id" -------------
+	var progressionId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "progression_id", chi.URLParam(r, "progression_id"), &progressionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "progression_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetProgressionUses(w, r, progressionId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // UpdateProgression operation middleware
 func (siw *ServerInterfaceWrapper) UpdateProgression(w http.ResponseWriter, r *http.Request) {
 
@@ -16053,6 +16088,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Delete(options.BaseURL+"/progressions/{progression_id}", wrapper.DeleteProgression)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/progressions/{progression_id}", wrapper.GetProgressionUses)
 	})
 	r.Group(func(r chi.Router) {
 		r.Patch(options.BaseURL+"/progressions/{progression_id}", wrapper.UpdateProgression)
@@ -21541,6 +21579,84 @@ func (response DeleteProgression409JSONResponse) VisitDeleteProgressionResponse(
 	return err
 }
 
+type GetProgressionUsesRequestObject struct {
+	ProgressionId openapi_types.UUID `json:"progression_id"`
+}
+
+type GetProgressionUsesResponseObject interface {
+	VisitGetProgressionUsesResponse(w http.ResponseWriter) error
+}
+
+type GetProgressionUses200JSONResponse []ProgressionUse
+
+func (response GetProgressionUses200JSONResponse) VisitGetProgressionUsesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProgressionUses400JSONResponse ValidationError
+
+func (response GetProgressionUses400JSONResponse) VisitGetProgressionUsesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProgressionUses401JSONResponse UnauthorizedError
+
+func (response GetProgressionUses401JSONResponse) VisitGetProgressionUsesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProgressionUses403JSONResponse ForbiddenError
+
+func (response GetProgressionUses403JSONResponse) VisitGetProgressionUsesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProgressionUses404JSONResponse NotFoundError
+
+func (response GetProgressionUses404JSONResponse) VisitGetProgressionUsesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type UpdateProgressionRequestObject struct {
 	ProgressionId openapi_types.UUID `json:"progression_id"`
 	Body          *UpdateProgressionJSONRequestBody
@@ -24356,6 +24472,9 @@ type StrictServerInterface interface {
 	// DeleteProgression Remove a progression created by mistake
 	// (DELETE /progressions/{progression_id})
 	DeleteProgression(ctx context.Context, request DeleteProgressionRequestObject) (DeleteProgressionResponseObject, error)
+	// GetProgressionUses Read which song chart sections tag a progression
+	// (GET /progressions/{progression_id})
+	GetProgressionUses(ctx context.Context, request GetProgressionUsesRequestObject) (GetProgressionUsesResponseObject, error)
 	// UpdateProgression Change a created progression's nickname
 	// (PATCH /progressions/{progression_id})
 	UpdateProgression(ctx context.Context, request UpdateProgressionRequestObject) (UpdateProgressionResponseObject, error)
@@ -26772,6 +26891,32 @@ func (sh *strictHandler) DeleteProgression(w http.ResponseWriter, r *http.Reques
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(DeleteProgressionResponseObject); ok {
 		if err := validResponse.VisitDeleteProgressionResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetProgressionUses operation middleware
+func (sh *strictHandler) GetProgressionUses(w http.ResponseWriter, r *http.Request, progressionId openapi_types.UUID) {
+	var request GetProgressionUsesRequestObject
+
+	request.ProgressionId = progressionId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetProgressionUses(ctx, request.(GetProgressionUsesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetProgressionUses")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetProgressionUsesResponseObject); ok {
+		if err := validResponse.VisitGetProgressionUsesResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

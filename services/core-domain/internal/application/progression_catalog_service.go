@@ -180,15 +180,36 @@ func (s *ProgressionCatalogService) Delete(ctx context.Context, caller domain.Us
 	if stored.InDrills {
 		return &domain.ProgressionNotRemovableError{Reason: domain.ProgressionNotRemovableInDrills}
 	}
-	all, err := s.uses.ProgressionUses(ctx)
+	uses, err := s.usesOf(ctx, stored.Key)
 	if err != nil {
 		return err
 	}
-	uses := slices.DeleteFunc(all, func(u domain.ProgressionUse) bool { return u.ProgressionKey != stored.Key })
 	if len(uses) > 0 {
 		return &domain.ProgressionNotRemovableError{Reason: domain.ProgressionNotRemovableInUse, Uses: uses}
 	}
 	return s.progressions.Delete(ctx, id)
+}
+
+// Uses lists the sections of every chart's draft and latest published revision
+// that tag a progression, the same ones that would refuse its removal. Only
+// admins read them, since a chart's draft is listed.
+func (s *ProgressionCatalogService) Uses(ctx context.Context, caller domain.User, id string) ([]domain.ProgressionUse, error) {
+	if err := requireAdmin(caller); err != nil {
+		return nil, err
+	}
+	stored, err := s.progressions.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return s.usesOf(ctx, stored.Key)
+}
+
+func (s *ProgressionCatalogService) usesOf(ctx context.Context, key string) ([]domain.ProgressionUse, error) {
+	all, err := s.uses.ProgressionUses(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return slices.DeleteFunc(all, func(u domain.ProgressionUse) bool { return u.ProgressionKey != key }), nil
 }
 
 func (s *ProgressionCatalogService) refuseExisting(ctx context.Context, p domain.Progression) error {

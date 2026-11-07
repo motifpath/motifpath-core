@@ -122,6 +122,29 @@ func (h *Handler) DeleteProgression(ctx context.Context, request generated.Delet
 	return nil, err
 }
 
+// GetProgressionUses lists the sections that tag a progression, to an admin.
+func (h *Handler) GetProgressionUses(ctx context.Context, request generated.GetProgressionUsesRequestObject) (generated.GetProgressionUsesResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.GetProgressionUses401JSONResponse(unauthorizedError()), nil
+	}
+	uses, err := h.progressionCatalog.Uses(ctx, caller, request.ProgressionId.String())
+	if err == nil {
+		return generated.GetProgressionUses200JSONResponse(toGeneratedProgressionUses(uses)), nil
+	}
+	kind, valErr := classify(err)
+	switch kind {
+	case errKindValidation:
+		return generated.GetProgressionUses400JSONResponse(validationErrorResponse(valErr)), nil
+	case errKindNotFound:
+		return generated.GetProgressionUses404JSONResponse(notFoundError("progression not found")), nil
+	case errKindForbidden:
+		return generated.GetProgressionUses403JSONResponse(forbiddenError("Only admins read where a progression is used.")), nil
+	case errKindOther:
+	}
+	return nil, err
+}
+
 // AddProgressionToDrills isn't served yet.
 func (h *Handler) AddProgressionToDrills(context.Context, generated.AddProgressionToDrillsRequestObject) (generated.AddProgressionToDrillsResponseObject, error) {
 	return nil, errProgressionDrillsUnavailable
@@ -136,9 +159,17 @@ func toGeneratedProgressionNotAddable(e *domain.ProgressionNotAddableError) gene
 }
 
 func toGeneratedProgressionInUse(e *domain.ProgressionNotRemovableError) generated.DeleteProgression409JSONResponse {
-	uses := make([]generated.ProgressionUse, len(e.Uses))
-	for i, u := range e.Uses {
-		uses[i] = generated.ProgressionUse{
+	return generated.DeleteProgression409JSONResponse{
+		Message: e.Error(),
+		Reason:  generated.ProgressionInUseErrorReason(e.Reason),
+		Uses:    toGeneratedProgressionUses(e.Uses),
+	}
+}
+
+func toGeneratedProgressionUses(uses []domain.ProgressionUse) []generated.ProgressionUse {
+	out := make([]generated.ProgressionUse, len(uses))
+	for i, u := range uses {
+		out[i] = generated.ProgressionUse{
 			SongChartId:  mustUUID(u.SongChartID),
 			Title:        u.Title,
 			Revision:     generated.ProgressionUseRevision(u.Revision),
@@ -146,11 +177,7 @@ func toGeneratedProgressionInUse(e *domain.ProgressionNotRemovableError) generat
 			SectionLabel: u.SectionLabel,
 		}
 	}
-	return generated.DeleteProgression409JSONResponse{
-		Message: e.Error(),
-		Reason:  generated.ProgressionInUseErrorReason(e.Reason),
-		Uses:    uses,
-	}
+	return out
 }
 
 // toGeneratedProgressionWithCreator maps one progression, looking up its creator.
