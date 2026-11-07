@@ -122,6 +122,11 @@ func (h *Handler) DeleteProgression(ctx context.Context, request generated.Delet
 	return nil, err
 }
 
+// GetProgressionUses isn't served yet.
+func (h *Handler) GetProgressionUses(context.Context, generated.GetProgressionUsesRequestObject) (generated.GetProgressionUsesResponseObject, error) {
+	return nil, errProgressionDrillsUnavailable
+}
+
 // AddProgressionToDrills isn't served yet.
 func (h *Handler) AddProgressionToDrills(context.Context, generated.AddProgressionToDrillsRequestObject) (generated.AddProgressionToDrillsResponseObject, error) {
 	return nil, errProgressionDrillsUnavailable
