@@ -15,6 +15,7 @@ import (
 	"github.com/google/uuid"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 
+	appHTTP "github.com/motifpath/core-domain/internal/adapters/http"
 	"github.com/motifpath/core-domain/internal/adapters/http/generated"
 	"github.com/motifpath/core-domain/internal/domain"
 )
@@ -651,7 +652,7 @@ func (w *world) composesChoosingRawNode(_ string, minutes int, node string) erro
 	if err != nil {
 		return err
 	}
-	router := generated.HandlerWithOptions(generated.NewStrictHandler(w.handler, nil), generated.ChiServerOptions{})
+	router := generated.HandlerWithOptions(appHTTP.NewStrictHandler(w.handler), generated.ChiServerOptions{})
 	req := httptest.NewRequestWithContext(w.ctx(), http.MethodPost, "/students/me/practice-sessions", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()

@@ -157,7 +157,7 @@ func run(logger *slog.Logger) error {
 	// Migrations may have installed reference data the practice subject
 	// catalog is built from, so it is out of date until rebuilt.
 	subjectCatalogs.InvalidateSubjectCatalogs(ctx)
-	strictHandler := generated.NewStrictHandler(handler, nil)
+	strictHandler := appHTTP.NewStrictHandler(handler)
 
 	router := generated.HandlerWithOptions(strictHandler, generated.ChiServerOptions{
 		Middlewares: []generated.MiddlewareFunc{appHTTP.ClerkAuthMiddleware, appHTTP.AcceptLanguageMiddleware},
