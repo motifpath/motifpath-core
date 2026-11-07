@@ -79,9 +79,18 @@ func TestUnplayedProgressions_ByMode(t *testing.T) {
 		return SongChartDocument{Sections: []SongChartSection{{ProgressionKeys: []string{"p"}, Lines: []SongChartLine{{Runs: line}}}}}
 	}
 	borrowed := []Progression{{Key: "p", Mode: "major", Bars: []string{"I", "♭VII", "IV", "I"}}}
-	minor := []Progression{{Key: "p", Mode: "minor", Bars: []string{"I", "♭VII", "IV", "I"}}}
+	minor := []Progression{{Key: "p", Mode: "minor", Bars: []string{"i", "♭VI", "♭III", "♭VII"}}}
+	harmonic := []Progression{{Key: "p", Mode: "minor", Bars: []string{"i", "iv", "V", "i"}}}
+	in := func(k string) *string { return &k }
 
 	assert.Empty(t, UnplayedProgressions(section("D", "C", "G", "D"), &key, 0, borrowed), "a borrowed chord is spelled from its numeral")
 	assert.Len(t, UnplayedProgressions(section("D", "C#dim", "G", "D"), &key, 0, borrowed), 1, "and must sound as written")
-	assert.Len(t, UnplayedProgressions(section("D", "C", "G", "D"), &key, 0, minor), 1, "a minor progression isn't spelled in a major chart yet")
+	assert.Empty(t, UnplayedProgressions(section("Em", "C", "G", "D"), in("Em"), 0, minor), "a minor progression is spelled in a minor chart's key")
+	assert.Empty(t, UnplayedProgressions(section("Em", "C", "G", "D"), in("G"), 0, minor), "and in a major chart's relative minor")
+	assert.Empty(t, UnplayedProgressions(section("Am", "F", "C", "G"), in("C"), 0, minor), "the relative minor wraps past C")
+	assert.Len(t, UnplayedProgressions(section("Em", "C", "G", "D"), in("E"), 0, minor), 1, "a major chart isn't spelled on its own tonic as if minor")
+	assert.Len(t, UnplayedProgressions(section("E", "C", "G", "D"), in("Em"), 0, minor), 1, "a minor numeral must sound minor")
+	assert.Empty(t, UnplayedProgressions(section("Am", "Dm", "E", "Am"), in("Am"), 0, harmonic), "harmonic minor's V sounds major")
+	assert.Len(t, UnplayedProgressions(section("Am", "Dm", "Em", "Am"), in("Am"), 0, harmonic), 1, "and natural minor's v isn't it")
+	assert.Len(t, UnplayedProgressions(section("Em", "C", "G", "D"), nil, 0, minor), 1, "no concert key plays nothing, in either mode")
 }

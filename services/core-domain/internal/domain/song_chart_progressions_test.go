@@ -67,7 +67,11 @@ func TestUnplayedProgressions(t *testing.T) {
 		{"keys are compared by pitch, whatever their spelling", key("Gb"), 0, "F# B F# C#", []string{"I-IV-I-V"}, []string{}},
 		{"a chord with no triad breaks the run", key("G"), 0, "G Csus4 D G", []string{"I-IV-V-I"}, []string{"I-IV-V-I"}},
 		{"an unreadable chord breaks the run", key("G"), 0, "G H7 C D G", []string{"I-IV-V-I"}, []string{"I-IV-V-I"}},
-		{"a chart in a minor key plays no progression", key("Em"), 0, "Em C G D", []string{"vi-IV-I-V"}, []string{"vi-IV-I-V"}},
+		{"a major progression in a minor chart is spelled in the relative major", key("Em"), 0, "Em C G D", []string{"vi-IV-I-V"}, []string{}},
+		{"the relative major wraps past B", key("Bm"), 0, "Bm G D A", []string{"vi-IV-I-V"}, []string{}},
+		{"a minor chart isn't spelled on its own tonic as if major", key("Em"), 0, "E A E B", []string{"I-IV-I-V"}, []string{"I-IV-I-V"}},
+		{"a minor chart's chords sound moved up by the capo", key("Em"), 2, "Dm A# F C", []string{"vi-IV-I-V"}, []string{}},
+		{"a key that isn't plainly major or minor plays no progression", key("Em7"), 0, "Em C G D", []string{"vi-IV-I-V"}, []string{"vi-IV-I-V"}},
 		{"a chart with no concert key plays no progression", nil, 0, "G C G D G", []string{"I-IV-I-V"}, []string{"I-IV-I-V"}},
 		{"an untagged chart lists nothing", key("G"), 0, "G C G D G", nil, []string{}},
 	}

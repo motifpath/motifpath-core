@@ -10796,10 +10796,11 @@ type SongChartDraft struct {
 	// (each written chord moved up by the capo), each counted by its
 	// root and triad (major, minor or diminished), N.C. skipped and a
 	// chord repeated in a row counted once, against the progression's
-	// numerals spelled in the concert key, a dominant seventh counting
-	// as major and a repeated numeral counted once. The chords of
-	// another section never count. With no stated major concert key,
-	// every tag is unplayed. Any entry blocks publication.
+	// numerals spelled in the concert key when their modes match and in
+	// its relative key when they don't, a dominant seventh counting as
+	// major and a repeated numeral counted once. The chords of another
+	// section never count. With no stated concert key, every tag is
+	// unplayed. Any entry blocks publication.
 	UnplayedProgressions []SongChartUnplayedProgression `json:"unplayed_progressions"`
 
 	// UpdatedAt When the draft was last changed.
