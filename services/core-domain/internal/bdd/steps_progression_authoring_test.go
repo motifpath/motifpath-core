@@ -359,6 +359,65 @@ func registerProgressionAuthoringSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^the refusal lists the verse of the published revision of "([^"]+)"$`, func(title string) error {
 		return w.refusalLists(title, generated.ProgressionUseRevisionPublished, 0)
 	})
+	sc.Step(`^the latest published revision of "([^"]+)" tags its chorus with "([^"]+)"$`, w.publishedChorusTagged)
+	sc.Step(`^"([^"]+)" reads which sections tag the progression "([^"]+)"$`, w.readsProgressionUses)
+	sc.Step(`^"([^"]+)" reads which sections tag a progression that doesn't exist$`, func(admin string) error {
+		w.authenticateAs(admin, domain.RoleAdmin)
+		resp, err := w.handler.GetProgressionUses(w.ctx(), generated.GetProgressionUsesRequestObject{ProgressionId: uuid.New()})
+		w.lastResp, w.lastErr = resp, err
+		return nil
+	})
+	sc.Step(`^a teacher reads which sections tag the progression "([^"]+)"$`, func(key string) error {
+		stored, err := w.storedProgression(key)
+		if err != nil {
+			return err
+		}
+		w.authenticateAs("a teacher", domain.RoleTeacher)
+		resp, err := w.handler.GetProgressionUses(w.ctx(), generated.GetProgressionUsesRequestObject{ProgressionId: uuid.MustParse(stored.ID)})
+		w.lastResp, w.lastErr = resp, err
+		return nil
+	})
+	sc.Step(`^they are the verse of the draft and the chorus of the published revision of "([^"]+)"$`, func(title string) error {
+		uses, ok := w.lastResp.(generated.GetProgressionUses200JSONResponse)
+		if !ok {
+			return fmt.Errorf("expected the sections, got %#v (err=%v)", w.lastResp, w.lastErr)
+		}
+		got := map[generated.ProgressionUseRevision]int{}
+		for _, use := range uses {
+			if use.Title != title {
+				return fmt.Errorf("the sections are %+v", uses)
+			}
+			got[use.Revision] = use.SectionIndex
+		}
+		section, drafted := got[generated.ProgressionUseRevisionDraft]
+		published, wasPublished := got[generated.ProgressionUseRevisionPublished]
+		if len(uses) != 2 || !drafted || !wasPublished || section != 0 || published != 1 {
+			return fmt.Errorf("the sections are %+v", uses)
+		}
+		return nil
+	})
+	sc.Step(`^no section tags it$`, func() error {
+		uses, ok := w.lastResp.(generated.GetProgressionUses200JSONResponse)
+		if !ok {
+			return fmt.Errorf("expected the sections, got %#v (err=%v)", w.lastResp, w.lastErr)
+		}
+		if len(uses) != 0 {
+			return fmt.Errorf("the sections are %+v", uses)
+		}
+		return nil
+	})
+	sc.Step(`^the progression is not found$`, func() error {
+		if _, ok := w.lastResp.(generated.GetProgressionUses404JSONResponse); !ok {
+			return fmt.Errorf("expected not found, got %#v (err=%v)", w.lastResp, w.lastErr)
+		}
+		return nil
+	})
+	sc.Step(`^reading is refused because only admins may$`, func() error {
+		if _, ok := w.lastResp.(generated.GetProgressionUses403JSONResponse); !ok {
+			return fmt.Errorf("expected a refusal, got %#v (err=%v)", w.lastResp, w.lastErr)
+		}
+		return nil
+	})
 	sc.Step(`^the request is refused because only admins remove progressions$`, func() error {
 		if _, ok := w.lastResp.(generated.DeleteProgression403JSONResponse); !ok {
 			return fmt.Errorf("expected a refusal, got %#v (err=%v)", w.lastResp, w.lastErr)
@@ -521,6 +580,43 @@ func (w *world) publishedChartTagged(title, key string) error {
 		return err
 	}
 	return w.seedPublication(title)
+}
+
+// publishedChorusTagged publishes the chart with only its chorus tagged, and
+// puts back the draft's tags, which publishing took from the draft as it was.
+func (w *world) publishedChorusTagged(title, key string) error {
+	err := w.changeDraft(songChartSeeder, title, func(_ *generated.SongChartDraftInput, doc *domain.SongChartDocument) {
+		doc.Sections[0].ProgressionKeys = nil
+		doc.Sections[1].ProgressionKeys = []string{key}
+	})
+	if err != nil {
+		return err
+	}
+	if err := w.mustSucceed("tagging the chorus of " + title); err != nil {
+		return err
+	}
+	if err := w.seedPublication(title); err != nil {
+		return err
+	}
+	err = w.changeDraft(songChartSeeder, title, func(_ *generated.SongChartDraftInput, doc *domain.SongChartDocument) {
+		doc.Sections[0].ProgressionKeys = []string{key}
+		doc.Sections[1].ProgressionKeys = nil
+	})
+	if err != nil {
+		return err
+	}
+	return w.mustSucceed("tagging the verse of " + title)
+}
+
+func (w *world) readsProgressionUses(admin, key string) error {
+	stored, err := w.storedProgression(key)
+	if err != nil {
+		return fmt.Errorf("%s: %w", key, err)
+	}
+	w.authenticateAs(admin, domain.RoleAdmin)
+	resp, err := w.handler.GetProgressionUses(w.ctx(), generated.GetProgressionUsesRequestObject{ProgressionId: uuid.MustParse(stored.ID)})
+	w.lastResp, w.lastErr = resp, err
+	return nil
 }
 
 func (w *world) removesProgression(admin, key string) error {

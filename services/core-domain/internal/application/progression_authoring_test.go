@@ -265,6 +265,53 @@ func TestProgressionCatalogService_Delete(t *testing.T) {
 	})
 }
 
+func TestProgressionCatalogService_Uses(t *testing.T) {
+	ctx := context.Background()
+	creator := "admin-1"
+	rock := domain.Progression{ID: "pr-rock", Key: "major/I-bVII-IV-I", Mode: "major", Bars: []string{"I", "♭VII", "IV", "I"}, CreatedBy: &creator}
+	draftUse := domain.ProgressionUse{ProgressionKey: rock.Key, SongChartID: "c1", Title: "Sweet Home", Revision: domain.ProgressionUseDraft}
+	publishedUse := domain.ProgressionUse{ProgressionKey: rock.Key, SongChartID: "c1", Title: "Sweet Home", Revision: domain.ProgressionUsePublished, SectionIndex: 1}
+	popUse := domain.ProgressionUse{ProgressionKey: "I-V-vi-IV", SongChartID: "c2"}
+
+	t.Run("lists only the sections that tag it, and removes nothing", func(t *testing.T) {
+		repo := &memoryProgressions{fakeProgressions: fakeProgressions{rock}}
+
+		got, err := progressionService(repo, fixedProgressionUses{draftUse, popUse, publishedUse}).Uses(ctx, progressionAdmin, rock.ID)
+
+		require.NoError(t, err)
+		assert.Equal(t, []domain.ProgressionUse{draftUse, publishedUse}, got)
+		assert.Len(t, repo.fakeProgressions, 1)
+	})
+
+	t.Run("a progression no chart tags has none", func(t *testing.T) {
+		repo := &memoryProgressions{fakeProgressions: fakeProgressions{rock}}
+
+		got, err := progressionService(repo, fixedProgressionUses{popUse}).Uses(ctx, progressionAdmin, rock.ID)
+
+		require.NoError(t, err)
+		assert.Empty(t, got)
+	})
+
+	t.Run("a drill progression can be read too", func(t *testing.T) {
+		repo := &memoryProgressions{fakeProgressions: fakeProgressions{catalogPop()}}
+
+		got, err := progressionService(repo, fixedProgressionUses{popUse}).Uses(ctx, progressionAdmin, "pr-pop")
+
+		require.NoError(t, err)
+		assert.Equal(t, []domain.ProgressionUse{popUse}, got)
+	})
+
+	t.Run("a teacher is refused and an unknown one isn't found", func(t *testing.T) {
+		service := progressionService(&memoryProgressions{fakeProgressions: fakeProgressions{rock}}, fixedProgressionUses{draftUse})
+
+		_, err := service.Uses(ctx, domain.User{Role: domain.RoleTeacher}, rock.ID)
+		assert.ErrorIs(t, err, domain.ErrForbidden)
+
+		_, err = service.Uses(ctx, progressionAdmin, "missing")
+		assert.ErrorIs(t, err, domain.ErrNotFound)
+	})
+}
+
 func TestProgressionCatalogService_ListCreator(t *testing.T) {
 	creator := "admin-1"
 	rows := func() *memoryProgressions {
