@@ -32,6 +32,10 @@ type harmonyWorld struct {
 	itemKey   string
 	listed    []string
 	listedKey string
+	// plannedOptions and playedBars are what a question planned many times
+	// offered and played.
+	plannedOptions []string
+	playedBars     []int
 }
 
 func (w *world) harmony() *harmonyWorld {
@@ -61,7 +65,7 @@ func registerHarmonyDrillSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^it offers tonic, subdominant and dominant$`, w.offersTheFunctions)
 	sc.Step(`^its options are the charts "([^"]+)", "([^"]+)", "([^"]+)" and "([^"]+)"$`, w.optionsAreCharts)
 	sc.Step(`^the question names "([^"]+)" and (\S+), and no chart$`, w.namesProgressionAndKey)
-	sc.Step(`^its chart is drawn as chord symbols in three lines of four bars$`, w.twelveBarChartAsSymbols)
+	sc.Step(`^its chart is drawn as chord symbols in (two|three|four) lines of four bars$`, w.chartAsSymbolsInLines)
 	sc.Step(`^it offers "([^"]+)" and "([^"]+)"$`, w.offersTwo)
 
 	sc.Step(`^"([^"]+)" has started (\d+) sessions in the head so far$`, w.hasStartedHeadSessions)
@@ -121,12 +125,12 @@ func (w *world) progressionPlanned(progression, way, key string) error {
 // accurate student's question may be asked in any key, and its first pick
 // is the key.
 func (w *world) progressionPlannedReading(progression, way, key, instrument string) error {
-	item, err := catalogChartItem(progression)
+	item, err := w.drillChartItem(progression)
 	if err != nil {
 		return err
 	}
 	planning := w.readingOn(instrument)
-	keyIndex := slices.Index(domain.MusicKeys, key)
+	keyIndex := slices.Index(domain.MusicKeysOf(domain.KeyMode(key)), key)
 	if keyIndex < 0 {
 		return fmt.Errorf("no key %q", key)
 	}
@@ -326,13 +330,15 @@ func (w *world) namesProgressionAndKey(progression, key string) error {
 	return nil
 }
 
-func (w *world) twelveBarChartAsSymbols() error {
+// chartAsSymbolsInLines checks the chart is lines of four bars, drawn as
+// chord symbols.
+func (w *world) chartAsSymbolsInLines(lines string) error {
 	q, err := w.plannedQuestion()
 	if err != nil {
 		return err
 	}
-	if len(q.Chart) != 12 {
-		return fmt.Errorf("the chart has %d bars", len(q.Chart))
+	if want := countWord(lines) * 4; len(q.Chart) != want {
+		return fmt.Errorf("the chart has %d bars, want %d", len(q.Chart), want)
 	}
 	return w.noChordBox()
 }
@@ -400,10 +406,17 @@ func (w *world) harmonyClassified() []domain.ClassifiedItem {
 	progressions, err := catalogProgressions{}.List(context.Background())
 	if err == nil {
 		for _, p := range progressions {
-			if len(p.Bars) == domain.HeardProgressionBars {
+			if domain.IsHeardProgressionLength(len(p.Bars)) {
 				items = append(items, domain.ClassifiedItem{ItemKey: domain.HeardProgressionItemKey(p.Key), NodeIDs: nodes(domain.PracticeItemKindHeardProgression)})
 			}
 			items = append(items, domain.ClassifiedItem{ItemKey: domain.ChartProgressionItemKey(p.Key), NodeIDs: nodes(domain.PracticeItemKindChartProgression)})
+		}
+	}
+	// A created drill progression is heard too when it is short enough; its
+	// chart item comes from the node item source, under its own nodes.
+	for _, p := range w.progressions.created {
+		if p.InDrills && domain.IsHeardProgressionLength(len(p.Bars)) {
+			items = append(items, domain.ClassifiedItem{ItemKey: domain.HeardProgressionItemKey(p.Key), NodeIDs: nodes(domain.PracticeItemKindHeardProgression)})
 		}
 	}
 	return items
@@ -682,6 +695,20 @@ func (catalogProgressions) List(context.Context) ([]domain.Progression, error) {
 // ListInDrills is the whole catalog: every catalog progression is in the drills.
 func (c catalogProgressions) ListInDrills(ctx context.Context) ([]domain.Progression, error) {
 	return c.List(ctx)
+}
+
+// drillChartItem is the drill progression with key read as a chart, the
+// catalog's or one a scenario created, among every drill progression.
+func (w *world) drillChartItem(key string) (domain.ChartProgressionItem, error) {
+	drills, err := w.progressions.ListInDrills(context.Background())
+	if err != nil {
+		return domain.ChartProgressionItem{}, err
+	}
+	i := slices.IndexFunc(drills, func(p domain.Progression) bool { return p.Key == key })
+	if i < 0 {
+		return domain.ChartProgressionItem{}, fmt.Errorf("no drill progression %q", key)
+	}
+	return domain.ChartProgressionItem{Progression: drills[i], Catalog: drills}, nil
 }
 
 func catalogChartItem(progression string) (domain.ChartProgressionItem, error) {

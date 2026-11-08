@@ -34,7 +34,7 @@ func registerGuideToneSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" plays only "electric-bass" and has new guide tones$`, w.playsOnlyBassWithGuideTones)
 	sc.Step(`^"([^"]+)" has never practised the guide tone of "([^"]+)" on guitar$`, w.neverPractisedGuideTone)
 	sc.Step(`^"([^"]+)" is (accurate|fluent) on the guide tone of "([^"]+)" on guitar$`, w.levelOnGuideTone)
-	sc.Step(`^"([^"]+)"'s last take of the guide tone of "([^"]+)" on guitar was in ([A-G][b#]?)$`, w.lastGuideToneTakeIn)
+	sc.Step(`^"([^"]+)"'s last take of the guide tone of "([^"]+)" on guitar was in ([A-G][b#]?m?)$`, w.lastGuideToneTakeIn)
 	sc.Step(`^"([^"]+)" is learning "target-chord-tones"$`, w.learningTargetChordTones)
 	sc.Step(`^"([^"]+)" is accurate on "target-chord-tones"$`, w.accurateOnTargetChordTones)
 	sc.Step(`^the only guide tone "([^"]+)" has left to practise on guitar is "([^"]+)"$`, w.onlyGuideToneLeft)
@@ -43,7 +43,7 @@ func registerGuideToneSteps(sc *godog.ScenarioContext, w *world) {
 	// ── Composing ──────────────────────────────────────────────────────────────
 	sc.Step(`^the guide tone is picked for "([^"]+)"'s session(?: with no instrument in hand)?$`, w.guideTonePicked)
 	sc.Step(`^the guide tone is picked for "([^"]+)"'s session (\d+) times$`, w.guideTonePickedTimes)
-	sc.Step(`^the guide tone is picked for "([^"]+)"'s session in ([A-G][b#]?)$`, w.guideTonePickedIn)
+	sc.Step(`^the guide tone is picked for "([^"]+)"'s session in ([A-G][b#]?m?)$`, w.guideTonePickedIn)
 	sc.Step(`^the guide tone of "([^"]+)" is picked for "([^"]+)"'s session on (guitar|electric bass)$`, w.guideToneOfPickedOn)
 	sc.Step(`^"([^"]+)" composes (\d+) sessions with no instrument in hand$`, w.composesSessionsInTheHead)
 	sc.Step(`^"([^"]+)" composes a session with no instrument in hand$`, w.composesASessionInTheHead)
@@ -58,7 +58,7 @@ func registerGuideToneSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^it asks the tone (3|7) at a start tempo of (\d+) BPM, with a target of (\d+) BPM$`, w.asksToneWithTarget)
 	sc.Step(`^it asks the tone (3|7) at a start tempo of (\d+) BPM$`, w.asksTone)
 	sc.Step(`^it plays over at most (\d+) takes$`, w.guideToneTakes)
-	sc.Step(`^it is never planned in ([A-G][b#]?)$`, w.neverPlannedIn)
+	sc.Step(`^it is never planned in ([A-G][b#]?m?)$`, w.neverPlannedIn)
 	sc.Step(`^every key it is planned in is a major key$`, w.everyKeyIsMajor)
 	sc.Step(`^its bars are ((?:\S+ ?)+) with the chords "([^"]+)"$`, w.guideToneBarsAre)
 	sc.Step(`^it has a voicing for each of "([^"]+)", "([^"]+)" and "([^"]+)"$`, w.guideToneHasVoicings)
@@ -94,10 +94,12 @@ func (w *world) catalogHasProgressionBars(key, bars string) error {
 // drillsHaveCreatedProgression stores a progression an admin added to the drills.
 func (w *world) drillsHaveCreatedProgression(key, bars string) error {
 	created := "an-admin"
+	mode, _, _ := strings.Cut(key, "/")
+	// It practises reading charts, so a student learning harmony meets it.
 	w.progressions.created = append(w.progressions.created, domain.Progression{
-		ID: uuid.NewString(), Key: key, Mode: string(domain.ProgressionModeMajor), Bars: strings.Fields(bars),
-		Names: domain.LocalizedText{"en": bars}, NodeIDs: []string{}, Confusable: []string{},
-		InDrills: true, CreatedBy: &created,
+		ID: uuid.NewString(), Key: key, Mode: mode, Bars: strings.Fields(bars),
+		Names: domain.LocalizedText{"en": strings.Join(strings.Fields(bars), "–")}, NodeIDs: []string{w.skillIDFor("read-chord-charts").String()},
+		Confusable: []string{}, InDrills: true, CreatedBy: &created,
 	})
 	return nil
 }
@@ -110,10 +112,10 @@ func (w *world) catalogHasProgressionOfLength(key string, bars int) error {
 	return expectChord(len(p.Bars) == bars, "%s has %d bars", key, len(p.Bars))
 }
 
-// guideToneKeys are every progression of the catalog as a guide tone on
-// instrument's layout.
-func guideToneKeys(instrument string) ([]string, error) {
-	progressions, err := catalogProgressions{}.List(context.Background())
+// guideToneItemKeys are every drill progression, the catalog's and those a
+// scenario created, as a guide tone on instrument's layout.
+func (w *world) guideToneItemKeys(instrument string) ([]string, error) {
+	progressions, err := w.progressions.ListInDrills(context.Background())
 	if err != nil {
 		return nil, err
 	}
@@ -145,7 +147,7 @@ func (w *world) classifyGuideTones(name, instrument string) error {
 	if err := w.onGuideTonePath(name); err != nil {
 		return err
 	}
-	keys, err := guideToneKeys(instrument)
+	keys, err := w.guideToneItemKeys(instrument)
 	if err != nil {
 		return err
 	}
@@ -211,7 +213,7 @@ func (w *world) playsOnlyBassWithGuideTones(name string) error {
 		Items: []domain.StudentPathItemRecord{{Position: 1, ContentNodeID: node.ID}},
 	})
 	w.paths.put(domain.LearningPath{ID: pathID("bass-" + guideToneSkill).String(), InstrumentIDs: []string{instrumentID("electric-bass").String()}})
-	keys, err := guideToneKeys("electric-bass")
+	keys, err := w.guideToneItemKeys("electric-bass")
 	if err != nil {
 		return err
 	}
@@ -283,7 +285,7 @@ func (w *world) accurateOnTargetChordTones(name string) error {
 // onlyGuideToneLeft leaves progression the one guide tone name hasn't made
 // fluent on guitar.
 func (w *world) onlyGuideToneLeft(name, progression string) error {
-	keys, err := guideToneKeys("guitar")
+	keys, err := w.guideToneItemKeys("guitar")
 	if err != nil {
 		return err
 	}
