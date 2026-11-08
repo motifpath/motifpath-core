@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+	"time"
 )
 
 // AuditActorKind is the trusted category of whoever initiated a commercial
@@ -214,4 +215,26 @@ func writeJSONString(out *bytes.Buffer, s string) {
 		panic(fmt.Sprintf("marshal a string: %v", err))
 	}
 	out.Write(encoded)
+}
+
+// CommercialOperation is the durable record of one logical operation: the
+// intent it was first sent with, the result it produced and the activation
+// revision it was authorized under. Records never expire, so a replay always
+// gets the original result back.
+type CommercialOperation struct {
+	Key                OperationKey
+	Fingerprint        string
+	Result             json.RawMessage
+	AuthorizedRevision int64
+	CreatedAt          time.Time
+}
+
+// OperationAttempt is one submission of an operation, including replays and
+// refused reuse, so repeated commands stay traceable.
+type OperationAttempt struct {
+	AttemptID   string
+	Key         OperationKey
+	Fingerprint string
+	Outcome     AuditOutcome
+	At          time.Time
 }
