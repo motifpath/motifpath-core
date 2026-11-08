@@ -2,6 +2,7 @@ package domain
 
 import (
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -130,6 +131,58 @@ func seventhOf(key int, numeral string) int {
 		return (c.root + 11) % 12
 	case c.quality == qualityDiminished7th:
 		return (c.root + 9) % 12
+	}
+	return (c.root + 10) % 12
+}
+
+// minorMode is the mode a minor progression's numerals are read in; any other
+// progression's are read in major.
+const minorMode = "minor"
+
+// modeOf is p's mode: minor, or major when it says nothing else.
+func modeOf(p ProgressionReference) string {
+	if p.Mode == minorMode {
+		return minorMode
+	}
+	return "major"
+}
+
+// musicKeyOf reads a key a response names: a major key, its tonic (G), or a minor
+// key, its tonic chord (Gm). It reports the tonic's pitch class, the key's mode,
+// and false for anything else.
+func musicKeyOf(key string) (int, string, bool) {
+	if tonic, ok := strings.CutSuffix(key, "m"); ok {
+		pc, ok := pitchClass(tonic)
+		return pc, minorMode, ok
+	}
+	pc, ok := pitchClass(key)
+	return pc, "major", ok
+}
+
+// asciiNumerals turns a created progression's key back into its numerals' symbols.
+var asciiNumerals = strings.NewReplacer("b", "♭", "#", "♯", "o", "°", "h", "ø")
+
+// minorBareSevenths is how far above its root the seventh of a minor key's chord
+// with no written seventh is: natural minor's, with harmonic minor's on V and vii°.
+var minorBareSevenths = map[string]int{
+	"i": 10, "ii°": 10, "iio": 10, "♭III": 11, "iv": 10, "v": 10, "♭VI": 11, "♭VII": 10,
+	"V": 10, "vii°": 9, "viio": 9,
+}
+
+// minorSeventhOf is the pitch class of numeral's seventh in a minor key. A
+// written suffix decides as in a major key; a chord with no written seventh
+// takes minorBareSevenths, or on any other numeral the seventh of its quality:
+// major on a major chord, minor on a minor or diminished one.
+func minorSeventhOf(key int, numeral string) int {
+	c, _ := chordOf(key, numeral)
+	if !slices.Contains([]chordQuality{qualityMajor, qualityMinor, qualityDiminished}, c.quality) {
+		return seventhOf(key, numeral)
+	}
+	if above, ok := minorBareSevenths[numeral]; ok {
+		return (c.root + above) % 12
+	}
+	if c.quality == qualityMajor {
+		return (c.root + 11) % 12
 	}
 	return (c.root + 10) % 12
 }

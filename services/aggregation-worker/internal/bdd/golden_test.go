@@ -44,6 +44,7 @@ type goldenCaseFile struct {
 		} `json:"instruments"`
 		Progressions map[string]struct {
 			Bars []string `json:"bars"`
+			Mode string   `json:"mode"`
 		} `json:"progressions"`
 		SongCharts map[string]struct {
 			Name string `json:"name"`
@@ -145,7 +146,7 @@ func TestGraderGoldenCases(t *testing.T) {
 				ref.Instruments[id] = domain.InstrumentReference{ID: id, Tuning: i.Tuning}
 			}
 			for key, p := range file.Reference.Progressions {
-				ref.Progressions[key] = domain.ProgressionReference{Key: key, Bars: p.Bars}
+				ref.Progressions[key] = domain.ProgressionReference{Key: key, Bars: p.Bars, Mode: p.Mode}
 			}
 			for id := range file.Reference.SongCharts {
 				ref.SongCharts[id] = domain.SongChartReference{ID: id}

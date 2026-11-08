@@ -72,10 +72,10 @@ func registerProgressionAuthoringSteps(sc *godog.ScenarioContext, w *world) {
 		return nil
 	})
 	sc.Step(`^"([^"]+)" creates a major progression with the bars `+quotedList+`, in the drills, practising the concept "([^"]+)"$`, func(admin, bars, concept string) error {
-		return w.createsInDrills(admin, quotedItems(bars), concept)
+		return w.createsInDrills(admin, "major", quotedItems(bars), concept)
 	})
-	sc.Step(`^"([^"]+)" has added the major progression "([^"]+)" to the drills$`, func(admin, numerals string) error {
-		if err := w.createsInDrills(admin, strings.Split(numerals, "-"), drillProgressionConcept); err != nil {
+	sc.Step(`^"([^"]+)" has added the (major|minor) progression "([^"]+)" to the drills$`, func(admin, mode, numerals string) error {
+		if err := w.createsInDrills(admin, mode, strings.Split(numerals, "-"), drillProgressionConcept); err != nil {
 			return err
 		}
 		_, err := w.createdProgression()
@@ -525,9 +525,9 @@ func (w *world) hasCreatedProgression(admin, mode, numerals string, nicknames ma
 const drillProgressionConcept = "common-progressions"
 
 // createsInDrills creates a major progression in the drills, practising concept.
-func (w *world) createsInDrills(admin string, bars []string, concept string) error {
+func (w *world) createsInDrills(admin, mode string, bars []string, concept string) error {
 	inDrills, concepts := true, []uuid.UUID{w.conceptIDFor(concept)}
-	input := generated.ProgressionInput{Mode: generated.ProgressionInputModeMajor, Bars: bars, InDrills: &inDrills, ConceptIds: &concepts}
+	input := generated.ProgressionInput{Mode: generated.ProgressionInputMode(mode), Bars: bars, InDrills: &inDrills, ConceptIds: &concepts}
 	w.authenticateAs(admin, domain.RoleAdmin)
 	resp, err := w.handler.CreateProgression(w.ctx(), generated.CreateProgressionRequestObject{Body: &input})
 	w.lastResp, w.lastErr = resp, err

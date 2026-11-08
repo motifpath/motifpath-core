@@ -187,3 +187,44 @@ func TestATourStartsWhereTheLastTakeLeftIt(t *testing.T) {
 		})
 	}
 }
+
+func TestATakeRepeatsTheProgressionToFillSixteenBars(t *testing.T) {
+	tests := []struct {
+		bars int
+		want int
+	}{
+		{bars: 2, want: 8},
+		{bars: 3, want: 5},
+		{bars: 4, want: 4},
+		{bars: 8, want: 2},
+		{bars: 12, want: 1},
+		{bars: 16, want: 1},
+	}
+	for _, tt := range tests {
+		bars := make([]string, tt.bars)
+		for i := range bars {
+			bars[i] = "I"
+		}
+		item := domain.ProgressionKeysItem{Layout: tourGuitar, Progression: domain.Progression{Key: "major/x", Mode: "major", Bars: bars}}
+		assert.Equal(t, tt.want, plannedTour(t, item, nil).TimesThrough, "%d bars", tt.bars)
+		assert.Equal(t, 3*((tt.bars*tt.want+1)*4+10), item.Seconds(), "%d bars, sized by its takes", tt.bars)
+	}
+}
+
+func TestAMinorTourGoesThroughTheRelativeMinors(t *testing.T) {
+	minor := domain.Progression{Key: "minor/i-bVII-bVI-V", Mode: "minor", Bars: []string{"i", "♭VII", "♭VI", "V"}}
+	tour := plannedTour(t, domain.ProgressionKeysItem{Layout: tourGuitar, Progression: minor}, nil)
+
+	assert.Equal(t, "Am", tour.StartMusicKey)
+	var keys []string
+	for _, k := range tour.Keys {
+		keys = append(keys, k.MusicKey)
+	}
+	assert.Equal(t, []string{"Am", "Dm", "Gm", "Cm", "Fm", "Bbm", "Ebm", "Abm", "Dbm", "F#m", "Bm", "Em"}, keys)
+	assert.Equal(t, []string{"Am", "G", "F", "E"}, tourKey(t, tour, "Am").Chart)
+
+	t.Run("its next take is the next minor key not yet clean", func(t *testing.T) {
+		tour := plannedTour(t, domain.ProgressionKeysItem{Layout: tourGuitar, Progression: minor}, &domain.PracticeItemState{KeyTour: &domain.KeyTourState{TempoBPM: 60, CleanKeys: []string{"Am"}}})
+		assert.Equal(t, "Dm", tour.StartMusicKey)
+	})
+}

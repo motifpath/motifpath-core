@@ -99,7 +99,7 @@ func (w *world) learnsHearing(name string) string {
 // keyFirst picks key for the first choice a plan makes, the key, and at
 // random after it.
 func keyFirst(key string) (func(int) int, error) {
-	at := slices.Index(domain.MusicKeys, key)
+	at := slices.Index(domain.MusicKeysOf(domain.KeyMode(key)), key)
 	if at < 0 {
 		return nil, fmt.Errorf("no key %q", key)
 	}
@@ -113,8 +113,8 @@ func keyFirst(key string) (func(int) int, error) {
 	}, nil
 }
 
-func catalogHeardProgression(progression string) (domain.HeardProgressionItem, error) {
-	chart, err := catalogChartItem(progression)
+func (w *world) drillHeardProgression(progression string) (domain.HeardProgressionItem, error) {
+	chart, err := w.drillChartItem(progression)
 	if err != nil {
 		return domain.HeardProgressionItem{}, err
 	}
@@ -122,7 +122,7 @@ func catalogHeardProgression(progression string) (domain.HeardProgressionItem, e
 }
 
 func (w *world) heardProgressionPlannedAnyKey(progression string) error {
-	item, err := catalogHeardProgression(progression)
+	item, err := w.drillHeardProgression(progression)
 	if err != nil {
 		return err
 	}
@@ -134,7 +134,7 @@ func (w *world) heardProgressionPlanned(progression, key string) error {
 }
 
 func (w *world) heardProgressionPlannedReading(progression, key, instrument string) error {
-	item, err := catalogHeardProgression(progression)
+	item, err := w.drillHeardProgression(progression)
 	if err != nil {
 		return err
 	}
@@ -266,7 +266,7 @@ func (w *world) levelOnHeardChord(name, level, numeral string) error {
 
 func (w *world) levelOnHeardProgression(name, level, progression string) error {
 	w.learnsHearing(name)
-	item, err := catalogHeardProgression(progression)
+	item, err := w.drillHeardProgression(progression)
 	if err != nil {
 		return err
 	}

@@ -415,7 +415,7 @@ func (s *EntNodeItemSource) harmonyItems(ctx context.Context) ([]domain.Classifi
 			ItemKey: domain.ChartProgressionItemKey(p.Key),
 			NodeIDs: withNodes(nodes[domain.PracticeItemKindChartProgression], p.NodeIDs),
 		})
-		if len(p.Bars) == domain.HeardProgressionBars {
+		if domain.IsHeardProgressionLength(len(p.Bars)) {
 			items = append(items, domain.ClassifiedItem{
 				ItemKey: domain.HeardProgressionItemKey(p.Key),
 				NodeIDs: withNodes(nodes[domain.PracticeItemKindHeardProgression], p.NodeIDs),

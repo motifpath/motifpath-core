@@ -24,9 +24,9 @@ const (
 	tourFirstTempoShare = 0.6
 	tourMinTempoShare   = 0.6
 	tourTempoStepBPM    = 5
-	// fourBarTimesThrough is how often a take plays a four-bar progression; a
-	// longer form plays once.
-	fourBarTimesThrough = 4
+	// tourTakeBars is how many bars a take fills with whole times through the
+	// progression: a four-bar progression plays four times, a 12-bar form once.
+	tourTakeBars = 16
 	// tourBeatsPerBar is the tour's time signature, 4/4.
 	tourBeatsPerBar = 4
 	// tourWay is the one way a tour is answered: rated by the student.
@@ -116,11 +116,10 @@ func (i ProgressionKeysItem) Seconds() int {
 // SuitsSession holds in hand only: a tour is played.
 func (ProgressionKeysItem) SuitsSession(inHand bool) bool { return inHand }
 
+// timesThrough is how many whole times the progression fits in a take's
+// tourTakeBars, and at least once.
 func (i ProgressionKeysItem) timesThrough() int {
-	if len(i.Progression.Bars) == HeardProgressionBars {
-		return fourBarTimesThrough
-	}
-	return 1
+	return max(1, tourTakeBars/max(1, len(i.Progression.Bars)))
 }
 
 // Plan lays the tour out in every key, starting where planning.State left it:
@@ -144,7 +143,8 @@ func (i ProgressionKeysItem) Plan(_ string, planning DrillPlanning) PlannedDrill
 		TargetTempoBPM: ProgressionKeysTargetTempoBPM,
 		MinTempoBPM:    tourMinTempo(),
 	}
-	for _, key := range ProgressionKeyOrder {
+	order := TourKeyOrderOf(ProgressionMode(i.Progression.Mode))
+	for _, key := range order {
 		clean := slices.Contains(tour.CleanKeys, key)
 		if !clean && planned.StartMusicKey == "" {
 			planned.StartMusicKey = key
@@ -152,7 +152,7 @@ func (i ProgressionKeysItem) Plan(_ string, planning DrillPlanning) PlannedDrill
 		planned.Keys = append(planned.Keys, i.planKey(key, clean, planning))
 	}
 	if planned.StartMusicKey == "" {
-		planned.StartMusicKey = ProgressionKeyOrder[0]
+		planned.StartMusicKey = order[0]
 	}
 	return plannedTour{planned: planned}
 }

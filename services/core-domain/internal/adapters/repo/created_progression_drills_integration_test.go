@@ -102,6 +102,31 @@ func TestCreatedProgressionsInTheDrills(t *testing.T) {
 		assert.NotContains(t, keys, chartOnly.Key)
 	})
 
+	t.Run("a drill progression of 2 to 4 bars is heard, a longer one is only read", func(t *testing.T) {
+		three := domain.Progression{
+			ID: "00000000-0000-4000-8000-0000000000d3", Key: "major/I-IV-V", Mode: "major",
+			Bars: []string{"I", "IV", "V"}, NodeIDs: []string{node}, Confusable: []string{},
+			Names: domain.LocalizedText{"en": "I–IV–V"}, InDrills: true, CreatedBy: &admin,
+		}
+		eight := domain.Progression{
+			ID: "00000000-0000-4000-8000-0000000000d4", Key: "minor/i-iv-v-i-i-iv-v-i", Mode: "minor",
+			Bars: []string{"i", "iv", "v", "i", "i", "iv", "v", "i"}, NodeIDs: []string{node}, Confusable: []string{},
+			Names: domain.LocalizedText{"en": "i–iv–v–i–i–iv–v–i"}, InDrills: true, CreatedBy: &admin,
+		}
+		require.NoError(t, progressions.Create(ctx, three))
+		require.NoError(t, progressions.Create(ctx, eight))
+
+		items, err := NewEntNodeItemSource(client).ClassifiedItems(ctx, acousticGuitarID)
+		require.NoError(t, err)
+		keys := make([]string, len(items))
+		for i, item := range items {
+			keys[i] = item.ItemKey
+		}
+		assert.Contains(t, keys, domain.HeardProgressionItemKey(three.Key))
+		assert.Contains(t, keys, domain.ChartProgressionItemKey(eight.Key))
+		assert.NotContains(t, keys, domain.HeardProgressionItemKey(eight.Key))
+	})
+
 	t.Run("a chart-only progression added later is practised under its nodes", func(t *testing.T) {
 		added := chartOnly
 		added.InDrills, added.NodeIDs, added.Confusable = true, []string{node}, []string{inDrills.Key}

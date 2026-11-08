@@ -19,7 +19,7 @@ func registerGuideToneSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]*)" taps the third of each bar of "([^"]*)" in ([A-G][b#]?) at (\d+) BPM within its bar$`, w.tapsEveryThird)
 	sc.Step(`^"([^"]*)" taps the third of "([^"]*)" at (\d+) milliseconds and of "([^"]*)" at (\d+) milliseconds in a take of "([^"]*)" in ([A-G][b#]?) at (\d+) BPM in ([a-z_]+)$`, w.tapsTwoThirdsInNoteValue)
 	sc.Step(`^the drills have the created progression "([^"]*)" with the bars ((?:\S+ ?)+)$`, w.drillsHaveCreatedProgression)
-	sc.Step(`^"([^"]*)" taps the sevenths "([^"]*)" within their bars in a take of "([^"]*)" in ([A-G][b#]?) at (\d+) BPM$`, w.tapsTheSevenths)
+	sc.Step(`^"([^"]*)" taps the sevenths "([^"]*)" within their bars in a take of "([^"]*)" in ([A-G][b#]?m?) at (\d+) BPM$`, w.tapsTheSevenths)
 	sc.Step(`^"([^"]*)" has auto-graded evidence for that guide tone that is (right|wrong)$`, w.hasGuideToneEvidence)
 	sc.Step(`^the evidence's answer key marks all (\d+) bars hit$`, w.answerKeyMarksAllBarsHit)
 	sc.Step(`^the evidence's answer key marks only the first bar hit$`, w.answerKeyMarksOnlyTheFirstBarHit)
@@ -44,7 +44,8 @@ var guideProgressions = map[string][]string{
 func (w *world) drillsHaveCreatedProgression(key, bars string) error {
 	id := stableUUID("instrument", "guitar")
 	w.reference.instruments[id] = domain.InstrumentReference{ID: id, Tuning: standardGuitar}
-	w.reference.progressions[key] = domain.ProgressionReference{Key: key, Bars: strings.Fields(bars)}
+	mode, _, _ := strings.Cut(key, "/")
+	w.reference.progressions[key] = domain.ProgressionReference{Key: key, Bars: strings.Fields(bars), Mode: mode}
 	w.guideKey = "guide_tone:" + id + ":" + key
 	return nil
 }

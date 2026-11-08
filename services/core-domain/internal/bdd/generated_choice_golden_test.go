@@ -15,7 +15,7 @@ import (
 	"github.com/motifpath/core-domain/internal/domain"
 )
 
-// generatedChoiceGoldenFile is golden/practice-graders/generated_choice.v1.json.
+// generatedChoiceGoldenFile is golden/practice-graders/generated_choice.v2.json.
 // The worker grades harmony answers by these cases; the planner here must
 // compute the same right answers, or it would offer questions whose right
 // answer the grader doesn't find among the options.
@@ -43,7 +43,7 @@ type generatedChoiceGoldenFile struct {
 
 func TestGeneratedChoiceGoldenAnswers(t *testing.T) {
 	specsDir := strings.TrimSuffix(featuresBase, "/features")
-	raw, err := os.ReadFile(filepath.Join(specsDir, "golden", "practice-graders", "generated_choice.v1.json"))
+	raw, err := os.ReadFile(filepath.Join(specsDir, "golden", "practice-graders", "generated_choice.v2.json"))
 	require.NoError(t, err, "the harmony planner needs the grader's golden cases in motifpath-specs")
 	var golden generatedChoiceGoldenFile
 	require.NoError(t, json.Unmarshal(raw, &golden))

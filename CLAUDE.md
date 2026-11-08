@@ -87,7 +87,7 @@ NEVER access the database directly from the domain layer.
   and archived, every `ExerciseType`, a diagram library of demo basic templates and two
   teachers' custom diagrams, lessons with cues, pop-ups and a version history, a bootstrapped admin's path that walks
   through every article-lesson state (review, paragraph cues, diagram-first, Practise this, language-locked), three public-domain song charts: published
-  with a corrected draft, withdrawn, and a draft whose chords don't all resolve; their preview links are logged; and two created progressions, one for song charts only and one in the drills), and
+  with a corrected draft, withdrawn, and a draft whose chords don't all resolve; their preview links are logged; and four created progressions, one for song charts only and three in the drills, a minor and a three-bar one among them), and
   a Portuguese copy of every seeded exercise, so a pt-BR profile has exercises to practise (`cmd/seed-full/pt_br_exercises.go`; a
   new English seeded exercise fails the seed until its phrases are added there). Reference
   data — languages, voices, the catalog instruments, the knowledge map, the basic guitar

@@ -193,3 +193,9 @@ func TestHearDrills_EveryPlanChallenges(t *testing.T) {
 		}
 	}
 }
+
+func TestAHeardProgressionHasTwoToFourBars(t *testing.T) {
+	for bars, want := range map[int]bool{1: false, 2: true, 3: true, 4: true, 5: false, 12: false} {
+		assert.Equal(t, want, domain.IsHeardProgressionLength(bars), "%d bars", bars)
+	}
+}

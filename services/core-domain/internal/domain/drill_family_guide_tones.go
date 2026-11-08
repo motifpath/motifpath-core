@@ -108,12 +108,13 @@ func (i GuideToneItem) Seconds() int {
 // nothing is played on the instrument.
 func (GuideToneItem) SuitsSession(inHand bool) bool { return !inHand }
 
-// guideToneTwelveBarNode is the node a 12-bar guide tone waits on: the form is
-// planned only once the student is accurate on targeting chord tones.
+// guideToneTwelveBarNode is the node the guide tone of a progression of more
+// than four bars, such as a 12-bar blues, waits on: it is planned only once the
+// student is accurate on targeting chord tones.
 const guideToneTwelveBarNode = "target-chord-tones"
 
-// WaitsOn holds a 12-bar form back until the student is accurate on targeting
-// chord tones; a four-bar progression waits on nothing.
+// WaitsOn holds a progression of more than four bars back until the student is
+// accurate on targeting chord tones; a shorter one waits on nothing.
 func (i GuideToneItem) WaitsOn() (string, KnowledgeLevel, bool) {
 	if len(i.Progression.Bars) > HeardProgressionBars {
 		return guideToneTwelveBarNode, KnowledgeLevelAccurate, true
@@ -122,11 +123,12 @@ func (i GuideToneItem) WaitsOn() (string, KnowledgeLevel, bool) {
 }
 
 // Plan picks what this time asks: the tone and tempo by the student's level on
-// the item, and a major key at random, never the key of its last take.
+// the item, and a key of the progression's mode at random, never the key of its
+// last take.
 func (i GuideToneItem) Plan(_ string, planning DrillPlanning) PlannedDrill {
-	keys := MusicKeys
+	keys := MusicKeysOf(ProgressionMode(i.Progression.Mode))
 	if planning.State != nil && planning.State.LastMusicKey != "" {
-		keys = slices.DeleteFunc(slices.Clone(MusicKeys), func(k string) bool { return k == planning.State.LastMusicKey })
+		keys = slices.DeleteFunc(keys, func(k string) bool { return k == planning.State.LastMusicKey })
 	}
 	key := keys[planning.Pick(len(keys))]
 	planned := &PlannedGuideTone{
