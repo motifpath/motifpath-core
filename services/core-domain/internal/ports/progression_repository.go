@@ -35,6 +35,10 @@ type ProgressionRepository interface {
 	Create(ctx context.Context, progression domain.Progression) error
 	// SaveNames replaces a progression's nicknames and names.
 	SaveNames(ctx context.Context, progression domain.Progression) error
+	// SaveInDrills puts a progression for song charts only in the drills, with its
+	// nodes and wrong answers. It returns domain.ErrConflict when the progression
+	// is in the drills already, and domain.ErrNotFound when there is none.
+	SaveInDrills(ctx context.Context, progression domain.Progression) error
 	// Delete removes the progression with id.
 	Delete(ctx context.Context, id string) error
 }

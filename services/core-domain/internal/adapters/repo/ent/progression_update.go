@@ -40,6 +40,18 @@ func (_u *ProgressionUpdate) AppendNodeIds(v []string) *ProgressionUpdate {
 	return _u
 }
 
+// SetConfusable sets the "confusable" field.
+func (_u *ProgressionUpdate) SetConfusable(v []string) *ProgressionUpdate {
+	_u.mutation.SetConfusable(v)
+	return _u
+}
+
+// AppendConfusable appends value to the "confusable" field.
+func (_u *ProgressionUpdate) AppendConfusable(v []string) *ProgressionUpdate {
+	_u.mutation.AppendConfusable(v)
+	return _u
+}
+
 // SetNames sets the "names" field.
 func (_u *ProgressionUpdate) SetNames(v map[string]string) *ProgressionUpdate {
 	_u.mutation.SetNames(v)
@@ -121,6 +133,14 @@ func (_u *ProgressionUpdate) sqlSave(ctx context.Context) (_node int, err error)
 			sqljson.Append(u, progression.FieldNodeIds, value)
 		})
 	}
+	if value, ok := _u.mutation.Confusable(); ok {
+		_spec.SetField(progression.FieldConfusable, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedConfusable(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, progression.FieldConfusable, value)
+		})
+	}
 	if value, ok := _u.mutation.Names(); ok {
 		_spec.SetField(progression.FieldNames, field.TypeJSON, value)
 	}
@@ -168,6 +188,18 @@ func (_u *ProgressionUpdateOne) SetNodeIds(v []string) *ProgressionUpdateOne {
 // AppendNodeIds appends value to the "node_ids" field.
 func (_u *ProgressionUpdateOne) AppendNodeIds(v []string) *ProgressionUpdateOne {
 	_u.mutation.AppendNodeIds(v)
+	return _u
+}
+
+// SetConfusable sets the "confusable" field.
+func (_u *ProgressionUpdateOne) SetConfusable(v []string) *ProgressionUpdateOne {
+	_u.mutation.SetConfusable(v)
+	return _u
+}
+
+// AppendConfusable appends value to the "confusable" field.
+func (_u *ProgressionUpdateOne) AppendConfusable(v []string) *ProgressionUpdateOne {
+	_u.mutation.AppendConfusable(v)
 	return _u
 }
 
@@ -280,6 +312,14 @@ func (_u *ProgressionUpdateOne) sqlSave(ctx context.Context) (_node *Progression
 	if value, ok := _u.mutation.AppendedNodeIds(); ok {
 		_spec.AddModifier(func(u *sql.UpdateBuilder) {
 			sqljson.Append(u, progression.FieldNodeIds, value)
+		})
+	}
+	if value, ok := _u.mutation.Confusable(); ok {
+		_spec.SetField(progression.FieldConfusable, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedConfusable(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, progression.FieldConfusable, value)
 		})
 	}
 	if value, ok := _u.mutation.Names(); ok {

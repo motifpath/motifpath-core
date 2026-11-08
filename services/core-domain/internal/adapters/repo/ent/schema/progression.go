@@ -44,9 +44,8 @@ func (Progression) Fields() []ent.Field {
 		field.JSON("node_ids", []string{}),
 
 		// confusable holds the keys of the progressions a learner mistakes
-		// it for, each listing it back.
-		field.JSON("confusable", []string{}).
-			Immutable(),
+		// it for. They are set when it joins the drills.
+		field.JSON("confusable", []string{}),
 
 		// names follow the numerals and, on a created progression, its nicknames.
 		field.JSON("names", map[string]string{}),

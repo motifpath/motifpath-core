@@ -81,6 +81,77 @@ func registerProgressionAuthoringSteps(sc *godog.ScenarioContext, w *world) {
 		_, err := w.createdProgression()
 		return err
 	})
+	sc.Step(`^"([^"]+)" adds it to the drills, practising the concept "([^"]+)"$`, func(admin, concept string) error {
+		return w.addsToDrills(admin, w.authoredProgressionKey(), []uuid.UUID{w.conceptIDFor(concept)})
+	})
+	sc.Step(`^"([^"]+)" adds it to the drills with no skill and no concept$`, func(admin string) error {
+		return w.addsToDrills(admin, w.authoredProgressionKey(), nil)
+	})
+	sc.Step(`^"([^"]+)" adds "([^"]+)" to the drills, practising the concept "([^"]+)"$`, func(admin, key, concept string) error {
+		return w.addsToDrills(admin, key, []uuid.UUID{w.conceptIDFor(concept)})
+	})
+	sc.Step(`^practice offers it as a subject on the concept "([^"]+)"$`, func(concept string) error {
+		if err := w.studentPlaysOne("alice", "guitar"); err != nil {
+			return err
+		}
+		if err := w.listSubjects(nil); err != nil {
+			return err
+		}
+		_, _, err := w.listedSubject(concept)
+		return err
+	})
+	sc.Step(`^its wrong answers start with "([^"]+)", which shares three bars with it$`, func(first string) error {
+		added, err := w.addedProgression()
+		if err != nil {
+			return err
+		}
+		if len(added.Confusable) == 0 || added.Confusable[0] != first {
+			return fmt.Errorf("its wrong answers are %v", added.Confusable)
+		}
+		return nil
+	})
+	sc.Step(`^every one of its wrong answers has four bars$`, func() error {
+		added, err := w.addedProgression()
+		if err != nil {
+			return err
+		}
+		for _, key := range added.Confusable {
+			other, err := w.storedProgression(key)
+			if err != nil {
+				return fmt.Errorf("%s: %w", key, err)
+			}
+			if len(other.Bars) != 4 {
+				return fmt.Errorf("%s has %d bars", key, len(other.Bars))
+			}
+		}
+		return nil
+	})
+	sc.Step(`^adding is refused because "([^"]+)"$`, func(reason string) error {
+		resp, ok := w.lastResp.(generated.AddProgressionToDrills409JSONResponse)
+		if !ok {
+			return fmt.Errorf("expected a refusal, got %#v (err=%v)", w.lastResp, w.lastErr)
+		}
+		if !slices.Contains(resp.Reasons, generated.ProgressionNotAddableErrorReasons(reason)) {
+			return fmt.Errorf("refused because %v", resp.Reasons)
+		}
+		return nil
+	})
+	sc.Step(`^adding is refused as invalid$`, func() error {
+		if _, ok := w.lastResp.(generated.AddProgressionToDrills400JSONResponse); !ok {
+			return fmt.Errorf("expected a validation error, got %#v (err=%v)", w.lastResp, w.lastErr)
+		}
+		return nil
+	})
+	sc.Step(`^"([^"]+)" is still not in the drills$`, func(key string) error {
+		stored, err := w.storedProgression(key)
+		if err != nil {
+			return err
+		}
+		if stored.InDrills {
+			return fmt.Errorf("%s is in the drills", key)
+		}
+		return nil
+	})
 	sc.Step(`^the progression "([^"]+)" is in the drills$`, func(key string) error {
 		stored, err := w.storedProgression(key)
 		if err != nil {
@@ -464,6 +535,30 @@ func (w *world) createsInDrills(admin string, bars []string, concept string) err
 		w.authoredKey = created.Key
 	}
 	return nil
+}
+
+// addsToDrills adds the progression with key to the drills, practising concepts.
+func (w *world) addsToDrills(admin, key string, concepts []uuid.UUID) error {
+	stored, err := w.storedProgression(key)
+	if err != nil {
+		return fmt.Errorf("%s: %w", key, err)
+	}
+	w.authoredKey = key
+	w.authenticateAs(admin, domain.RoleAdmin)
+	resp, err := w.handler.AddProgressionToDrills(w.ctx(), generated.AddProgressionToDrillsRequestObject{
+		ProgressionId: uuid.MustParse(stored.ID),
+		Body:          &generated.ProgressionDrillsInput{ConceptIds: &concepts},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return nil
+}
+
+func (w *world) addedProgression() (generated.Progression, error) {
+	added, ok := w.lastResp.(generated.AddProgressionToDrills200JSONResponse)
+	if !ok {
+		return generated.Progression{}, fmt.Errorf("expected the progression in the drills, got %#v (err=%v)", w.lastResp, w.lastErr)
+	}
+	return generated.Progression(added), nil
 }
 
 func (w *world) createdProgression() (generated.Progression, error) {

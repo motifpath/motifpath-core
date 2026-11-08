@@ -4,6 +4,7 @@ package repo
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"testing"
 
@@ -99,5 +100,19 @@ func TestCreatedProgressionsInTheDrills(t *testing.T) {
 		}
 		assert.Contains(t, keys, inDrills.Key)
 		assert.NotContains(t, keys, chartOnly.Key)
+	})
+
+	t.Run("a chart-only progression added later is practised under its nodes", func(t *testing.T) {
+		added := chartOnly
+		added.InDrills, added.NodeIDs, added.Confusable = true, []string{node}, []string{inDrills.Key}
+		require.NoError(t, progressions.SaveInDrills(ctx, added))
+
+		items, err := NewEntNodeItemSource(client).ClassifiedItems(ctx, acousticGuitarID)
+		require.NoError(t, err)
+		i := slices.IndexFunc(items, func(item domain.ClassifiedItem) bool {
+			return item.ItemKey == domain.ChartProgressionItemKey(chartOnly.Key)
+		})
+		require.GreaterOrEqual(t, i, 0)
+		assert.Contains(t, items[i].NodeIDs, node)
 	})
 }

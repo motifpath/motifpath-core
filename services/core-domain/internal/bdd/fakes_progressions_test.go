@@ -69,6 +69,20 @@ func (f *fakeProgressionRepo) SaveNames(_ context.Context, p domain.Progression)
 	return domain.ErrNotFound
 }
 
+func (f *fakeProgressionRepo) SaveInDrills(_ context.Context, p domain.Progression) error {
+	for i := range f.created {
+		if f.created[i].ID != p.ID {
+			continue
+		}
+		if f.created[i].InDrills {
+			return domain.ErrConflict
+		}
+		f.created[i].InDrills, f.created[i].NodeIDs, f.created[i].Confusable = true, p.NodeIDs, p.Confusable
+		return nil
+	}
+	return domain.ErrNotFound
+}
+
 func (f *fakeProgressionRepo) Delete(_ context.Context, id string) error {
 	f.created = slices.DeleteFunc(f.created, func(p domain.Progression) bool { return p.ID == id })
 	return nil

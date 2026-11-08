@@ -140,6 +140,46 @@ func (s *ProgressionCatalogService) checkDrillNodes(ctx context.Context, skillID
 	return checkClassificationSuits(ctx, s.knowledge, skillIDs, conceptIDs, nil)
 }
 
+// ProgressionDrillsInput is what a progression practises once it enters the drills.
+type ProgressionDrillsInput struct {
+	SkillIDs   []string
+	ConceptIDs []string
+}
+
+// AddToDrills puts a progression for song charts only in the drills, under the
+// same rules as creating one there; one that can't enter them is refused with a
+// *domain.ProgressionNotAddableError and stays as it was. There is no way back.
+func (s *ProgressionCatalogService) AddToDrills(ctx context.Context, caller domain.User, id string, in ProgressionDrillsInput) (domain.Progression, error) {
+	if err := requireAdmin(caller); err != nil {
+		return domain.Progression{}, err
+	}
+	stored, err := s.progressions.GetByID(ctx, id)
+	if err != nil {
+		return domain.Progression{}, err
+	}
+	if err := s.checkDrillNodes(ctx, in.SkillIDs, in.ConceptIDs); err != nil {
+		return domain.Progression{}, err
+	}
+	drills, err := s.progressions.ListInDrills(ctx)
+	if err != nil {
+		return domain.Progression{}, err
+	}
+	added, err := stored.AddedToDrills(slices.Concat(in.SkillIDs, in.ConceptIDs), drills)
+	if err != nil {
+		return domain.Progression{}, err
+	}
+	err = s.progressions.SaveInDrills(ctx, added)
+	if errors.Is(err, domain.ErrConflict) {
+		// Another admin added it since it was read.
+		return domain.Progression{}, &domain.ProgressionNotAddableError{Reasons: []domain.ProgressionNotAddableReason{domain.ProgressionNotAddableAlreadyInDrills}}
+	}
+	if err != nil {
+		return domain.Progression{}, err
+	}
+	putProgressionReference(ctx, s.references, added)
+	return s.withSongChartCount(ctx, added)
+}
+
 // UpdateNicknames replaces a created progression's nicknames. Nothing else about
 // it ever changes; a catalog progression's names don't either.
 func (s *ProgressionCatalogService) UpdateNicknames(ctx context.Context, caller domain.User, id string, nicknames map[string]string) (domain.Progression, error) {

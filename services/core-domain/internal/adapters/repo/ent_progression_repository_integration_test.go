@@ -166,6 +166,32 @@ func TestEntProgressionRepository_Authoring(t *testing.T) {
 		assert.Equal(t, rock.Key, got.Key)
 	})
 
+	t.Run("a chart-only progression enters the drills once", func(t *testing.T) {
+		drilled := rock
+		drilled.InDrills, drilled.NodeIDs, drilled.Confusable = true, []string{uuid.NewString()}, []string{"I-V-vi-IV"}
+		require.NoError(t, repository.SaveInDrills(ctx, drilled))
+		got, err := repository.GetByID(ctx, rock.ID)
+		require.NoError(t, err)
+		assert.True(t, got.InDrills)
+		assert.Equal(t, drilled.NodeIDs, got.NodeIDs)
+		assert.Equal(t, drilled.Confusable, got.Confusable)
+
+		again := drilled
+		again.NodeIDs = []string{uuid.NewString()}
+		assert.ErrorIs(t, repository.SaveInDrills(ctx, again), domain.ErrConflict)
+		got, err = repository.GetByID(ctx, rock.ID)
+		require.NoError(t, err)
+		assert.Equal(t, drilled.NodeIDs, got.NodeIDs)
+
+		missing := drilled
+		missing.ID = uuid.NewString()
+		assert.ErrorIs(t, repository.SaveInDrills(ctx, missing), domain.ErrNotFound)
+
+		// Put it back for the steps below: only drills keep a progression from removal.
+		_, err = client.Progression.UpdateOneID(uuid.MustParse(rock.ID)).SetInDrills(false).Save(ctx)
+		require.NoError(t, err)
+	})
+
 	t.Run("deleting frees its numerals", func(t *testing.T) {
 		require.NoError(t, repository.Delete(ctx, rock.ID))
 		_, err := repository.GetByID(ctx, rock.ID)

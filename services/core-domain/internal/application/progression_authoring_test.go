@@ -18,6 +18,7 @@ import (
 type memoryProgressions struct {
 	fakeProgressions
 	createErr error
+	saveErr   error
 }
 
 func (m *memoryProgressions) List(context.Context) ([]domain.Progression, error) {
@@ -54,6 +55,21 @@ func (m *memoryProgressions) SaveNames(_ context.Context, p domain.Progression) 
 			m.fakeProgressions[i] = p
 		}
 	}
+	return nil
+}
+
+func (m *memoryProgressions) SaveInDrills(_ context.Context, p domain.Progression) error {
+	if m.saveErr != nil {
+		return m.saveErr
+	}
+	i := slices.IndexFunc(m.fakeProgressions, func(stored domain.Progression) bool { return stored.ID == p.ID })
+	if i < 0 {
+		return domain.ErrNotFound
+	}
+	if m.fakeProgressions[i].InDrills {
+		return domain.ErrConflict
+	}
+	m.fakeProgressions[i] = p
 	return nil
 }
 
@@ -504,5 +520,125 @@ func TestProgressionCatalogService_CreateInDrills(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, []string{"I-V-vi-IV"}, got.Confusable)
+	})
+}
+
+func TestProgressionCatalogService_AddToDrills(t *testing.T) {
+	ctx := context.Background()
+	creator := "admin-1"
+	chartOnly := func() domain.Progression {
+		return domain.Progression{
+			ID: "pr-iii", Key: "major/I-iii-IV-V", Mode: "major", Bars: []string{"I", "iii", "IV", "V"},
+			NodeIDs: []string{}, Confusable: []string{}, CreatedBy: &creator,
+		}
+	}
+	commonProgressions := application.ProgressionDrillsInput{ConceptIDs: []string{"common-progressions"}}
+
+	fixture := func(stored ...domain.Progression) (*application.ProgressionCatalogService, *memoryProgressions, *fakePracticeReferenceWriter) {
+		repo := &memoryProgressions{fakeProgressions: append(fakeProgressions{catalogPop()}, stored...)}
+		nodes := newFakeKnowledgeNodeRepository()
+		nodes.put(domain.KnowledgeNode{ID: "common-progressions", Kind: domain.KnowledgeNodeKindConcept, Key: "common-progressions"})
+		nodes.put(domain.KnowledgeNode{ID: "target-chord-tones", Kind: domain.KnowledgeNodeKindSkill, Key: "target-chord-tones"})
+		references := newFakePracticeReferenceWriter()
+		uses := fixedProgressionUses{{ProgressionKey: "major/I-iii-IV-V", SongChartID: "c1"}}
+		service := application.NewProgressionCatalogService(repo, uses, newFakeLanguageRepository(), nodes, references, func() string { return "new-id" }, func() time.Time { return progressionNow })
+		return service, repo, references
+	}
+
+	t.Run("an admin adds a chart-only progression, with its nodes and wrong answers", func(t *testing.T) {
+		service, repo, references := fixture(chartOnly())
+		in := application.ProgressionDrillsInput{SkillIDs: []string{"target-chord-tones"}, ConceptIDs: []string{"common-progressions"}}
+
+		got, err := service.AddToDrills(ctx, progressionAdmin, "pr-iii", in)
+
+		require.NoError(t, err)
+		assert.True(t, got.InDrills)
+		assert.ElementsMatch(t, []string{"target-chord-tones", "common-progressions"}, got.NodeIDs)
+		assert.Equal(t, []string{"I-V-vi-IV"}, got.Confusable)
+		assert.Equal(t, 1, got.SongChartCount)
+		assert.Equal(t, &creator, got.CreatedBy, "it keeps who created it")
+		assert.True(t, repo.fakeProgressions[1].InDrills)
+		require.Len(t, references.progs, 1)
+		assert.Equal(t, "major/I-iii-IV-V", references.progs[0].Key)
+	})
+
+	t.Run("a snapshot that can't be written doesn't undo the adding", func(t *testing.T) {
+		service, repo, references := fixture(chartOnly())
+		references.err = errors.New("mongo down")
+
+		_, err := service.AddToDrills(ctx, progressionAdmin, "pr-iii", commonProgressions)
+
+		require.NoError(t, err)
+		assert.True(t, repo.fakeProgressions[1].InDrills)
+	})
+
+	threeBars := chartOnly()
+	threeBars.ID, threeBars.Key, threeBars.Bars = "pr-three", "major/I-IV-V", []string{"I", "IV", "V"}
+	minor := chartOnly()
+	minor.ID, minor.Key, minor.Mode, minor.Bars = "pr-minor", "minor/i-bVI-bIII-bVII", "minor", []string{"i", "♭VI", "♭III", "♭VII"}
+
+	refused := []struct {
+		name    string
+		caller  domain.User
+		id      string
+		in      application.ProgressionDrillsInput
+		wantErr error
+		field   string
+		reasons []domain.ProgressionNotAddableReason
+	}{
+		{name: "a teacher", caller: domain.User{Role: domain.RoleTeacher}, id: "pr-iii", in: commonProgressions, wantErr: domain.ErrForbidden},
+		{name: "an unknown progression", caller: progressionAdmin, id: "nope", in: commonProgressions, wantErr: domain.ErrNotFound},
+		{name: "no skill and no concept", caller: progressionAdmin, id: "pr-iii", field: "skill_ids"},
+		{name: "a concept that doesn't exist", caller: progressionAdmin, id: "pr-iii", in: application.ProgressionDrillsInput{ConceptIDs: []string{"nope"}}, field: "concept_ids"},
+		{name: "a bar count drills don't ask", caller: progressionAdmin, id: "pr-three", in: commonProgressions, reasons: []domain.ProgressionNotAddableReason{domain.ProgressionNotAddableUnsupportedBarCount}},
+		{name: "a minor progression", caller: progressionAdmin, id: "pr-minor", in: commonProgressions, reasons: []domain.ProgressionNotAddableReason{domain.ProgressionNotAddableUnsupportedMode}},
+		{name: "a progression already in the drills", caller: progressionAdmin, id: "pr-pop", in: commonProgressions, reasons: []domain.ProgressionNotAddableReason{domain.ProgressionNotAddableAlreadyInDrills}},
+	}
+	for _, tt := range refused {
+		t.Run("refused: "+tt.name, func(t *testing.T) {
+			service, repo, references := fixture(chartOnly(), threeBars, minor)
+			before := slices.Clone(repo.fakeProgressions)
+
+			_, err := service.AddToDrills(ctx, tt.caller, tt.id, tt.in)
+
+			switch {
+			case tt.wantErr != nil:
+				assert.ErrorIs(t, err, tt.wantErr)
+			case tt.field != "":
+				var invalid *domain.ValidationError
+				require.ErrorAs(t, err, &invalid)
+				require.NotEmpty(t, invalid.Fields)
+				assert.Equal(t, tt.field, invalid.Fields[0].Field)
+			default:
+				var notAddable *domain.ProgressionNotAddableError
+				require.ErrorAs(t, err, &notAddable)
+				// Every reason is given; the fixture's lone drill progression may add others.
+				assert.Subset(t, notAddable.Reasons, tt.reasons)
+			}
+			assert.Equal(t, before, repo.fakeProgressions, "nothing changes")
+			assert.Empty(t, references.progs)
+		})
+	}
+
+	t.Run("losing a race to another admin is refused as already in the drills", func(t *testing.T) {
+		service, repo, references := fixture(chartOnly())
+		repo.saveErr = domain.ErrConflict
+
+		_, err := service.AddToDrills(ctx, progressionAdmin, "pr-iii", commonProgressions)
+
+		var notAddable *domain.ProgressionNotAddableError
+		require.ErrorAs(t, err, &notAddable)
+		assert.Equal(t, []domain.ProgressionNotAddableReason{domain.ProgressionNotAddableAlreadyInDrills}, notAddable.Reasons)
+		assert.Empty(t, references.progs)
+	})
+
+	t.Run("a failed store is reported", func(t *testing.T) {
+		service, repo, _ := fixture(chartOnly())
+		boom := errors.New("db down")
+		repo.saveErr = boom
+
+		_, err := service.AddToDrills(ctx, progressionAdmin, "pr-iii", commonProgressions)
+
+		assert.ErrorIs(t, err, boom)
 	})
 }
