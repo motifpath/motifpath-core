@@ -489,10 +489,10 @@ func TestProgressionCatalogService_CreateInDrills(t *testing.T) {
 
 	t.Run("what can't be added creates nothing and says why", func(t *testing.T) {
 		service, repo, references := fixture()
-		threeBars := input
-		threeBars.Bars = []string{"I", "IV", "V"}
+		oneBar := input
+		oneBar.Bars = []string{"I"}
 
-		_, err := service.Create(ctx, progressionAdmin, threeBars)
+		_, err := service.Create(ctx, progressionAdmin, oneBar)
 
 		var notAddable *domain.ProgressionNotAddableError
 		require.ErrorAs(t, err, &notAddable)
@@ -576,6 +576,28 @@ func TestProgressionCatalogService_AddToDrills(t *testing.T) {
 	threeBars.ID, threeBars.Key, threeBars.Bars = "pr-three", "major/I-IV-V", []string{"I", "IV", "V"}
 	minor := chartOnly()
 	minor.ID, minor.Key, minor.Mode, minor.Bars = "pr-minor", "minor/i-bVI-bIII-bVII", "minor", []string{"i", "♭VI", "♭III", "♭VII"}
+	oneBar := chartOnly()
+	oneBar.ID, oneBar.Key, oneBar.Bars = "pr-one", "major/I", []string{"I"}
+
+	added := []struct {
+		name string
+		id   string
+	}{
+		{name: "a length no other drill progression has", id: "pr-three"},
+		{name: "a minor progression, though every other is major", id: "pr-minor"},
+	}
+	for _, tt := range added {
+		t.Run("added with no wrong answer, which drills make up: "+tt.name, func(t *testing.T) {
+			service, _, references := fixture(chartOnly(), threeBars, minor)
+
+			got, err := service.AddToDrills(ctx, progressionAdmin, tt.id, commonProgressions)
+
+			require.NoError(t, err)
+			assert.True(t, got.InDrills)
+			assert.Empty(t, got.Confusable)
+			require.Len(t, references.progs, 1)
+		})
+	}
 
 	refused := []struct {
 		name    string
@@ -590,13 +612,12 @@ func TestProgressionCatalogService_AddToDrills(t *testing.T) {
 		{name: "an unknown progression", caller: progressionAdmin, id: "nope", in: commonProgressions, wantErr: domain.ErrNotFound},
 		{name: "no skill and no concept", caller: progressionAdmin, id: "pr-iii", field: "skill_ids"},
 		{name: "a concept that doesn't exist", caller: progressionAdmin, id: "pr-iii", in: application.ProgressionDrillsInput{ConceptIDs: []string{"nope"}}, field: "concept_ids"},
-		{name: "a bar count drills don't ask", caller: progressionAdmin, id: "pr-three", in: commonProgressions, reasons: []domain.ProgressionNotAddableReason{domain.ProgressionNotAddableUnsupportedBarCount}},
-		{name: "a minor progression", caller: progressionAdmin, id: "pr-minor", in: commonProgressions, reasons: []domain.ProgressionNotAddableReason{domain.ProgressionNotAddableUnsupportedMode}},
+		{name: "a single bar, which is a chord", caller: progressionAdmin, id: "pr-one", in: commonProgressions, reasons: []domain.ProgressionNotAddableReason{domain.ProgressionNotAddableUnsupportedBarCount}},
 		{name: "a progression already in the drills", caller: progressionAdmin, id: "pr-pop", in: commonProgressions, reasons: []domain.ProgressionNotAddableReason{domain.ProgressionNotAddableAlreadyInDrills}},
 	}
 	for _, tt := range refused {
 		t.Run("refused: "+tt.name, func(t *testing.T) {
-			service, repo, references := fixture(chartOnly(), threeBars, minor)
+			service, repo, references := fixture(chartOnly(), threeBars, minor, oneBar)
 			before := slices.Clone(repo.fakeProgressions)
 
 			_, err := service.AddToDrills(ctx, tt.caller, tt.id, tt.in)
@@ -612,8 +633,7 @@ func TestProgressionCatalogService_AddToDrills(t *testing.T) {
 			default:
 				var notAddable *domain.ProgressionNotAddableError
 				require.ErrorAs(t, err, &notAddable)
-				// Every reason is given; the fixture's lone drill progression may add others.
-				assert.Subset(t, notAddable.Reasons, tt.reasons)
+				assert.Equal(t, tt.reasons, notAddable.Reasons)
 			}
 			assert.Equal(t, before, repo.fakeProgressions, "nothing changes")
 			assert.Empty(t, references.progs)

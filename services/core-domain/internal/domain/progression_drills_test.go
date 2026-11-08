@@ -19,6 +19,14 @@ func drillProgression(key string, confusable ...string) domain.Progression {
 	return domain.Progression{Key: key, Mode: "major", Bars: bars, Confusable: confusable, InDrills: true}
 }
 
+func slicesRepeat(bars []string, times int) []string {
+	var out []string
+	for range times {
+		out = append(out, bars...)
+	}
+	return out
+}
+
 func chartOnly(t *testing.T, mode string, bars ...string) domain.Progression {
 	t.Helper()
 	p, err := domain.NewCreatedProgression(mode, bars, nil, []string{"en"})
@@ -56,12 +64,42 @@ func TestAddedToDrills(t *testing.T) {
 		assert.Equal(t, []string{"I-V-vi-ii", "I-ii-vi-ii"}, added.Confusable)
 	})
 
-	t.Run("the same mode comes first, however many chords another mode shares", func(t *testing.T) {
+	t.Run("another mode is never a wrong answer, however many chords it shares", func(t *testing.T) {
 		other := drillProgression("minor/I-iii-IV-vi")
 		other.Mode = "minor"
 		added, err := chartOnly(t, "major", "I", "iii", "IV", "V").AddedToDrills(nodes, []domain.Progression{other, drillProgression("vi-ii-vi-V")})
 		require.NoError(t, err)
-		assert.Equal(t, []string{"vi-ii-vi-V", "minor/I-iii-IV-vi"}, added.Confusable)
+		assert.Equal(t, []string{"vi-ii-vi-V"}, added.Confusable)
+	})
+
+	t.Run("a minor progression enters the drills with minor wrong answers only", func(t *testing.T) {
+		minor := drillProgression("minor/i-iv-v-i")
+		minor.Mode = "minor"
+		added, err := chartOnly(t, "minor", "i", "♭VII", "♭VI", "V").AddedToDrills(nodes, []domain.Progression{drillProgression("I-V-vi-IV"), minor})
+		require.NoError(t, err)
+		assert.True(t, added.InDrills)
+		assert.Equal(t, []string{"minor/i-iv-v-i"}, added.Confusable)
+	})
+
+	t.Run("a progression no drill progression shares length and mode with enters with no wrong answer", func(t *testing.T) {
+		added, err := chartOnly(t, "major", "I", "IV", "V").AddedToDrills(nodes, []domain.Progression{drillProgression("I-V-vi-IV")})
+		require.NoError(t, err)
+		assert.True(t, added.InDrills)
+		assert.Empty(t, added.Confusable)
+	})
+
+	t.Run("two bars and sixteen bars enter the drills", func(t *testing.T) {
+		for _, bars := range [][]string{{"I", "V"}, slicesRepeat([]string{"I", "IV", "V", "I"}, 4)} {
+			added, err := chartOnly(t, "major", bars...).AddedToDrills(nodes, nil)
+			require.NoError(t, err)
+			assert.True(t, added.InDrills)
+		}
+	})
+
+	t.Run("only a spelled twin to offer: it enters with no wrong answer", func(t *testing.T) {
+		added, err := chartOnly(t, "major", "I", "♭VII", "IV", "V").AddedToDrills(nodes, []domain.Progression{drillProgression("major/I-#VI-IV-V")})
+		require.NoError(t, err)
+		assert.Empty(t, added.Confusable)
 	})
 
 	t.Run("only the same bar count can be a wrong answer", func(t *testing.T) {
@@ -82,6 +120,17 @@ func TestAddedToDrills(t *testing.T) {
 		})
 		require.NoError(t, err)
 		assert.Len(t, added.Confusable, 3)
+	})
+
+	t.Run("a progression of more than four bars keeps one wrong answer, as its questions offer two", func(t *testing.T) {
+		long := func(key, last string) domain.Progression {
+			p := drillProgression(key)
+			p.Bars = []string{"I", "vi", "IV", "V", "I", "vi", "IV", last}
+			return p
+		}
+		added, err := chartOnly(t, "major", "I", "vi", "IV", "V", "I", "vi", "ii", "V").AddedToDrills(nodes, []domain.Progression{long("major/a", "I"), long("major/b", "V7")})
+		require.NoError(t, err)
+		assert.Len(t, added.Confusable, 1)
 	})
 
 	t.Run("a spelled twin is never a wrong answer", func(t *testing.T) {
@@ -106,30 +155,20 @@ func TestAddedToDrills(t *testing.T) {
 		want   []domain.ProgressionNotAddableReason
 	}{
 		{
-			name: "a bar count drills don't ask", p: chartOnly(t, "major", "I", "IV", "V"),
-			drills: []domain.Progression{drillProgression("I-ii-V")},
+			name: "a single bar, which is a chord", p: chartOnly(t, "major", "I"),
+			drills: []domain.Progression{drillProgression("I-V-vi-IV")},
 			want:   []domain.ProgressionNotAddableReason{domain.ProgressionNotAddableUnsupportedBarCount},
 		},
 		{
-			name: "a minor progression", p: chartOnly(t, "minor", "i", "♭VI", "♭III", "♭VII"),
-			drills: []domain.Progression{drillProgression("I-V-vi-IV")},
-			want:   []domain.ProgressionNotAddableReason{domain.ProgressionNotAddableUnsupportedMode},
+			name: "a single minor bar", p: chartOnly(t, "minor", "i"),
+			drills: nil,
+			want:   []domain.ProgressionNotAddableReason{domain.ProgressionNotAddableUnsupportedBarCount},
 		},
 		{
-			name: "no other drill progression of its bar count", p: chartOnly(t, "major", "I", "iii", "IV", "V"),
-			drills: []domain.Progression{},
-			want:   []domain.ProgressionNotAddableReason{domain.ProgressionNotAddableNoOtherDrillProgression},
-		},
-		{
-			name: "only a spelled twin to offer", p: chartOnly(t, "major", "I", "♭VII", "IV", "V"),
-			drills: []domain.Progression{drillProgression("major/I-#VI-IV-V")},
-			want:   []domain.ProgressionNotAddableReason{domain.ProgressionNotAddableNoOtherDrillProgression},
-		},
-		{
-			name: "every reason at once", p: chartOnly(t, "minor", "i", "iv", "v"),
+			name: "every reason at once", p: func() domain.Progression { p := drillProgression("major/I"); return p }(),
 			drills: nil,
 			want: []domain.ProgressionNotAddableReason{
-				domain.ProgressionNotAddableUnsupportedBarCount, domain.ProgressionNotAddableUnsupportedMode, domain.ProgressionNotAddableNoOtherDrillProgression,
+				domain.ProgressionNotAddableAlreadyInDrills, domain.ProgressionNotAddableUnsupportedBarCount,
 			},
 		},
 		{
