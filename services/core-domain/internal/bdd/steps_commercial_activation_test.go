@@ -44,6 +44,8 @@ type commercialWorld struct {
 
 	intents   map[string]int64
 	lastAuthz error
+
+	evidence evidenceTraversal
 }
 
 type commercialRequest struct {
