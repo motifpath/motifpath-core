@@ -121,6 +121,34 @@ func (r *EntProgressionRepository) SaveNames(ctx context.Context, p domain.Progr
 	return nil
 }
 
+// SaveInDrills puts a progression for song charts only in the drills, with its
+// nodes and wrong answers. Only a row still out of the drills changes, so of two
+// admins adding one at once, the second gets domain.ErrConflict.
+func (r *EntProgressionRepository) SaveInDrills(ctx context.Context, p domain.Progression) error {
+	id, err := uuid.Parse(p.ID)
+	if err != nil {
+		return domain.ErrNotFound
+	}
+	changed, err := r.client.Progression.Update().
+		Where(progression.ID(id), progression.InDrills(false)).
+		SetInDrills(true).SetNodeIds(p.NodeIDs).SetConfusable(p.Confusable).
+		Save(ctx)
+	if err != nil {
+		return err
+	}
+	if changed > 0 {
+		return nil
+	}
+	exists, err := r.client.Progression.Query().Where(progression.ID(id)).Exist(ctx)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return domain.ErrConflict
+	}
+	return domain.ErrNotFound
+}
+
 // Delete removes the progression with id.
 func (r *EntProgressionRepository) Delete(ctx context.Context, id string) error {
 	parsed, err := uuid.Parse(id)

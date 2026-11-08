@@ -18,6 +18,7 @@ import (
 type memoryProgressions struct {
 	fakeProgressions
 	createErr error
+	saveErr   error
 }
 
 func (m *memoryProgressions) List(context.Context) ([]domain.Progression, error) {
@@ -54,6 +55,21 @@ func (m *memoryProgressions) SaveNames(_ context.Context, p domain.Progression) 
 			m.fakeProgressions[i] = p
 		}
 	}
+	return nil
+}
+
+func (m *memoryProgressions) SaveInDrills(_ context.Context, p domain.Progression) error {
+	if m.saveErr != nil {
+		return m.saveErr
+	}
+	i := slices.IndexFunc(m.fakeProgressions, func(stored domain.Progression) bool { return stored.ID == p.ID })
+	if i < 0 {
+		return domain.ErrNotFound
+	}
+	if m.fakeProgressions[i].InDrills {
+		return domain.ErrConflict
+	}
+	m.fakeProgressions[i] = p
 	return nil
 }
 
