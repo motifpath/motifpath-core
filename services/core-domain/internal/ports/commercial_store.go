@@ -78,8 +78,9 @@ type CommercialAuditWriter interface {
 	Append(ctx context.Context, entry domain.AuditEntry) error
 }
 
-// AuditFilter selects evidence by operation, or by resource. Exactly one of
-// OperationID or the ResourceKind and ResourceID pair is set.
+// AuditFilter selects evidence by operation, by resource, or by both
+// combined with AND. At least OperationID or the ResourceKind and ResourceID
+// pair is set.
 type AuditFilter struct {
 	OperationID  string
 	ResourceKind string

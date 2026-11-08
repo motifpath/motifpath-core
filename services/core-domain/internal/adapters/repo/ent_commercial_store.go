@@ -534,20 +534,26 @@ func (r entCommercialAuditReader) List(ctx context.Context, environment domain.E
 }
 
 func auditFilterPredicate(filter ports.AuditFilter) (predicate.CommercialAuditEntry, error) {
+	var conditions []predicate.CommercialAuditEntry
 	if filter.OperationID != "" {
 		operationID, err := uuid.Parse(filter.OperationID)
 		if err != nil {
 			return nil, fmt.Errorf("audit filter operation id: %w", err)
 		}
-		return commercialauditentry.OperationID(operationID), nil
+		conditions = append(conditions, commercialauditentry.OperationID(operationID))
 	}
-	if filter.ResourceKind == "" || filter.ResourceID == "" {
+	if filter.ResourceKind != "" || filter.ResourceID != "" {
+		if filter.ResourceKind == "" || filter.ResourceID == "" {
+			return nil, errors.New("audit filter needs both a resource kind and a resource id")
+		}
+		conditions = append(conditions,
+			commercialauditentry.ResourceKind(filter.ResourceKind),
+			commercialauditentry.ResourceID(filter.ResourceID))
+	}
+	if len(conditions) == 0 {
 		return nil, errors.New("audit filter needs an operation id or a resource kind and id")
 	}
-	return commercialauditentry.And(
-		commercialauditentry.ResourceKind(filter.ResourceKind),
-		commercialauditentry.ResourceID(filter.ResourceID),
-	), nil
+	return commercialauditentry.And(conditions...), nil
 }
 
 func auditEntry(row *ent.CommercialAuditEntry) (domain.AuditEntry, error) {

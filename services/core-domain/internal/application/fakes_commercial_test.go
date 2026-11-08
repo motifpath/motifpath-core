@@ -260,7 +260,8 @@ func (r fakeCommercialAuditReader) List(_ context.Context, environment domain.En
 		matches := entry.Operation.Environment == environment && record.OrderKey > afterKey && record.OrderKey <= snapshotKey
 		if filter.OperationID != "" {
 			matches = matches && entry.Operation.OperationID() == filter.OperationID
-		} else {
+		}
+		if filter.ResourceKind != "" {
 			matches = matches && entry.Operation.ResourceKind == filter.ResourceKind && entry.Operation.ResourceID == filter.ResourceID
 		}
 		if matches && len(records) < limit {
