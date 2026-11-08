@@ -32,6 +32,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent"
 	"github.com/motifpath/core-domain/internal/application"
+	"github.com/motifpath/core-domain/internal/domain"
 )
 
 const (
@@ -71,6 +72,9 @@ type config struct {
 	// emailUnsubscribeSecret signs the unsubscribe links in the platform's
 	// emails. Changing it breaks every link already sent.
 	emailUnsubscribeSecret string
+
+	// environment namespaces commercial operation keys and audit evidence.
+	environment domain.Environment
 }
 
 // defaultCORSOrigin is the local Vite dev server. Deployed environments override
@@ -102,7 +106,13 @@ func loadConfig() (config, error) {
 	if err != nil {
 		return config{}, err
 	}
+	environment, err := loadEnvironment()
+	if err != nil {
+		return config{}, err
+	}
 	return config{
+		environment: environment,
+
 		port:               getenvDefault("PORT", "8080"),
 		databaseURL:        databaseURL,
 		mongoURI:           mongoURI,
@@ -380,6 +390,18 @@ func newS3Client(ctx context.Context, cfg config) (*s3.Client, error) {
 		o.BaseEndpoint = aws.String(cfg.mediaS3Endpoint)
 		o.UsePathStyle = true
 	}), nil
+}
+
+func loadEnvironment() (domain.Environment, error) {
+	name, err := mustGetenv("MOTIFPATH_ENV")
+	if err != nil {
+		return domain.Environment{}, err
+	}
+	environment, err := domain.ParseEnvironment(name)
+	if err != nil {
+		return domain.Environment{}, fmt.Errorf("MOTIFPATH_ENV: %w", err)
+	}
+	return environment, nil
 }
 
 func getenvDefault(name, def string) string {
