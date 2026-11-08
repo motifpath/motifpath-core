@@ -2080,18 +2080,30 @@ func (e MasteryLevel) Valid() bool {
 
 // Defines values for MusicKey.
 const (
-	A  MusicKey = "A"
-	Ab MusicKey = "Ab"
-	B  MusicKey = "B"
-	Bb MusicKey = "Bb"
-	C  MusicKey = "C"
-	D  MusicKey = "D"
-	Db MusicKey = "Db"
-	E  MusicKey = "E"
-	Eb MusicKey = "Eb"
-	F  MusicKey = "F"
-	F1 MusicKey = "F#"
-	G  MusicKey = "G"
+	A   MusicKey = "A"
+	Ab  MusicKey = "Ab"
+	Abm MusicKey = "Abm"
+	Am  MusicKey = "Am"
+	B   MusicKey = "B"
+	Bb  MusicKey = "Bb"
+	Bbm MusicKey = "Bbm"
+	Bm  MusicKey = "Bm"
+	C   MusicKey = "C"
+	Cm  MusicKey = "Cm"
+	D   MusicKey = "D"
+	Db  MusicKey = "Db"
+	Dbm MusicKey = "Dbm"
+	Dm  MusicKey = "Dm"
+	E   MusicKey = "E"
+	Eb  MusicKey = "Eb"
+	Ebm MusicKey = "Ebm"
+	Em  MusicKey = "Em"
+	F   MusicKey = "F"
+	F1  MusicKey = "F#"
+	FM  MusicKey = "F#m"
+	Fm  MusicKey = "Fm"
+	G   MusicKey = "G"
+	Gm  MusicKey = "Gm"
 )
 
 // Valid indicates whether the value is a known member of the MusicKey enum.
@@ -2101,25 +2113,49 @@ func (e MusicKey) Valid() bool {
 		return true
 	case Ab:
 		return true
+	case Abm:
+		return true
+	case Am:
+		return true
 	case B:
 		return true
 	case Bb:
 		return true
+	case Bbm:
+		return true
+	case Bm:
+		return true
 	case C:
+		return true
+	case Cm:
 		return true
 	case D:
 		return true
 	case Db:
 		return true
+	case Dbm:
+		return true
+	case Dm:
+		return true
 	case E:
 		return true
 	case Eb:
+		return true
+	case Ebm:
+		return true
+	case Em:
 		return true
 	case F:
 		return true
 	case F1:
 		return true
+	case FM:
+		return true
+	case Fm:
+		return true
 	case G:
+		return true
+	case Gm:
 		return true
 	default:
 		return false
@@ -7511,12 +7547,12 @@ type FretboardMapCell struct {
 	// - chord_function:<key>:<numeral> — a numeral's harmonic function in a major key: picking
 	//   the function of its chord, or its chord for the function.
 	// - chart_progression:<progression key> — a drill progression read
-	//   as a chart: picking the progression for four chords, or its chart for the progression.
+	//   as a chart: picking the progression for its chords, or its chart for the progression.
 	//   The key is picked each time it is asked, so one item covers every key.
 	// - heard_chord:<numeral> — a numeral recognised by ear in a key a cadence sets. The key is
 	//   picked each time.
-	// - heard_progression:<progression key> — a progression recognised by ear. The key is
-	//   picked each time.
+	// - heard_progression:<progression key> — a drill progression of 2 to 4 bars recognised by
+	//   ear. The key is picked each time.
 	// - chord_voicing:<diagram id> — playing one chord voicing cleanly, untimed.
 	// - root_fifth:<layout instrument id>:<chord> — playing a chord's root and fifth on a bass
 	//   layout, cleanly, untimed.
@@ -7559,7 +7595,7 @@ type FretboardMapCell struct {
 type GeneratedChoicePlayback struct {
 	// Bars The bars in the order they play. cadence_then_chord: the cadence I IV V I with their
 	// numerals, or only I with its numeral once the student is accurate on the item, then the
-	// asked chord with no numeral. progression_by_number: the progression's four bars, none
+	// asked chord with no numeral. progression_by_number: the progression's bars, 2 to 4, none
 	// with a numeral.
 	Bars []struct {
 		// Chord The bar's chord symbol, spelled as the chord catalog spells roots. It is sounded,
@@ -7593,7 +7629,7 @@ type GeneratedChoicePlayback struct {
 // progression, a heard chord or a heard progression. A question asked by ear also carries
 // the playback the client sounds before the options can be picked.
 type GeneratedChoiceQuestion struct {
-	// Chart The chart the question shows, one chord symbol per bar (four or twelve), for
+	// Chart The chart the question shows, one chord symbol per bar (2 to 16), for
 	// chart_to_numbers. Empty for every other way.
 	Chart []string `json:"chart"`
 
@@ -7604,9 +7640,9 @@ type GeneratedChoiceQuestion struct {
 
 	// DrawnAs How the question draws its chords, in the stimulus and in the options. chord_boxes = a
 	// chord box per chord, unnamed until answered, from the voicing the plan names (guitar,
-	// four-bar charts); chord_symbols = the chord symbol (bass, and every 12-bar chart). A 12-bar
-	// chart is laid out in three lines of four bars. A session in the head reads chords the way
-	// of the student's fretboard layout: guitar or bass, taking turns from one session in the
+	// charts of up to four bars); chord_symbols = the chord symbol (bass, and every chart of more
+	// than four bars). A chart of more than four bars is laid out in lines of four bars. A
+	// session in the head reads chords the way of the student's fretboard layout: guitar or bass, taking turns from one session in the
 	// head to the next for a student who plays both, and chord symbols for a student who plays
 	// neither. Every generated harmony question of a session reads them the same way.
 	DrawnAs GeneratedChordDrawing `json:"drawn_as"`
@@ -7614,7 +7650,10 @@ type GeneratedChoiceQuestion struct {
 	// Function The function asked for, for function_to_chord. Null for every other way.
 	Function *ChordFunction `json:"function"`
 
-	// MusicKey A major key. In a response, the key a question was asked in or a take was played in when
+	// MusicKey A major key, written as its tonic (C), or a minor key, written as its tonic chord (Am). Roots
+	// are spelled as the chord catalog spells them, in minor keys too (Dbm, not C#m). A minor
+	// progression is asked and played only in minor keys, a major one only in major keys. In a
+	// response, the key a question was asked in or a take was played in when
 	// its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
 	// tone or a progression key tour; absent in a response to any other item. A planned question
 	// always names its key.
@@ -7625,9 +7664,13 @@ type GeneratedChoiceQuestion struct {
 
 	// Options The options in the order to show them, already shuffled; all seven numerals come in scale
 	// order instead, since where one sits then says nothing. Different from one another,
-	// each a possible answer to the way, the right one among them: four, two for a 12-bar
-	// progression, and all seven numerals for a heard chord once the student is fluent on it.
-	// Which are offered follows the drill catalog's harmony and ear rules.
+	// each a possible answer to the way, the right one among them: four, two for a progression
+	// of more than four bars, and all seven numerals for a heard chord once the student is
+	// fluent on it. Which are offered follows the drill catalog's harmony and ear rules: a
+	// progression's wrong answers are drill progressions of its length and mode, then, when
+	// those are too few, progressions the server makes up by changing one of its bars. A
+	// made-up one is offered as the progression it would be if an admin created it: its key,
+	// its name (its numerals joined by –) and its chart.
 	Options []struct {
 		// Chart For numbers_to_chart, the option's chart, one chord symbol per bar, drawn as
 		// drawn_as says. Empty for every other way.
@@ -7701,9 +7744,9 @@ type GeneratedChoiceWay string
 
 // GeneratedChordDrawing How the question draws its chords, in the stimulus and in the options. chord_boxes = a
 // chord box per chord, unnamed until answered, from the voicing the plan names (guitar,
-// four-bar charts); chord_symbols = the chord symbol (bass, and every 12-bar chart). A 12-bar
-// chart is laid out in three lines of four bars. A session in the head reads chords the way
-// of the student's fretboard layout: guitar or bass, taking turns from one session in the
+// charts of up to four bars); chord_symbols = the chord symbol (bass, and every chart of more
+// than four bars). A chart of more than four bars is laid out in lines of four bars. A
+// session in the head reads chords the way of the student's fretboard layout: guitar or bass, taking turns from one session in the
 // head to the next for a student who plays both, and chord symbols for a student who plays
 // neither. Every generated harmony question of a session reads them the same way.
 type GeneratedChordDrawing string
@@ -8165,7 +8208,10 @@ type Money struct {
 	Currency string `json:"currency"`
 }
 
-// MusicKey A major key. In a response, the key a question was asked in or a take was played in when
+// MusicKey A major key, written as its tonic (C), or a minor key, written as its tonic chord (Am). Roots
+// are spelled as the chord catalog spells them, in minor keys too (Dbm, not C#m). A minor
+// progression is asked and played only in minor keys, a major one only in major keys. In a
+// response, the key a question was asked in or a take was played in when
 // its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
 // tone or a progression key tour; absent in a response to any other item. A planned question
 // always names its key.
@@ -8809,7 +8855,10 @@ type PlannedGuideTone struct {
 	// bass each chord's root also plays under it in the bass voice.
 	LayoutInstrumentId openapi_types.UUID `json:"layout_instrument_id"`
 
-	// MusicKey A major key. In a response, the key a question was asked in or a take was played in when
+	// MusicKey A major key, written as its tonic (C), or a minor key, written as its tonic chord (Am). Roots
+	// are spelled as the chord catalog spells them, in minor keys too (Dbm, not C#m). A minor
+	// progression is asked and played only in minor keys, a major one only in major keys. In a
+	// response, the key a question was asked in or a take was played in when
 	// its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
 	// tone or a progression key tour; absent in a response to any other item. A planned question
 	// always names its key.
@@ -8839,8 +8888,11 @@ type PlannedGuideTone struct {
 	// Tone The chord tone asked of every chord: 3 = its third, until the student is accurate on the
 	// item; 7 = its seventh from then on:
 	// a written suffix decides (maj7 is the major seventh, 7 and ø7 the minor seventh, °7 the
-	// diminished seventh); a chord with no written seventh takes the major seventh on I and IV
-	// and the minor seventh on any other numeral, in or out of the key.
+	// diminished seventh); a chord with no written seventh takes its key's seventh. In a major
+	// progression, the major seventh on I and IV and the minor seventh on any other numeral. In
+	// a minor progression, the seventh natural minor gives it: m7 on i, iv and v, ø7 on ii°,
+	// maj7 on ♭III and ♭VI, 7 on ♭VII; 7 on V and °7 on vii°, from harmonic minor; on any other
+	// numeral, maj7 on a major chord, m7 on a minor one and ø7 on a diminished one.
 	Tone PlannedGuideToneTone `json:"tone"`
 
 	// Voicings One voicing per distinct chord of bars.
@@ -8857,8 +8909,11 @@ type PlannedGuideTone struct {
 // PlannedGuideToneTone The chord tone asked of every chord: 3 = its third, until the student is accurate on the
 // item; 7 = its seventh from then on:
 // a written suffix decides (maj7 is the major seventh, 7 and ø7 the minor seventh, °7 the
-// diminished seventh); a chord with no written seventh takes the major seventh on I and IV
-// and the minor seventh on any other numeral, in or out of the key.
+// diminished seventh); a chord with no written seventh takes its key's seventh. In a major
+// progression, the major seventh on I and IV and the minor seventh on any other numeral. In
+// a minor progression, the seventh natural minor gives it: m7 on i, iv and v, ø7 on ii°,
+// maj7 on ♭III and ♭VI, 7 on ♭VII; 7 on V and °7 on vii°, from harmonic minor; on any other
+// numeral, maj7 on a major chord, m7 on a minor one and ø7 on a diminished one.
 type PlannedGuideToneTone string
 
 // PlannedProgressionKeys A progression played along with, key after key around the cycle of fourths (kind
@@ -8898,7 +8953,10 @@ type PlannedProgressionKeys struct {
 		// Clean Whether the key is clean at the tour tempo.
 		Clean bool `json:"clean"`
 
-		// MusicKey A major key. In a response, the key a question was asked in or a take was played in when
+		// MusicKey A major key, written as its tonic (C), or a minor key, written as its tonic chord (Am). Roots
+		// are spelled as the chord catalog spells them, in minor keys too (Dbm, not C#m). A minor
+		// progression is asked and played only in minor keys, a major one only in major keys. In a
+		// response, the key a question was asked in or a take was played in when
 		// its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
 		// tone or a progression key tour; absent in a response to any other item. A planned question
 		// always names its key.
@@ -8933,7 +8991,10 @@ type PlannedProgressionKeys struct {
 		Name string `json:"name"`
 	} `json:"progression"`
 
-	// StartMusicKey A major key. In a response, the key a question was asked in or a take was played in when
+	// StartMusicKey A major key, written as its tonic (C), or a minor key, written as its tonic chord (Am). Roots
+	// are spelled as the chord catalog spells them, in minor keys too (Dbm, not C#m). A minor
+	// progression is asked and played only in minor keys, a major one only in major keys. In a
+	// response, the key a question was asked in or a take was played in when
 	// its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
 	// tone or a progression key tour; absent in a response to any other item. A planned question
 	// always names its key.
@@ -8953,8 +9014,9 @@ type PlannedProgressionKeys struct {
 	// TargetTempoBpm The tempo the tour aims for, in quarters, the same for every progression.
 	TargetTempoBpm int `json:"target_tempo_bpm"`
 
-	// TimesThrough How many times one take plays the progression after its bar of count-in: 4 for a
-	// four-bar progression, 1 for a 12-bar blues.
+	// TimesThrough How many times one take plays the progression after its bar of count-in: as many whole
+	// times as fit in 16 bars, at least once (8 for a two-bar progression, 4 for a four-bar
+	// one, 1 for a 12-bar blues).
 	TimesThrough int `json:"times_through"`
 
 	// TourTempoBpm The tour's tempo, in start_note_value: the tempo of the first take, and the one a take
@@ -9134,14 +9196,14 @@ type PracticeInstrumentCard struct {
 //     the function of its chord, or its chord for the function.
 //
 //   - chart_progression:<progression key> — a drill progression read
-//     as a chart: picking the progression for four chords, or its chart for the progression.
+//     as a chart: picking the progression for its chords, or its chart for the progression.
 //     The key is picked each time it is asked, so one item covers every key.
 //
 //   - heard_chord:<numeral> — a numeral recognised by ear in a key a cadence sets. The key is
 //     picked each time.
 //
-//   - heard_progression:<progression key> — a progression recognised by ear. The key is
-//     picked each time.
+//   - heard_progression:<progression key> — a drill progression of 2 to 4 bars recognised by
+//     ear. The key is picked each time.
 //
 //   - chord_voicing:<diagram id> — playing one chord voicing cleanly, untimed.
 //
@@ -9512,12 +9574,12 @@ type PracticeSessionItem struct {
 	// - chord_function:<key>:<numeral> — a numeral's harmonic function in a major key: picking
 	//   the function of its chord, or its chord for the function.
 	// - chart_progression:<progression key> — a drill progression read
-	//   as a chart: picking the progression for four chords, or its chart for the progression.
+	//   as a chart: picking the progression for its chords, or its chart for the progression.
 	//   The key is picked each time it is asked, so one item covers every key.
 	// - heard_chord:<numeral> — a numeral recognised by ear in a key a cadence sets. The key is
 	//   picked each time.
-	// - heard_progression:<progression key> — a progression recognised by ear. The key is
-	//   picked each time.
+	// - heard_progression:<progression key> — a drill progression of 2 to 4 bars recognised by
+	//   ear. The key is picked each time.
 	// - chord_voicing:<diagram id> — playing one chord voicing cleanly, untimed.
 	// - root_fifth:<layout instrument id>:<chord> — playing a chord's root and fifth on a bass
 	//   layout, cleanly, untimed.
@@ -9797,15 +9859,16 @@ type PracticeSummary struct {
 // those for song charts only.
 type Progression struct {
 	// Bars One numeral per bar, such as I V vi IV, or I7 IV7 V7 for a dominant seventh. A
-	// four-bar progression has four, a 12-bar form twelve.
+	// four-bar progression has four, a 12-bar form twelve. Drills take 2 to 16.
 	Bars []ProgressionNumeral `json:"bars"`
 
 	// BorrowedBars The bars, numbered from 0, whose numeral is outside the mode's diatonic chords, judged
 	// by root and triad (a seventh doesn't change it); empty when none is.
 	BorrowedBars []int `json:"borrowed_bars"`
 
-	// Confusable The keys of the drill progressions drills offer as its wrong answers, closest first;
-	// empty for a progression that isn't in the drills.
+	// Confusable The keys of the drill progressions drills offer as its wrong answers, closest first,
+	// all with its bar count and mode; empty for a progression that isn't in the drills, and
+	// possibly empty for one that is, whose wrong answers drills then make up.
 	Confusable []ProgressionKey `json:"confusable"`
 
 	// CreatedAt When it was created; null for the catalog's progressions.
@@ -9923,10 +9986,9 @@ type ProgressionNotAddableError struct {
 	// Message Human-readable summary of the refusal.
 	Message string `json:"message"`
 
-	// Reasons already_in_drills: it is a drill progression already. unsupported_bar_count: drills
-	// ask 4- and 12-bar progressions only. unsupported_mode: drills don't ask its mode yet.
-	// no_other_drill_progression: no other drill progression has its bar count, so drills
-	// have no wrong answer to offer.
+	// Reasons already_in_drills: it is a drill progression already. unsupported_bar_count: it has a
+	// single bar. unsupported_mode and no_other_drill_progression are no longer returned:
+	// drills ask both modes, and make up wrong answers when too few drill progressions fit.
 	Reasons []ProgressionNotAddableErrorReasons `json:"reasons"`
 }
 
