@@ -124,6 +124,14 @@ func (a fakeActivationTx) Read(context.Context) (domain.CommercialActivation, er
 	return activationOf(*a.state), nil
 }
 
+func (a fakeActivationTx) FlagChanges(context.Context) (map[domain.FlagName]ports.FlagChange, error) {
+	changes := make(map[domain.FlagName]ports.FlagChange, len(a.state.flagMeta))
+	for flag, meta := range a.state.flagMeta {
+		changes[flag] = ports.FlagChange{At: meta.at, By: meta.by}
+	}
+	return changes, nil
+}
+
 func (a fakeActivationTx) SaveFlag(_ context.Context, flag domain.FlagName, setting domain.FlagSetting, at time.Time, by string) error {
 	a.state.flags[flag] = setting
 	a.state.flagMeta[flag] = fakeFlagMeta{at: at, by: by}

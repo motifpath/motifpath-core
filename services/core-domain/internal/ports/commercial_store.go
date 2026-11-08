@@ -41,11 +41,20 @@ type CommercialActivationTx interface {
 	LockExclusive(ctx context.Context) (int64, error)
 	// Read returns the activation as seen inside this transaction.
 	Read(ctx context.Context) (domain.CommercialActivation, error)
+	// FlagChanges returns when and by whom each flag last changed; a flag
+	// that never changed is absent.
+	FlagChanges(ctx context.Context) (map[domain.FlagName]FlagChange, error)
 	// SaveFlag replaces one flag's switch and audience.
 	SaveFlag(ctx context.Context, flag domain.FlagName, setting domain.FlagSetting, at time.Time, by string) error
 	// BumpRevision adds one to the revision and returns the new value. The
 	// exclusive lock must be held.
 	BumpRevision(ctx context.Context) (int64, error)
+}
+
+// FlagChange is when and by which administrator a flag last changed.
+type FlagChange struct {
+	At time.Time
+	By string
 }
 
 // CommercialGroupsTx reads and changes rollout groups.

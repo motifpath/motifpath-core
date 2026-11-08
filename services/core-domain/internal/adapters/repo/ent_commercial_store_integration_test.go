@@ -110,6 +110,15 @@ func TestEntCommercialStore_ChangesCommitWithTheirEvidence(t *testing.T) {
 		last, err := store.Audit().LastOrderKey(ctx, env)
 		require.NoError(t, err)
 		assert.NotZero(t, last)
+
+		require.NoError(t, store.InTx(ctx, func(ctx context.Context, tx ports.CommercialTx) error {
+			changes, err := tx.Activation().FlagChanges(ctx)
+			require.NoError(t, err)
+			assert.Equal(t, map[domain.FlagName]ports.FlagChange{"content_ownership": {At: changes["content_ownership"].At, By: adminID}}, changes,
+				"only the changed flag has a change record")
+			assert.True(t, commercialAt.Equal(changes["content_ownership"].At))
+			return nil
+		}))
 	})
 
 	t.Run("evidence that cannot be written leaves the change undone", func(t *testing.T) {

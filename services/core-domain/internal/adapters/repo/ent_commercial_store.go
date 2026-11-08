@@ -123,6 +123,20 @@ func (a entCommercialActivationTx) Read(ctx context.Context) (domain.CommercialA
 	return readActivation(ctx, a.tx)
 }
 
+func (a entCommercialActivationTx) FlagChanges(ctx context.Context) (map[domain.FlagName]ports.FlagChange, error) {
+	rows, err := a.tx.CommercialFlag.Query().All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	changes := map[domain.FlagName]ports.FlagChange{}
+	for _, row := range rows {
+		if row.UpdatedAt != nil && row.UpdatedBy != nil {
+			changes[domain.FlagName(row.ID)] = ports.FlagChange{At: *row.UpdatedAt, By: row.UpdatedBy.String()}
+		}
+	}
+	return changes, nil
+}
+
 func (a entCommercialActivationTx) SaveFlag(ctx context.Context, flag domain.FlagName, setting domain.FlagSetting, at time.Time, by string) error {
 	updatedBy, err := uuid.Parse(by)
 	if err != nil {
