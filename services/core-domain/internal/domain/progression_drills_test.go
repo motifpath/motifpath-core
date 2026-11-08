@@ -215,12 +215,13 @@ func TestAQuestionNeverOffersTwoProgressionsWithOneChart(t *testing.T) {
 
 	t.Run("a chart read as numbers", func(t *testing.T) {
 		q, _ := plannedChoice(t, domain.ChartProgressionItem{Progression: asked, Catalog: catalog}, "chart_to_numbers", planning)
-		assert.ElementsMatch(t, []string{asked.Key, partner.Key, "vi-IV-I-V"}, values(q))
+		assert.Subset(t, values(q), []string{asked.Key, partner.Key, "vi-IV-I-V"})
+		assert.NotContains(t, values(q), twin.Key)
 	})
 
 	t.Run("numbers read as a chart", func(t *testing.T) {
 		q, _ := plannedChoice(t, domain.ChartProgressionItem{Progression: asked, Catalog: catalog}, "numbers_to_chart", planning)
-		assert.Len(t, q.Options, 3)
+		assert.Len(t, q.Options, 4)
 		seen := map[string]bool{}
 		for _, v := range values(q) {
 			assert.False(t, seen[v], "%q is offered twice", v)
@@ -230,6 +231,7 @@ func TestAQuestionNeverOffersTwoProgressionsWithOneChart(t *testing.T) {
 
 	t.Run("a progression by ear", func(t *testing.T) {
 		q, _ := plannedChoice(t, domain.HeardProgressionItem{Progression: asked, Catalog: catalog}, "progression_by_number", planning)
-		assert.ElementsMatch(t, []string{asked.Key, partner.Key, "vi-IV-I-V"}, values(q))
+		assert.Subset(t, values(q), []string{asked.Key, partner.Key, "vi-IV-I-V"})
+		assert.NotContains(t, values(q), twin.Key)
 	})
 }

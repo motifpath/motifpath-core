@@ -87,7 +87,7 @@ func (src harmonySource) item(ctx context.Context, itemKey string, catalog *[]do
 	}
 	if key, ok := strings.CutPrefix(itemKey, string(domain.PracticeItemKindHeardProgression)+":"); ok {
 		p, found, err := src.progression(ctx, key, catalog)
-		if !found || err != nil || len(p.Bars) != domain.HeardProgressionBars {
+		if !found || err != nil || !domain.IsHeardProgressionLength(len(p.Bars)) {
 			return nil, false, err
 		}
 		return domain.HeardProgressionItem{Progression: p, Catalog: *catalog}, true, nil

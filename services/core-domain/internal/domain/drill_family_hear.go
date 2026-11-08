@@ -17,6 +17,13 @@ const (
 // one is too long to hold in mind before answering.
 const HeardProgressionBars = 4
 
+// IsHeardProgressionLength says whether a drill progression of bars is asked
+// by ear: 2 to HeardProgressionBars, since a longer one is too long to hold
+// before answering.
+func IsHeardProgressionLength(bars int) bool {
+	return bars >= minDrillBars && bars <= HeardProgressionBars
+}
+
 // HearItemSeconds is how long a question asked by ear takes in a session:
 // up to five bars heard at the slowest starting tempo, then the answer.
 const HearItemSeconds = 20
@@ -169,7 +176,8 @@ func (i HeardProgressionItem) ConfusableWith() []string {
 // Plan picks the key, plays the progression's bars with no numeral, and
 // offers it among its confusables.
 func (i HeardProgressionItem) Plan(way string, planning DrillPlanning) PlannedDrill {
-	key := MusicKeys[planning.Pick(len(MusicKeys))]
+	keys := MusicKeysOf(ProgressionMode(i.Progression.Mode))
+	key := keys[planning.Pick(len(keys))]
 	q := &PlannedGeneratedChoice{AskedWay: way, MusicKey: key, Answer: i.Progression.Key, itemKind: PracticeItemKindHeardProgression}
 	var bars []PlaybackBar
 	for _, chord := range ProgressionChart(i.Progression.Bars, key) {

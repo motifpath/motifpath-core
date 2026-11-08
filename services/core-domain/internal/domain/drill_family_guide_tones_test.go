@@ -131,3 +131,34 @@ func TestAGuideToneMarksNoAnswer(t *testing.T) {
 
 	assert.Equal(t, domain.DrillStimulus{}, planned.Stimulus(), "the plan names no note to tap and no place")
 }
+
+func TestAMinorGuideToneIsPlannedInAMinorKeyNeverItsLast(t *testing.T) {
+	minor := domain.Progression{Key: "minor/i-bVII-bVI-V", Mode: "minor", Bars: []string{"i", "♭VII", "♭VI", "V"}}
+	item := domain.GuideToneItem{Layout: tourGuitar, Progression: minor}
+	state := &domain.PracticeItemState{LastMusicKey: "Am"}
+	seen := map[string]bool{}
+	for choice := range 11 {
+		g := plannedGuideTone(t, item, domain.DrillPlanning{Pick: func(int) int { return choice }, State: state})
+		seen[g.MusicKey] = true
+		assert.Contains(t, domain.MusicKeysOf(domain.ProgressionModeMinor), g.MusicKey)
+	}
+	assert.NotContains(t, seen, "Am")
+	assert.Len(t, seen, 11, "every other minor key can be picked")
+
+	g := plannedGuideTone(t, item, domain.DrillPlanning{Pick: func(int) int { return 9 }, State: state})
+	require.Equal(t, "Bbm", g.MusicKey)
+	var chords []string
+	for _, b := range g.Bars {
+		chords = append(chords, b.Chord)
+	}
+	assert.Equal(t, []string{"Bbm", "Ab", "F#", "F"}, chords, "roots spelled as the catalog spells them")
+}
+
+func TestALongProgressionsGuideToneWaitsForTargetChordTones(t *testing.T) {
+	for _, bars := range [][]string{{"I", "vi", "IV", "V", "I", "vi", "IV", "V"}, slicesRepeat([]string{"I", "IV", "V", "I"}, 4)} {
+		_, _, waits := domain.GuideToneItem{Layout: tourGuitar, Progression: domain.Progression{Key: "major/x", Mode: "major", Bars: bars}}.WaitsOn()
+		assert.True(t, waits, "%d bars", len(bars))
+	}
+	_, _, waits := domain.GuideToneItem{Layout: tourGuitar, Progression: domain.Progression{Key: "major/I-V", Mode: "major", Bars: []string{"I", "V"}}}.WaitsOn()
+	assert.False(t, waits)
+}

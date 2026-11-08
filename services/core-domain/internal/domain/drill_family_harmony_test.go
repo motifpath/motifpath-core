@@ -363,3 +363,205 @@ func TestPreferredChordBox(t *testing.T) {
 		})
 	}
 }
+
+// madeUpBars reads a made-up option's key, mode/numerals in ASCII, as its mode
+// and bars.
+func madeUpBars(t *testing.T, key string) (string, []string) {
+	t.Helper()
+	mode, numerals, ok := strings.Cut(key, "/")
+	require.True(t, ok, "%q is no created progression's key", key)
+	return mode, strings.Split(strings.NewReplacer("b", "♭", "#", "♯", "o", "°", "h", "ø").Replace(numerals), "-")
+}
+
+func barsChanged(a, b []string) int {
+	changed := 0
+	for i := range a {
+		if a[i] != b[i] {
+			changed++
+		}
+	}
+	return changed
+}
+
+func createdDrillProgression(mode, key string, bars ...string) domain.Progression {
+	return domain.Progression{Key: key, Mode: mode, Bars: bars, InDrills: true, Names: domain.LocalizedText{"en": strings.Join(bars, "–")}}
+}
+
+func TestMadeUpWrongAnswers(t *testing.T) {
+	threeBars := createdDrillProgression("major", "major/I-IV-V", "I", "IV", "V")
+	catalog := append(slices.Clone(catalogProgressions), threeBars)
+	symbols := func(pick func(int) int) domain.DrillPlanning {
+		return domain.DrillPlanning{Pick: pick, Reading: domain.GeneratedChordSymbols, Level: domain.KnowledgeLevelAccurate}
+	}
+
+	t.Run("a question with too few wrong answers is filled with made-up ones, each one bar away", func(t *testing.T) {
+		for range 50 {
+			q, s := plannedChoice(t, domain.ChartProgressionItem{Progression: threeBars, Catalog: catalog}, "chart_to_numbers", symbols(rand.IntN))
+			require.Len(t, q.Options, 4)
+			assert.Equal(t, "major/I-IV-V", q.Answer)
+			seen := map[string]bool{}
+			for _, o := range q.Options {
+				assert.False(t, seen[o.Value], "%q is offered twice", o.Value)
+				seen[o.Value] = true
+				if o.Value == q.Answer {
+					continue
+				}
+				mode, bars := madeUpBars(t, o.Value)
+				assert.Equal(t, "major", mode)
+				require.Len(t, bars, 3)
+				assert.Equal(t, 1, barsChanged(threeBars.Bars, bars), o.Value)
+				assert.Equal(t, strings.Join(bars, "–"), o.Names.Resolve("pt_BR"), "a made-up option is named by its numerals in every language")
+			}
+			require.NoError(t, domain.CheckChallenge(s))
+		}
+	})
+
+	t.Run("a made-up wrong answer takes a chord the progression already plays first", func(t *testing.T) {
+		q, _ := plannedChoice(t, domain.ChartProgressionItem{Progression: threeBars, Catalog: catalog}, "chart_to_numbers", symbols(firstPick))
+		for _, o := range q.Options {
+			_, bars := madeUpBars(t, o.Value)
+			for _, bar := range bars {
+				assert.Contains(t, threeBars.Bars, bar, o.Value)
+			}
+		}
+	})
+
+	t.Run("a blues-like progression keeps its dominant sevenths", func(t *testing.T) {
+		long := createdDrillProgression("major", "major/I7-IV7-I7-V7-IV7-I7-V7-I7", "I7", "IV7", "I7", "V7", "IV7", "I7", "V7", "I7")
+		for range 20 {
+			q, _ := plannedChoice(t, domain.ChartProgressionItem{Progression: long, Catalog: append(slices.Clone(catalog), long)}, "chart_to_numbers", symbols(rand.IntN))
+			require.Len(t, q.Options, 2, "a progression of more than four bars offers two")
+			for _, o := range q.Options {
+				_, bars := madeUpBars(t, o.Value)
+				for _, bar := range bars {
+					assert.Contains(t, []string{"I7", "IV7", "V7"}, bar)
+				}
+			}
+		}
+	})
+
+	t.Run("when its own chords give too few, triads of its mode fill the rest", func(t *testing.T) {
+		twoBars := createdDrillProgression("major", "major/I-V", "I", "V")
+		q, _ := plannedChoice(t, domain.ChartProgressionItem{Progression: twoBars, Catalog: append(slices.Clone(catalog), twoBars)}, "chart_to_numbers", symbols(firstPick))
+		values := optionValues(q)
+		require.Len(t, values, 4)
+		assert.Contains(t, values, "major/V-V")
+		assert.Contains(t, values, "major/I-I")
+		for _, v := range values {
+			_, bars := madeUpBars(t, v)
+			for _, bar := range bars {
+				assert.Contains(t, []string{"I", "ii", "iii", "IV", "V", "vi", "vii°"}, bar)
+			}
+		}
+	})
+
+	t.Run("a minor progression's made-up wrong answers are minor, from minor triads", func(t *testing.T) {
+		twoBars := createdDrillProgression("minor", "minor/i-i", "i", "i")
+		q, _ := plannedChoice(t, domain.ChartProgressionItem{Progression: twoBars, Catalog: append(slices.Clone(catalog), twoBars)}, "chart_to_numbers", symbols(rand.IntN))
+		require.Len(t, q.Options, 4)
+		for _, o := range q.Options {
+			mode, bars := madeUpBars(t, o.Value)
+			assert.Equal(t, "minor", mode)
+			for _, bar := range bars {
+				assert.Contains(t, []string{"i", "ii°", "♭III", "iv", "v", "♭VI", "♭VII"}, bar)
+			}
+		}
+	})
+
+	t.Run("a made-up wrong answer is never a drill progression", func(t *testing.T) {
+		withNeighbour := append(slices.Clone(catalog), createdDrillProgression("major", "major/I-IV-I", "I", "IV", "I"))
+		for range 50 {
+			q, _ := plannedChoice(t, domain.ChartProgressionItem{Progression: threeBars, Catalog: withNeighbour}, "chart_to_numbers", symbols(rand.IntN))
+			assert.NotContains(t, optionValues(q), "major/I-IV-I")
+		}
+	})
+
+	t.Run("pick the chart offers made-up charts in the key", func(t *testing.T) {
+		q, _ := plannedChoice(t, domain.ChartProgressionItem{Progression: threeBars, Catalog: catalog}, "numbers_to_chart", domain.DrillPlanning{Pick: picks(7), Reading: domain.GeneratedChordSymbols, Level: domain.KnowledgeLevelAccurate})
+		assert.Equal(t, "G", q.MusicKey)
+		require.Len(t, q.Options, 4)
+		assert.Contains(t, optionValues(q), "G C D")
+		for _, o := range q.Options {
+			assert.Len(t, o.Chart, 3)
+		}
+	})
+
+	t.Run("a heard progression is filled with made-up wrong answers too", func(t *testing.T) {
+		q, _ := plannedChoice(t, domain.HeardProgressionItem{Progression: threeBars, Catalog: catalog}, "progression_by_number", symbols(rand.IntN))
+		assert.Len(t, q.Options, 4)
+	})
+
+	t.Run("a progression with enough wrong answers makes none up", func(t *testing.T) {
+		q, _ := plannedChoice(t, domain.ChartProgressionItem{Progression: progression("I-V-vi-IV"), Catalog: catalog}, "chart_to_numbers", symbols(firstPick))
+		for _, v := range optionValues(q) {
+			assert.NotContains(t, v, "/")
+		}
+	})
+}
+
+func TestMinorProgressionsAreAskedInMinorKeys(t *testing.T) {
+	minor := createdDrillProgression("minor", "minor/i-bVII-bVI-V", "i", "♭VII", "♭VI", "V")
+	catalog := append(slices.Clone(catalogProgressions), minor)
+	chart := domain.ChartProgressionItem{Progression: minor, Catalog: catalog}
+
+	t.Run("while learning, in the relative minor of an easy key", func(t *testing.T) {
+		for range 50 {
+			q, _ := plannedChoice(t, chart, "chart_to_numbers", domain.DrillPlanning{Pick: rand.IntN, Reading: domain.GeneratedChordSymbols, Level: domain.KnowledgeLevelLearning})
+			assert.Contains(t, []string{"Am", "Em", "Bm", "Dm", "F#m"}, q.MusicKey)
+		}
+	})
+
+	t.Run("once accurate, in any minor key, spelled from its tonic", func(t *testing.T) {
+		q, _ := plannedChoice(t, chart, "chart_to_numbers", domain.DrillPlanning{Pick: picks(9), Reading: domain.GeneratedChordSymbols, Level: domain.KnowledgeLevelAccurate})
+		assert.Equal(t, "Am", q.MusicKey)
+		assert.Equal(t, []string{"Am", "G", "F", "E"}, q.Chart)
+	})
+
+	t.Run("by ear, only in minor keys", func(t *testing.T) {
+		for range 50 {
+			q, _ := plannedChoice(t, domain.HeardProgressionItem{Progression: minor, Catalog: catalog}, "progression_by_number", domain.DrillPlanning{Pick: rand.IntN, Reading: domain.GeneratedChordSymbols})
+			assert.Contains(t, domain.MusicKeysOf(domain.ProgressionModeMinor), q.MusicKey)
+			require.NotNil(t, q.Playback)
+			assert.Len(t, q.Playback.Bars, 4, "no cadence before it")
+		}
+	})
+}
+
+// Created progressions of every length drills take, in either mode, are
+// questions that challenge the student and that the grader accepts, made-up
+// wrong answers included.
+func TestCreatedProgressions_EveryPlanChallenges(t *testing.T) {
+	created := []domain.Progression{
+		createdDrillProgression("major", "major/I-V", "I", "V"),
+		createdDrillProgression("major", "major/I-IV-V", "I", "IV", "V"),
+		createdDrillProgression("major", "major/I-vi-IV-V-I-vi-IV-V", "I", "vi", "IV", "V", "I", "vi", "IV", "V"),
+		createdDrillProgression("major", "major/I-x16", slicesRepeat([]string{"I", "IV", "V", "I"}, 4)...),
+		createdDrillProgression("minor", "minor/i-v", "i", "v"),
+		createdDrillProgression("minor", "minor/i-bVII-bVI-V", "i", "♭VII", "♭VI", "V"),
+	}
+	catalog := append(slices.Clone(catalogProgressions), created...)
+	for _, p := range created {
+		items := []domain.DrillItem{domain.ChartProgressionItem{Progression: p, Catalog: catalog}}
+		if len(p.Bars) <= domain.HeardProgressionBars {
+			items = append(items, domain.HeardProgressionItem{Progression: p, Catalog: catalog})
+		}
+		for _, item := range items {
+			for _, way := range item.Ways() {
+				for range 20 {
+					q, s := plannedChoice(t, item, way, domain.DrillPlanning{Pick: rand.IntN, Reading: domain.GeneratedChordSymbols, Level: domain.KnowledgeLevelAccurate})
+					name := item.ItemKey() + " " + way
+					require.NoError(t, domain.CheckChallenge(s), name)
+					values := optionValues(q)
+					assert.Len(t, slices.Compact(slices.Sorted(slices.Values(values))), len(values), name+": distinct options")
+					assert.Contains(t, values, q.Answer, name)
+					want := 4
+					if len(p.Bars) > 4 {
+						want = 2
+					}
+					assert.Len(t, values, want, name)
+					assert.Contains(t, domain.MusicKeysOf(domain.ProgressionMode(p.Mode)), q.MusicKey, name)
+				}
+			}
+		}
+	}
+}

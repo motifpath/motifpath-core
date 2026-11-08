@@ -274,9 +274,10 @@ func (i ChartProgressionItem) ConfusableWith() []string {
 // then shows the chart and offers the progression among its confusables,
 // or names the progression and offers their charts.
 func (i ChartProgressionItem) Plan(way string, planning DrillPlanning) PlannedDrill {
-	keys := MusicKeys
+	mode := ProgressionMode(i.Progression.Mode)
+	keys := MusicKeysOf(mode)
 	if planning.Level == KnowledgeLevelNew || planning.Level == KnowledgeLevelLearning || planning.Level == "" {
-		keys = EasyChartKeys
+		keys = EasyChartKeysOf(mode)
 	}
 	key := keys[planning.Pick(len(keys))]
 	offered := confusableProgressions(i.Progression, i.Catalog, planning.Pick)
@@ -309,8 +310,10 @@ func (i ChartProgressionItem) Plan(way string, planning DrillPlanning) PlannedDr
 // confusableProgressions is progression, then its confusables in catalog,
 // then theirs, as many as fit in the options, all of its length and each with
 // a chart of its own, since two with one chart can't be told apart. A tie at
-// the last ring that doesn't fit whole is broken by pick.
+// the last ring that doesn't fit whole is broken by pick. When those are too
+// few, made-up wrong answers fill the rest.
 func confusableProgressions(progression Progression, catalog []Progression, pick func(int) int) []Progression {
+	options := progressionOptions(len(progression.Bars))
 	byKey := map[string]Progression{}
 	for _, p := range catalog {
 		byKey[p.Key] = p
@@ -319,7 +322,7 @@ func confusableProgressions(progression Progression, catalog []Progression, pick
 	seen := map[string]bool{progression.Key: true}
 	charts := map[string]bool{comparableChart(progression): true}
 	ring := []Progression{progression}
-	for len(ring) > 0 && len(offered) < harmonyOptions {
+	for len(ring) > 0 && len(offered) < options {
 		var next []Progression
 		for _, p := range ring {
 			for _, key := range p.Confusable {
@@ -331,8 +334,11 @@ func confusableProgressions(progression Progression, catalog []Progression, pick
 				}
 			}
 		}
-		offered = append(offered, pickSome(next, harmonyOptions-len(offered), pick)...)
+		offered = append(offered, pickSome(next, options-len(offered), pick)...)
 		ring = next
+	}
+	if len(offered) < options {
+		offered = append(offered, madeUpWrongAnswers(progression, catalog, offered, options-len(offered), pick)...)
 	}
 	return offered
 }
