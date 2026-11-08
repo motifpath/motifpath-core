@@ -11,10 +11,6 @@ import (
 
 const onlyAdminsManageProgressions = "Only admins create, change and remove progressions."
 
-// errProgressionDrillsUnavailable answers adding a chart-only progression to the
-// drills, which isn't served yet.
-var errProgressionDrillsUnavailable = errors.New("adding a progression to the drills is not available yet")
-
 func (h *Handler) CreateProgression(ctx context.Context, request generated.CreateProgressionRequestObject) (generated.CreateProgressionResponseObject, error) {
 	caller, ok := h.resolveCaller(ctx)
 	if !ok {
@@ -145,9 +141,36 @@ func (h *Handler) GetProgressionUses(ctx context.Context, request generated.GetP
 	return nil, err
 }
 
-// AddProgressionToDrills isn't served yet.
-func (h *Handler) AddProgressionToDrills(context.Context, generated.AddProgressionToDrillsRequestObject) (generated.AddProgressionToDrillsResponseObject, error) {
-	return nil, errProgressionDrillsUnavailable
+// AddProgressionToDrills puts a chart-only progression in the drills, for an admin.
+func (h *Handler) AddProgressionToDrills(ctx context.Context, request generated.AddProgressionToDrillsRequestObject) (generated.AddProgressionToDrillsResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.AddProgressionToDrills401JSONResponse(unauthorizedError()), nil
+	}
+	input := application.ProgressionDrillsInput{
+		SkillIDs:   optionalUUIDStrings(request.Body.SkillIds),
+		ConceptIDs: optionalUUIDStrings(request.Body.ConceptIds),
+	}
+	added, err := h.progressionCatalog.AddToDrills(ctx, caller, request.ProgressionId.String(), input)
+	if err == nil {
+		out, mapErr := h.toGeneratedProgressionWithCreator(ctx, added)
+		return generated.AddProgressionToDrills200JSONResponse(out), mapErr
+	}
+	var notAddable *domain.ProgressionNotAddableError
+	if errors.As(err, &notAddable) {
+		return generated.AddProgressionToDrills409JSONResponse(toGeneratedProgressionNotAddable(notAddable)), nil
+	}
+	kind, valErr := classify(err)
+	switch kind {
+	case errKindValidation:
+		return generated.AddProgressionToDrills400JSONResponse(validationErrorResponse(valErr)), nil
+	case errKindNotFound:
+		return generated.AddProgressionToDrills404JSONResponse(notFoundError("progression not found")), nil
+	case errKindForbidden:
+		return generated.AddProgressionToDrills403JSONResponse(forbiddenError("Only admins add progressions to the drills.")), nil
+	case errKindOther:
+	}
+	return nil, err
 }
 
 func toGeneratedProgressionNotAddable(e *domain.ProgressionNotAddableError) generated.ProgressionNotAddableError {

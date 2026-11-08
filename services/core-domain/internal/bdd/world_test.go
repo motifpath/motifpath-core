@@ -371,7 +371,7 @@ func newWorld() *world {
 	voice := application.NewVoiceService(w.voices, voiceSamplesBaseURL)
 	diagram := application.NewDiagramService(w.diagrams, w.instruments, w.knowledge, newFakeLanguageRepo(), w.users, discardPracticeReferences{}, w.chords, w.exercises, newID, now)
 
-	w.practiceItems = newFakeNodeItemSource(w.diagrams, w.exercises)
+	w.practiceItems = newFakeNodeItemSource(w.diagrams, w.exercises, w.progressions)
 	w.rollup = application.NewKnowledgeRollupService(w.knowledge, w.knowledgeEdges, w.practiceItems, w.practiceStates, now)
 	w.tapChecks = newFakeTapChecks()
 	w.feltRatings = newFakeFeltRatings()
