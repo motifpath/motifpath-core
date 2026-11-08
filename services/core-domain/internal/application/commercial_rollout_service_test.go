@@ -406,6 +406,15 @@ func TestCommercialRolloutService_Groups(t *testing.T) {
 		})
 	}
 
+	t.Run("a malformed membership change is refused whether or not the group exists", func(t *testing.T) {
+		f := newRolloutFixture(t)
+
+		_, err := f.service.ChangeMembers(ctx, rolloutAdmin, "staff", uuid.NewString(),
+			application.MembershipChangeRequest{Add: []string{"b0000000-0000-4000-8000-000000000999"}, Remove: []string{}, Reason: "x"})
+
+		require.ErrorIs(t, err, domain.ErrValidation)
+	})
+
 	t.Run("invalid group slugs and names are refused", func(t *testing.T) {
 		f := newRolloutFixture(t)
 		for slug, name := range map[string]string{"Beta": "Beta", "beta": "", "staff": strings.Repeat("n", 121)} {

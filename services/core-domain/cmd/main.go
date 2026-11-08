@@ -75,6 +75,11 @@ type config struct {
 
 	// environment namespaces commercial operation keys and audit evidence.
 	environment domain.Environment
+
+	// commercialCursorSecret signs commercial audit continuations, binding
+	// each to its snapshot, filters and administrator. Changing it only
+	// invalidates traversals in progress.
+	commercialCursorSecret []byte
 }
 
 // defaultCORSOrigin is the local Vite dev server. Deployed environments override
@@ -110,8 +115,13 @@ func loadConfig() (config, error) {
 	if err != nil {
 		return config{}, err
 	}
+	commercialCursorSecret, err := mustGetenv("COMMERCIAL_CURSOR_SECRET")
+	if err != nil {
+		return config{}, err
+	}
 	return config{
-		environment: environment,
+		environment:            environment,
+		commercialCursorSecret: []byte(commercialCursorSecret),
 
 		port:               getenvDefault("PORT", "8080"),
 		databaseURL:        databaseURL,
@@ -359,7 +369,16 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 		repo.NewMongoAlphaActivityReader(mongoClient.Database(cfg.mongoDatabase)), now)
 
 	return appHTTP.NewHandler(identityService, contentService, challengeService, exerciseService, knowledgeNodeService, knowledgeEdgeService, mediaService, pathService, application.NewPathCatalogService(pathRepo, userRepo, knowledgeNodeRepo), studentPathService,
-		courseService, courseEnrollmentService, instrumentService, voiceService, diagramService, practiceSessionService, practiceSummaryService, chordCatalogService, application.NewProgressionCatalogService(repo.NewEntProgressionRepository(entClient), songChartRepo, languageRepo, knowledgeNodeRepo, practiceReferences, newID, now), songChartService, appConfigService, startingPointsService, alphaObservationService, application.NewEmailPreferencesService(userRepo, []byte(cfg.emailUnsubscribeSecret)), learningGraphPinger, completionReader), practiceSessionService, nil
+		courseService, courseEnrollmentService, instrumentService, voiceService, diagramService, practiceSessionService, practiceSummaryService, chordCatalogService, application.NewProgressionCatalogService(repo.NewEntProgressionRepository(entClient), songChartRepo, languageRepo, knowledgeNodeRepo, practiceReferences, newID, now), songChartService, appConfigService, startingPointsService, alphaObservationService, application.NewEmailPreferencesService(userRepo, []byte(cfg.emailUnsubscribeSecret)), learningGraphPinger, completionReader).WithCommercial(newCommercialServices(cfg, entClient, newID, now)), practiceSessionService, nil
+}
+
+// newCommercialServices builds commercial rollout and audit over one store,
+// so every commercial change commits with its evidence.
+func newCommercialServices(cfg config, entClient *ent.Client, newID func() string, now func() time.Time) (*application.CommercialRolloutService, *application.CommercialAuditService) {
+	store := repo.NewEntCommercialStore(entClient)
+	commands := application.NewCommercialCommands(store, now, newID)
+	return application.NewCommercialRolloutService(store, commands, cfg.environment, now),
+		application.NewCommercialAuditService(store, cfg.environment, cfg.commercialCursorSecret, now, newID)
 }
 
 // newS3Client builds the client MediaService's presigned uploads go

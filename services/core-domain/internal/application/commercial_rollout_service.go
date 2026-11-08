@@ -339,12 +339,9 @@ func checkedMembership(ctx context.Context, tx ports.CommercialTx, slug string, 
 	if len(change.Add) > maxMembershipChange || len(change.Remove) > maxMembershipChange {
 		return domain.CommercialGroup{}, nil, domain.NewValidationError("add", fmt.Sprintf("at most %d users per list", maxMembershipChange))
 	}
-	group, err := tx.Groups().Find(ctx, slug)
-	if err != nil {
-		return domain.CommercialGroup{}, nil, err
-	}
-	members, err := domain.ApplyMembershipChange(group.MemberIDs, change.Add, change.Remove)
-	if err != nil {
+	// The request is checked on its own before the group is looked up, so a
+	// malformed change is a 400 whether or not the group exists.
+	if _, err := domain.ApplyMembershipChange(nil, change.Add, change.Remove); err != nil {
 		return domain.CommercialGroup{}, nil, domain.NewValidationError("add", err.Error())
 	}
 	missing, err := tx.Groups().MissingUsers(ctx, append(append([]string{}, change.Add...), change.Remove...))
@@ -353,6 +350,14 @@ func checkedMembership(ctx context.Context, tx ports.CommercialTx, slug string, 
 	}
 	if len(missing) > 0 {
 		return domain.CommercialGroup{}, nil, domain.NewValidationError("add", "unknown users: "+strings.Join(missing, ", "))
+	}
+	group, err := tx.Groups().Find(ctx, slug)
+	if err != nil {
+		return domain.CommercialGroup{}, nil, err
+	}
+	members, err := domain.ApplyMembershipChange(group.MemberIDs, change.Add, change.Remove)
+	if err != nil {
+		return domain.CommercialGroup{}, nil, domain.NewValidationError("add", err.Error())
 	}
 	return group, members, nil
 }

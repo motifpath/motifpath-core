@@ -50,6 +50,7 @@ func TestFeatures(t *testing.T) {
 				featuresBase + "/practice/practice-summary.feature",
 				featuresBase + "/practice/practice-overview.feature",
 				featuresBase + "/practice/tap-check.feature",
+				featuresBase + "/monetization/commercial-activation.feature",
 			},
 			TestingT: t,
 			// Without this, godog reports an undefined step as a warning and
@@ -83,6 +84,7 @@ func TestFeatures(t *testing.T) {
 func InitializeScenario(sc *godog.ScenarioContext) {
 	w := newWorld()
 	registerCommonSteps(sc, w)
+	registerCommercialActivationSteps(sc, w)
 	registerProgressionAuthoringSteps(sc, w)
 	registerUserRegistrationSteps(sc, w)
 	registerDisplayNameSteps(sc, w)

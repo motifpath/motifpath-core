@@ -41,13 +41,7 @@ func TestCommercialOperationsNotYetBuilt_answer501WithAMessage(t *testing.T) {
 			headers: map[string]string{"Stripe-Signature": "t=1,v1=abc"},
 			body:    `{}`,
 		},
-		{
-			name:    "an admin turns every commercial flag off",
-			method:  http.MethodPost,
-			path:    "/admin/commercial-rollout/kill-switch",
-			headers: map[string]string{"Idempotency-Key": anyID},
-			body:    `{}`,
-		},
+		{name: "an admin reads the current commercial configuration", method: http.MethodGet, path: "/admin/commercial-configurations/current"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
