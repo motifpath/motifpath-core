@@ -110,7 +110,7 @@ func run() error {
 	if err := seedCreatedProgressions(ctx, svc.progression, deps.synthAdmin, deps.classifier); err != nil {
 		return fmt.Errorf("seed created progressions: %w", err)
 	}
-	log.Println("seeded two created progressions: one for song charts only, one in the drills")
+	log.Println("seeded four created progressions: one for song charts only, three in the drills (a minor and a three-bar one among them)")
 	log.Println("done")
 	return nil
 }
