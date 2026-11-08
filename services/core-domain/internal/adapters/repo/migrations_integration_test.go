@@ -162,7 +162,7 @@ func execMigrationFile(ctx context.Context, db *sql.DB, file string) (int, error
 		return 0, err
 	}
 	applied := 0
-	for _, stmt := range strings.Split(string(sqlBytes), ";") {
+	for _, stmt := range splitSQLStatements(string(sqlBytes)) {
 		stmt = stripSQLComments(stmt)
 		if stmt == "" {
 			continue
@@ -173,6 +173,29 @@ func execMigrationFile(ctx context.Context, db *sql.DB, file string) (int, error
 		applied++
 	}
 	return applied, nil
+}
+
+// splitSQLStatements splits a migration file on the semicolons that end
+// statements, keeping the semicolons inside a $$-quoted function body.
+func splitSQLStatements(file string) []string {
+	var statements []string
+	var current strings.Builder
+	inDollarQuote := false
+	for i := 0; i < len(file); i++ {
+		if strings.HasPrefix(file[i:], "$$") {
+			inDollarQuote = !inDollarQuote
+			current.WriteString("$$")
+			i++
+			continue
+		}
+		if file[i] == ';' && !inDollarQuote {
+			statements = append(statements, current.String())
+			current.Reset()
+			continue
+		}
+		current.WriteByte(file[i])
+	}
+	return append(statements, current.String())
 }
 
 // stripSQLComments removes whole-line `--` comments from one `;`-delimited
