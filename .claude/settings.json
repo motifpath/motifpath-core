@@ -1,0 +1,19 @@
+{
+  "extraKnownMarketplaces": {
+    "motifpath-skills": {
+      "source": {
+        "source": "git",
+        "url": "git@github.com:motifpath/motifpath-skills.git"
+      },
+      "autoUpdate": true
+    }
+  },
+  "enabledPlugins": {
+    "git@motifpath-skills": true,
+    "adr-writer@motifpath-skills": true,
+    "plan-writer@motifpath-skills": true,
+    "pr-review@motifpath-skills": true,
+    "product-discovery@motifpath-skills": true,
+    "ai-consultant@motifpath-skills": true
+  }
+}
