@@ -63,19 +63,31 @@ func TestFeatures(t *testing.T) {
 			Strict: true,
 			// Strict makes the suite fail on any scenario without step
 			// definitions, and motifpath-specs runs ahead of this repo by
-			// design (spec first). A scenario tagged @wip is a spec whose
-			// implementation has not landed yet; excluding it keeps the build
-			// green for unrelated work. Strict still applies to everything
-			// untagged, so an untagged scenario cannot go undefined silently.
-			// Remove the tag in motifpath-specs when the feature is implemented.
-			// @web scenarios are client behaviour, pinned by motifpath-web's own tests.
-			Tags: "~@wip && ~@web",
+			// design (spec first). Scenarios whose implementation has not
+			// landed yet are skipped by tag (bddTags), keeping the build green
+			// for unrelated work. Strict still applies to everything else, so
+			// a scenario that should run cannot go undefined silently.
+			Tags: bddTags(t),
 		},
 	}
 
 	if suite.Run() != 0 {
 		t.Fatal("non-zero status returned, failed to run feature tests")
 	}
+}
+
+// bddTags is the tag expression `make test:bdd` builds: it skips @wip
+// (parked), @web (client behaviour, pinned by motifpath-web's own tests) and
+// the scenarios of every ticket motifpath-specs tags that this repo doesn't
+// implement yet, because motifpath-specs runs ahead of this repo by design.
+// Running without it would run those scenarios, so the suite refuses.
+func bddTags(t *testing.T) string {
+	t.Helper()
+	tags := os.Getenv("BDD_TAGS")
+	if tags == "" {
+		t.Fatal("BDD_TAGS is unset: run `make test:bdd`, which builds it from bdd/implemented-tickets.txt")
+	}
+	return tags
 }
 
 // InitializeScenario is called once per scenario by godog, so a fresh
