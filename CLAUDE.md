@@ -53,6 +53,8 @@ Tests live at the service layer ONLY: `internal/application/`
 ALWAYS write table-driven tests using testify — one test function per feature, one row per scenario.
 ALWAYS use testcontainers for database tests — NEVER mock the repository layer.
 Gherkin feature files from motifpath-specs/features/ run via godog: `make test:bdd`
+A PR that implements a ticket's scenarios (tagged `@MOT-NNN` in motifpath-specs) adds that
+ticket to `bdd/implemented-tickets.txt` — that switches them on; never open a specs PR to un-tag.
 Coverage gate: 80% on `internal/application/` packages — CI fails below this.
 
 ## Code Quality

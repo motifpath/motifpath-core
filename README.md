@@ -341,7 +341,13 @@ cmd/                → entry point and dependency wiring
 ## Testing Strategy
 
 - **Unit tests** (`make test`): service layer only, table-driven, testify
-- **BDD tests** (`make test:bdd`): Gherkin scenarios via godog
+- **BDD tests** (`make test:bdd`): Gherkin scenarios via godog. motifpath-specs tags each
+  scenario a ticket will implement with that ticket (`@MOT-NNN`); the runners skip every ticket
+  not listed in `bdd/implemented-tickets.txt`, plus `@wip` (parked) and `@web` (client
+  behaviour). Add the ticket to that file in the PR that implements its scenarios: that
+  switches them on, with no motifpath-specs PR. Run the suites through `make test:bdd` (it
+  builds `BDD_TAGS`; a bare `go test` refuses to run without it). From a git worktree, pass
+  `MOTIFPATH_SPECS_DIR=<specs checkout>`.
 - **Integration tests** (`make test:int`): real Postgres/MongoDB via testcontainers
 - **Coverage gate**: 80% on `internal/application/` — CI fails below this
 
