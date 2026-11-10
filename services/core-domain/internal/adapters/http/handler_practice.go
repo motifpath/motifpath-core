@@ -502,7 +502,7 @@ func toGeneratedChoiceQuestion(q domain.PlannedGeneratedChoice, locale string) *
 // with no numeral shown has a null numeral, and a playback with no bass
 // line a null bass instrument.
 func toGeneratedChoicePlayback(p domain.GeneratedPlayback) *generated.GeneratedChoicePlayback {
-	out := &generated.GeneratedChoicePlayback{TempoBpm: p.TempoBPM, BassLine: p.BassInstrumentID != ""}
+	out := &generated.GeneratedChoicePlayback{TempoBpm: p.TempoBPM, NoteValue: generated.NoteValue2(p.NoteValue), BassLine: p.BassInstrumentID != ""}
 	if p.BassInstrumentID != "" {
 		bass := mustUUID(p.BassInstrumentID)
 		out.BassInstrumentId = &bass

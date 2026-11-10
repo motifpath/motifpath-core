@@ -29,11 +29,12 @@ func IsHeardProgressionLength(bars int) bool {
 const HearItemSeconds = 20
 
 // GeneratedPlayback is what a question asked by ear plays before it can be
-// answered: bars in 4/4, one chord a bar, from TempoBPM, in the chords'
-// voicings, with each chord's root under it in the voice of the bass
+// answered: bars in 4/4, one chord a bar, from TempoBPM in NoteValue, in the
+// chords' voicings, with each chord's root under it in the voice of the bass
 // BassInstrumentID names; no root line when it is empty.
 type GeneratedPlayback struct {
 	TempoBPM         int
+	NoteValue        TempoNoteValue
 	BassInstrumentID string
 	Bars             []PlaybackBar
 }
@@ -46,20 +47,13 @@ type PlaybackBar struct {
 	Numeral string
 }
 
-// HearTempoBPM is the tempo a question asked by ear starts at, by the
-// student's level on the item: slow while it is new or being learnt,
-// faster once accurate, and again once fluent.
-func HearTempoBPM(level KnowledgeLevel) int {
-	switch level {
-	case KnowledgeLevelAccurate:
-		return 90
-	case KnowledgeLevelFluent, KnowledgeLevelRetained:
-		return 110
-	case KnowledgeLevelNew, KnowledgeLevelLearning:
-		return 70
-	}
-	return 70
-}
+// A question asked by ear starts at HearTempoBPM in HearNoteValue, two
+// chords a bar, whatever the student's level: its tempo is never graded, so
+// a faster start would not make it harder.
+const (
+	HearTempoBPM  = 70
+	HearNoteValue = TempoNoteValueEighths
+)
 
 // cadenceNumerals are the numerals of the cadence that sets the key.
 var cadenceNumerals = []string{"I", "IV", "V", "I"}
@@ -195,7 +189,7 @@ func (i HeardProgressionItem) Plan(way string, planning DrillPlanning) PlannedDr
 // level, with the voicing of every chord it sounds whatever the session's
 // reading. Nothing is drawn, so its chords count as symbols.
 func (q *PlannedGeneratedChoice) play(bars []PlaybackBar, planning DrillPlanning) {
-	q.Playback = &GeneratedPlayback{TempoBPM: HearTempoBPM(planning.Level), BassInstrumentID: planning.BassInstrumentID, Bars: bars}
+	q.Playback = &GeneratedPlayback{TempoBPM: HearTempoBPM, NoteValue: HearNoteValue, BassInstrumentID: planning.BassInstrumentID, Bars: bars}
 	q.DrawnAs, q.Voicings = GeneratedChordSymbols, nil
 	if planning.Voicing == nil {
 		return

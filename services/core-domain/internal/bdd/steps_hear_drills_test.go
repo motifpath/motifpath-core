@@ -58,7 +58,7 @@ func registerHearDrillSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^no bar shows a numeral$`, w.noBarNumbered)
 	sc.Step(`^it offers (\w+) and the three numerals nearest it$`, w.offersNearestNumerals)
 	sc.Step(`^it offers I, ii, iii, IV, V, vi and viio$`, w.offersEveryNumeral)
-	sc.Step(`^its playback starts at (\d+) BPM$`, w.playbackStartsAt)
+	sc.Step(`^its playback starts at (\d+) BPM in (\w+)$`, w.playbackStartsAt)
 	sc.Step(`^its playback has a bass line$`, w.playbackHasBassLine)
 
 	sc.Step(`^every heard progression item is listed$`, w.heardProgressionsListed)
@@ -427,13 +427,13 @@ func (w *world) offersEveryNumeral() error {
 	return nil
 }
 
-func (w *world) playbackStartsAt(bpm int) error {
+func (w *world) playbackStartsAt(bpm int, noteValue string) error {
 	p, err := w.playback()
 	if err != nil {
 		return err
 	}
-	if p.TempoBPM != bpm {
-		return fmt.Errorf("its playback starts at %d BPM, want %d", p.TempoBPM, bpm)
+	if p.TempoBPM != bpm || string(p.NoteValue) != noteValue {
+		return fmt.Errorf("its playback starts at %d BPM in %s, want %d in %s", p.TempoBPM, p.NoteValue, bpm, noteValue)
 	}
 	return nil
 }
