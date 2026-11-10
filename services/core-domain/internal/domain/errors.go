@@ -36,6 +36,11 @@ var (
 	// field-level detail for the HTTP ValidationError response body use
 	// errors.As to recover the *ValidationError itself.
 	ErrValidation = errors.New("validation failed")
+
+	// ErrUnavailable is returned when a decision or change cannot be made
+	// because its storage or evidence cannot be read or written. It is never
+	// a refusal and never an empty answer: the caller may retry.
+	ErrUnavailable = errors.New("unavailable")
 )
 
 // FieldError names one request field that failed validation and why.

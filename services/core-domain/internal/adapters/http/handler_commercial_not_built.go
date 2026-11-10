@@ -11,39 +11,11 @@ import (
 // touching an application service. A runtime ticket replaces a method here
 // with its real implementation.
 
-func (h *Handler) ListCommercialAuditEntries(_ context.Context, _ generated.ListCommercialAuditEntriesRequestObject) (generated.ListCommercialAuditEntriesResponseObject, error) {
-	return nil, errOperationNotBuilt
-}
-
 func (h *Handler) CreateCommercialConfiguration(_ context.Context, _ generated.CreateCommercialConfigurationRequestObject) (generated.CreateCommercialConfigurationResponseObject, error) {
 	return nil, errOperationNotBuilt
 }
 
 func (h *Handler) GetCurrentCommercialConfiguration(_ context.Context, _ generated.GetCurrentCommercialConfigurationRequestObject) (generated.GetCurrentCommercialConfigurationResponseObject, error) {
-	return nil, errOperationNotBuilt
-}
-
-func (h *Handler) ListCommercialGroups(_ context.Context, _ generated.ListCommercialGroupsRequestObject) (generated.ListCommercialGroupsResponseObject, error) {
-	return nil, errOperationNotBuilt
-}
-
-func (h *Handler) SaveCommercialGroup(_ context.Context, _ generated.SaveCommercialGroupRequestObject) (generated.SaveCommercialGroupResponseObject, error) {
-	return nil, errOperationNotBuilt
-}
-
-func (h *Handler) ChangeCommercialGroupMembers(_ context.Context, _ generated.ChangeCommercialGroupMembersRequestObject) (generated.ChangeCommercialGroupMembersResponseObject, error) {
-	return nil, errOperationNotBuilt
-}
-
-func (h *Handler) GetCommercialRollout(_ context.Context, _ generated.GetCommercialRolloutRequestObject) (generated.GetCommercialRolloutResponseObject, error) {
-	return nil, errOperationNotBuilt
-}
-
-func (h *Handler) TurnOffAllCommercialFlags(_ context.Context, _ generated.TurnOffAllCommercialFlagsRequestObject) (generated.TurnOffAllCommercialFlagsResponseObject, error) {
-	return nil, errOperationNotBuilt
-}
-
-func (h *Handler) ChangeCommercialFlag(_ context.Context, _ generated.ChangeCommercialFlagRequestObject) (generated.ChangeCommercialFlagResponseObject, error) {
 	return nil, errOperationNotBuilt
 }
 

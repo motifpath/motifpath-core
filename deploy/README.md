@@ -121,6 +121,7 @@ secrets file, with its last path segment as the variable name. Use
 | `/motifpath/<env>/MEDIA_AWS_ACCESS_KEY_ID` | access key of the IAM user limited to that bucket |
 | `/motifpath/<env>/MEDIA_AWS_SECRET_ACCESS_KEY` | its secret |
 | `/motifpath/<env>/EMAIL_UNSUBSCRIBE_SECRET` | random; signs the unsubscribe links in emails, so changing it breaks every link already sent |
+| `/motifpath/<env>/COMMERCIAL_CURSOR_SECRET` | random; signs commercial audit continuations, so changing it only ends traversals in progress |
 | `/motifpath/<env>/SMTP_HOST` | `email-smtp.us-east-2.amazonaws.com` |
 | `/motifpath/<env>/SMTP_USERNAME` | access key ID of the IAM user that may send only from that environment's mail domain |
 | `/motifpath/<env>/SMTP_PASSWORD` | the SES SMTP password derived from its secret |

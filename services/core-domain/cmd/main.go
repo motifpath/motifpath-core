@@ -32,6 +32,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent"
 	"github.com/motifpath/core-domain/internal/application"
+	"github.com/motifpath/core-domain/internal/domain"
 )
 
 const (
@@ -71,6 +72,14 @@ type config struct {
 	// emailUnsubscribeSecret signs the unsubscribe links in the platform's
 	// emails. Changing it breaks every link already sent.
 	emailUnsubscribeSecret string
+
+	// environment namespaces commercial operation keys and audit evidence.
+	environment domain.Environment
+
+	// commercialCursorSecret signs commercial audit continuations, binding
+	// each to its snapshot, filters and administrator. Changing it only
+	// invalidates traversals in progress.
+	commercialCursorSecret []byte
 }
 
 // defaultCORSOrigin is the local Vite dev server. Deployed environments override
@@ -102,7 +111,18 @@ func loadConfig() (config, error) {
 	if err != nil {
 		return config{}, err
 	}
+	environment, err := loadEnvironment()
+	if err != nil {
+		return config{}, err
+	}
+	commercialCursorSecret, err := mustGetenv("COMMERCIAL_CURSOR_SECRET")
+	if err != nil {
+		return config{}, err
+	}
 	return config{
+		environment:            environment,
+		commercialCursorSecret: []byte(commercialCursorSecret),
+
 		port:               getenvDefault("PORT", "8080"),
 		databaseURL:        databaseURL,
 		mongoURI:           mongoURI,
@@ -349,7 +369,16 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 		repo.NewMongoAlphaActivityReader(mongoClient.Database(cfg.mongoDatabase)), now)
 
 	return appHTTP.NewHandler(identityService, contentService, challengeService, exerciseService, knowledgeNodeService, knowledgeEdgeService, mediaService, pathService, application.NewPathCatalogService(pathRepo, userRepo, knowledgeNodeRepo), studentPathService,
-		courseService, courseEnrollmentService, instrumentService, voiceService, diagramService, practiceSessionService, practiceSummaryService, chordCatalogService, application.NewProgressionCatalogService(repo.NewEntProgressionRepository(entClient), songChartRepo, languageRepo, knowledgeNodeRepo, practiceReferences, newID, now), songChartService, appConfigService, startingPointsService, alphaObservationService, application.NewEmailPreferencesService(userRepo, []byte(cfg.emailUnsubscribeSecret)), learningGraphPinger, completionReader), practiceSessionService, nil
+		courseService, courseEnrollmentService, instrumentService, voiceService, diagramService, practiceSessionService, practiceSummaryService, chordCatalogService, application.NewProgressionCatalogService(repo.NewEntProgressionRepository(entClient), songChartRepo, languageRepo, knowledgeNodeRepo, practiceReferences, newID, now), songChartService, appConfigService, startingPointsService, alphaObservationService, application.NewEmailPreferencesService(userRepo, []byte(cfg.emailUnsubscribeSecret)), learningGraphPinger, completionReader).WithCommercial(newCommercialServices(cfg, entClient, newID, now)), practiceSessionService, nil
+}
+
+// newCommercialServices builds commercial rollout and audit over one store,
+// so every commercial change commits with its evidence.
+func newCommercialServices(cfg config, entClient *ent.Client, newID func() string, now func() time.Time) (*application.CommercialRolloutService, *application.CommercialAuditService) {
+	store := repo.NewEntCommercialStore(entClient)
+	commands := application.NewCommercialCommands(store, now, newID)
+	return application.NewCommercialRolloutService(store, commands, cfg.environment, now),
+		application.NewCommercialAuditService(store, cfg.environment, cfg.commercialCursorSecret, now, newID)
 }
 
 // newS3Client builds the client MediaService's presigned uploads go
@@ -380,6 +409,18 @@ func newS3Client(ctx context.Context, cfg config) (*s3.Client, error) {
 		o.BaseEndpoint = aws.String(cfg.mediaS3Endpoint)
 		o.UsePathStyle = true
 	}), nil
+}
+
+func loadEnvironment() (domain.Environment, error) {
+	name, err := mustGetenv("MOTIFPATH_ENV")
+	if err != nil {
+		return domain.Environment{}, err
+	}
+	environment, err := domain.ParseEnvironment(name)
+	if err != nil {
+		return domain.Environment{}, fmt.Errorf("MOTIFPATH_ENV: %w", err)
+	}
+	return environment, nil
 }
 
 func getenvDefault(name, def string) string {

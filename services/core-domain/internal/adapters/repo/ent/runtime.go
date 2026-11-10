@@ -14,6 +14,13 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/chorddefinition"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/chorddrill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/chordvoicing"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialactivation"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialauditentry"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialflag"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialgroup"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialgroupmember"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialoperation"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialoperationattempt"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
@@ -242,6 +249,162 @@ func init() {
 	chordvoicingDescTemplateKey := chordvoicingFields[16].Descriptor()
 	// chordvoicing.TemplateKeyValidator is a validator for the "template_key" field. It is called by the builders before save.
 	chordvoicing.TemplateKeyValidator = chordvoicingDescTemplateKey.Validators[0].(func(string) error)
+	commercialactivationFields := schema.CommercialActivation{}.Fields()
+	_ = commercialactivationFields
+	// commercialactivationDescRevision is the schema descriptor for revision field.
+	commercialactivationDescRevision := commercialactivationFields[1].Descriptor()
+	// commercialactivation.RevisionValidator is a validator for the "revision" field. It is called by the builders before save.
+	commercialactivation.RevisionValidator = commercialactivationDescRevision.Validators[0].(func(int64) error)
+	commercialauditentryFields := schema.CommercialAuditEntry{}.Fields()
+	_ = commercialauditentryFields
+	// commercialauditentryDescEnvironment is the schema descriptor for environment field.
+	commercialauditentryDescEnvironment := commercialauditentryFields[2].Descriptor()
+	// commercialauditentry.EnvironmentValidator is a validator for the "environment" field. It is called by the builders before save.
+	commercialauditentry.EnvironmentValidator = commercialauditentryDescEnvironment.Validators[0].(func(string) error)
+	// commercialauditentryDescActorID is the schema descriptor for actor_id field.
+	commercialauditentryDescActorID := commercialauditentryFields[6].Descriptor()
+	// commercialauditentry.ActorIDValidator is a validator for the "actor_id" field. It is called by the builders before save.
+	commercialauditentry.ActorIDValidator = commercialauditentryDescActorID.Validators[0].(func(string) error)
+	// commercialauditentryDescAction is the schema descriptor for action field.
+	commercialauditentryDescAction := commercialauditentryFields[7].Descriptor()
+	// commercialauditentry.ActionValidator is a validator for the "action" field. It is called by the builders before save.
+	commercialauditentry.ActionValidator = commercialauditentryDescAction.Validators[0].(func(string) error)
+	// commercialauditentryDescResourceKind is the schema descriptor for resource_kind field.
+	commercialauditentryDescResourceKind := commercialauditentryFields[8].Descriptor()
+	// commercialauditentry.ResourceKindValidator is a validator for the "resource_kind" field. It is called by the builders before save.
+	commercialauditentry.ResourceKindValidator = func() func(string) error {
+		validators := commercialauditentryDescResourceKind.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(resource_kind string) error {
+			for _, fn := range fns {
+				if err := fn(resource_kind); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// commercialauditentryDescResourceID is the schema descriptor for resource_id field.
+	commercialauditentryDescResourceID := commercialauditentryFields[9].Descriptor()
+	// commercialauditentry.ResourceIDValidator is a validator for the "resource_id" field. It is called by the builders before save.
+	commercialauditentry.ResourceIDValidator = func() func(string) error {
+		validators := commercialauditentryDescResourceID.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(resource_id string) error {
+			for _, fn := range fns {
+				if err := fn(resource_id); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// commercialauditentryDescReason is the schema descriptor for reason field.
+	commercialauditentryDescReason := commercialauditentryFields[12].Descriptor()
+	// commercialauditentry.ReasonValidator is a validator for the "reason" field. It is called by the builders before save.
+	commercialauditentry.ReasonValidator = commercialauditentryDescReason.Validators[0].(func(string) error)
+	// commercialauditentryDescPolicyRevision is the schema descriptor for policy_revision field.
+	commercialauditentryDescPolicyRevision := commercialauditentryFields[16].Descriptor()
+	// commercialauditentry.PolicyRevisionValidator is a validator for the "policy_revision" field. It is called by the builders before save.
+	commercialauditentry.PolicyRevisionValidator = commercialauditentryDescPolicyRevision.Validators[0].(func(string) error)
+	// commercialauditentryDescConfigurationRevision is the schema descriptor for configuration_revision field.
+	commercialauditentryDescConfigurationRevision := commercialauditentryFields[17].Descriptor()
+	// commercialauditentry.ConfigurationRevisionValidator is a validator for the "configuration_revision" field. It is called by the builders before save.
+	commercialauditentry.ConfigurationRevisionValidator = commercialauditentryDescConfigurationRevision.Validators[0].(func(string) error)
+	commercialflagFields := schema.CommercialFlag{}.Fields()
+	_ = commercialflagFields
+	// commercialflagDescEnabled is the schema descriptor for enabled field.
+	commercialflagDescEnabled := commercialflagFields[1].Descriptor()
+	// commercialflag.DefaultEnabled holds the default value on creation for the enabled field.
+	commercialflag.DefaultEnabled = commercialflagDescEnabled.Default.(bool)
+	// commercialflagDescAllUsers is the schema descriptor for all_users field.
+	commercialflagDescAllUsers := commercialflagFields[2].Descriptor()
+	// commercialflag.DefaultAllUsers holds the default value on creation for the all_users field.
+	commercialflag.DefaultAllUsers = commercialflagDescAllUsers.Default.(bool)
+	// commercialflagDescID is the schema descriptor for id field.
+	commercialflagDescID := commercialflagFields[0].Descriptor()
+	// commercialflag.IDValidator is a validator for the "id" field. It is called by the builders before save.
+	commercialflag.IDValidator = commercialflagDescID.Validators[0].(func(string) error)
+	commercialgroupFields := schema.CommercialGroup{}.Fields()
+	_ = commercialgroupFields
+	// commercialgroupDescName is the schema descriptor for name field.
+	commercialgroupDescName := commercialgroupFields[1].Descriptor()
+	// commercialgroup.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	commercialgroup.NameValidator = func() func(string) error {
+		validators := commercialgroupDescName.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(name string) error {
+			for _, fn := range fns {
+				if err := fn(name); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// commercialgroupDescID is the schema descriptor for id field.
+	commercialgroupDescID := commercialgroupFields[0].Descriptor()
+	// commercialgroup.IDValidator is a validator for the "id" field. It is called by the builders before save.
+	commercialgroup.IDValidator = commercialgroupDescID.Validators[0].(func(string) error)
+	commercialgroupmemberFields := schema.CommercialGroupMember{}.Fields()
+	_ = commercialgroupmemberFields
+	// commercialgroupmemberDescGroupSlug is the schema descriptor for group_slug field.
+	commercialgroupmemberDescGroupSlug := commercialgroupmemberFields[1].Descriptor()
+	// commercialgroupmember.GroupSlugValidator is a validator for the "group_slug" field. It is called by the builders before save.
+	commercialgroupmember.GroupSlugValidator = commercialgroupmemberDescGroupSlug.Validators[0].(func(string) error)
+	// commercialgroupmemberDescID is the schema descriptor for id field.
+	commercialgroupmemberDescID := commercialgroupmemberFields[0].Descriptor()
+	// commercialgroupmember.DefaultID holds the default value on creation for the id field.
+	commercialgroupmember.DefaultID = commercialgroupmemberDescID.Default.(func() uuid.UUID)
+	commercialoperationFields := schema.CommercialOperation{}.Fields()
+	_ = commercialoperationFields
+	// commercialoperationDescEnvironment is the schema descriptor for environment field.
+	commercialoperationDescEnvironment := commercialoperationFields[1].Descriptor()
+	// commercialoperation.EnvironmentValidator is a validator for the "environment" field. It is called by the builders before save.
+	commercialoperation.EnvironmentValidator = commercialoperationDescEnvironment.Validators[0].(func(string) error)
+	// commercialoperationDescActorID is the schema descriptor for actor_id field.
+	commercialoperationDescActorID := commercialoperationFields[3].Descriptor()
+	// commercialoperation.ActorIDValidator is a validator for the "actor_id" field. It is called by the builders before save.
+	commercialoperation.ActorIDValidator = commercialoperationDescActorID.Validators[0].(func(string) error)
+	// commercialoperationDescAction is the schema descriptor for action field.
+	commercialoperationDescAction := commercialoperationFields[4].Descriptor()
+	// commercialoperation.ActionValidator is a validator for the "action" field. It is called by the builders before save.
+	commercialoperation.ActionValidator = commercialoperationDescAction.Validators[0].(func(string) error)
+	// commercialoperationDescResourceKind is the schema descriptor for resource_kind field.
+	commercialoperationDescResourceKind := commercialoperationFields[5].Descriptor()
+	// commercialoperation.ResourceKindValidator is a validator for the "resource_kind" field. It is called by the builders before save.
+	commercialoperation.ResourceKindValidator = commercialoperationDescResourceKind.Validators[0].(func(string) error)
+	// commercialoperationDescResourceID is the schema descriptor for resource_id field.
+	commercialoperationDescResourceID := commercialoperationFields[6].Descriptor()
+	// commercialoperation.ResourceIDValidator is a validator for the "resource_id" field. It is called by the builders before save.
+	commercialoperation.ResourceIDValidator = commercialoperationDescResourceID.Validators[0].(func(string) error)
+	// commercialoperationDescFingerprint is the schema descriptor for fingerprint field.
+	commercialoperationDescFingerprint := commercialoperationFields[8].Descriptor()
+	// commercialoperation.FingerprintValidator is a validator for the "fingerprint" field. It is called by the builders before save.
+	commercialoperation.FingerprintValidator = commercialoperationDescFingerprint.Validators[0].(func(string) error)
+	// commercialoperationDescAuthorizedRevision is the schema descriptor for authorized_revision field.
+	commercialoperationDescAuthorizedRevision := commercialoperationFields[10].Descriptor()
+	// commercialoperation.AuthorizedRevisionValidator is a validator for the "authorized_revision" field. It is called by the builders before save.
+	commercialoperation.AuthorizedRevisionValidator = commercialoperationDescAuthorizedRevision.Validators[0].(func(int64) error)
+	// commercialoperationDescID is the schema descriptor for id field.
+	commercialoperationDescID := commercialoperationFields[0].Descriptor()
+	// commercialoperation.DefaultID holds the default value on creation for the id field.
+	commercialoperation.DefaultID = commercialoperationDescID.Default.(func() uuid.UUID)
+	commercialoperationattemptFields := schema.CommercialOperationAttempt{}.Fields()
+	_ = commercialoperationattemptFields
+	// commercialoperationattemptDescFingerprint is the schema descriptor for fingerprint field.
+	commercialoperationattemptDescFingerprint := commercialoperationattemptFields[2].Descriptor()
+	// commercialoperationattempt.FingerprintValidator is a validator for the "fingerprint" field. It is called by the builders before save.
+	commercialoperationattempt.FingerprintValidator = commercialoperationattemptDescFingerprint.Validators[0].(func(string) error)
 	contentnodeFields := schema.ContentNode{}.Fields()
 	_ = contentnodeFields
 	// contentnodeDescCreatedAt is the schema descriptor for created_at field.

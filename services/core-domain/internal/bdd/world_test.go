@@ -283,6 +283,9 @@ type world struct {
 	// which only ever tracks the single most recent one.
 	standalonePathIDByKey map[string]string
 
+	// commercial holds the commercial activation and audit state.
+	commercial *commercialWorld
+
 	// lastRouterStatus is the status of the last request sent through the
 	// generated router rather than straight to the handler — only for a
 	// request the handler's typed parameters cannot express.
@@ -400,6 +403,8 @@ func newWorld() *world {
 		alphaObservation,
 		w.emailPreferences,
 		w.pgPinger, w.mongoPinger)
+	w.commercial = newCommercialWorld(w, newID)
+	w.handler = w.handler.WithCommercial(w.commercial.rollout, w.commercial.audit)
 	return w
 }
 

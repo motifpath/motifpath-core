@@ -50,6 +50,9 @@ func TestFeatures(t *testing.T) {
 				featuresBase + "/practice/practice-summary.feature",
 				featuresBase + "/practice/practice-overview.feature",
 				featuresBase + "/practice/tap-check.feature",
+				featuresBase + "/monetization/commercial-activation.feature",
+				featuresBase + "/monetization/commercial-audit.feature",
+				featuresBase + "/monetization/commercial-controls.feature",
 			},
 			TestingT: t,
 			// Without this, godog reports an undefined step as a warning and
@@ -95,6 +98,8 @@ func bddTags(t *testing.T) string {
 func InitializeScenario(sc *godog.ScenarioContext) {
 	w := newWorld()
 	registerCommonSteps(sc, w)
+	registerCommercialActivationSteps(sc, w)
+	registerCommercialAuditSteps(sc, w)
 	registerProgressionAuthoringSteps(sc, w)
 	registerUserRegistrationSteps(sc, w)
 	registerDisplayNameSteps(sc, w)

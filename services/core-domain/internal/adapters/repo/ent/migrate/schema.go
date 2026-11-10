@@ -207,6 +207,170 @@ var (
 			},
 		},
 	}
+	// CommercialActivationsColumns holds the columns for the "commercial_activations" table.
+	CommercialActivationsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "revision", Type: field.TypeInt64},
+	}
+	// CommercialActivationsTable holds the schema information for the "commercial_activations" table.
+	CommercialActivationsTable = &schema.Table{
+		Name:       "commercial_activations",
+		Columns:    CommercialActivationsColumns,
+		PrimaryKey: []*schema.Column{CommercialActivationsColumns[0]},
+	}
+	// CommercialAuditEntriesColumns holds the columns for the "commercial_audit_entries" table.
+	CommercialAuditEntriesColumns = []*schema.Column{
+		{Name: "order_key", Type: field.TypeInt64, Increment: true},
+		{Name: "audit_entry_id", Type: field.TypeUUID, Unique: true},
+		{Name: "environment", Type: field.TypeString},
+		{Name: "operation_id", Type: field.TypeUUID},
+		{Name: "attempt_id", Type: field.TypeUUID},
+		{Name: "actor_kind", Type: field.TypeEnum, Enums: []string{"user", "service", "provider"}},
+		{Name: "actor_id", Type: field.TypeString},
+		{Name: "action", Type: field.TypeString},
+		{Name: "resource_kind", Type: field.TypeString, Size: 100},
+		{Name: "resource_id", Type: field.TypeString, Size: 255},
+		{Name: "occurred_at", Type: field.TypeTime},
+		{Name: "recorded_at", Type: field.TypeTime},
+		{Name: "reason", Type: field.TypeString, Size: 2147483647},
+		{Name: "outcome", Type: field.TypeEnum, Enums: []string{"applied", "failed", "denied", "duplicate", "uncertain"}},
+		{Name: "before_state", Type: field.TypeJSON, Nullable: true},
+		{Name: "after_state", Type: field.TypeJSON, Nullable: true},
+		{Name: "policy_revision", Type: field.TypeString},
+		{Name: "configuration_revision", Type: field.TypeString},
+		{Name: "correlation_id", Type: field.TypeUUID},
+		{Name: "caused_by_entry_ids", Type: field.TypeJSON},
+		{Name: "provider_references", Type: field.TypeJSON},
+	}
+	// CommercialAuditEntriesTable holds the schema information for the "commercial_audit_entries" table.
+	CommercialAuditEntriesTable = &schema.Table{
+		Name:       "commercial_audit_entries",
+		Columns:    CommercialAuditEntriesColumns,
+		PrimaryKey: []*schema.Column{CommercialAuditEntriesColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "commercialauditentry_environment_operation_id",
+				Unique:  false,
+				Columns: []*schema.Column{CommercialAuditEntriesColumns[2], CommercialAuditEntriesColumns[3]},
+			},
+			{
+				Name:    "commercialauditentry_environment_resource_kind_resource_id_order_key",
+				Unique:  false,
+				Columns: []*schema.Column{CommercialAuditEntriesColumns[2], CommercialAuditEntriesColumns[8], CommercialAuditEntriesColumns[9], CommercialAuditEntriesColumns[0]},
+			},
+		},
+	}
+	// CommercialFlagsColumns holds the columns for the "commercial_flags" table.
+	CommercialFlagsColumns = []*schema.Column{
+		{Name: "flag", Type: field.TypeString},
+		{Name: "enabled", Type: field.TypeBool, Default: false},
+		{Name: "all_users", Type: field.TypeBool, Default: false},
+		{Name: "subject_ids", Type: field.TypeJSON},
+		{Name: "updated_at", Type: field.TypeTime, Nullable: true},
+		{Name: "updated_by", Type: field.TypeUUID, Nullable: true},
+	}
+	// CommercialFlagsTable holds the schema information for the "commercial_flags" table.
+	CommercialFlagsTable = &schema.Table{
+		Name:       "commercial_flags",
+		Columns:    CommercialFlagsColumns,
+		PrimaryKey: []*schema.Column{CommercialFlagsColumns[0]},
+	}
+	// CommercialGroupsColumns holds the columns for the "commercial_groups" table.
+	CommercialGroupsColumns = []*schema.Column{
+		{Name: "slug", Type: field.TypeString},
+		{Name: "name", Type: field.TypeString, Size: 120},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "updated_by", Type: field.TypeUUID},
+	}
+	// CommercialGroupsTable holds the schema information for the "commercial_groups" table.
+	CommercialGroupsTable = &schema.Table{
+		Name:       "commercial_groups",
+		Columns:    CommercialGroupsColumns,
+		PrimaryKey: []*schema.Column{CommercialGroupsColumns[0]},
+	}
+	// CommercialGroupMembersColumns holds the columns for the "commercial_group_members" table.
+	CommercialGroupMembersColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "group_slug", Type: field.TypeString},
+		{Name: "user_id", Type: field.TypeUUID},
+	}
+	// CommercialGroupMembersTable holds the schema information for the "commercial_group_members" table.
+	CommercialGroupMembersTable = &schema.Table{
+		Name:       "commercial_group_members",
+		Columns:    CommercialGroupMembersColumns,
+		PrimaryKey: []*schema.Column{CommercialGroupMembersColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "commercial_group_members_commercial_groups_group",
+				Columns:    []*schema.Column{CommercialGroupMembersColumns[1]},
+				RefColumns: []*schema.Column{CommercialGroupsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "commercial_group_members_users_user",
+				Columns:    []*schema.Column{CommercialGroupMembersColumns[2]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "commercialgroupmember_group_slug_user_id",
+				Unique:  true,
+				Columns: []*schema.Column{CommercialGroupMembersColumns[1], CommercialGroupMembersColumns[2]},
+			},
+		},
+	}
+	// CommercialOperationsColumns holds the columns for the "commercial_operations" table.
+	CommercialOperationsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "environment", Type: field.TypeString},
+		{Name: "actor_kind", Type: field.TypeEnum, Enums: []string{"user", "service", "provider"}},
+		{Name: "actor_id", Type: field.TypeString},
+		{Name: "action", Type: field.TypeString},
+		{Name: "resource_kind", Type: field.TypeString},
+		{Name: "resource_id", Type: field.TypeString},
+		{Name: "caller_key", Type: field.TypeUUID},
+		{Name: "fingerprint", Type: field.TypeString},
+		{Name: "result", Type: field.TypeJSON},
+		{Name: "authorized_revision", Type: field.TypeInt64},
+		{Name: "created_at", Type: field.TypeTime},
+	}
+	// CommercialOperationsTable holds the schema information for the "commercial_operations" table.
+	CommercialOperationsTable = &schema.Table{
+		Name:       "commercial_operations",
+		Columns:    CommercialOperationsColumns,
+		PrimaryKey: []*schema.Column{CommercialOperationsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "commercialoperation_environment_actor_kind_actor_id_action_resource_kind_resource_id_caller_key",
+				Unique:  true,
+				Columns: []*schema.Column{CommercialOperationsColumns[1], CommercialOperationsColumns[2], CommercialOperationsColumns[3], CommercialOperationsColumns[4], CommercialOperationsColumns[5], CommercialOperationsColumns[6], CommercialOperationsColumns[7]},
+			},
+		},
+	}
+	// CommercialOperationAttemptsColumns holds the columns for the "commercial_operation_attempts" table.
+	CommercialOperationAttemptsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "fingerprint", Type: field.TypeString},
+		{Name: "outcome", Type: field.TypeEnum, Enums: []string{"applied", "failed", "denied", "duplicate", "uncertain"}},
+		{Name: "at", Type: field.TypeTime},
+		{Name: "operation_id", Type: field.TypeUUID},
+	}
+	// CommercialOperationAttemptsTable holds the schema information for the "commercial_operation_attempts" table.
+	CommercialOperationAttemptsTable = &schema.Table{
+		Name:       "commercial_operation_attempts",
+		Columns:    CommercialOperationAttemptsColumns,
+		PrimaryKey: []*schema.Column{CommercialOperationAttemptsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "commercial_operation_attempts_commercial_operations_operation",
+				Columns:    []*schema.Column{CommercialOperationAttemptsColumns[4]},
+				RefColumns: []*schema.Column{CommercialOperationsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
 	// ContentNodesColumns holds the columns for the "content_nodes" table.
 	ContentNodesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -1612,6 +1776,13 @@ var (
 		ChordDefinitionsTable,
 		ChordDrillsTable,
 		ChordVoicingsTable,
+		CommercialActivationsTable,
+		CommercialAuditEntriesTable,
+		CommercialFlagsTable,
+		CommercialGroupsTable,
+		CommercialGroupMembersTable,
+		CommercialOperationsTable,
+		CommercialOperationAttemptsTable,
 		ContentNodesTable,
 		ContentNodeConceptsTable,
 		ContentNodeExercisesTable,
@@ -1671,6 +1842,9 @@ func init() {
 	ChordVoicingsTable.ForeignKeys[0].RefTable = ChordDefinitionsTable
 	ChordVoicingsTable.ForeignKeys[1].RefTable = DiagramsTable
 	ChordVoicingsTable.ForeignKeys[2].RefTable = InstrumentsTable
+	CommercialGroupMembersTable.ForeignKeys[0].RefTable = CommercialGroupsTable
+	CommercialGroupMembersTable.ForeignKeys[1].RefTable = UsersTable
+	CommercialOperationAttemptsTable.ForeignKeys[0].RefTable = CommercialOperationsTable
 	ContentNodeConceptsTable.ForeignKeys[0].RefTable = ContentNodesTable
 	ContentNodeConceptsTable.ForeignKeys[1].RefTable = KnowledgeNodesTable
 	ContentNodeExercisesTable.ForeignKeys[0].RefTable = ContentNodesTable

@@ -323,6 +323,58 @@ ADMIN_TOKEN=... scripts/app-config.sh set starting_points starting-points.local.
 A refused value comes back 400 with every problem listed and nothing stored. Until production
 exists, `make db:reset` wipes the settings with everything else — set them again afterwards.
 
+### Commercial activation (admin)
+
+Every commercial capability (offers, checkout, payouts, …) sits behind one of 17 activation flags.
+A fresh database has every flag OFF. A flag counts only when it and all its prerequisites are on,
+and when its audience includes the subject asking. An audience is either everyone (`all_users`)
+or an allowlist of `user:<uuid>`, `group:<slug>` and `service:<name>` subjects. There is no
+screen yet, so use curl with an admin's Clerk session token (see App settings above):
+
+```bash
+API=http://localhost:8080
+auth=(-H "Authorization: Bearer ${ADMIN_TOKEN}" -H "Content-Type: application/json")
+
+# Current revision, each flag's setting and whether it is effective
+curl -s "${auth[@]}" "$API/admin/commercial-rollout"
+
+# Turn a flag on for a group. expected_revision must be the current revision (409 otherwise).
+curl -s "${auth[@]}" -X PUT "$API/admin/commercial-rollout/content_ownership" \
+  -H "Idempotency-Key: $(uuidgen | tr A-Z a-z)" \
+  -d '{"enabled":true,"all_users":false,"subject_ids":["group:beta"],"expected_revision":3,"reason":"beta cohort"}'
+
+# Kill switch: every flag OFF in one revision; commands already authorized under an
+# older revision are refused from then on
+curl -s "${auth[@]}" -X POST "$API/admin/commercial-rollout/kill-switch" \
+  -H "Idempotency-Key: $(uuidgen | tr A-Z a-z)" -d '{"reason":"payout incident"}'
+
+# Groups: create or rename, then change members (users must exist)
+curl -s "${auth[@]}" -X PUT "$API/admin/commercial-groups/beta" \
+  -H "Idempotency-Key: $(uuidgen | tr A-Z a-z)" -d '{"name":"Beta teachers","reason":"cohort 1"}'
+curl -s "${auth[@]}" -X POST "$API/admin/commercial-groups/beta/membership" \
+  -H "Idempotency-Key: $(uuidgen | tr A-Z a-z)" -d '{"add":["<user uuid>"],"remove":[],"reason":"invited"}'
+curl -s "${auth[@]}" "$API/admin/commercial-groups"
+
+# Audit evidence, oldest first; follow next_cursor to page. Filters: operation_id,
+# resource_kind + resource_id. Every read is itself recorded.
+curl -s "${auth[@]}" "$API/admin/commercial-audit?resource_kind=commercial_flag&resource_id=content_ownership"
+```
+
+Every change needs a fresh lowercase UUID as `Idempotency-Key`. Sending the same key with the same
+body replays the first result. Sending it with a different body is answered 409. Each change
+appends audit evidence in the same transaction, so if the evidence can't be written, the change
+isn't made either.
+
+Two settings belong to this feature, and the service refuses to start without either:
+
+- `MOTIFPATH_ENV` (`local`, `test`, `staging` or `production`) namespaces operation keys and
+  audit evidence.
+- `COMMERCIAL_CURSOR_SECRET` signs `next_cursor`, so a continuation can't change the
+  filters or the snapshot it started with.
+
+Locally, `.env.example` has values for both. Deployed environments get the secret from SSM, which
+motifpath-infra generates.
+
 ## Architecture
 
 Each service follows hexagonal architecture:

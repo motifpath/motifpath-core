@@ -70,6 +70,8 @@ type Handler struct {
 	startingPoints     *application.StartingPointsService
 	alphaObservation   *application.AlphaObservationService
 	emailPreferences   *application.EmailPreferencesService
+	commercialRollout  *application.CommercialRolloutService
+	commercialAudit    *application.CommercialAuditService
 
 	// pingers back the readiness probe only; the health probes never touch
 	// the application services above.
