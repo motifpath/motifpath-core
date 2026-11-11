@@ -33,6 +33,9 @@ type world struct {
 	users             *fakeUserRepo
 	chords            *fakeChordCatalog
 	songChartRepo     *fakeSongChartRepo
+	progressions      *fakeProgressionRepo
+	// authoredKey is the progression the scenario last created or removed.
+	authoredKey string
 	appConfig         *fakeAppConfigRepo
 	sp                *startingPointsWorld
 	nodes             *fakeContentNodeRepo
@@ -280,6 +283,9 @@ type world struct {
 	// which only ever tracks the single most recent one.
 	standalonePathIDByKey map[string]string
 
+	// commercial holds the commercial activation and audit state.
+	commercial *commercialWorld
+
 	// lastRouterStatus is the status of the last request sent through the
 	// generated router rather than straight to the handler — only for a
 	// request the handler's typed parameters cannot express.
@@ -327,6 +333,7 @@ func newWorld() *world {
 		diagrams:          newFakeDiagramRepo(knowledge),
 		chords:            newFakeChordCatalog(),
 		songChartRepo:     newFakeSongChartRepo(),
+		progressions:      &fakeProgressionRepo{},
 		appConfig:         newFakeAppConfigRepo(),
 		sp:                &startingPointsWorld{kindBySlug: map[string]string{}},
 		pgPinger:          &fakePinger{},
@@ -367,13 +374,13 @@ func newWorld() *world {
 	voice := application.NewVoiceService(w.voices, voiceSamplesBaseURL)
 	diagram := application.NewDiagramService(w.diagrams, w.instruments, w.knowledge, newFakeLanguageRepo(), w.users, discardPracticeReferences{}, w.chords, w.exercises, newID, now)
 
-	w.practiceItems = newFakeNodeItemSource(w.diagrams, w.exercises)
+	w.practiceItems = newFakeNodeItemSource(w.diagrams, w.exercises, w.progressions)
 	w.rollup = application.NewKnowledgeRollupService(w.knowledge, w.knowledgeEdges, w.practiceItems, w.practiceStates, now)
 	w.tapChecks = newFakeTapChecks()
 	w.feltRatings = newFakeFeltRatings()
 	w.practiceActivity = newFakePracticeActivity()
 	practiceSession := application.NewPracticeSessionService(w.instruments, w.studentPaths, w.courseEnrollments, w.paths, w.courseVersions, w.nodes, w.diagrams, w.exercises, w.rollup, catalogDrillTemplates{}, w.tapChecks, w.feltRatings, w.practiceActivity, newID, now).
-		WithHarmonyDrills(catalogProgressions{}, &catalogChordRepository{newFakeChordCatalog()}, harmonyLayouts{}).
+		WithHarmonyDrills(w.progressions, &catalogChordRepository{newFakeChordCatalog()}, harmonyLayouts{}).
 		WithChordDrills(chordDrillCatalog{}, w.instruments).
 		WithProgressionKeyTours(w.instruments).
 		WithGuideTones(w.instruments).
@@ -389,13 +396,15 @@ func newWorld() *world {
 	w.emailPreferences = application.NewEmailPreferencesService(w.users, []byte("bdd-unsubscribe-secret-long-enough-to-sign"))
 	alphaObservation := application.NewAlphaObservationService(w.users, w.studentPaths, w.nodes, w.completion, w.alpha.activity, func() time.Time { return w.alpha.now })
 
-	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, knowledgeNode, knowledgeEdge, media, path, application.NewPathCatalogService(w.paths, w.users, w.knowledge), studentPath, course, courseEnrollment, instrument, voice, diagram, practiceSession, practiceSummary, application.NewChordCatalogService(w.chords), application.NewProgressionCatalogService(catalogProgressions{}),
-		application.NewSongChartService(w.songChartRepo, w.chords, w.diagrams, newFakeLanguageRepo(), catalogProgressions{}, discardPracticeReferences{}, newID, now),
+	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, knowledgeNode, knowledgeEdge, media, path, application.NewPathCatalogService(w.paths, w.users, w.knowledge), studentPath, course, courseEnrollment, instrument, voice, diagram, practiceSession, practiceSummary, application.NewChordCatalogService(w.chords), application.NewProgressionCatalogService(w.progressions, w.songChartRepo, newFakeLanguageRepo(), w.knowledge, discardPracticeReferences{}, newID, now),
+		application.NewSongChartService(w.songChartRepo, w.chords, w.diagrams, newFakeLanguageRepo(), w.progressions, discardPracticeReferences{}, newID, now),
 		application.NewAppConfigService(w.appConfig, now, application.NewStartingPointsKey(w.instruments, newFakeLanguageRepo(), w.paths, w.courses)),
 		application.NewStartingPointsService(w.appConfig, newFakeLanguageRepo(), w.paths, w.courses),
 		alphaObservation,
 		w.emailPreferences,
 		w.pgPinger, w.mongoPinger)
+	w.commercial = newCommercialWorld(w, newID)
+	w.handler = w.handler.WithCommercial(w.commercial.rollout, w.commercial.audit)
 	return w
 }
 

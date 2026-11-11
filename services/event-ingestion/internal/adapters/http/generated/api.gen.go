@@ -335,18 +335,30 @@ func (e MultiTapResponseResponseType) Valid() bool {
 
 // Defines values for MusicKey.
 const (
-	A  MusicKey = "A"
-	Ab MusicKey = "Ab"
-	B  MusicKey = "B"
-	Bb MusicKey = "Bb"
-	C  MusicKey = "C"
-	D  MusicKey = "D"
-	Db MusicKey = "Db"
-	E  MusicKey = "E"
-	Eb MusicKey = "Eb"
-	F  MusicKey = "F"
-	F1 MusicKey = "F#"
-	G  MusicKey = "G"
+	A   MusicKey = "A"
+	Ab  MusicKey = "Ab"
+	Abm MusicKey = "Abm"
+	Am  MusicKey = "Am"
+	B   MusicKey = "B"
+	Bb  MusicKey = "Bb"
+	Bbm MusicKey = "Bbm"
+	Bm  MusicKey = "Bm"
+	C   MusicKey = "C"
+	Cm  MusicKey = "Cm"
+	D   MusicKey = "D"
+	Db  MusicKey = "Db"
+	Dbm MusicKey = "Dbm"
+	Dm  MusicKey = "Dm"
+	E   MusicKey = "E"
+	Eb  MusicKey = "Eb"
+	Ebm MusicKey = "Ebm"
+	Em  MusicKey = "Em"
+	F   MusicKey = "F"
+	F1  MusicKey = "F#"
+	FM  MusicKey = "F#m"
+	Fm  MusicKey = "Fm"
+	G   MusicKey = "G"
+	Gm  MusicKey = "Gm"
 )
 
 // Valid indicates whether the value is a known member of the MusicKey enum.
@@ -356,25 +368,49 @@ func (e MusicKey) Valid() bool {
 		return true
 	case Ab:
 		return true
+	case Abm:
+		return true
+	case Am:
+		return true
 	case B:
 		return true
 	case Bb:
 		return true
+	case Bbm:
+		return true
+	case Bm:
+		return true
 	case C:
+		return true
+	case Cm:
 		return true
 	case D:
 		return true
 	case Db:
 		return true
+	case Dbm:
+		return true
+	case Dm:
+		return true
 	case E:
 		return true
 	case Eb:
+		return true
+	case Ebm:
+		return true
+	case Em:
 		return true
 	case F:
 		return true
 	case F1:
 		return true
+	case FM:
+		return true
+	case Fm:
+		return true
 	case G:
+		return true
+	case Gm:
 		return true
 	default:
 		return false
@@ -1190,7 +1226,10 @@ type GeneratedChoiceResponse struct {
 	// asked by ear, from the moment its sound started.
 	LatencyMs int `json:"latency_ms"`
 
-	// MusicKey A major key. In a response, the key a question was asked in or a take was played in when
+	// MusicKey A major key, written as its tonic (C), or a minor key, written as its tonic chord (Am). Roots
+	// are spelled as the chord catalog spells them, in minor keys too (Dbm, not C#m). A minor
+	// progression is asked and played only in minor keys, a major one only in major keys. In a
+	// response, the key a question was asked in or a take was played in when
 	// its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
 	// tone or a progression key tour; absent in a response to any other item. A planned question
 	// always names its key.
@@ -1200,7 +1239,9 @@ type GeneratedChoiceResponse struct {
 	// chord symbol (a root, then m, dim or nothing: G, Em, F#dim) for numeral_to_chord and
 	// function_to_chord; a numeral (I ii iii IV V vi viio) for chord_to_numeral,
 	// cadence_then_chord and see_then_name; tonic, subdominant or dominant for chord_to_function; a progression
-	// key for chart_to_numbers and progression_by_number; a chart, the progression's chord
+	// key for chart_to_numbers and progression_by_number (a drill progression's, or the key a
+	// wrong answer the server made up would have if an admin created it, such as
+	// major/I-ii-IV-V); a chart, the progression's chord
 	// symbols one per bar separated by single spaces (G D Em C), for numbers_to_chart. A
 	// chord's root may be spelled either way (F# or Gb).
 	Options []string `json:"options"`
@@ -1434,7 +1475,10 @@ type MultiTapResponse struct {
 // MultiTapResponseResponseType Discriminator. The student tapped every place of the note they found.
 type MultiTapResponseResponseType string
 
-// MusicKey A major key. In a response, the key a question was asked in or a take was played in when
+// MusicKey A major key, written as its tonic (C), or a minor key, written as its tonic chord (Am). Roots
+// are spelled as the chord catalog spells them, in minor keys too (Dbm, not C#m). A minor
+// progression is asked and played only in minor keys, a major one only in major keys. In a
+// response, the key a question was asked in or a take was played in when
 // its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
 // tone or a progression key tour; absent in a response to any other item. A planned question
 // always names its key.
@@ -1573,13 +1617,13 @@ type PlannedPracticeItem struct {
 	//   head: picking the chord for the numeral, or the numeral for the chord.
 	// - chord_function:<key>:<numeral> — a numeral's harmonic function in a major key: picking
 	//   the function of its chord, or its chord for the function.
-	// - chart_progression:<progression key> — a progression of the progression catalog read
-	//   as a chart: picking the progression for four chords, or its chart for the progression.
+	// - chart_progression:<progression key> — a drill progression read
+	//   as a chart: picking the progression for its chords, or its chart for the progression.
 	//   The key is picked each time it is asked, so one item covers every key.
 	// - heard_chord:<numeral> — a numeral recognised by ear in a key a cadence sets. The key is
 	//   picked each time.
-	// - heard_progression:<progression key> — a progression recognised by ear. The key is
-	//   picked each time.
+	// - heard_progression:<progression key> — a drill progression of 2 to 4 bars recognised by
+	//   ear. The key is picked each time.
 	// - chord_voicing:<diagram id> — playing one chord voicing cleanly, untimed.
 	// - root_fifth:<layout instrument id>:<chord> — playing a chord's root and fifth on a bass
 	//   layout, cleanly, untimed.
@@ -1597,7 +1641,8 @@ type PlannedPracticeItem struct {
 	// In these keys, <key> is a major key spelled as one of C Db D Eb E F F# G Ab A Bb B;
 	// <numeral> is one of I ii iii IV V vi viio (viio is vii°); <chord> is a root spelled the
 	// same way, followed by m (minor), dim (diminished), 7 (dominant seventh) or nothing
-	// (major); <progression key> is a key of the progression catalog.
+	// (major); <progression key> is the key of a drill progression: a catalog handle such as
+	// I-V-vi-IV, or a created progression's mode and ASCII numerals such as major/I-bVII-IV-I.
 	//
 	// Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
 	// grader, and its golden cases.
@@ -1646,13 +1691,13 @@ type PracticeItemAnsweredEvent struct {
 	//   head: picking the chord for the numeral, or the numeral for the chord.
 	// - chord_function:<key>:<numeral> — a numeral's harmonic function in a major key: picking
 	//   the function of its chord, or its chord for the function.
-	// - chart_progression:<progression key> — a progression of the progression catalog read
-	//   as a chart: picking the progression for four chords, or its chart for the progression.
+	// - chart_progression:<progression key> — a drill progression read
+	//   as a chart: picking the progression for its chords, or its chart for the progression.
 	//   The key is picked each time it is asked, so one item covers every key.
 	// - heard_chord:<numeral> — a numeral recognised by ear in a key a cadence sets. The key is
 	//   picked each time.
-	// - heard_progression:<progression key> — a progression recognised by ear. The key is
-	//   picked each time.
+	// - heard_progression:<progression key> — a drill progression of 2 to 4 bars recognised by
+	//   ear. The key is picked each time.
 	// - chord_voicing:<diagram id> — playing one chord voicing cleanly, untimed.
 	// - root_fifth:<layout instrument id>:<chord> — playing a chord's root and fifth on a bass
 	//   layout, cleanly, untimed.
@@ -1670,7 +1715,8 @@ type PracticeItemAnsweredEvent struct {
 	// In these keys, <key> is a major key spelled as one of C Db D Eb E F F# G Ab A Bb B;
 	// <numeral> is one of I ii iii IV V vi viio (viio is vii°); <chord> is a root spelled the
 	// same way, followed by m (minor), dim (diminished), 7 (dominant seventh) or nothing
-	// (major); <progression key> is a key of the progression catalog.
+	// (major); <progression key> is the key of a drill progression: a catalog handle such as
+	// I-V-vi-IV, or a created progression's mode and ASCII numerals such as major/I-bVII-IV-I.
 	//
 	// Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
 	// grader, and its golden cases.
@@ -1750,15 +1796,15 @@ type PracticeItemAnsweredEvent1 = interface{}
 //   - chord_function:<key>:<numeral> — a numeral's harmonic function in a major key: picking
 //     the function of its chord, or its chord for the function.
 //
-//   - chart_progression:<progression key> — a progression of the progression catalog read
-//     as a chart: picking the progression for four chords, or its chart for the progression.
+//   - chart_progression:<progression key> — a drill progression read
+//     as a chart: picking the progression for its chords, or its chart for the progression.
 //     The key is picked each time it is asked, so one item covers every key.
 //
 //   - heard_chord:<numeral> — a numeral recognised by ear in a key a cadence sets. The key is
 //     picked each time.
 //
-//   - heard_progression:<progression key> — a progression recognised by ear. The key is
-//     picked each time.
+//   - heard_progression:<progression key> — a drill progression of 2 to 4 bars recognised by
+//     ear. The key is picked each time.
 //
 //   - chord_voicing:<diagram id> — playing one chord voicing cleanly, untimed.
 //
@@ -1782,7 +1828,8 @@ type PracticeItemAnsweredEvent1 = interface{}
 // In these keys, <key> is a major key spelled as one of C Db D Eb E F F# G Ab A Bb B;
 // <numeral> is one of I ii iii IV V vi viio (viio is vii°); <chord> is a root spelled the
 // same way, followed by m (minor), dim (diminished), 7 (dominant seventh) or nothing
-// (major); <progression key> is a key of the progression catalog.
+// (major); <progression key> is the key of a drill progression: a catalog handle such as
+// I-V-vi-IV, or a created progression's mode and ASCII numerals such as major/I-bVII-IV-I.
 //
 // Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
 // grader, and its golden cases.
@@ -1972,7 +2019,10 @@ type SelfRatingResponse struct {
 	// for a chord change and a root change, and never more than tempo_bpm.
 	ChangesPerMinute *int `json:"changes_per_minute,omitempty"`
 
-	// MusicKey A major key. In a response, the key a question was asked in or a take was played in when
+	// MusicKey A major key, written as its tonic (C), or a minor key, written as its tonic chord (Am). Roots
+	// are spelled as the chord catalog spells them, in minor keys too (Dbm, not C#m). A minor
+	// progression is asked and played only in minor keys, a major one only in major keys. In a
+	// response, the key a question was asked in or a take was played in when
 	// its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
 	// tone or a progression key tour; absent in a response to any other item. A planned question
 	// always names its key.
@@ -2168,7 +2218,10 @@ type TimedTap struct {
 // 240000 / tempo_bpm milliseconds, and a faster note value shortens it by its speed factor.
 // Each tap is kept with the time it was made, so every bar can be graded.
 type TimedTapsResponse struct {
-	// MusicKey A major key. In a response, the key a question was asked in or a take was played in when
+	// MusicKey A major key, written as its tonic (C), or a minor key, written as its tonic chord (Am). Roots
+	// are spelled as the chord catalog spells them, in minor keys too (Dbm, not C#m). A minor
+	// progression is asked and played only in minor keys, a major one only in major keys. In a
+	// response, the key a question was asked in or a take was played in when
 	// its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
 	// tone or a progression key tour; absent in a response to any other item. A planned question
 	// always names its key.
@@ -2191,16 +2244,26 @@ type TimedTapsResponse struct {
 	// TempoBpm The tempo the progression played at, in beats per minute.
 	TempoBpm int `json:"tempo_bpm"`
 
-	// Tone The chord tone asked for every chord: 3 = its third; 7 = its seventh in the key (the
-	// major seventh of I and IV, the minor seventh of every other chord).
+	// Tone The chord tone asked for every chord: 3 = its third; 7 = its seventh:
+	// a written suffix decides (maj7 is the major seventh, 7 and ø7 the minor seventh, °7 the
+	// diminished seventh); a chord with no written seventh takes its key's seventh. In a major
+	// progression, the major seventh on I and IV and the minor seventh on any other numeral. In
+	// a minor progression, the seventh natural minor gives it: m7 on i, iv and v, ø7 on ii°,
+	// maj7 on ♭III and ♭VI, 7 on ♭VII; 7 on V and °7 on vii°, from harmonic minor; on any other
+	// numeral, maj7 on a major chord, m7 on a minor one and ø7 on a diminished one.
 	Tone TimedTapsResponseTone `json:"tone"`
 }
 
 // TimedTapsResponseResponseType Discriminator. The student tapped along with a progression's playback.
 type TimedTapsResponseResponseType string
 
-// TimedTapsResponseTone The chord tone asked for every chord: 3 = its third; 7 = its seventh in the key (the
-// major seventh of I and IV, the minor seventh of every other chord).
+// TimedTapsResponseTone The chord tone asked for every chord: 3 = its third; 7 = its seventh:
+// a written suffix decides (maj7 is the major seventh, 7 and ø7 the minor seventh, °7 the
+// diminished seventh); a chord with no written seventh takes its key's seventh. In a major
+// progression, the major seventh on I and IV and the minor seventh on any other numeral. In
+// a minor progression, the seventh natural minor gives it: m7 on i, iv and v, ø7 on ii°,
+// maj7 on ♭III and ♭VI, 7 on ♭VII; 7 on V and °7 on vii°, from harmonic minor; on any other
+// numeral, maj7 on a major chord, m7 on a minor one and ø7 on a diminished one.
 type TimedTapsResponseTone string
 
 // TrackingEvent A student tracking event submitted by the Vue 3 SPA to the Event Ingestion Service.

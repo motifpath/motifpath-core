@@ -201,9 +201,9 @@ func TestCatalogInvalidatingReferences(t *testing.T) {
 		{"a song chart's reference invalidates", func(w ports.PracticeReferenceWriter) error {
 			return w.PutSongCharts(ctx, []domain.SongChartReference{{ID: "s"}})
 		}, 1},
-		{"catalog data installed by migrations doesn't: the invalidation on start covers it", func(w ports.PracticeReferenceWriter) error {
+		{"a progression's reference invalidates: an admin can add one to the drills", func(w ports.PracticeReferenceWriter) error {
 			return w.PutProgressions(ctx, []domain.Progression{{Key: "I-IV-V-I"}})
-		}, 0},
+		}, 1},
 	}
 	for _, tc := range writes {
 		t.Run(tc.name, func(t *testing.T) {

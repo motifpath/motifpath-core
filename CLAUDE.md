@@ -53,6 +53,8 @@ Tests live at the service layer ONLY: `internal/application/`
 ALWAYS write table-driven tests using testify — one test function per feature, one row per scenario.
 ALWAYS use testcontainers for database tests — NEVER mock the repository layer.
 Gherkin feature files from motifpath-specs/features/ run via godog: `make test:bdd`
+A PR that implements a ticket's scenarios (tagged `@MOT-NNN` in motifpath-specs) adds that
+ticket to `bdd/implemented-tickets.txt` — that switches them on; never open a specs PR to un-tag.
 Coverage gate: 80% on `internal/application/` packages — CI fails below this.
 
 ## Code Quality
@@ -86,8 +88,8 @@ NEVER access the database directly from the domain layer.
   `cmd/seed-full` (every `CourseStatus`, every `CourseEnrollmentStatus`, standalone paths current
   and archived, every `ExerciseType`, a diagram library of demo basic templates and two
   teachers' custom diagrams, lessons with cues, pop-ups and a version history, a bootstrapped admin's path that walks
-  through every article-lesson state (review, paragraph cues, diagram-first, Practise this, language-locked), and three public-domain song charts: published
-  with a corrected draft, withdrawn, and a draft whose chords don't all resolve; their preview links are logged), and
+  through every article-lesson state (review, paragraph cues, diagram-first, Practise this, language-locked), three public-domain song charts: published
+  with a corrected draft, withdrawn, and a draft whose chords don't all resolve; their preview links are logged; and four created progressions, one for song charts only and three in the drills, a minor and a three-bar one among them), and
   a Portuguese copy of every seeded exercise, so a pt-BR profile has exercises to practise (`cmd/seed-full/pt_br_exercises.go`; a
   new English seeded exercise fails the seed until its phrases are added there). Reference
   data — languages, voices, the catalog instruments, the knowledge map, the basic guitar

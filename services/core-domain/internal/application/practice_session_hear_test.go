@@ -11,10 +11,10 @@ import (
 )
 
 var hearProgressions = fakeProgressions{
-	{Key: "I-V-vi-IV", Bars: []string{"I", "V", "vi", "IV"}, Confusable: []string{"I-vi-IV-V"}, NodeIDs: []string{"skill-ear"}, Names: domain.LocalizedText{"en": "I–V–vi–IV (pop)"}},
-	{Key: "I-vi-IV-V", Bars: []string{"I", "vi", "IV", "V"}, Confusable: []string{"I-V-vi-IV"}, NodeIDs: []string{"skill-ear"}, Names: domain.LocalizedText{"en": "I–vi–IV–V (doo-wop)"}},
-	{Key: "IV-V-I", Bars: []string{"IV", "V", "I", "I"}, NodeIDs: []string{"skill-ear"}, Names: domain.LocalizedText{"en": "IV–V–I"}},
-	{Key: "ii-V-I", Bars: []string{"ii", "V", "I", "I"}, NodeIDs: []string{"skill-ear"}, Names: domain.LocalizedText{"en": "ii–V–I"}},
+	{InDrills: true, Key: "I-V-vi-IV", Bars: []string{"I", "V", "vi", "IV"}, Confusable: []string{"I-vi-IV-V"}, NodeIDs: []string{"skill-ear"}, Names: domain.LocalizedText{"en": "I–V–vi–IV (pop)"}},
+	{InDrills: true, Key: "I-vi-IV-V", Bars: []string{"I", "vi", "IV", "V"}, Confusable: []string{"I-V-vi-IV"}, NodeIDs: []string{"skill-ear"}, Names: domain.LocalizedText{"en": "I–vi–IV–V (doo-wop)"}},
+	{InDrills: true, Key: "IV-V-I", Bars: []string{"IV", "V", "I", "I"}, NodeIDs: []string{"skill-ear"}, Names: domain.LocalizedText{"en": "IV–V–I"}},
+	{InDrills: true, Key: "ii-V-I", Bars: []string{"ii", "V", "I", "I"}, NodeIDs: []string{"skill-ear"}, Names: domain.LocalizedText{"en": "ii–V–I"}},
 }
 
 // hearFixture is a practice fixture with the ear drills installed: every

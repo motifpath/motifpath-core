@@ -15,11 +15,11 @@ func guideToneItemKey(layout, progression string) string {
 }
 
 var guideToneProgressions = fakeProgressions{
-	{Key: "ii-V-I", Bars: []string{"ii", "V", "I", "I"}, Names: domain.LocalizedText{"en": "ii–V–I"}},
-	{Key: "IV-V-I", Bars: []string{"IV", "V", "I", "I"}, Names: domain.LocalizedText{"en": "IV–V–I"}},
-	{Key: "I-V-vi-IV", Bars: []string{"I", "V", "vi", "IV"}, Names: domain.LocalizedText{"en": "I–V–vi–IV (pop)"}},
-	{Key: "I-vi-IV-V", Bars: []string{"I", "vi", "IV", "V"}, Names: domain.LocalizedText{"en": "I–vi–IV–V (doo-wop)"}},
-	{Key: "12-bar-blues", Bars: []string{"I7", "I7", "I7", "I7", "IV7", "IV7", "I7", "I7", "V7", "IV7", "I7", "V7"}, Names: domain.LocalizedText{"en": "12-bar blues"}},
+	{InDrills: true, Key: "ii-V-I", Bars: []string{"ii", "V", "I", "I"}, Names: domain.LocalizedText{"en": "ii–V–I"}},
+	{InDrills: true, Key: "IV-V-I", Bars: []string{"IV", "V", "I", "I"}, Names: domain.LocalizedText{"en": "IV–V–I"}},
+	{InDrills: true, Key: "I-V-vi-IV", Bars: []string{"I", "V", "vi", "IV"}, Names: domain.LocalizedText{"en": "I–V–vi–IV (pop)"}},
+	{InDrills: true, Key: "I-vi-IV-V", Bars: []string{"I", "vi", "IV", "V"}, Names: domain.LocalizedText{"en": "I–vi–IV–V (doo-wop)"}},
+	{InDrills: true, Key: "12-bar-blues", Bars: []string{"I7", "I7", "I7", "I7", "IV7", "IV7", "I7", "I7", "V7", "IV7", "I7", "V7"}, Names: domain.LocalizedText{"en": "12-bar blues"}},
 }
 
 // guideToneFixture is a practice fixture with the guide tones installed: each of

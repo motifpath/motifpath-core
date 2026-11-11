@@ -121,12 +121,16 @@ class InstrumentIconTests(unittest.TestCase):
 
 @unittest.skipUnless(MAP.exists(), f'{MAP} not found; set SPECS_DIR')
 class CatalogTests(unittest.TestCase):
-    def test_the_reviewed_map_builds_with_its_counts(self):
+    def test_the_reviewed_map_builds_and_keeps_what_is_installed(self):
+        # The map grows on its own schedule in another repo, so an addition here
+        # must not fail unrelated changes; rows already installed never go away.
         graph = km.load(MAP)
         kinds = [n.kind for n in graph.nodes]
-        self.assertEqual((219, 125), (kinds.count('skill'), kinds.count('concept')))
+        self.assertGreaterEqual(kinds.count('skill'), 221)
+        self.assertGreaterEqual(kinds.count('concept'), 125)
         types = [e.type for e in graph.edges]
-        self.assertEqual((366, 144), (types.count('applies'), types.count('requires')))
+        self.assertGreaterEqual(types.count('applies'), 370)
+        self.assertGreaterEqual(types.count('requires'), 144)
 
     def test_rendering_is_deterministic(self):
         self.assertEqual(km.render_sql(km.load(MAP)), km.render_sql(km.load(MAP)))

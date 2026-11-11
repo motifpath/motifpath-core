@@ -295,6 +295,27 @@ func TestIdentityService_ResolveCaller_RefreshesDisplayName(t *testing.T) {
 	}
 }
 
+func TestIdentityService_KnownDisplayNames(t *testing.T) {
+	users := newFakeUserRepository()
+	svc := newIdentityService(users)
+	alice, err := svc.RegisterUser(context.Background(), "clerk-alice", domain.RoleStudent, "", registrationClaims("Alice"))
+	require.NoError(t, err)
+
+	t.Run("a missing user is left out, not an error", func(t *testing.T) {
+		names, err := svc.KnownDisplayNames(context.Background(), []string{alice.ID, alice.ID, "gone"})
+
+		require.NoError(t, err)
+		assert.Equal(t, map[string]string{alice.ID: "Alice"}, names)
+	})
+
+	t.Run("no ids need no lookup", func(t *testing.T) {
+		names, err := svc.KnownDisplayNames(context.Background(), nil)
+
+		require.NoError(t, err)
+		assert.Empty(t, names)
+	})
+}
+
 func TestIdentityService_DisplayNames(t *testing.T) {
 	setup := func(t *testing.T) (*application.IdentityService, *fakeUserRepository, domain.User, domain.User) {
 		t.Helper()

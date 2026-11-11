@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -56,6 +57,54 @@ func (_c *ProgressionCreate) SetNames(v map[string]string) *ProgressionCreate {
 	return _c
 }
 
+// SetInDrills sets the "in_drills" field.
+func (_c *ProgressionCreate) SetInDrills(v bool) *ProgressionCreate {
+	_c.mutation.SetInDrills(v)
+	return _c
+}
+
+// SetNillableInDrills sets the "in_drills" field if the given value is not nil.
+func (_c *ProgressionCreate) SetNillableInDrills(v *bool) *ProgressionCreate {
+	if v != nil {
+		_c.SetInDrills(*v)
+	}
+	return _c
+}
+
+// SetNicknames sets the "nicknames" field.
+func (_c *ProgressionCreate) SetNicknames(v map[string]string) *ProgressionCreate {
+	_c.mutation.SetNicknames(v)
+	return _c
+}
+
+// SetCreatedBy sets the "created_by" field.
+func (_c *ProgressionCreate) SetCreatedBy(v uuid.UUID) *ProgressionCreate {
+	_c.mutation.SetCreatedBy(v)
+	return _c
+}
+
+// SetNillableCreatedBy sets the "created_by" field if the given value is not nil.
+func (_c *ProgressionCreate) SetNillableCreatedBy(v *uuid.UUID) *ProgressionCreate {
+	if v != nil {
+		_c.SetCreatedBy(*v)
+	}
+	return _c
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (_c *ProgressionCreate) SetCreatedAt(v time.Time) *ProgressionCreate {
+	_c.mutation.SetCreatedAt(v)
+	return _c
+}
+
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
+func (_c *ProgressionCreate) SetNillableCreatedAt(v *time.Time) *ProgressionCreate {
+	if v != nil {
+		_c.SetCreatedAt(*v)
+	}
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *ProgressionCreate) SetID(v uuid.UUID) *ProgressionCreate {
 	_c.mutation.SetID(v)
@@ -69,6 +118,7 @@ func (_c *ProgressionCreate) Mutation() *ProgressionMutation {
 
 // Save creates the Progression in the database.
 func (_c *ProgressionCreate) Save(ctx context.Context) (*Progression, error) {
+	_c.defaults()
 	return withHooks(ctx, _c.sqlSave, _c.mutation, _c.hooks)
 }
 
@@ -91,6 +141,14 @@ func (_c *ProgressionCreate) Exec(ctx context.Context) error {
 func (_c *ProgressionCreate) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
+	}
+}
+
+// defaults sets the default values of the builder before save.
+func (_c *ProgressionCreate) defaults() {
+	if _, ok := _c.mutation.InDrills(); !ok {
+		v := progression.DefaultInDrills
+		_c.mutation.SetInDrills(v)
 	}
 }
 
@@ -123,6 +181,9 @@ func (_c *ProgressionCreate) check() error {
 	}
 	if _, ok := _c.mutation.Names(); !ok {
 		return &ValidationError{Name: "names", err: errors.New(`ent: missing required field "Progression.names"`)}
+	}
+	if _, ok := _c.mutation.InDrills(); !ok {
+		return &ValidationError{Name: "in_drills", err: errors.New(`ent: missing required field "Progression.in_drills"`)}
 	}
 	return nil
 }
@@ -183,6 +244,22 @@ func (_c *ProgressionCreate) createSpec() (*Progression, *sqlgraph.CreateSpec) {
 		_spec.SetField(progression.FieldNames, field.TypeJSON, value)
 		_node.Names = value
 	}
+	if value, ok := _c.mutation.InDrills(); ok {
+		_spec.SetField(progression.FieldInDrills, field.TypeBool, value)
+		_node.InDrills = value
+	}
+	if value, ok := _c.mutation.Nicknames(); ok {
+		_spec.SetField(progression.FieldNicknames, field.TypeJSON, value)
+		_node.Nicknames = value
+	}
+	if value, ok := _c.mutation.CreatedBy(); ok {
+		_spec.SetField(progression.FieldCreatedBy, field.TypeUUID, value)
+		_node.CreatedBy = &value
+	}
+	if value, ok := _c.mutation.CreatedAt(); ok {
+		_spec.SetField(progression.FieldCreatedAt, field.TypeTime, value)
+		_node.CreatedAt = &value
+	}
 	return _node, _spec
 }
 
@@ -204,6 +281,7 @@ func (_c *ProgressionCreateBulk) Save(ctx context.Context) ([]*Progression, erro
 	for i := range _c.builders {
 		func(i int, root context.Context) {
 			builder := _c.builders[i]
+			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 				mutation, ok := m.(*ProgressionMutation)
 				if !ok {

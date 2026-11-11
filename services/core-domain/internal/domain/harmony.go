@@ -26,23 +26,12 @@ const (
 // them.
 var ChordFunctions = []ChordFunction{ChordFunctionTonic, ChordFunctionSubdominant, ChordFunctionDominant}
 
-// diatonicTriad is a scale degree's triad in a major key: semitones above
-// the tonic, the chord symbol's suffix and its function.
-type diatonicTriad struct {
-	semitones int
-	suffix    string
-	function  ChordFunction
-}
-
-// diatonicTriads are the major key's triads by numeral, viio being vii°.
-var diatonicTriads = map[string]diatonicTriad{
-	"I":    {0, "", ChordFunctionTonic},
-	"ii":   {2, "m", ChordFunctionSubdominant},
-	"iii":  {4, "m", ChordFunctionTonic},
-	"IV":   {5, "", ChordFunctionSubdominant},
-	"V":    {7, "", ChordFunctionDominant},
-	"vi":   {9, "m", ChordFunctionTonic},
-	"viio": {11, "dim", ChordFunctionDominant},
+// numeralFunctions are the major key's triads' functions by numeral, viio being
+// vii°.
+var numeralFunctions = map[string]ChordFunction{
+	"I": ChordFunctionTonic, "iii": ChordFunctionTonic, "vi": ChordFunctionTonic,
+	"ii": ChordFunctionSubdominant, "IV": ChordFunctionSubdominant,
+	"V": ChordFunctionDominant, "viio": ChordFunctionDominant,
 }
 
 // ChordNumerals are the major key's numerals, in scale order.
@@ -62,37 +51,87 @@ var NewHarmonyKeyOrder = []string{"C", "G", "F", "D", "Bb", "A", "Eb", "E", "Ab"
 // student is still learning it.
 var EasyChartKeys = []string{"C", "G", "D", "F", "A"}
 
-// keyPitchClass is the pitch class of key's tonic; false for a key that
-// isn't one of MusicKeys.
+// minorKeySuffix ends a minor key's name: a minor key is written as its tonic
+// chord, Am.
+const minorKeySuffix = "m"
+
+// keyPitchClass is the pitch class of key's tonic, a major key of MusicKeys or
+// a minor one of MusicKeysOf(ProgressionModeMinor); false for any other key.
 func keyPitchClass(key string) (int, bool) {
-	i := slices.Index(MusicKeys, key)
+	i := slices.Index(MusicKeys, strings.TrimSuffix(key, minorKeySuffix))
 	return i, i >= 0
 }
 
-// NumeralChord is the chord symbol of numeral in the major key: its triad
-// (Em, Bdim), or a dominant seventh for a progression's I7, IV7 or V7 (G7).
-// Empty for a key or numeral it doesn't know.
+// KeyMode is the mode of key: minor for a key written as its minor tonic chord.
+func KeyMode(key string) ProgressionMode {
+	if strings.HasSuffix(key, minorKeySuffix) {
+		return ProgressionModeMinor
+	}
+	return ProgressionModeMajor
+}
+
+// MusicKeysOf are the 12 keys a progression of mode is asked in: its tonic
+// spelled as the chord catalog spells roots, in minor keys too.
+func MusicKeysOf(mode ProgressionMode) []string {
+	if mode != ProgressionModeMinor {
+		return slices.Clone(MusicKeys)
+	}
+	minor := make([]string, len(MusicKeys))
+	for i, tonic := range MusicKeys {
+		minor[i] = tonic + minorKeySuffix
+	}
+	return minor
+}
+
+// EasyChartKeysOf are the keys a chart question of mode is asked in while the
+// student is still learning it: the easy major keys, or their relative minors.
+func EasyChartKeysOf(mode ProgressionMode) []string {
+	return keysOf(mode, EasyChartKeys)
+}
+
+// TourKeyOrderOf is the order a tour of a progression in mode goes through:
+// the cycle of fourths from C, or each of its keys' relative minors.
+func TourKeyOrderOf(mode ProgressionMode) []string {
+	return keysOf(mode, ProgressionKeyOrder)
+}
+
+// relativeMinorSemitones is how far above a major key's tonic its relative
+// minor's is.
+const relativeMinorSemitones = 9
+
+// keysOf is majorKeys for a major progression, and their relative minors, in
+// the same order, for a minor one.
+func keysOf(mode ProgressionMode, majorKeys []string) []string {
+	if mode != ProgressionModeMinor {
+		return slices.Clone(majorKeys)
+	}
+	minor := make([]string, len(majorKeys))
+	for i, key := range majorKeys {
+		tonic, _ := keyPitchClass(key)
+		minor[i] = MusicKeys[(tonic+relativeMinorSemitones)%12] + minorKeySuffix
+	}
+	return minor
+}
+
+// NumeralChord is the chord symbol of numeral in the major key, for any numeral
+// a progression can hold: Em for vi, Bb for ♭VII, Dm7b5 for iiø7. Empty for a key
+// or numeral it doesn't know.
 func NumeralChord(key, numeral string) string {
 	tonic, ok := keyPitchClass(key)
 	if !ok {
 		return ""
 	}
-	base, seventh := strings.CutSuffix(numeral, "7")
-	triad, ok := diatonicTriads[base]
+	parsed, ok := ParseProgressionNumeral(numeral, ProgressionModeMajor)
 	if !ok {
 		return ""
 	}
-	root := MusicKeys[(tonic+triad.semitones)%12]
-	if seventh {
-		return root + "7"
-	}
-	return root + triad.suffix
+	return MusicKeys[(tonic+parsed.RootSemitones)%12] + parsed.Quality.CanonicalSuffix()
 }
 
 // NumeralFunction is numeral's function in a major key; empty for a
 // numeral it doesn't know.
 func NumeralFunction(numeral string) ChordFunction {
-	return diatonicTriads[numeral].function
+	return numeralFunctions[numeral]
 }
 
 // ProgressionChart is a progression's chart in key: the chord symbol of each

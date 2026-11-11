@@ -4,6 +4,7 @@ package bdd
 
 import (
 	"fmt"
+	"regexp"
 
 	"github.com/cucumber/godog"
 
@@ -18,6 +19,35 @@ func registerGeneratedChoiceSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]*)" answers the heard chord (\w+) in (\S+), asked (\w+), by picking "([^"]*)" among "([^"]*)", "([^"]*)", "([^"]*)" and "([^"]*)"$`, w.answersTheHeardChord)
 	sc.Step(`^"([^"]*)" answers the diatonic chord (\w+) in (\S+), asked (\w+), by picking "([^"]*)" among "([^"]*)", "([^"]*)", "([^"]*)" and "([^"]*)"$`, w.answersTheDiatonicChord)
 	sc.Step(`^"([^"]*)" has no evidence for that question$`, w.hasNoEvidenceForThatQuestion)
+	sc.Step(`^"([^"]*)" answers the chart progression "([^"]*)" in (\S+), asked (\w+), by picking "([^"]*)" among ((?:"[^"]*"(?:, | and )?)+)$`, w.answersTheChartProgression)
+	sc.Step(`^"([^"]*)" has auto-graded evidence for that question that is (right|wrong)$`, w.hasEvidenceForThatQuestion)
+}
+
+// answersTheChartProgression answers a chart progression, asked in any key,
+// among options that may include made-up progressions.
+func (w *world) answersTheChartProgression(student, progression, key, way, choice, options string) error {
+	var offered []string
+	for _, m := range quotedOption.FindAllStringSubmatch(options, -1) {
+		offered = append(offered, m[1])
+	}
+	return w.answer(student, "chart_progression:"+progression, generatedChoice(way, key, choice, offered...))
+}
+
+var quotedOption = regexp.MustCompile(`"([^"]*)"`)
+
+func (w *world) hasEvidenceForThatQuestion(student, verdict string) error {
+	evidence, err := w.evidenceFor(student, w.lastItemKey)
+	if err != nil {
+		return err
+	}
+	if len(evidence) == 0 {
+		return fmt.Errorf("no evidence for %s", w.lastItemKey)
+	}
+	e := evidence[len(evidence)-1]
+	if e.Source != domain.EvidenceSourceAutoGraded || e.Correct == nil || *e.Correct != (verdict == "right") {
+		return fmt.Errorf("evidence is %s, correct %v, want auto_graded and %s", e.Source, e.Correct, verdict)
+	}
+	return nil
 }
 
 // answersTheHeardChord answers a heard chord, asked in any key: the key comes with

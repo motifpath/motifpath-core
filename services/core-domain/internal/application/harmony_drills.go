@@ -15,7 +15,7 @@ import (
 // the chord catalog the guitar reading draws boxes from, and the
 // fretboard layouts that tell guitar from bass.
 type harmonyDrills struct {
-	progressions ports.ProgressionRepository
+	progressions ports.DrillProgressions
 	chords       ports.ChordCatalogRepository
 	layouts      ports.FretboardLayoutReader
 	// guitar keeps the guitar layout for one composition; nil reads it each
@@ -27,7 +27,7 @@ type harmonyDrills struct {
 // chord functions, chart progressions, heard chords and heard
 // progressions, asked in the head and read as chord boxes on guitar and
 // chord symbols on bass.
-func (s *PracticeSessionService) WithHarmonyDrills(progressions ports.ProgressionRepository, chords ports.ChordCatalogRepository, layouts ports.FretboardLayoutReader) *PracticeSessionService {
+func (s *PracticeSessionService) WithHarmonyDrills(progressions ports.DrillProgressions, chords ports.ChordCatalogRepository, layouts ports.FretboardLayoutReader) *PracticeSessionService {
 	s.harmony = &harmonyDrills{progressions: progressions, chords: chords, layouts: layouts}
 	return s.WithDrillSources(harmonySource{progressions: progressions})
 }
@@ -35,7 +35,7 @@ func (s *PracticeSessionService) WithHarmonyDrills(progressions ports.Progressio
 // harmonySource finds the harmony drill items the knowledge map classifies
 // under a skill, the new keys in the order they are introduced.
 type harmonySource struct {
-	progressions ports.ProgressionRepository
+	progressions ports.DrillProgressions
 }
 
 func (src harmonySource) composing(s *PracticeSessionService) DrillSource {
@@ -87,7 +87,7 @@ func (src harmonySource) item(ctx context.Context, itemKey string, catalog *[]do
 	}
 	if key, ok := strings.CutPrefix(itemKey, string(domain.PracticeItemKindHeardProgression)+":"); ok {
 		p, found, err := src.progression(ctx, key, catalog)
-		if !found || err != nil || len(p.Bars) != domain.HeardProgressionBars {
+		if !found || err != nil || !domain.IsHeardProgressionLength(len(p.Bars)) {
 			return nil, false, err
 		}
 		return domain.HeardProgressionItem{Progression: p, Catalog: *catalog}, true, nil
@@ -99,7 +99,7 @@ func (src harmonySource) item(ctx context.Context, itemKey string, catalog *[]do
 // into catalog the first time; false when the catalog has none.
 func (src harmonySource) progression(ctx context.Context, key string, catalog *[]domain.Progression) (domain.Progression, bool, error) {
 	if *catalog == nil {
-		list, err := src.progressions.List(ctx)
+		list, err := src.progressions.ListInDrills(ctx)
 		if err != nil {
 			return domain.Progression{}, false, err
 		}

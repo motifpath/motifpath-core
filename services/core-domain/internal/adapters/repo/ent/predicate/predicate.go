@@ -30,6 +30,27 @@ type ChordDrill func(*sql.Selector)
 // ChordVoicing is the predicate function for chordvoicing builders.
 type ChordVoicing func(*sql.Selector)
 
+// CommercialActivation is the predicate function for commercialactivation builders.
+type CommercialActivation func(*sql.Selector)
+
+// CommercialAuditEntry is the predicate function for commercialauditentry builders.
+type CommercialAuditEntry func(*sql.Selector)
+
+// CommercialFlag is the predicate function for commercialflag builders.
+type CommercialFlag func(*sql.Selector)
+
+// CommercialGroup is the predicate function for commercialgroup builders.
+type CommercialGroup func(*sql.Selector)
+
+// CommercialGroupMember is the predicate function for commercialgroupmember builders.
+type CommercialGroupMember func(*sql.Selector)
+
+// CommercialOperation is the predicate function for commercialoperation builders.
+type CommercialOperation func(*sql.Selector)
+
+// CommercialOperationAttempt is the predicate function for commercialoperationattempt builders.
+type CommercialOperationAttempt func(*sql.Selector)
+
 // ContentNode is the predicate function for contentnode builders.
 type ContentNode func(*sql.Selector)
 

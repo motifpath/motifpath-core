@@ -621,7 +621,7 @@ func TestPracticeEvidenceService_GradesAndFoldsAGeneratedQuestion(t *testing.T) 
 
 	require.Len(t, f.evidence.stored, 1)
 	e := f.evidence.stored[0]
-	assert.Equal(t, "generated_choice.v1", e.GraderID)
+	assert.Equal(t, "generated_choice.v2", e.GraderID)
 	require.NotNil(t, e.Correct)
 	assert.True(t, *e.Correct)
 	assert.Equal(t, &domain.AnswerKey{Way: "progression_by_number", MusicKey: "G", Answer: "I-vi-IV-V", Offered: []string{"I-V-vi-IV", "I-vi-IV-V"}}, e.AnswerKey)

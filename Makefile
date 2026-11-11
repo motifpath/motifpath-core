@@ -48,9 +48,17 @@ generate\:ent:
 test:
 	go test ./services/event-ingestion/... ./services/core-domain/... ./services/aggregation-worker/...
 
+# The runners skip @wip, @web and the scenarios of every ticket motifpath-specs
+# tags but bdd/implemented-tickets.txt doesn't list yet (scripts/bdd_tags).
+# MOTIFPATH_SPECS_DIR points at the specs checkout from a git worktree.
+BDD_SPECS_DIR = $(or $(MOTIFPATH_SPECS_DIR),$(SPECS_DIR))
+
 test\:bdd:
-	go test -v -tags integration ./services/event-ingestion/internal/bdd/...
-	go test -v -tags integration ./services/core-domain/internal/bdd/...
+	@tags=$$(python3 scripts/bdd_tags/bdd_tags.py $(BDD_SPECS_DIR)/features bdd/implemented-tickets.txt) || exit 1; \
+	echo "BDD tags: $$tags"; \
+	export BDD_TAGS="$$tags"; \
+	go test -v -tags integration ./services/event-ingestion/internal/bdd/... && \
+	go test -v -tags integration ./services/core-domain/internal/bdd/... && \
 	go test -v -tags integration ./services/aggregation-worker/internal/bdd/...
 
 test\:int:

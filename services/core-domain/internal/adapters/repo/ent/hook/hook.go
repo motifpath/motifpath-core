@@ -105,6 +105,90 @@ func (f ChordVoicingFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ChordVoicingMutation", m)
 }
 
+// The CommercialActivationFunc type is an adapter to allow the use of ordinary
+// function as CommercialActivation mutator.
+type CommercialActivationFunc func(context.Context, *ent.CommercialActivationMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f CommercialActivationFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.CommercialActivationMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.CommercialActivationMutation", m)
+}
+
+// The CommercialAuditEntryFunc type is an adapter to allow the use of ordinary
+// function as CommercialAuditEntry mutator.
+type CommercialAuditEntryFunc func(context.Context, *ent.CommercialAuditEntryMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f CommercialAuditEntryFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.CommercialAuditEntryMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.CommercialAuditEntryMutation", m)
+}
+
+// The CommercialFlagFunc type is an adapter to allow the use of ordinary
+// function as CommercialFlag mutator.
+type CommercialFlagFunc func(context.Context, *ent.CommercialFlagMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f CommercialFlagFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.CommercialFlagMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.CommercialFlagMutation", m)
+}
+
+// The CommercialGroupFunc type is an adapter to allow the use of ordinary
+// function as CommercialGroup mutator.
+type CommercialGroupFunc func(context.Context, *ent.CommercialGroupMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f CommercialGroupFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.CommercialGroupMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.CommercialGroupMutation", m)
+}
+
+// The CommercialGroupMemberFunc type is an adapter to allow the use of ordinary
+// function as CommercialGroupMember mutator.
+type CommercialGroupMemberFunc func(context.Context, *ent.CommercialGroupMemberMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f CommercialGroupMemberFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.CommercialGroupMemberMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.CommercialGroupMemberMutation", m)
+}
+
+// The CommercialOperationFunc type is an adapter to allow the use of ordinary
+// function as CommercialOperation mutator.
+type CommercialOperationFunc func(context.Context, *ent.CommercialOperationMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f CommercialOperationFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.CommercialOperationMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.CommercialOperationMutation", m)
+}
+
+// The CommercialOperationAttemptFunc type is an adapter to allow the use of ordinary
+// function as CommercialOperationAttempt mutator.
+type CommercialOperationAttemptFunc func(context.Context, *ent.CommercialOperationAttemptMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f CommercialOperationAttemptFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.CommercialOperationAttemptMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.CommercialOperationAttemptMutation", m)
+}
+
 // The ContentNodeFunc type is an adapter to allow the use of ordinary
 // function as ContentNode mutator.
 type ContentNodeFunc func(context.Context, *ent.ContentNodeMutation) (ent.Value, error)

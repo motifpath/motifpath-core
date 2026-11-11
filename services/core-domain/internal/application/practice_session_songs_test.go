@@ -18,8 +18,8 @@ const (
 )
 
 var songProgressionCatalog = fakeProgressions{
-	{Key: "I-IV-I-V", Bars: []string{"I", "IV", "I", "V"}, NodeIDs: []string{commonProgressions}},
-	{Key: "I-IV-V-I", Bars: []string{"I", "IV", "V", "I"}, NodeIDs: []string{commonProgressions, cadences}},
+	{InDrills: true, Key: "I-IV-I-V", Bars: []string{"I", "IV", "I", "V"}, NodeIDs: []string{commonProgressions}},
+	{InDrills: true, Key: "I-IV-V-I", Bars: []string{"I", "IV", "V", "I"}, NodeIDs: []string{commonProgressions, cadences}},
 }
 
 // fakeLastInHandSession holds the items of each student's last in-hand session.

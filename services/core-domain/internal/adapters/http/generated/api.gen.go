@@ -65,6 +65,123 @@ func (e AlphaSessionState) Valid() bool {
 	}
 }
 
+// Defines values for AuditEntryActorKind.
+const (
+	Provider AuditEntryActorKind = "provider"
+	Service  AuditEntryActorKind = "service"
+	User     AuditEntryActorKind = "user"
+)
+
+// Valid indicates whether the value is a known member of the AuditEntryActorKind enum.
+func (e AuditEntryActorKind) Valid() bool {
+	switch e {
+	case Provider:
+		return true
+	case Service:
+		return true
+	case User:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AuditEntryOutcome.
+const (
+	AuditEntryOutcomeApplied   AuditEntryOutcome = "applied"
+	AuditEntryOutcomeDenied    AuditEntryOutcome = "denied"
+	AuditEntryOutcomeDuplicate AuditEntryOutcome = "duplicate"
+	AuditEntryOutcomeFailed    AuditEntryOutcome = "failed"
+	AuditEntryOutcomeUncertain AuditEntryOutcome = "uncertain"
+)
+
+// Valid indicates whether the value is a known member of the AuditEntryOutcome enum.
+func (e AuditEntryOutcome) Valid() bool {
+	switch e {
+	case AuditEntryOutcomeApplied:
+		return true
+	case AuditEntryOutcomeDenied:
+		return true
+	case AuditEntryOutcomeDuplicate:
+		return true
+	case AuditEntryOutcomeFailed:
+		return true
+	case AuditEntryOutcomeUncertain:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ChangeSaleSaleState.
+const (
+	ChangeSaleSaleStateFree      ChangeSaleSaleState = "free"
+	ChangeSaleSaleStatePaid      ChangeSaleSaleState = "paid"
+	ChangeSaleSaleStateWithdrawn ChangeSaleSaleState = "withdrawn"
+)
+
+// Valid indicates whether the value is a known member of the ChangeSaleSaleState enum.
+func (e ChangeSaleSaleState) Valid() bool {
+	switch e {
+	case ChangeSaleSaleStateFree:
+		return true
+	case ChangeSaleSaleStatePaid:
+		return true
+	case ChangeSaleSaleStateWithdrawn:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CheckoutFulfillmentStatus.
+const (
+	CheckoutFulfillmentStatusApplied    CheckoutFulfillmentStatus = "applied"
+	CheckoutFulfillmentStatusNotStarted CheckoutFulfillmentStatus = "not_started"
+	CheckoutFulfillmentStatusPending    CheckoutFulfillmentStatus = "pending"
+)
+
+// Valid indicates whether the value is a known member of the CheckoutFulfillmentStatus enum.
+func (e CheckoutFulfillmentStatus) Valid() bool {
+	switch e {
+	case CheckoutFulfillmentStatusApplied:
+		return true
+	case CheckoutFulfillmentStatusNotStarted:
+		return true
+	case CheckoutFulfillmentStatusPending:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CheckoutStatus.
+const (
+	CheckoutStatusExpired CheckoutStatus = "expired"
+	CheckoutStatusFailed  CheckoutStatus = "failed"
+	CheckoutStatusPaid    CheckoutStatus = "paid"
+	CheckoutStatusPending CheckoutStatus = "pending"
+	CheckoutStatusReady   CheckoutStatus = "ready"
+)
+
+// Valid indicates whether the value is a known member of the CheckoutStatus enum.
+func (e CheckoutStatus) Valid() bool {
+	switch e {
+	case CheckoutStatusExpired:
+		return true
+	case CheckoutStatusFailed:
+		return true
+	case CheckoutStatusPaid:
+		return true
+	case CheckoutStatusPending:
+		return true
+	case CheckoutStatusReady:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ChordFunction.
 const (
 	Dominant    ChordFunction = "dominant"
@@ -523,19 +640,19 @@ func (e ClassificationDifficultyLevel) Valid() bool {
 
 // Defines values for ClassificationReviewState.
 const (
-	Confirmed  ClassificationReviewState = "confirmed"
-	Overridden ClassificationReviewState = "overridden"
-	Pending    ClassificationReviewState = "pending"
+	ClassificationReviewStateConfirmed  ClassificationReviewState = "confirmed"
+	ClassificationReviewStateOverridden ClassificationReviewState = "overridden"
+	ClassificationReviewStatePending    ClassificationReviewState = "pending"
 )
 
 // Valid indicates whether the value is a known member of the ClassificationReviewState enum.
 func (e ClassificationReviewState) Valid() bool {
 	switch e {
-	case Confirmed:
+	case ClassificationReviewStateConfirmed:
 		return true
-	case Overridden:
+	case ClassificationReviewStateOverridden:
 		return true
-	case Pending:
+	case ClassificationReviewStatePending:
 		return true
 	default:
 		return false
@@ -569,6 +686,126 @@ func (e ClassificationInputDifficultyLevel) Valid() bool {
 	}
 }
 
+// Defines values for CommandStatus.
+const (
+	CommandStatusApplied CommandStatus = "applied"
+	CommandStatusFailed  CommandStatus = "failed"
+	CommandStatusPending CommandStatus = "pending"
+)
+
+// Valid indicates whether the value is a known member of the CommandStatus enum.
+func (e CommandStatus) Valid() bool {
+	switch e {
+	case CommandStatusApplied:
+		return true
+	case CommandStatusFailed:
+		return true
+	case CommandStatusPending:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CommercialAccessDecisionReasons.
+const (
+	CommercialAccessDecisionReasonsCompletedLessonRetention CommercialAccessDecisionReasons = "completed_lesson_retention"
+	CommercialAccessDecisionReasonsFreeContent              CommercialAccessDecisionReasons = "free_content"
+	CommercialAccessDecisionReasonsNoValidGrant             CommercialAccessDecisionReasons = "no_valid_grant"
+	CommercialAccessDecisionReasonsPaidSubscription         CommercialAccessDecisionReasons = "paid_subscription"
+	CommercialAccessDecisionReasonsPermanentPurchase        CommercialAccessDecisionReasons = "permanent_purchase"
+	CommercialAccessDecisionReasonsRenewalGrace             CommercialAccessDecisionReasons = "renewal_grace"
+)
+
+// Valid indicates whether the value is a known member of the CommercialAccessDecisionReasons enum.
+func (e CommercialAccessDecisionReasons) Valid() bool {
+	switch e {
+	case CommercialAccessDecisionReasonsCompletedLessonRetention:
+		return true
+	case CommercialAccessDecisionReasonsFreeContent:
+		return true
+	case CommercialAccessDecisionReasonsNoValidGrant:
+		return true
+	case CommercialAccessDecisionReasonsPaidSubscription:
+		return true
+	case CommercialAccessDecisionReasonsPermanentPurchase:
+		return true
+	case CommercialAccessDecisionReasonsRenewalGrace:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CommercialAccessDecisionStatus.
+const (
+	Allowed CommercialAccessDecisionStatus = "allowed"
+	Blocked CommercialAccessDecisionStatus = "blocked"
+)
+
+// Valid indicates whether the value is a known member of the CommercialAccessDecisionStatus enum.
+func (e CommercialAccessDecisionStatus) Valid() bool {
+	switch e {
+	case Allowed:
+		return true
+	case Blocked:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CommercialContentSaleState.
+const (
+	CommercialContentSaleStateFree      CommercialContentSaleState = "free"
+	CommercialContentSaleStatePaid      CommercialContentSaleState = "paid"
+	CommercialContentSaleStateWithdrawn CommercialContentSaleState = "withdrawn"
+)
+
+// Valid indicates whether the value is a known member of the CommercialContentSaleState enum.
+func (e CommercialContentSaleState) Valid() bool {
+	switch e {
+	case CommercialContentSaleStateFree:
+		return true
+	case CommercialContentSaleStatePaid:
+		return true
+	case CommercialContentSaleStateWithdrawn:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ConfigurationEnabledCurrencies.
+const (
+	ConfigurationEnabledCurrenciesBRL ConfigurationEnabledCurrencies = "BRL"
+)
+
+// Valid indicates whether the value is a known member of the ConfigurationEnabledCurrencies enum.
+func (e ConfigurationEnabledCurrencies) Valid() bool {
+	switch e {
+	case ConfigurationEnabledCurrenciesBRL:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ConfigurationInputEnabledCurrencies.
+const (
+	ConfigurationInputEnabledCurrenciesBRL ConfigurationInputEnabledCurrencies = "BRL"
+)
+
+// Valid indicates whether the value is a known member of the ConfigurationInputEnabledCurrencies enum.
+func (e ConfigurationInputEnabledCurrencies) Valid() bool {
+	switch e {
+	case ConfigurationInputEnabledCurrenciesBRL:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ContentNodeContentType.
 const (
 	ContentNodeContentTypeArticle ContentNodeContentType = "article"
@@ -581,6 +818,51 @@ func (e ContentNodeContentType) Valid() bool {
 	case ContentNodeContentTypeArticle:
 		return true
 	case ContentNodeContentTypeVideo:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ContentRefKind.
+const (
+	ContentRefKindContentNode ContentRefKind = "content_node"
+	ContentRefKindCourse      ContentRefKind = "course"
+	ContentRefKindExercise    ContentRefKind = "exercise"
+	ContentRefKindPath        ContentRefKind = "path"
+)
+
+// Valid indicates whether the value is a known member of the ContentRefKind enum.
+func (e ContentRefKind) Valid() bool {
+	switch e {
+	case ContentRefKindContentNode:
+		return true
+	case ContentRefKindCourse:
+		return true
+	case ContentRefKindExercise:
+		return true
+	case ContentRefKindPath:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CopiedFromOwnerKind.
+const (
+	CopiedFromOwnerKindPlatform   CopiedFromOwnerKind = "platform"
+	CopiedFromOwnerKindTeacher    CopiedFromOwnerKind = "teacher"
+	CopiedFromOwnerKindUnresolved CopiedFromOwnerKind = "unresolved"
+)
+
+// Valid indicates whether the value is a known member of the CopiedFromOwnerKind enum.
+func (e CopiedFromOwnerKind) Valid() bool {
+	switch e {
+	case CopiedFromOwnerKindPlatform:
+		return true
+	case CopiedFromOwnerKindTeacher:
+		return true
+	case CopiedFromOwnerKindUnresolved:
 		return true
 	default:
 		return false
@@ -1031,6 +1313,45 @@ func (e CreateMediaUploadUrlRequestPurpose) Valid() bool {
 	}
 }
 
+// Defines values for CreateOfferKind.
+const (
+	CreateOfferKindCoursePurchase CreateOfferKind = "course_purchase"
+	CreateOfferKindPathPurchase   CreateOfferKind = "path_purchase"
+)
+
+// Valid indicates whether the value is a known member of the CreateOfferKind enum.
+func (e CreateOfferKind) Valid() bool {
+	switch e {
+	case CreateOfferKindCoursePurchase:
+		return true
+	case CreateOfferKindPathPurchase:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DependencyPermission.
+const (
+	FreeReuse       DependencyPermission = "free_reuse"
+	Own             DependencyPermission = "own"
+	PlatformPremium DependencyPermission = "platform_premium"
+)
+
+// Valid indicates whether the value is a known member of the DependencyPermission enum.
+func (e DependencyPermission) Valid() bool {
+	switch e {
+	case FreeReuse:
+		return true
+	case Own:
+		return true
+	case PlatformPremium:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for DiagramKind.
 const (
 	DiagramKindBasic  DiagramKind = "basic"
@@ -1349,6 +1670,69 @@ func (e ExpandedContentContentType) Valid() bool {
 	case ExpandedContentContentTypeImage:
 		return true
 	case ExpandedContentContentTypeRichText:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for FlagName.
+const (
+	FlagNameAccessGrants             FlagName = "access_grants"
+	FlagNameAuthorizationEnforcement FlagName = "authorization_enforcement"
+	FlagNameCommercialValidation     FlagName = "commercial_validation"
+	FlagNameContentOwnership         FlagName = "content_ownership"
+	FlagNameContentVersions          FlagName = "content_versions"
+	FlagNameEntitlementResolution    FlagName = "entitlement_resolution"
+	FlagNameMotifpathPurchase        FlagName = "motifpath_purchase"
+	FlagNamePathPurchase             FlagName = "path_purchase"
+	FlagNamePlusBilling              FlagName = "plus_billing"
+	FlagNamePlusCatalog              FlagName = "plus_catalog"
+	FlagNamePlusCheckout             FlagName = "plus_checkout"
+	FlagNamePlusWebhooks             FlagName = "plus_webhooks"
+	FlagNamePrivateBeta              FlagName = "private_beta"
+	FlagNameProgressRetention        FlagName = "progress_retention"
+	FlagNameStrapiRights             FlagName = "strapi_rights"
+	FlagNameTeacherPaidPaths         FlagName = "teacher_paid_paths"
+	FlagNameTeacherSettlement        FlagName = "teacher_settlement"
+)
+
+// Valid indicates whether the value is a known member of the FlagName enum.
+func (e FlagName) Valid() bool {
+	switch e {
+	case FlagNameAccessGrants:
+		return true
+	case FlagNameAuthorizationEnforcement:
+		return true
+	case FlagNameCommercialValidation:
+		return true
+	case FlagNameContentOwnership:
+		return true
+	case FlagNameContentVersions:
+		return true
+	case FlagNameEntitlementResolution:
+		return true
+	case FlagNameMotifpathPurchase:
+		return true
+	case FlagNamePathPurchase:
+		return true
+	case FlagNamePlusBilling:
+		return true
+	case FlagNamePlusCatalog:
+		return true
+	case FlagNamePlusCheckout:
+		return true
+	case FlagNamePlusWebhooks:
+		return true
+	case FlagNamePrivateBeta:
+		return true
+	case FlagNameProgressRetention:
+		return true
+	case FlagNameStrapiRights:
+		return true
+	case FlagNameTeacherPaidPaths:
+		return true
+	case FlagNameTeacherSettlement:
 		return true
 	default:
 		return false
@@ -1696,18 +2080,30 @@ func (e MasteryLevel) Valid() bool {
 
 // Defines values for MusicKey.
 const (
-	A  MusicKey = "A"
-	Ab MusicKey = "Ab"
-	B  MusicKey = "B"
-	Bb MusicKey = "Bb"
-	C  MusicKey = "C"
-	D  MusicKey = "D"
-	Db MusicKey = "Db"
-	E  MusicKey = "E"
-	Eb MusicKey = "Eb"
-	F  MusicKey = "F"
-	F1 MusicKey = "F#"
-	G  MusicKey = "G"
+	A   MusicKey = "A"
+	Ab  MusicKey = "Ab"
+	Abm MusicKey = "Abm"
+	Am  MusicKey = "Am"
+	B   MusicKey = "B"
+	Bb  MusicKey = "Bb"
+	Bbm MusicKey = "Bbm"
+	Bm  MusicKey = "Bm"
+	C   MusicKey = "C"
+	Cm  MusicKey = "Cm"
+	D   MusicKey = "D"
+	Db  MusicKey = "Db"
+	Dbm MusicKey = "Dbm"
+	Dm  MusicKey = "Dm"
+	E   MusicKey = "E"
+	Eb  MusicKey = "Eb"
+	Ebm MusicKey = "Ebm"
+	Em  MusicKey = "Em"
+	F   MusicKey = "F"
+	F1  MusicKey = "F#"
+	FM  MusicKey = "F#m"
+	Fm  MusicKey = "Fm"
+	G   MusicKey = "G"
+	Gm  MusicKey = "Gm"
 )
 
 // Valid indicates whether the value is a known member of the MusicKey enum.
@@ -1717,25 +2113,49 @@ func (e MusicKey) Valid() bool {
 		return true
 	case Ab:
 		return true
+	case Abm:
+		return true
+	case Am:
+		return true
 	case B:
 		return true
 	case Bb:
 		return true
+	case Bbm:
+		return true
+	case Bm:
+		return true
 	case C:
+		return true
+	case Cm:
 		return true
 	case D:
 		return true
 	case Db:
 		return true
+	case Dbm:
+		return true
+	case Dm:
+		return true
 	case E:
 		return true
 	case Eb:
+		return true
+	case Ebm:
+		return true
+	case Em:
 		return true
 	case F:
 		return true
 	case F1:
 		return true
+	case FM:
+		return true
+	case Fm:
+		return true
 	case G:
+		return true
+	case Gm:
 		return true
 	default:
 		return false
@@ -1778,6 +2198,42 @@ func (e NoteValue2) Valid() bool {
 	}
 }
 
+// Defines values for OfferKind.
+const (
+	OfferKindCoursePurchase OfferKind = "course_purchase"
+	OfferKindPathPurchase   OfferKind = "path_purchase"
+)
+
+// Valid indicates whether the value is a known member of the OfferKind enum.
+func (e OfferKind) Valid() bool {
+	switch e {
+	case OfferKindCoursePurchase:
+		return true
+	case OfferKindPathPurchase:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for OfferSellerKind.
+const (
+	OfferSellerKindPlatform OfferSellerKind = "platform"
+	OfferSellerKindTeacher  OfferSellerKind = "teacher"
+)
+
+// Valid indicates whether the value is a known member of the OfferSellerKind enum.
+func (e OfferSellerKind) Valid() bool {
+	switch e {
+	case OfferSellerKindPlatform:
+		return true
+	case OfferSellerKindTeacher:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for OptionRegionShape.
 const (
 	Circle    OptionRegionShape = "circle"
@@ -1790,6 +2246,66 @@ func (e OptionRegionShape) Valid() bool {
 	case Circle:
 		return true
 	case Rectangle:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for OwnershipOwnerKind.
+const (
+	OwnershipOwnerKindPlatform   OwnershipOwnerKind = "platform"
+	OwnershipOwnerKindTeacher    OwnershipOwnerKind = "teacher"
+	OwnershipOwnerKindUnresolved OwnershipOwnerKind = "unresolved"
+)
+
+// Valid indicates whether the value is a known member of the OwnershipOwnerKind enum.
+func (e OwnershipOwnerKind) Valid() bool {
+	switch e {
+	case OwnershipOwnerKindPlatform:
+		return true
+	case OwnershipOwnerKindTeacher:
+		return true
+	case OwnershipOwnerKindUnresolved:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for OwnershipSource.
+const (
+	Imported       OwnershipSource = "imported"
+	Native         OwnershipSource = "native"
+	ReviewedLegacy OwnershipSource = "reviewed_legacy"
+)
+
+// Valid indicates whether the value is a known member of the OwnershipSource enum.
+func (e OwnershipSource) Valid() bool {
+	switch e {
+	case Imported:
+		return true
+	case Native:
+		return true
+	case ReviewedLegacy:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for OwnershipCommandOwnerKind.
+const (
+	OwnershipCommandOwnerKindPlatform OwnershipCommandOwnerKind = "platform"
+	OwnershipCommandOwnerKindTeacher  OwnershipCommandOwnerKind = "teacher"
+)
+
+// Valid indicates whether the value is a known member of the OwnershipCommandOwnerKind enum.
+func (e OwnershipCommandOwnerKind) Valid() bool {
+	switch e {
+	case OwnershipCommandOwnerKindPlatform:
+		return true
+	case OwnershipCommandOwnerKindTeacher:
 		return true
 	default:
 		return false
@@ -1844,6 +2360,30 @@ func (e PathDetailLevel) Valid() bool {
 	case PathDetailLevelExpert:
 		return true
 	case PathDetailLevelIntermediate:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PayoutAccountStatus.
+const (
+	PayoutAccountStatusActionRequired PayoutAccountStatus = "action_required"
+	PayoutAccountStatusChecking       PayoutAccountStatus = "checking"
+	PayoutAccountStatusNotStarted     PayoutAccountStatus = "not_started"
+	PayoutAccountStatusVerified       PayoutAccountStatus = "verified"
+)
+
+// Valid indicates whether the value is a known member of the PayoutAccountStatus enum.
+func (e PayoutAccountStatus) Valid() bool {
+	switch e {
+	case PayoutAccountStatusActionRequired:
+		return true
+	case PayoutAccountStatusChecking:
+		return true
+	case PayoutAccountStatusNotStarted:
+		return true
+	case PayoutAccountStatusVerified:
 		return true
 	default:
 		return false
@@ -2054,6 +2594,102 @@ func (e PracticeRung) Valid() bool {
 	}
 }
 
+// Defines values for ProgressionMode.
+const (
+	ProgressionModeMajor ProgressionMode = "major"
+	ProgressionModeMinor ProgressionMode = "minor"
+)
+
+// Valid indicates whether the value is a known member of the ProgressionMode enum.
+func (e ProgressionMode) Valid() bool {
+	switch e {
+	case ProgressionModeMajor:
+		return true
+	case ProgressionModeMinor:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ProgressionInUseErrorReason.
+const (
+	InDrills ProgressionInUseErrorReason = "in_drills"
+	InUse    ProgressionInUseErrorReason = "in_use"
+)
+
+// Valid indicates whether the value is a known member of the ProgressionInUseErrorReason enum.
+func (e ProgressionInUseErrorReason) Valid() bool {
+	switch e {
+	case InDrills:
+		return true
+	case InUse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ProgressionInputMode.
+const (
+	ProgressionInputModeMajor ProgressionInputMode = "major"
+	ProgressionInputModeMinor ProgressionInputMode = "minor"
+)
+
+// Valid indicates whether the value is a known member of the ProgressionInputMode enum.
+func (e ProgressionInputMode) Valid() bool {
+	switch e {
+	case ProgressionInputModeMajor:
+		return true
+	case ProgressionInputModeMinor:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ProgressionNotAddableErrorReasons.
+const (
+	AlreadyInDrills         ProgressionNotAddableErrorReasons = "already_in_drills"
+	NoOtherDrillProgression ProgressionNotAddableErrorReasons = "no_other_drill_progression"
+	UnsupportedBarCount     ProgressionNotAddableErrorReasons = "unsupported_bar_count"
+	UnsupportedMode         ProgressionNotAddableErrorReasons = "unsupported_mode"
+)
+
+// Valid indicates whether the value is a known member of the ProgressionNotAddableErrorReasons enum.
+func (e ProgressionNotAddableErrorReasons) Valid() bool {
+	switch e {
+	case AlreadyInDrills:
+		return true
+	case NoOtherDrillProgression:
+		return true
+	case UnsupportedBarCount:
+		return true
+	case UnsupportedMode:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ProgressionUseRevision.
+const (
+	ProgressionUseRevisionDraft     ProgressionUseRevision = "draft"
+	ProgressionUseRevisionPublished ProgressionUseRevision = "published"
+)
+
+// Valid indicates whether the value is a known member of the ProgressionUseRevision enum.
+func (e ProgressionUseRevision) Valid() bool {
+	switch e {
+	case ProgressionUseRevisionDraft:
+		return true
+	case ProgressionUseRevisionPublished:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PromptDocumentType.
 const (
 	PromptDocumentTypeDoc PromptDocumentType = "doc"
@@ -2156,6 +2792,90 @@ func (e PromptNodeType) Valid() bool {
 	}
 }
 
+// Defines values for PurchaseStatus.
+const (
+	PurchaseStatusActive         PurchaseStatus = "active"
+	PurchaseStatusChargebackLost PurchaseStatus = "chargeback_lost"
+	PurchaseStatusRefunded       PurchaseStatus = "refunded"
+)
+
+// Valid indicates whether the value is a known member of the PurchaseStatus enum.
+func (e PurchaseStatus) Valid() bool {
+	switch e {
+	case PurchaseStatusActive:
+		return true
+	case PurchaseStatusChargebackLost:
+		return true
+	case PurchaseStatusRefunded:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RefundRequestEligibility.
+const (
+	CommerciallyEligible RefundRequestEligibility = "commercially_eligible"
+	RequiresReview       RefundRequestEligibility = "requires_review"
+	ReviewApproved       RefundRequestEligibility = "review_approved"
+)
+
+// Valid indicates whether the value is a known member of the RefundRequestEligibility enum.
+func (e RefundRequestEligibility) Valid() bool {
+	switch e {
+	case CommerciallyEligible:
+		return true
+	case RequiresReview:
+		return true
+	case ReviewApproved:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RefundRequestReviewDecision.
+const (
+	RefundRequestReviewDecisionApproveFullRefund RefundRequestReviewDecision = "approve_full_refund"
+	RefundRequestReviewDecisionDecline           RefundRequestReviewDecision = "decline"
+)
+
+// Valid indicates whether the value is a known member of the RefundRequestReviewDecision enum.
+func (e RefundRequestReviewDecision) Valid() bool {
+	switch e {
+	case RefundRequestReviewDecisionApproveFullRefund:
+		return true
+	case RefundRequestReviewDecisionDecline:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RefundRequestStatus.
+const (
+	RefundRequestStatusFailed     RefundRequestStatus = "failed"
+	RefundRequestStatusProcessing RefundRequestStatus = "processing"
+	RefundRequestStatusRequested  RefundRequestStatus = "requested"
+	RefundRequestStatusSucceeded  RefundRequestStatus = "succeeded"
+)
+
+// Valid indicates whether the value is a known member of the RefundRequestStatus enum.
+func (e RefundRequestStatus) Valid() bool {
+	switch e {
+	case RefundRequestStatusFailed:
+		return true
+	case RefundRequestStatusProcessing:
+		return true
+	case RefundRequestStatusRequested:
+		return true
+	case RefundRequestStatusSucceeded:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for RegisterUserRequestRole.
 const (
 	RegisterUserRequestRoleStudent RegisterUserRequestRole = "student"
@@ -2228,6 +2948,96 @@ func (e ReplaceLearningPathRequestLevel) Valid() bool {
 	}
 }
 
+// Defines values for ReviewedRefundDecision.
+const (
+	ReviewedRefundDecisionApproveFullRefund ReviewedRefundDecision = "approve_full_refund"
+	ReviewedRefundDecisionDecline           ReviewedRefundDecision = "decline"
+)
+
+// Valid indicates whether the value is a known member of the ReviewedRefundDecision enum.
+func (e ReviewedRefundDecision) Valid() bool {
+	switch e {
+	case ReviewedRefundDecisionApproveFullRefund:
+		return true
+	case ReviewedRefundDecisionDecline:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RolloutCommandStatus.
+const (
+	RolloutCommandStatusApplied RolloutCommandStatus = "applied"
+)
+
+// Valid indicates whether the value is a known member of the RolloutCommandStatus enum.
+func (e RolloutCommandStatus) Valid() bool {
+	switch e {
+	case RolloutCommandStatusApplied:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SaleBlockerCode.
+const (
+	ConfigurationMissing     SaleBlockerCode = "configuration_missing"
+	DependencyCycle          SaleBlockerCode = "dependency_cycle"
+	DependencyMissing        SaleBlockerCode = "dependency_missing"
+	DependencyRights         SaleBlockerCode = "dependency_rights"
+	NewSalesPaused           SaleBlockerCode = "new_sales_paused"
+	PayoutAccountNotVerified SaleBlockerCode = "payout_account_not_verified"
+	Unpublished              SaleBlockerCode = "unpublished"
+	UnresolvedOwnership      SaleBlockerCode = "unresolved_ownership"
+)
+
+// Valid indicates whether the value is a known member of the SaleBlockerCode enum.
+func (e SaleBlockerCode) Valid() bool {
+	switch e {
+	case ConfigurationMissing:
+		return true
+	case DependencyCycle:
+		return true
+	case DependencyMissing:
+		return true
+	case DependencyRights:
+		return true
+	case NewSalesPaused:
+		return true
+	case PayoutAccountNotVerified:
+		return true
+	case Unpublished:
+		return true
+	case UnresolvedOwnership:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SaleRecoveryStatus.
+const (
+	NothingDue  SaleRecoveryStatus = "nothing_due"
+	Outstanding SaleRecoveryStatus = "outstanding"
+	Recovered   SaleRecoveryStatus = "recovered"
+)
+
+// Valid indicates whether the value is a known member of the SaleRecoveryStatus enum.
+func (e SaleRecoveryStatus) Valid() bool {
+	switch e {
+	case NothingDue:
+		return true
+	case Outstanding:
+		return true
+	case Recovered:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for SequenceStepStrum.
 const (
 	SequenceStepStrumDown SequenceStepStrum = "down"
@@ -2243,6 +3053,30 @@ func (e SequenceStepStrum) Valid() bool {
 	case SequenceStepStrumNone:
 		return true
 	case SequenceStepStrumUp:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SettlementStatus.
+const (
+	SettlementStatusFailed      SettlementStatus = "failed"
+	SettlementStatusPaidOut     SettlementStatus = "paid_out"
+	SettlementStatusPending     SettlementStatus = "pending"
+	SettlementStatusTransferred SettlementStatus = "transferred"
+)
+
+// Valid indicates whether the value is a known member of the SettlementStatus enum.
+func (e SettlementStatus) Valid() bool {
+	switch e {
+	case SettlementStatusFailed:
+		return true
+	case SettlementStatusPaidOut:
+		return true
+	case SettlementStatusPending:
+		return true
+	case SettlementStatusTransferred:
 		return true
 	default:
 		return false
@@ -2720,6 +3554,234 @@ func (e StudentPathItemStatus) Valid() bool {
 	}
 }
 
+// Defines values for SubscriptionBillingPeriod.
+const (
+	SubscriptionBillingPeriodAnnual  SubscriptionBillingPeriod = "annual"
+	SubscriptionBillingPeriodMonthly SubscriptionBillingPeriod = "monthly"
+)
+
+// Valid indicates whether the value is a known member of the SubscriptionBillingPeriod enum.
+func (e SubscriptionBillingPeriod) Valid() bool {
+	switch e {
+	case SubscriptionBillingPeriodAnnual:
+		return true
+	case SubscriptionBillingPeriodMonthly:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SubscriptionBillingStatus.
+const (
+	SubscriptionBillingStatusExpired      SubscriptionBillingStatus = "expired"
+	SubscriptionBillingStatusPaid         SubscriptionBillingStatus = "paid"
+	SubscriptionBillingStatusRenewalGrace SubscriptionBillingStatus = "renewal_grace"
+)
+
+// Valid indicates whether the value is a known member of the SubscriptionBillingStatus enum.
+func (e SubscriptionBillingStatus) Valid() bool {
+	switch e {
+	case SubscriptionBillingStatusExpired:
+		return true
+	case SubscriptionBillingStatusPaid:
+		return true
+	case SubscriptionBillingStatusRenewalGrace:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SubscriptionCheckoutFulfillmentStatus.
+const (
+	SubscriptionCheckoutFulfillmentStatusApplied    SubscriptionCheckoutFulfillmentStatus = "applied"
+	SubscriptionCheckoutFulfillmentStatusNotStarted SubscriptionCheckoutFulfillmentStatus = "not_started"
+	SubscriptionCheckoutFulfillmentStatusPending    SubscriptionCheckoutFulfillmentStatus = "pending"
+)
+
+// Valid indicates whether the value is a known member of the SubscriptionCheckoutFulfillmentStatus enum.
+func (e SubscriptionCheckoutFulfillmentStatus) Valid() bool {
+	switch e {
+	case SubscriptionCheckoutFulfillmentStatusApplied:
+		return true
+	case SubscriptionCheckoutFulfillmentStatusNotStarted:
+		return true
+	case SubscriptionCheckoutFulfillmentStatusPending:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SubscriptionCheckoutStatus.
+const (
+	SubscriptionCheckoutStatusExpired SubscriptionCheckoutStatus = "expired"
+	SubscriptionCheckoutStatusFailed  SubscriptionCheckoutStatus = "failed"
+	SubscriptionCheckoutStatusPaid    SubscriptionCheckoutStatus = "paid"
+	SubscriptionCheckoutStatusPending SubscriptionCheckoutStatus = "pending"
+	SubscriptionCheckoutStatusReady   SubscriptionCheckoutStatus = "ready"
+)
+
+// Valid indicates whether the value is a known member of the SubscriptionCheckoutStatus enum.
+func (e SubscriptionCheckoutStatus) Valid() bool {
+	switch e {
+	case SubscriptionCheckoutStatusExpired:
+		return true
+	case SubscriptionCheckoutStatusFailed:
+		return true
+	case SubscriptionCheckoutStatusPaid:
+		return true
+	case SubscriptionCheckoutStatusPending:
+		return true
+	case SubscriptionCheckoutStatusReady:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SubscriptionCommandAction.
+const (
+	CancelRenewal  SubscriptionCommandAction = "cancel_renewal"
+	ResumeRenewal  SubscriptionCommandAction = "resume_renewal"
+	ScheduleAnnual SubscriptionCommandAction = "schedule_annual"
+)
+
+// Valid indicates whether the value is a known member of the SubscriptionCommandAction enum.
+func (e SubscriptionCommandAction) Valid() bool {
+	switch e {
+	case CancelRenewal:
+		return true
+	case ResumeRenewal:
+		return true
+	case ScheduleAnnual:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SubscriptionCommandStatus.
+const (
+	SubscriptionCommandStatusApplied SubscriptionCommandStatus = "applied"
+	SubscriptionCommandStatusFailed  SubscriptionCommandStatus = "failed"
+	SubscriptionCommandStatusPending SubscriptionCommandStatus = "pending"
+)
+
+// Valid indicates whether the value is a known member of the SubscriptionCommandStatus enum.
+func (e SubscriptionCommandStatus) Valid() bool {
+	switch e {
+	case SubscriptionCommandStatusApplied:
+		return true
+	case SubscriptionCommandStatusFailed:
+		return true
+	case SubscriptionCommandStatusPending:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SubscriptionOfferBillingPeriod.
+const (
+	SubscriptionOfferBillingPeriodAnnual  SubscriptionOfferBillingPeriod = "annual"
+	SubscriptionOfferBillingPeriodMonthly SubscriptionOfferBillingPeriod = "monthly"
+)
+
+// Valid indicates whether the value is a known member of the SubscriptionOfferBillingPeriod enum.
+func (e SubscriptionOfferBillingPeriod) Valid() bool {
+	switch e {
+	case SubscriptionOfferBillingPeriodAnnual:
+		return true
+	case SubscriptionOfferBillingPeriodMonthly:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SubscriptionOfferConfigBillingPeriod.
+const (
+	SubscriptionOfferConfigBillingPeriodAnnual  SubscriptionOfferConfigBillingPeriod = "annual"
+	SubscriptionOfferConfigBillingPeriodMonthly SubscriptionOfferConfigBillingPeriod = "monthly"
+)
+
+// Valid indicates whether the value is a known member of the SubscriptionOfferConfigBillingPeriod enum.
+func (e SubscriptionOfferConfigBillingPeriod) Valid() bool {
+	switch e {
+	case SubscriptionOfferConfigBillingPeriodAnnual:
+		return true
+	case SubscriptionOfferConfigBillingPeriodMonthly:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SubscriptionScopeKind.
+const (
+	SubscriptionScopeKindPlatform SubscriptionScopeKind = "platform"
+)
+
+// Valid indicates whether the value is a known member of the SubscriptionScopeKind enum.
+func (e SubscriptionScopeKind) Valid() bool {
+	switch e {
+	case SubscriptionScopeKindPlatform:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncHintEventKind.
+const (
+	SyncHintEventKindChanged   SyncHintEventKind = "changed"
+	SyncHintEventKindDeleted   SyncHintEventKind = "deleted"
+	SyncHintEventKindPublished SyncHintEventKind = "published"
+	SyncHintEventKindWithdrawn SyncHintEventKind = "withdrawn"
+)
+
+// Valid indicates whether the value is a known member of the SyncHintEventKind enum.
+func (e SyncHintEventKind) Valid() bool {
+	switch e {
+	case SyncHintEventKindChanged:
+		return true
+	case SyncHintEventKindDeleted:
+		return true
+	case SyncHintEventKindPublished:
+		return true
+	case SyncHintEventKindWithdrawn:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for TeacherSaleStatus.
+const (
+	TeacherSaleStatusAvailable   TeacherSaleStatus = "available"
+	TeacherSaleStatusPending     TeacherSaleStatus = "pending"
+	TeacherSaleStatusRefunded    TeacherSaleStatus = "refunded"
+	TeacherSaleStatusTransferred TeacherSaleStatus = "transferred"
+)
+
+// Valid indicates whether the value is a known member of the TeacherSaleStatus enum.
+func (e TeacherSaleStatus) Valid() bool {
+	switch e {
+	case TeacherSaleStatusAvailable:
+		return true
+	case TeacherSaleStatusPending:
+		return true
+	case TeacherSaleStatusRefunded:
+		return true
+	case TeacherSaleStatusTransferred:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for TimeSignatureBeatValue.
 const (
 	TimeSignatureBeatValueN1  TimeSignatureBeatValue = 1
@@ -2870,6 +3932,39 @@ func (e GetAlphaObservationParamsFilter) Valid() bool {
 	}
 }
 
+// Defines values for GetCurrentSubscriptionOfferParamsScopeKind.
+const (
+	GetCurrentSubscriptionOfferParamsScopeKindPlatform GetCurrentSubscriptionOfferParamsScopeKind = "platform"
+)
+
+// Valid indicates whether the value is a known member of the GetCurrentSubscriptionOfferParamsScopeKind enum.
+func (e GetCurrentSubscriptionOfferParamsScopeKind) Valid() bool {
+	switch e {
+	case GetCurrentSubscriptionOfferParamsScopeKindPlatform:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetCurrentSubscriptionOfferParamsBillingPeriod.
+const (
+	GetCurrentSubscriptionOfferParamsBillingPeriodAnnual  GetCurrentSubscriptionOfferParamsBillingPeriod = "annual"
+	GetCurrentSubscriptionOfferParamsBillingPeriodMonthly GetCurrentSubscriptionOfferParamsBillingPeriod = "monthly"
+)
+
+// Valid indicates whether the value is a known member of the GetCurrentSubscriptionOfferParamsBillingPeriod enum.
+func (e GetCurrentSubscriptionOfferParamsBillingPeriod) Valid() bool {
+	switch e {
+	case GetCurrentSubscriptionOfferParamsBillingPeriodAnnual:
+		return true
+	case GetCurrentSubscriptionOfferParamsBillingPeriodMonthly:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListCatalogCoursesParamsLevels.
 const (
 	ListCatalogCoursesParamsLevelsAdvanced          ListCatalogCoursesParamsLevels = "advanced"
@@ -2918,6 +4013,132 @@ func (e ListCatalogPathsParamsLevels) Valid() bool {
 	case ListCatalogPathsParamsLevelsExpert:
 		return true
 	case ListCatalogPathsParamsLevelsIntermediate:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetCommercialContentParamsContentKind.
+const (
+	GetCommercialContentParamsContentKindContentNode GetCommercialContentParamsContentKind = "content_node"
+	GetCommercialContentParamsContentKindCourse      GetCommercialContentParamsContentKind = "course"
+	GetCommercialContentParamsContentKindExercise    GetCommercialContentParamsContentKind = "exercise"
+	GetCommercialContentParamsContentKindPath        GetCommercialContentParamsContentKind = "path"
+)
+
+// Valid indicates whether the value is a known member of the GetCommercialContentParamsContentKind enum.
+func (e GetCommercialContentParamsContentKind) Valid() bool {
+	switch e {
+	case GetCommercialContentParamsContentKindContentNode:
+		return true
+	case GetCommercialContentParamsContentKindCourse:
+		return true
+	case GetCommercialContentParamsContentKindExercise:
+		return true
+	case GetCommercialContentParamsContentKindPath:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCommercialOfferParamsContentKind.
+const (
+	CreateCommercialOfferParamsContentKindCourse CreateCommercialOfferParamsContentKind = "course"
+	CreateCommercialOfferParamsContentKindPath   CreateCommercialOfferParamsContentKind = "path"
+)
+
+// Valid indicates whether the value is a known member of the CreateCommercialOfferParamsContentKind enum.
+func (e CreateCommercialOfferParamsContentKind) Valid() bool {
+	switch e {
+	case CreateCommercialOfferParamsContentKindCourse:
+		return true
+	case CreateCommercialOfferParamsContentKindPath:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CorrectCommercialOwnershipParamsContentKind.
+const (
+	CorrectCommercialOwnershipParamsContentKindContentNode CorrectCommercialOwnershipParamsContentKind = "content_node"
+	CorrectCommercialOwnershipParamsContentKindCourse      CorrectCommercialOwnershipParamsContentKind = "course"
+	CorrectCommercialOwnershipParamsContentKindExercise    CorrectCommercialOwnershipParamsContentKind = "exercise"
+	CorrectCommercialOwnershipParamsContentKindPath        CorrectCommercialOwnershipParamsContentKind = "path"
+)
+
+// Valid indicates whether the value is a known member of the CorrectCommercialOwnershipParamsContentKind enum.
+func (e CorrectCommercialOwnershipParamsContentKind) Valid() bool {
+	switch e {
+	case CorrectCommercialOwnershipParamsContentKindContentNode:
+		return true
+	case CorrectCommercialOwnershipParamsContentKindCourse:
+		return true
+	case CorrectCommercialOwnershipParamsContentKindExercise:
+		return true
+	case CorrectCommercialOwnershipParamsContentKindPath:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PublishCommercialReleaseParamsContentKind.
+const (
+	PublishCommercialReleaseParamsContentKindContentNode PublishCommercialReleaseParamsContentKind = "content_node"
+	PublishCommercialReleaseParamsContentKindCourse      PublishCommercialReleaseParamsContentKind = "course"
+	PublishCommercialReleaseParamsContentKindExercise    PublishCommercialReleaseParamsContentKind = "exercise"
+	PublishCommercialReleaseParamsContentKindPath        PublishCommercialReleaseParamsContentKind = "path"
+)
+
+// Valid indicates whether the value is a known member of the PublishCommercialReleaseParamsContentKind enum.
+func (e PublishCommercialReleaseParamsContentKind) Valid() bool {
+	switch e {
+	case PublishCommercialReleaseParamsContentKindContentNode:
+		return true
+	case PublishCommercialReleaseParamsContentKindCourse:
+		return true
+	case PublishCommercialReleaseParamsContentKindExercise:
+		return true
+	case PublishCommercialReleaseParamsContentKindPath:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ChangeCommercialSaleStateParamsContentKind.
+const (
+	ChangeCommercialSaleStateParamsContentKindCourse ChangeCommercialSaleStateParamsContentKind = "course"
+	ChangeCommercialSaleStateParamsContentKindPath   ChangeCommercialSaleStateParamsContentKind = "path"
+)
+
+// Valid indicates whether the value is a known member of the ChangeCommercialSaleStateParamsContentKind enum.
+func (e ChangeCommercialSaleStateParamsContentKind) Valid() bool {
+	switch e {
+	case ChangeCommercialSaleStateParamsContentKindCourse:
+		return true
+	case ChangeCommercialSaleStateParamsContentKindPath:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListCommercialOffersParamsKind.
+const (
+	ListCommercialOffersParamsKindCoursePurchase ListCommercialOffersParamsKind = "course_purchase"
+	ListCommercialOffersParamsKindPathPurchase   ListCommercialOffersParamsKind = "path_purchase"
+)
+
+// Valid indicates whether the value is a known member of the ListCommercialOffersParamsKind enum.
+func (e ListCommercialOffersParamsKind) Valid() bool {
+	switch e {
+	case ListCommercialOffersParamsKindCoursePurchase:
+		return true
+	case ListCommercialOffersParamsKindPathPurchase:
 		return true
 	default:
 		return false
@@ -3239,6 +4460,21 @@ func (e ListLearningPathsParamsStatus) Valid() bool {
 	}
 }
 
+// Defines values for ListSubscriptionOffersParamsScopeKind.
+const (
+	ListSubscriptionOffersParamsScopeKindPlatform ListSubscriptionOffersParamsScopeKind = "platform"
+)
+
+// Valid indicates whether the value is a known member of the ListSubscriptionOffersParamsScopeKind enum.
+func (e ListSubscriptionOffersParamsScopeKind) Valid() bool {
+	switch e {
+	case ListSubscriptionOffersParamsScopeKindPlatform:
+		return true
+	default:
+		return false
+	}
+}
+
 // ActivityDay One calendar day of the student's last 7, across instruments.
 type ActivityDay struct {
 	// Date The calendar day, in the time zone asked for.
@@ -3536,6 +4772,133 @@ type AssignLearningPathRequest struct {
 	LearningPathId openapi_types.UUID `json:"learning_path_id"`
 }
 
+// AuditEntry defines model for AuditEntry.
+type AuditEntry struct {
+	// Action Stable domain action, such as content.price_changed or subscription.refunded.
+	Action string `json:"action"`
+
+	// ActorId Authenticated user or verified service/integration identity for this operation.
+	ActorId string `json:"actor_id"`
+
+	// ActorKind Trusted initiating identity category, never taken from unverified caller metadata.
+	ActorKind AuditEntryActorKind `json:"actor_kind"`
+
+	// AfterState Allowlisted commercial fields for the resource/action, including relevant version and
+	// offer references. Null means no authoritative state was available (for example a denied
+	// attempt before resource resolution), not a guessed empty state. Before/after evidence
+	// must distinguish an unchanged attempt from an applied change. Never include secrets,
+	// credentials, payment instrument data, raw provider envelopes or unrelated personal data.
+	// Resource/action allowlists cover only commercial provenance/owner, sale/release/offer/config
+	// references, grant scope/source/status/validity, subscription billing/renewal, safe payment/refund
+	// facts and settlement allocations/movements. Unknown fields require
+	// schema review rather than blind serialization.
+	AfterState *CommercialState `json:"after_state"`
+
+	// AttemptId Server-assigned attempt identity; retries have distinct attempts within one operation.
+	AttemptId openapi_types.UUID `json:"attempt_id"`
+
+	// AuditEntryId Globally unique server-assigned identity of this immutable evidence entry.
+	AuditEntryId openapi_types.UUID `json:"audit_entry_id"`
+
+	// BeforeState Allowlisted commercial fields for the resource/action, including relevant version and
+	// offer references. Null means no authoritative state was available (for example a denied
+	// attempt before resource resolution), not a guessed empty state. Before/after evidence
+	// must distinguish an unchanged attempt from an applied change. Never include secrets,
+	// credentials, payment instrument data, raw provider envelopes or unrelated personal data.
+	// Resource/action allowlists cover only commercial provenance/owner, sale/release/offer/config
+	// references, grant scope/source/status/validity, subscription billing/renewal, safe payment/refund
+	// facts and settlement allocations/movements. Unknown fields require
+	// schema review rather than blind serialization.
+	BeforeState *CommercialState `json:"before_state"`
+
+	// CausedByEntryIds Preceding audit entry identities establishing causation, empty for root actions.
+	CausedByEntryIds []openapi_types.UUID `json:"caused_by_entry_ids"`
+
+	// ConfigurationRevision Immutable applicable commercial configuration revision.
+	ConfigurationRevision string `json:"configuration_revision"`
+
+	// CorrelationId Trusted correlation identity propagated across related asynchronous operations.
+	CorrelationId openapi_types.UUID `json:"correlation_id"`
+
+	// Environment Trusted deployment identity separating financial operation namespaces.
+	Environment string `json:"environment"`
+
+	// OccurredAt Time of the evidenced action; does not determine traversal order.
+	OccurredAt time.Time `json:"occurred_at"`
+
+	// OperationId Logical operation UUID qualified by environment, trusted actor, action and resource.
+	OperationId openapi_types.UUID `json:"operation_id"`
+
+	// Outcome Evidenced attempt outcome; uncertain never implies external failure or success.
+	Outcome AuditEntryOutcome `json:"outcome"`
+
+	// PolicyRevision Immutable applicable business policy revision.
+	PolicyRevision string `json:"policy_revision"`
+
+	// ProviderReferences Safe opaque transaction/event references; empty when no provider participated.
+	ProviderReferences []string `json:"provider_references"`
+
+	// Reason Sanitized business reason, refusal cause or automated trigger.
+	Reason string `json:"reason"`
+
+	// RecordedAt Time this evidence was durably appended.
+	RecordedAt time.Time `json:"recorded_at"`
+
+	// ResourceId Stable identity of the affected business resource.
+	ResourceId string `json:"resource_id"`
+
+	// ResourceKind Stable category of the affected business resource.
+	ResourceKind string `json:"resource_kind"`
+}
+
+// AuditEntryActorKind Trusted initiating identity category, never taken from unverified caller metadata.
+type AuditEntryActorKind string
+
+// AuditEntryOutcome Evidenced attempt outcome; uncertain never implies external failure or success.
+type AuditEntryOutcome string
+
+// AuditPage defines model for AuditPage.
+type AuditPage struct {
+	// Items Immutable entries in stable append order within the selected snapshot.
+	Items []AuditEntry `json:"items"`
+
+	// NextCursor Opaque continuation, or null after the last page.
+	NextCursor *string `json:"next_cursor"`
+}
+
+// Balance Teacher balance per currency; no cross-currency conversion or voluntary reserve.
+type Balance struct {
+	// AsOf Authoritative reconciliation instant.
+	AsOf time.Time `json:"as_of"`
+
+	// AvailableMinor Settled earnings available after approved recovery offsets.
+	AvailableMinor int `json:"available_minor"`
+
+	// Currency Original accounting currency.
+	Currency string `json:"currency"`
+
+	// PendingMinor Earned but unsettled amount.
+	PendingMinor int `json:"pending_minor"`
+
+	// RecoveryDueMinor Unrecovered prior teacher earnings to offset against future earnings.
+	RecoveryDueMinor int `json:"recovery_due_minor"`
+
+	// TeacherId Authenticated teacher identity.
+	TeacherId openapi_types.UUID `json:"teacher_id"`
+}
+
+// BalanceList Caller-only teacher balances.
+type BalanceList struct {
+	// Items One row per currency.
+	Items []Balance `json:"items"`
+}
+
+// CancelSubscriptionRequest Cancel only the caller's next renewal; no refund or progress deletion is requested.
+type CancelSubscriptionRequest struct {
+	// ExpectedRevision Subscription revision observed by the caller before requesting cancellation.
+	ExpectedRevision int `json:"expected_revision"`
+}
+
 // Challenge A challenge is the assessment unit for a content node. It groups
 // exercises and carries the subject (a skill- or concept-kind KnowledgeNode) and
 // threshold rules used by the recommendation engine. Its ID is carried
@@ -3597,6 +4960,57 @@ type ChangeMinute struct {
 
 	// TargetChangesPerMinute The clean changes a minute that count as fully fluent, the same for every pair.
 	TargetChangesPerMinute int `json:"target_changes_per_minute"`
+}
+
+// ChangeSale Owner proposes a commercial change; core enforces rights, prices and rollout.
+type ChangeSale struct {
+	// ExpectedRevision Observed commercial revision.
+	ExpectedRevision int `json:"expected_revision"`
+
+	// Reason Attributable business reason.
+	Reason string `json:"reason"`
+
+	// SaleState Target state; withdrawal affects only new acquisition.
+	SaleState ChangeSaleSaleState `json:"sale_state"`
+}
+
+// ChangeSaleSaleState Target state; withdrawal affects only new acquisition.
+type ChangeSaleSaleState string
+
+// Checkout One-time acquisition, not proof of access; server-managed Stripe session.
+type Checkout struct {
+	// CheckoutId Stable internal checkout identity.
+	CheckoutId openapi_types.UUID `json:"checkout_id"`
+
+	// CheckoutUrl Verified HTTPS Stripe destination, only while ready.
+	CheckoutUrl *string `json:"checkout_url,omitempty"`
+
+	// ExpiresAt Verified Stripe session expiry, only while ready.
+	ExpiresAt *time.Time `json:"expires_at,omitempty"`
+
+	// FulfillmentStatus Verified payment and business uniqueness precede applied fulfillment.
+	FulfillmentStatus CheckoutFulfillmentStatus `json:"fulfillment_status"`
+
+	// Offer Accepted immutable commercial terms.
+	Offer Offer `json:"offer"`
+
+	// OperationId Durable scoped command identity.
+	OperationId openapi_types.UUID `json:"operation_id"`
+
+	// Status Unknown external outcomes remain pending until reconciliation.
+	Status CheckoutStatus `json:"status"`
+}
+
+// CheckoutFulfillmentStatus Verified payment and business uniqueness precede applied fulfillment.
+type CheckoutFulfillmentStatus string
+
+// CheckoutStatus Unknown external outcomes remain pending until reconciliation.
+type CheckoutStatus string
+
+// CheckoutRequest One acquisition intent; amounts, owner, seller and return URL are backend-controlled.
+type CheckoutRequest struct {
+	// OfferId Current eligible immutable offer revision.
+	OfferId openapi_types.UUID `json:"offer_id"`
 }
 
 // ChordDefinition A chord of the chord catalog: what it is musically, independent of
@@ -3910,6 +5324,185 @@ type ClassificationInput struct {
 // early_intermediate < intermediate < advanced < expert.
 type ClassificationInputDifficultyLevel string
 
+// Command Durable receipt for an admin or owner command; pending is not external success.
+type Command struct {
+	// EvidenceEntryId Attributable attempt evidence.
+	EvidenceEntryId openapi_types.UUID `json:"evidence_entry_id"`
+
+	// OperationId Durable scoped logical identity.
+	OperationId openapi_types.UUID `json:"operation_id"`
+
+	// ResourceId Stable target identity.
+	ResourceId openapi_types.UUID `json:"resource_id"`
+
+	// Status Unknown external effects remain pending.
+	Status CommandStatus `json:"status"`
+}
+
+// CommandStatus Unknown external effects remain pending.
+type CommandStatus string
+
+// CommercialAccessDecision Current commercial evaluation only; never a bearer capability or full learning authorization.
+type CommercialAccessDecision struct {
+	// ContentNodeId Lesson member of that copy evaluated for commercial access.
+	ContentNodeId openapi_types.UUID `json:"content_node_id"`
+
+	// DecisionId Server-issued unique evaluation identity linked to attributable evidence and the trusted learner.
+	DecisionId openapi_types.UUID `json:"decision_id"`
+
+	// EvaluatedAt Trusted server instant of evaluation, not an authorization expiry or client-selected time.
+	EvaluatedAt time.Time `json:"evaluated_at"`
+
+	// PolicyRevision Immutable revision of the approved policy applied to this evaluation.
+	PolicyRevision string `json:"policy_revision"`
+
+	// Reasons All established applicable access bases, or no_valid_grant when every applicable basis is absent.
+	Reasons []CommercialAccessDecisionReasons `json:"reasons"`
+
+	// Status Whether the commercial boundary permits the lesson; learning prerequisites are separate.
+	Status CommercialAccessDecisionStatus `json:"status"`
+
+	// StudentPathId Caller-owned copy used to resolve authoritative commercial coverage.
+	StudentPathId openapi_types.UUID `json:"student_path_id"`
+}
+
+// CommercialAccessDecisionReasons defines model for CommercialAccessDecision.Reasons.
+type CommercialAccessDecisionReasons string
+
+// CommercialAccessDecisionStatus Whether the commercial boundary permits the lesson; learning prerequisites are separate.
+type CommercialAccessDecisionStatus string
+
+// CommercialContent Authoritative commercial state independent of editorial availability and existing copy lifecycles.
+type CommercialContent struct {
+	// Ownership Reviewed ownership/provenance.
+	Ownership Ownership `json:"ownership"`
+
+	// Release Latest validated manifest, or null before first commercial validation.
+	Release *Release `json:"release"`
+
+	// Revision Optimistic commercial state revision.
+	Revision int `json:"revision"`
+
+	// SaleBlockers Current reasons a paid change or new sale would be refused, evaluated by core for the caller; empty when nothing blocks. A UI hint only; the command re-evaluates them.
+	SaleBlockers []SaleBlocker `json:"sale_blockers"`
+
+	// SaleState New-acquisition state; withdrawal never deletes prior grants.
+	SaleState CommercialContentSaleState `json:"sale_state"`
+}
+
+// CommercialContentSaleState New-acquisition state; withdrawal never deletes prior grants.
+type CommercialContentSaleState string
+
+// CommercialGroup A named set of users that flags can allow as one allowlist entry.
+type CommercialGroup struct {
+	// MemberIds Core user ids of the members. A group holds users only; groups do not nest.
+	MemberIds []openapi_types.UUID `json:"member_ids"`
+
+	// Name Display name for administrators.
+	Name string `json:"name"`
+
+	// Slug Stable identifier; referenced from allowlists as group:<slug>.
+	Slug GroupSlug `json:"slug"`
+
+	// UpdatedAt When the group or its membership last changed.
+	UpdatedAt time.Time `json:"updated_at"`
+
+	// UpdatedBy Administrator who last changed it.
+	UpdatedBy openapi_types.UUID `json:"updated_by"`
+}
+
+// CommercialGroups Every rollout group in the trusted environment, at one activation revision.
+type CommercialGroups struct {
+	// Groups Every group, ordered by slug. Empty before the first group is created.
+	Groups []CommercialGroup `json:"groups"`
+
+	// Revision Environment-wide activation revision, shared with flag changes.
+	Revision int `json:"revision"`
+}
+
+// CommercialRollout Every registered flag's activation in the trusted environment, at one revision.
+type CommercialRollout struct {
+	// Flags One entry per registered flag, in registry order.
+	Flags []FlagState `json:"flags"`
+
+	// Revision Environment-wide activation revision; 0 before the first change, plus one per applied change.
+	Revision int `json:"revision"`
+}
+
+// CommercialState Allowlisted commercial fields for the resource/action, including relevant version and
+// offer references. Null means no authoritative state was available (for example a denied
+// attempt before resource resolution), not a guessed empty state. Before/after evidence
+// must distinguish an unchanged attempt from an applied change. Never include secrets,
+// credentials, payment instrument data, raw provider envelopes or unrelated personal data.
+// Resource/action allowlists cover only commercial provenance/owner, sale/release/offer/config
+// references, grant scope/source/status/validity, subscription billing/renewal, safe payment/refund
+// facts and settlement allocations/movements. Unknown fields require
+// schema review rather than blind serialization.
+type CommercialState map[string]interface{}
+
+// CommercialUnavailable Authoritative commercial state or durable processing is temporarily unavailable.
+type CommercialUnavailable struct {
+	// Message Explanation safe to show to the caller, without provider secrets or other users' data.
+	Message string `json:"message"`
+}
+
+// Configuration Immutable platform commercial configuration; invalid or missing values disable new sales.
+type Configuration struct {
+	// CommissionBasisPoints Platform share of gross before separately recorded fees; denominator 10000.
+	CommissionBasisPoints int `json:"commission_basis_points"`
+
+	// ConfigurationId Server-assigned immutable revision identity.
+	ConfigurationId *openapi_types.UUID `json:"configuration_id,omitempty"`
+
+	// EnabledCurrencies Explicitly approved merchant currencies; no implicit USD.
+	EnabledCurrencies []ConfigurationEnabledCurrencies `json:"enabled_currencies"`
+
+	// Reason Admin configuration-change reason.
+	Reason string `json:"reason"`
+
+	// Revision Monotonic environment configuration revision.
+	Revision int `json:"revision"`
+
+	// TeacherFeeBasisPoints Configured teacher share of actual provider sale fees; refund processing fees remain MotifPath cost.
+	TeacherFeeBasisPoints int `json:"teacher_fee_basis_points"`
+
+	// TeacherMaximum Strictly positive teacher price bound.
+	TeacherMaximum PositiveMoney `json:"teacher_maximum"`
+
+	// TeacherMinimum Strictly positive teacher price bound.
+	TeacherMinimum PositiveMoney `json:"teacher_minimum"`
+}
+
+// ConfigurationEnabledCurrencies Enabled currency code.
+type ConfigurationEnabledCurrencies string
+
+// ConfigurationInput Immutable platform commercial configuration; invalid or missing values disable new sales.
+type ConfigurationInput struct {
+	// CommissionBasisPoints Platform share of gross before separately recorded fees; denominator 10000.
+	CommissionBasisPoints int `json:"commission_basis_points"`
+
+	// EnabledCurrencies Explicitly approved merchant currencies; no implicit USD.
+	EnabledCurrencies []ConfigurationInputEnabledCurrencies `json:"enabled_currencies"`
+
+	// ExpectedRevision Current configuration revision; zero only before first configuration.
+	ExpectedRevision int `json:"expected_revision"`
+
+	// Reason Admin configuration-change reason.
+	Reason string `json:"reason"`
+
+	// TeacherFeeBasisPoints Configured teacher share of actual provider sale fees; refund processing fees remain MotifPath cost.
+	TeacherFeeBasisPoints int `json:"teacher_fee_basis_points"`
+
+	// TeacherMaximum Strictly positive teacher price bound.
+	TeacherMaximum PositiveMoney `json:"teacher_maximum"`
+
+	// TeacherMinimum Strictly positive teacher price bound.
+	TeacherMinimum PositiveMoney `json:"teacher_minimum"`
+}
+
+// ConfigurationInputEnabledCurrencies Enabled currency code.
+type ConfigurationInputEnabledCurrencies string
+
 // ConflictError Returned when a resource already exists and cannot be created again.
 type ConflictError struct {
 	// Message Human-readable reason for the conflict.
@@ -4026,6 +5619,36 @@ type ContentNodeVersion struct {
 	// VersionNumber 1-based, increasing per content node.
 	VersionNumber int `json:"version_number"`
 }
+
+// ContentRef Existing core content identity; editorial document IDs are never authority.
+type ContentRef struct {
+	// ContentId Stable core content identifier.
+	ContentId openapi_types.UUID `json:"content_id"`
+
+	// Kind Existing content family.
+	Kind ContentRefKind `json:"kind"`
+}
+
+// ContentRefKind Existing content family.
+type ContentRefKind string
+
+// CopiedFrom The item an author copied, with its ownership as it stood when the copy was made.
+type CopiedFrom struct {
+	// Content Source content.
+	Content ContentRef `json:"content"`
+
+	// OwnerId Rights holder of the source when it was copied; null when it was unresolved.
+	OwnerId *openapi_types.UUID `json:"owner_id"`
+
+	// OwnerKind Rights-holder category of the source when it was copied.
+	OwnerKind CopiedFromOwnerKind `json:"owner_kind"`
+
+	// OwnershipRevision Source ownership revision when it was copied.
+	OwnershipRevision int `json:"ownership_revision"`
+}
+
+// CopiedFromOwnerKind Rights-holder category of the source when it was copied.
+type CopiedFromOwnerKind string
 
 // Course A course: an ordered, author-editable journey of learning-path
 // checkpoints, with an explicit draft/publish split. This
@@ -4953,6 +6576,24 @@ type CreateMediaUploadUrlRequestContentType string
 // only purpose that accepts video.
 type CreateMediaUploadUrlRequestPurpose string
 
+// CreateOffer Authorized owner chooses terms within approved configuration; backend owns resulting immutable offer. Teacher prices stay within teacher bounds; an administrator sets the price of a MotifPath-owned item, which no teacher bound limits.
+type CreateOffer struct {
+	// ExpectedRevision Observed commercial content revision.
+	ExpectedRevision int `json:"expected_revision"`
+
+	// Kind Authorized offer family, matching the content kind.
+	Kind CreateOfferKind `json:"kind"`
+
+	// Price Strictly positive configured offer price.
+	Price PositiveMoney `json:"price"`
+
+	// Reason Attributable price-change reason.
+	Reason string `json:"reason"`
+}
+
+// CreateOfferKind Authorized offer family, matching the content kind.
+type CreateOfferKind string
+
 // CreatePracticeSessionPlanRequest What the student chose before practising.
 type CreatePracticeSessionPlanRequest struct {
 	// FocusNodeId The knowledge node the student chose to practise. The session then holds only items
@@ -4968,6 +6609,21 @@ type CreatePracticeSessionPlanRequest struct {
 	Minutes int `json:"minutes"`
 }
 
+// CreateRefundRequest Request a full refund of a caller-owned payment; no owner, amount or currency may be supplied.
+type CreateRefundRequest struct {
+	// PaymentId Stable MotifPath identity of a successful payment owned by the caller.
+	PaymentId openapi_types.UUID `json:"payment_id"`
+
+	// Reason Customer explanation retained with the attributable request; secrets must not be included.
+	Reason string `json:"reason"`
+}
+
+// CreateSubscriptionCheckout Acquire one authoritative subscription offer; caller identity, price and return destinations are server-controlled.
+type CreateSubscriptionCheckout struct {
+	// OfferId Current eligible monthly/annual offer revision for the platform subscription.
+	OfferId openapi_types.UUID `json:"offer_id"`
+}
+
 // CreatorRef An author offered by a creator filter: a UserRef plus how many
 // items of the list's section they created that the caller can see.
 type CreatorRef struct {
@@ -4981,6 +6637,27 @@ type CreatorRef struct {
 	// UserId Stable MotifPath identifier of the referenced user.
 	UserId openapi_types.UUID `json:"user_id"`
 }
+
+// Dependency Exact transitive commercial dependency and its validated redistribution permission.
+type Dependency struct {
+	// Content Referenced core resource.
+	Content ContentRef `json:"content"`
+
+	// ContentSha256 Immutable referenced content digest.
+	ContentSha256 string `json:"content_sha256"`
+
+	// EvidenceEntryId Validated ownership/reuse evidence.
+	EvidenceEntryId openapi_types.UUID `json:"evidence_entry_id"`
+
+	// Permission Reviewed permission; free display alone is not free redistribution. platform_premium is MotifPath premium content embedded in a paid teacher path, covered by the platform commission on each sale without a separate license.
+	Permission DependencyPermission `json:"permission"`
+
+	// ReleaseId Referenced immutable commercial manifest.
+	ReleaseId openapi_types.UUID `json:"release_id"`
+}
+
+// DependencyPermission Reviewed permission; free display alone is not free redistribution. platform_premium is MotifPath premium content embedded in a paid teacher path, covered by the platform commission on each sale without a separate license.
+type DependencyPermission string
 
 // Diagram A prebuilt, reusable diagram — structured position data for a scale,
 // chord, or similar pattern on a specific instrument. Never stores a
@@ -5551,6 +7228,15 @@ type EnrollInLearningPathRequest struct {
 	LearningPathId openapi_types.UUID `json:"learning_path_id"`
 }
 
+// ExecuteRefundRequest Admin request to execute an eligible full refund; authoritative payment terms determine its amount.
+type ExecuteRefundRequest struct {
+	// ExpectedRevision Request revision observed by the admin before issuing this command.
+	ExpectedRevision int `json:"expected_revision"`
+
+	// Reason Admin handling reason durably recorded with the authenticated operator and operation identity.
+	Reason string `json:"reason"`
+}
+
 // Exercise A reusable, standalone practice item classified by skill/concept
 // tree references and independent of any single challenge. The
 // exercise_id is the value the SPA supplies in exercise-family
@@ -5731,6 +7417,54 @@ type ExpandedContent struct {
 // diagram_ref or diagram_stack_ref instead.
 type ExpandedContentContentType string
 
+// FlagChange Replace one flag's switch and audience.
+type FlagChange struct {
+	// AllUsers New all-users value. Must be sent explicitly, so opening a flag to everyone is never a default.
+	AllUsers bool `json:"all_users"`
+
+	// Enabled New switch value.
+	Enabled bool `json:"enabled"`
+
+	// ExpectedRevision Activation revision the administrator observed.
+	ExpectedRevision int `json:"expected_revision"`
+
+	// Reason Why the change is made; recorded in the audit evidence.
+	Reason string `json:"reason"`
+
+	// SubjectIds New complete allowlist; replaces the previous one. Every group entry must name an existing group.
+	SubjectIds []SubjectId `json:"subject_ids"`
+}
+
+// FlagName Registered commercial activation flag, without the monetization. prefix.
+type FlagName string
+
+// FlagState One flag's configured and effective activation in this environment.
+type FlagState struct {
+	// AllUsers When true and enabled, every authenticated user is allowed. Services are never covered by it and must still be listed. Starts false in every environment.
+	AllUsers bool `json:"all_users"`
+
+	// Effective True when enabled and every prerequisite is effective. The audience still applies.
+	Effective bool `json:"effective"`
+
+	// Enabled Configured switch. Starts false in every environment.
+	Enabled bool `json:"enabled"`
+
+	// Flag Registered flag.
+	Flag FlagName `json:"flag"`
+
+	// Prerequisites Flags that must also allow the operation's subject before this flag allows it.
+	Prerequisites []FlagName `json:"prerequisites"`
+
+	// SubjectIds Users, groups and services allowed when enabled. With all_users false, an empty list allows no one; there is no wildcard entry.
+	SubjectIds []SubjectId `json:"subject_ids"`
+
+	// UpdatedAt When this flag last changed, or null if it never has.
+	UpdatedAt *time.Time `json:"updated_at"`
+
+	// UpdatedBy Administrator who last changed it, or null if it never has.
+	UpdatedBy *openapi_types.UUID `json:"updated_by"`
+}
+
 // ForbiddenError Returned when the authenticated user lacks permission for the requested operation.
 type ForbiddenError struct {
 	// Message Human-readable reason for the denial.
@@ -5812,13 +7546,13 @@ type FretboardMapCell struct {
 	//   head: picking the chord for the numeral, or the numeral for the chord.
 	// - chord_function:<key>:<numeral> — a numeral's harmonic function in a major key: picking
 	//   the function of its chord, or its chord for the function.
-	// - chart_progression:<progression key> — a progression of the progression catalog read
-	//   as a chart: picking the progression for four chords, or its chart for the progression.
+	// - chart_progression:<progression key> — a drill progression read
+	//   as a chart: picking the progression for its chords, or its chart for the progression.
 	//   The key is picked each time it is asked, so one item covers every key.
 	// - heard_chord:<numeral> — a numeral recognised by ear in a key a cadence sets. The key is
 	//   picked each time.
-	// - heard_progression:<progression key> — a progression recognised by ear. The key is
-	//   picked each time.
+	// - heard_progression:<progression key> — a drill progression of 2 to 4 bars recognised by
+	//   ear. The key is picked each time.
 	// - chord_voicing:<diagram id> — playing one chord voicing cleanly, untimed.
 	// - root_fifth:<layout instrument id>:<chord> — playing a chord's root and fifth on a bass
 	//   layout, cleanly, untimed.
@@ -5836,7 +7570,8 @@ type FretboardMapCell struct {
 	// In these keys, <key> is a major key spelled as one of C Db D Eb E F F# G Ab A Bb B;
 	// <numeral> is one of I ii iii IV V vi viio (viio is vii°); <chord> is a root spelled the
 	// same way, followed by m (minor), dim (diminished), 7 (dominant seventh) or nothing
-	// (major); <progression key> is a key of the progression catalog.
+	// (major); <progression key> is the key of a drill progression: a catalog handle such as
+	// I-V-vi-IV, or a created progression's mode and ASCII numerals such as major/I-bVII-IV-I.
 	//
 	// Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
 	// grader, and its golden cases.
@@ -5860,7 +7595,7 @@ type FretboardMapCell struct {
 type GeneratedChoicePlayback struct {
 	// Bars The bars in the order they play. cadence_then_chord: the cadence I IV V I with their
 	// numerals, or only I with its numeral once the student is accurate on the item, then the
-	// asked chord with no numeral. progression_by_number: the progression's four bars, none
+	// asked chord with no numeral. progression_by_number: the progression's bars, 2 to 4, none
 	// with a numeral.
 	Bars []struct {
 		// Chord The bar's chord symbol, spelled as the chord catalog spells roots. It is sounded,
@@ -5881,8 +7616,12 @@ type GeneratedChoicePlayback struct {
 	// the bass voice, on every beat of its bar. False otherwise.
 	BassLine bool `json:"bass_line"`
 
-	// TempoBpm The tempo it starts at, in quarter notes per minute, set by the student's level on the
-	// item: 70 while new or learning, 90 once accurate, 110 once fluent.
+	// NoteValue The note value it starts in: eighths for every question, two chords a bar, as fast as
+	// 140 BPM in quarters.
+	NoteValue NoteValue2 `json:"note_value"`
+
+	// TempoBpm The tempo it starts at, in beats per minute before note_value's speed factor: 70 for
+	// every question, whatever the student's level on the item.
 	TempoBpm int `json:"tempo_bpm"`
 }
 
@@ -5894,7 +7633,7 @@ type GeneratedChoicePlayback struct {
 // progression, a heard chord or a heard progression. A question asked by ear also carries
 // the playback the client sounds before the options can be picked.
 type GeneratedChoiceQuestion struct {
-	// Chart The chart the question shows, one chord symbol per bar (four or twelve), for
+	// Chart The chart the question shows, one chord symbol per bar (2 to 16), for
 	// chart_to_numbers. Empty for every other way.
 	Chart []string `json:"chart"`
 
@@ -5905,9 +7644,9 @@ type GeneratedChoiceQuestion struct {
 
 	// DrawnAs How the question draws its chords, in the stimulus and in the options. chord_boxes = a
 	// chord box per chord, unnamed until answered, from the voicing the plan names (guitar,
-	// four-bar charts); chord_symbols = the chord symbol (bass, and every 12-bar chart). A 12-bar
-	// chart is laid out in three lines of four bars. A session in the head reads chords the way
-	// of the student's fretboard layout: guitar or bass, taking turns from one session in the
+	// charts of up to four bars); chord_symbols = the chord symbol (bass, and every chart of more
+	// than four bars). A chart of more than four bars is laid out in lines of four bars. A
+	// session in the head reads chords the way of the student's fretboard layout: guitar or bass, taking turns from one session in the
 	// head to the next for a student who plays both, and chord symbols for a student who plays
 	// neither. Every generated harmony question of a session reads them the same way.
 	DrawnAs GeneratedChordDrawing `json:"drawn_as"`
@@ -5915,7 +7654,10 @@ type GeneratedChoiceQuestion struct {
 	// Function The function asked for, for function_to_chord. Null for every other way.
 	Function *ChordFunction `json:"function"`
 
-	// MusicKey A major key. In a response, the key a question was asked in or a take was played in when
+	// MusicKey A major key, written as its tonic (C), or a minor key, written as its tonic chord (Am). Roots
+	// are spelled as the chord catalog spells them, in minor keys too (Dbm, not C#m). A minor
+	// progression is asked and played only in minor keys, a major one only in major keys. In a
+	// response, the key a question was asked in or a take was played in when
 	// its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
 	// tone or a progression key tour; absent in a response to any other item. A planned question
 	// always names its key.
@@ -5926,9 +7668,13 @@ type GeneratedChoiceQuestion struct {
 
 	// Options The options in the order to show them, already shuffled; all seven numerals come in scale
 	// order instead, since where one sits then says nothing. Different from one another,
-	// each a possible answer to the way, the right one among them: four, two for a 12-bar
-	// progression, and all seven numerals for a heard chord once the student is fluent on it.
-	// Which are offered follows the drill catalog's harmony and ear rules.
+	// each a possible answer to the way, the right one among them: four, two for a progression
+	// of more than four bars, and all seven numerals for a heard chord once the student is
+	// fluent on it. Which are offered follows the drill catalog's harmony and ear rules: a
+	// progression's wrong answers are drill progressions of its length and mode, then, when
+	// those are too few, progressions the server makes up by changing one of its bars. A
+	// made-up one is offered as the progression it would be if an admin created it: its key,
+	// its name (its numerals joined by –) and its chart.
 	Options []struct {
 		// Chart For numbers_to_chart, the option's chart, one chord symbol per bar, drawn as
 		// drawn_as says. Empty for every other way.
@@ -5951,7 +7697,7 @@ type GeneratedChoiceQuestion struct {
 
 	// Progression The progression asked for, for numbers_to_chart. Null for every other way.
 	Progression *struct {
-		// Key The progression's key in the progression catalog, such as I-V-vi-IV.
+		// Key The progression's key, such as I-V-vi-IV or major/I-bVII-IV-I.
 		Key string `json:"key"`
 
 		// Name The progression's name in the student's language, such as "I–V–vi–IV (pop)".
@@ -6002,12 +7748,24 @@ type GeneratedChoiceWay string
 
 // GeneratedChordDrawing How the question draws its chords, in the stimulus and in the options. chord_boxes = a
 // chord box per chord, unnamed until answered, from the voicing the plan names (guitar,
-// four-bar charts); chord_symbols = the chord symbol (bass, and every 12-bar chart). A 12-bar
-// chart is laid out in three lines of four bars. A session in the head reads chords the way
-// of the student's fretboard layout: guitar or bass, taking turns from one session in the
+// charts of up to four bars); chord_symbols = the chord symbol (bass, and every chart of more
+// than four bars). A chart of more than four bars is laid out in lines of four bars. A
+// session in the head reads chords the way of the student's fretboard layout: guitar or bass, taking turns from one session in the
 // head to the next for a student who plays both, and chord symbols for a student who plays
 // neither. Every generated harmony question of a session reads them the same way.
 type GeneratedChordDrawing string
+
+// GroupChange Create a group, or rename an existing one. Membership is unchanged.
+type GroupChange struct {
+	// Name Display name.
+	Name string `json:"name"`
+
+	// Reason Why the change is made; recorded in the audit evidence.
+	Reason string `json:"reason"`
+}
+
+// GroupSlug Stable identifier of a rollout group, such as beta or friends-and-family.
+type GroupSlug = string
 
 // HealthStatus Response body for liveness and readiness probes. Shared by every MotifPath
 // service that exposes an HTTP health surface so the contract cannot drift
@@ -6028,6 +7786,24 @@ type HealthStatusChecks string
 // HealthStatusStatus ok — all checks passed. degraded — one or more dependency checks failed;
 // used only on the readiness probe when the service should be taken out of rotation.
 type HealthStatusStatus string
+
+// Holding One caller-owned permanent course or path purchase.
+type Holding = Purchase
+
+// HoldingsPage Caller-owned acquisitions, including ended records, ordered by identity.
+type HoldingsPage struct {
+	// Items Only caller-owned holdings.
+	Items []Holding `json:"items"`
+
+	// Limit Requested page size.
+	Limit int `json:"limit"`
+
+	// Offset Skipped caller-owned records.
+	Offset int `json:"offset"`
+
+	// Total Total caller-owned records.
+	Total int `json:"total"`
+}
 
 // Instrument An instrument a Diagram can be authored against. family decides the
 // shape of every Diagram.positions[].coordinate written for this
@@ -6106,6 +7882,12 @@ type InstrumentIcon = string
 // theory). Every id must reference an existing instrument, and none
 // may repeat.
 type InstrumentIds = []openapi_types.UUID
+
+// KillSwitch Turn every flag OFF at once, keeping each flag's audience.
+type KillSwitch struct {
+	// Reason Why everything is turned off; recorded in the audit evidence.
+	Reason string `json:"reason"`
+}
 
 // KnowledgeEdge A typed link between two knowledge nodes. At most one edge of each
 // type links the same two nodes in the same direction.
@@ -6398,7 +8180,42 @@ type MediaUploadUrl struct {
 	UploadUrl string `json:"upload_url"`
 }
 
-// MusicKey A major key. In a response, the key a question was asked in or a take was played in when
+// MembershipChange Add and remove group members in one change. Adding a current member or removing a non-member is not an error; the result is the requested membership.
+type MembershipChange struct {
+	// Add Core user ids to make members.
+	Add []openapi_types.UUID `json:"add"`
+
+	// Reason Why the change is made; recorded in the audit evidence.
+	Reason string `json:"reason"`
+
+	// Remove Core user ids to remove. A user may not appear in both lists.
+	Remove []openapi_types.UUID `json:"remove"`
+	union  json.RawMessage
+}
+
+// MembershipChange0 defines model for MembershipChange.0.
+type MembershipChange0 struct {
+	Add interface{} `json:"add,omitempty"`
+}
+
+// MembershipChange1 defines model for MembershipChange.1.
+type MembershipChange1 struct {
+	Remove interface{} `json:"remove,omitempty"`
+}
+
+// Money Exact original-currency money; no floating-point amounts or cross-currency netting.
+type Money struct {
+	// AmountMinor Nonnegative amount in currency minor units.
+	AmountMinor int `json:"amount_minor"`
+
+	// Currency Configured enabled ISO 4217 currency; a code does not enable a market.
+	Currency string `json:"currency"`
+}
+
+// MusicKey A major key, written as its tonic (C), or a minor key, written as its tonic chord (Am). Roots
+// are spelled as the chord catalog spells them, in minor keys too (Dbm, not C#m). A minor
+// progression is asked and played only in minor keys, a major one only in major keys. In a
+// response, the key a question was asked in or a take was played in when
 // its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
 // tone or a progression key tour; absent in a response to any other item. A planned question
 // always names its key.
@@ -6429,6 +8246,51 @@ type NoteValue struct {
 // minute: 80 BPM in eighths is as fast as 160 BPM in quarters. Tempos of the same item are
 // compared at effective speed. Absent means quarters. Present only with a tempo_bpm.
 type NoteValue2 string
+
+// Offer Immutable backend-approved one-time offer revision; configurable terms never come from checkout input. A teacher sells an owned course or path; MotifPath sells an owned course or path it chose to offer.
+type Offer struct {
+	// ConfigurationRevision Approved immutable pricing/commission configuration.
+	ConfigurationRevision string `json:"configuration_revision"`
+
+	// Content The one course or path this purchase covers.
+	Content ContentRef `json:"content"`
+
+	// Kind One-time commercial product family; its content kind matches.
+	Kind OfferKind `json:"kind"`
+
+	// OfferId Immutable offer revision identity.
+	OfferId openapi_types.UUID `json:"offer_id"`
+
+	// Price Strictly positive configured offer price.
+	Price PositiveMoney `json:"price"`
+
+	// ReleaseId Fully validated sale manifest; a buyer purchase requires validated redistribution rights.
+	ReleaseId openapi_types.UUID `json:"release_id"`
+
+	// SellerId The owning teacher; null when MotifPath sells its own item.
+	SellerId *openapi_types.UUID `json:"seller_id"`
+
+	// SellerKind Trusted rights holder that sells the item. A platform sale carries no commission, teacher earnings or settlement.
+	SellerKind OfferSellerKind `json:"seller_kind"`
+}
+
+// OfferKind One-time commercial product family; its content kind matches.
+type OfferKind string
+
+// OfferSellerKind Trusted rights holder that sells the item. A platform sale carries no commission, teacher earnings or settlement.
+type OfferSellerKind string
+
+// OfferList Enabled eligible one-time offers; no offers when acquisition or valid configuration is absent.
+type OfferList struct {
+	// Items Eligible revisions for the requested product and content.
+	Items []Offer `json:"items"`
+}
+
+// OfferList2 Purchasable offer revisions for one exact scope and one enabled currency; at most one per billing period.
+type OfferList2 struct {
+	// Items Available monthly and annual offers in that order; empty if new acquisition is disabled or the scope is not on sale.
+	Items []SubscriptionOffer `json:"items"`
+}
 
 // Option One selectable answer choice within an exercise. An exercise's
 // correct answer is expressed by marking one or more options as
@@ -6546,6 +8408,57 @@ type OptionRegion struct {
 
 // OptionRegionShape The rendered shape of the region.
 type OptionRegionShape string
+
+// Ownership Authoritative provenance retained across revisions and learner copies.
+type Ownership struct {
+	// Content Attributed content.
+	Content ContentRef `json:"content"`
+
+	// CopiedFrom Source this content was created from by an author, or null when it was not created from another item. Attribution only; it grants no right to the source.
+	CopiedFrom *CopiedFrom `json:"copied_from"`
+
+	// CreatorId Known original creator; null requires explicit reviewed migration evidence.
+	CreatorId *openapi_types.UUID `json:"creator_id"`
+
+	// EvidenceEntryId Attributable ownership evidence; edits never erase prior ownership.
+	EvidenceEntryId openapi_types.UUID `json:"evidence_entry_id"`
+
+	// OwnerId Core identity of platform steward or owning teacher.
+	OwnerId *openapi_types.UUID `json:"owner_id"`
+
+	// OwnerKind Commercial rights holder.
+	OwnerKind OwnershipOwnerKind `json:"owner_kind"`
+
+	// Revision Monotonic rights-holder revision, starting at 1 and increased by each applied correction; separate from template edits, sale-state revisions or offer prices.
+	Revision int `json:"revision"`
+
+	// Source Attribution origin.
+	Source OwnershipSource `json:"source"`
+}
+
+// OwnershipOwnerKind Commercial rights holder.
+type OwnershipOwnerKind string
+
+// OwnershipSource Attribution origin.
+type OwnershipSource string
+
+// OwnershipCommand Admin-only correction of provenance; never silently transfer an existing commercial obligation.
+type OwnershipCommand struct {
+	// ExpectedRevision Observed ownership revision (Ownership.revision), not the sale-state revision.
+	ExpectedRevision int `json:"expected_revision"`
+
+	// OwnerId Reviewed core rights holder.
+	OwnerId openapi_types.UUID `json:"owner_id"`
+
+	// OwnerKind Verified rights-holder category.
+	OwnerKind OwnershipCommandOwnerKind `json:"owner_kind"`
+
+	// Reason Rights evidence and correction justification.
+	Reason string `json:"reason"`
+}
+
+// OwnershipCommandOwnerKind Verified rights-holder category.
+type OwnershipCommandOwnerKind string
 
 // PageMeta Pagination metadata shared by every paginated list response
 // (ADR-031). total counts every item matching the request's
@@ -6795,6 +8708,93 @@ type PathDetail struct {
 // PathDetailLevel The level a learner should be at to follow this path.
 type PathDetailLevel string
 
+// Payment Immutable successful payment facts with append-only financial corrections.
+type Payment struct {
+	// AccessAvailableAt First usable access availability; null before fulfillment, never guessed from receipt.
+	AccessAvailableAt *time.Time `json:"access_available_at"`
+
+	// Amount Confirmed captured amount in original currency.
+	Amount PositiveMoney `json:"amount"`
+
+	// EvidenceEntryId Original payment verification evidence.
+	EvidenceEntryId openapi_types.UUID `json:"evidence_entry_id"`
+
+	// HolderId Backend-correlated customer.
+	HolderId openapi_types.UUID `json:"holder_id"`
+
+	// OfferId Accepted immutable offer.
+	OfferId openapi_types.UUID `json:"offer_id"`
+
+	// PaidAt Authoritative payment-success time.
+	PaidAt time.Time `json:"paid_at"`
+
+	// PaymentId Internal payment identity distinct from checkout/session.
+	PaymentId openapi_types.UUID `json:"payment_id"`
+
+	// ProviderAccountId Safe verified account reference.
+	ProviderAccountId string `json:"provider_account_id"`
+
+	// ProviderPaymentId Immutable verified payment fact; uniqueness also includes trusted environment/account.
+	ProviderPaymentId string `json:"provider_payment_id"`
+}
+
+// PaymentMethodSession Short-lived provider-hosted page for updating the payment method only; not proof of payment.
+type PaymentMethodSession struct {
+	// ExpiresAt Instant after which the session can no longer be opened.
+	ExpiresAt time.Time `json:"expires_at"`
+
+	// SessionUrl Provider-hosted URL to open; never stored or reused after expires_at.
+	SessionUrl string `json:"session_url"`
+}
+
+// PaymentPage Caller-owned verified successful payments, ordered by payment identity; available during rollback.
+type PaymentPage struct {
+	// Items Only successful payments owned by the authenticated caller.
+	Items []Payment `json:"items"`
+
+	// Limit Requested page size.
+	Limit int `json:"limit"`
+
+	// Offset Skipped records.
+	Offset int `json:"offset"`
+
+	// Total Total matching payments.
+	Total int `json:"total"`
+}
+
+// PayoutAccount The caller's payout account readiness (MOT-130). No bank details, identity documents or provider identifiers.
+type PayoutAccount struct {
+	// OnboardingAvailable False when teacher_settlement denies new onboarding for the caller.
+	OnboardingAvailable bool `json:"onboarding_available"`
+
+	// Status not_started = never onboarded; checking = submitted, provider not yet verified; verified = transfers and new sales allowed; action_required = the provider needs more from the teacher. Unknown provider outcomes stay checking.
+	Status PayoutAccountStatus `json:"status"`
+
+	// UpdatedAt Last reconciled provider state.
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// PayoutAccountStatus not_started = never onboarded; checking = submitted, provider not yet verified; verified = transfers and new sales allowed; action_required = the provider needs more from the teacher. Unknown provider outcomes stay checking.
+type PayoutAccountStatus string
+
+// PayoutDashboardLink Short-lived single-use link to the provider-hosted payout dashboard, where the teacher manages bank details and sees bank payouts (MOT-130).
+type PayoutDashboardLink struct {
+	// ExpiresAt When the link stops working.
+	ExpiresAt time.Time `json:"expires_at"`
+
+	// Url Provider-hosted dashboard login page.
+	Url string `json:"url"`
+}
+
+// PayoutOnboardingLink Short-lived link to provider-hosted onboarding; return URLs are configured server-side.
+type PayoutOnboardingLink struct {
+	// ExpiresAt When the link stops working.
+	ExpiresAt time.Time `json:"expires_at"`
+
+	// Url Provider-hosted onboarding page.
+	Url string `json:"url"`
+}
+
 // Pitch A pitch in scientific pitch notation: a note name with its octave,
 // where C4 is middle C (e.g. "E2", "F#3", "Bb4").
 type Pitch = string
@@ -6843,7 +8843,7 @@ type PlannedGuideTone struct {
 		// is shown and sounded.
 		Chord string `json:"chord"`
 
-		// Numeral The bar's numeral in the progression catalog; a 7 marks a dominant seventh.
+		// Numeral The bar's numeral as the progression stores it; viio is vii° in the catalog's spelling.
 		Numeral string `json:"numeral"`
 	} `json:"bars"`
 
@@ -6859,7 +8859,10 @@ type PlannedGuideTone struct {
 	// bass each chord's root also plays under it in the bass voice.
 	LayoutInstrumentId openapi_types.UUID `json:"layout_instrument_id"`
 
-	// MusicKey A major key. In a response, the key a question was asked in or a take was played in when
+	// MusicKey A major key, written as its tonic (C), or a minor key, written as its tonic chord (Am). Roots
+	// are spelled as the chord catalog spells them, in minor keys too (Dbm, not C#m). A minor
+	// progression is asked and played only in minor keys, a major one only in major keys. In a
+	// response, the key a question was asked in or a take was played in when
 	// its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
 	// tone or a progression key tour; absent in a response to any other item. A planned question
 	// always names its key.
@@ -6867,7 +8870,7 @@ type PlannedGuideTone struct {
 
 	// Progression The progression played.
 	Progression struct {
-		// Key The progression's key in the progression catalog, such as ii-V-I.
+		// Key The progression's key, such as ii-V-I or major/I-bVII-IV-I.
 		Key string `json:"key"`
 
 		// Name The progression's name in the student's language, such as "ii–V–I".
@@ -6887,8 +8890,13 @@ type PlannedGuideTone struct {
 	TempoBpm int `json:"tempo_bpm"`
 
 	// Tone The chord tone asked of every chord: 3 = its third, until the student is accurate on the
-	// item; 7 = its seventh in the key from then on (the major seventh of I and IV, the minor
-	// seventh of every other chord and of a dominant seventh).
+	// item; 7 = its seventh from then on:
+	// a written suffix decides (maj7 is the major seventh, 7 and ø7 the minor seventh, °7 the
+	// diminished seventh); a chord with no written seventh takes its key's seventh. In a major
+	// progression, the major seventh on I and IV and the minor seventh on any other numeral. In
+	// a minor progression, the seventh natural minor gives it: m7 on i, iv and v, ø7 on ii°,
+	// maj7 on ♭III and ♭VI, 7 on ♭VII; 7 on V and °7 on vii°, from harmonic minor; on any other
+	// numeral, maj7 on a major chord, m7 on a minor one and ø7 on a diminished one.
 	Tone PlannedGuideToneTone `json:"tone"`
 
 	// Voicings One voicing per distinct chord of bars.
@@ -6903,8 +8911,13 @@ type PlannedGuideTone struct {
 }
 
 // PlannedGuideToneTone The chord tone asked of every chord: 3 = its third, until the student is accurate on the
-// item; 7 = its seventh in the key from then on (the major seventh of I and IV, the minor
-// seventh of every other chord and of a dominant seventh).
+// item; 7 = its seventh from then on:
+// a written suffix decides (maj7 is the major seventh, 7 and ø7 the minor seventh, °7 the
+// diminished seventh); a chord with no written seventh takes its key's seventh. In a major
+// progression, the major seventh on I and IV and the minor seventh on any other numeral. In
+// a minor progression, the seventh natural minor gives it: m7 on i, iv and v, ø7 on ii°,
+// maj7 on ♭III and ♭VI, 7 on ♭VII; 7 on V and °7 on vii°, from harmonic minor; on any other
+// numeral, maj7 on a major chord, m7 on a minor one and ø7 on a diminished one.
 type PlannedGuideToneTone string
 
 // PlannedProgressionKeys A progression played along with, key after key around the cycle of fourths (kind
@@ -6944,7 +8957,10 @@ type PlannedProgressionKeys struct {
 		// Clean Whether the key is clean at the tour tempo.
 		Clean bool `json:"clean"`
 
-		// MusicKey A major key. In a response, the key a question was asked in or a take was played in when
+		// MusicKey A major key, written as its tonic (C), or a minor key, written as its tonic chord (Am). Roots
+		// are spelled as the chord catalog spells them, in minor keys too (Dbm, not C#m). A minor
+		// progression is asked and played only in minor keys, a major one only in major keys. In a
+		// response, the key a question was asked in or a take was played in when
 		// its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
 		// tone or a progression key tour; absent in a response to any other item. A planned question
 		// always names its key.
@@ -6972,14 +8988,17 @@ type PlannedProgressionKeys struct {
 
 	// Progression The progression played.
 	Progression struct {
-		// Key The progression's key in the progression catalog, such as I-V-vi-IV.
+		// Key The progression's key, such as I-V-vi-IV or major/I-bVII-IV-I.
 		Key string `json:"key"`
 
 		// Name The progression's name in the student's language, such as "I–V–vi–IV (pop)".
 		Name string `json:"name"`
 	} `json:"progression"`
 
-	// StartMusicKey A major key. In a response, the key a question was asked in or a take was played in when
+	// StartMusicKey A major key, written as its tonic (C), or a minor key, written as its tonic chord (Am). Roots
+	// are spelled as the chord catalog spells them, in minor keys too (Dbm, not C#m). A minor
+	// progression is asked and played only in minor keys, a major one only in major keys. In a
+	// response, the key a question was asked in or a take was played in when
 	// its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
 	// tone or a progression key tour; absent in a response to any other item. A planned question
 	// always names its key.
@@ -6999,8 +9018,9 @@ type PlannedProgressionKeys struct {
 	// TargetTempoBpm The tempo the tour aims for, in quarters, the same for every progression.
 	TargetTempoBpm int `json:"target_tempo_bpm"`
 
-	// TimesThrough How many times one take plays the progression after its bar of count-in: 4 for a
-	// four-bar progression, 1 for a 12-bar blues.
+	// TimesThrough How many times one take plays the progression after its bar of count-in: as many whole
+	// times as fit in 16 bars, at least once (8 for a two-bar progression, 4 for a four-bar
+	// one, 1 for a 12-bar blues).
 	TimesThrough int `json:"times_through"`
 
 	// TourTempoBpm The tour's tempo, in start_note_value: the tempo of the first take, and the one a take
@@ -7064,7 +9084,7 @@ type PlannedSong struct {
 	// layout; roots = the root of each chord, on a bass layout.
 	Plays PlannedSongPlays `json:"plays"`
 
-	// ProgressionKey The key, in the progression catalog, of the progression the chart plays that practises
+	// ProgressionKey The key of the progression the chart plays that practises
 	// the session's subject, shown as why this song was picked.
 	ProgressionKey string `json:"progression_key"`
 
@@ -7082,6 +9102,15 @@ type PlannedSong struct {
 // PlannedSongPlays What the student plays from the chart. chords = the chords as written, on a guitar
 // layout; roots = the root of each chord, on a bass layout.
 type PlannedSongPlays string
+
+// PositiveMoney Paid price; free access is a separate grant, not a zero-value payment.
+type PositiveMoney struct {
+	// AmountMinor Strictly positive price.
+	AmountMinor int `json:"amount_minor"`
+
+	// Currency Configured enabled ISO 4217 currency; a code does not enable a market.
+	Currency string `json:"currency"`
+}
 
 // PracticeDay One calendar day of an instrument's last 7, and whether the student practised it.
 type PracticeDay struct {
@@ -7170,15 +9199,15 @@ type PracticeInstrumentCard struct {
 //   - chord_function:<key>:<numeral> — a numeral's harmonic function in a major key: picking
 //     the function of its chord, or its chord for the function.
 //
-//   - chart_progression:<progression key> — a progression of the progression catalog read
-//     as a chart: picking the progression for four chords, or its chart for the progression.
+//   - chart_progression:<progression key> — a drill progression read
+//     as a chart: picking the progression for its chords, or its chart for the progression.
 //     The key is picked each time it is asked, so one item covers every key.
 //
 //   - heard_chord:<numeral> — a numeral recognised by ear in a key a cadence sets. The key is
 //     picked each time.
 //
-//   - heard_progression:<progression key> — a progression recognised by ear. The key is
-//     picked each time.
+//   - heard_progression:<progression key> — a drill progression of 2 to 4 bars recognised by
+//     ear. The key is picked each time.
 //
 //   - chord_voicing:<diagram id> — playing one chord voicing cleanly, untimed.
 //
@@ -7202,7 +9231,8 @@ type PracticeInstrumentCard struct {
 // In these keys, <key> is a major key spelled as one of C Db D Eb E F F# G Ab A Bb B;
 // <numeral> is one of I ii iii IV V vi viio (viio is vii°); <chord> is a root spelled the
 // same way, followed by m (minor), dim (diminished), 7 (dominant seventh) or nothing
-// (major); <progression key> is a key of the progression catalog.
+// (major); <progression key> is the key of a drill progression: a catalog handle such as
+// I-V-vi-IV, or a created progression's mode and ASCII numerals such as major/I-bVII-IV-I.
 //
 // Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
 // grader, and its golden cases.
@@ -7547,13 +9577,13 @@ type PracticeSessionItem struct {
 	//   head: picking the chord for the numeral, or the numeral for the chord.
 	// - chord_function:<key>:<numeral> — a numeral's harmonic function in a major key: picking
 	//   the function of its chord, or its chord for the function.
-	// - chart_progression:<progression key> — a progression of the progression catalog read
-	//   as a chart: picking the progression for four chords, or its chart for the progression.
+	// - chart_progression:<progression key> — a drill progression read
+	//   as a chart: picking the progression for its chords, or its chart for the progression.
 	//   The key is picked each time it is asked, so one item covers every key.
 	// - heard_chord:<numeral> — a numeral recognised by ear in a key a cadence sets. The key is
 	//   picked each time.
-	// - heard_progression:<progression key> — a progression recognised by ear. The key is
-	//   picked each time.
+	// - heard_progression:<progression key> — a drill progression of 2 to 4 bars recognised by
+	//   ear. The key is picked each time.
 	// - chord_voicing:<diagram id> — playing one chord voicing cleanly, untimed.
 	// - root_fifth:<layout instrument id>:<chord> — playing a chord's root and fifth on a bass
 	//   layout, cleanly, untimed.
@@ -7571,7 +9601,8 @@ type PracticeSessionItem struct {
 	// In these keys, <key> is a major key spelled as one of C Db D Eb E F F# G Ab A Bb B;
 	// <numeral> is one of I ii iii IV V vi viio (viio is vii°); <chord> is a root spelled the
 	// same way, followed by m (minor), dim (diminished), 7 (dominant seventh) or nothing
-	// (major); <progression key> is a key of the progression catalog.
+	// (major); <progression key> is the key of a drill progression: a catalog handle such as
+	// I-V-vi-IV, or a created progression's mode and ASCII numerals such as major/I-bVII-IV-I.
 	//
 	// Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
 	// grader, and its golden cases.
@@ -7826,25 +9857,176 @@ type PracticeSummary struct {
 	StudentInstrumentIds []openapi_types.UUID `json:"student_instrument_ids"`
 }
 
-// Progression A common chord progression of the progression catalog, by number: one numeral per bar of
-// a major key, asked in whatever key a drill picks.
+// Progression A chord progression by number: one numeral per bar of a major or minor key, asked or
+// spelled in whatever key a drill or a chart picks. The catalog's progressions and those
+// admins create are listed together; in_drills tells the drill progressions apart from
+// those for song charts only.
 type Progression struct {
 	// Bars One numeral per bar, such as I V vi IV, or I7 IV7 V7 for a dominant seventh. A
-	// four-bar progression has four, a 12-bar form twelve.
-	Bars []string `json:"bars"`
+	// four-bar progression has four, a 12-bar form twelve. Drills take 2 to 16.
+	Bars []ProgressionNumeral `json:"bars"`
 
-	// Confusable The keys of the progressions a learner mistakes it for; each lists it back.
-	Confusable []string `json:"confusable"`
+	// BorrowedBars The bars, numbered from 0, whose numeral is outside the mode's diatonic chords, judged
+	// by root and triad (a seventh doesn't change it); empty when none is.
+	BorrowedBars []int `json:"borrowed_bars"`
 
-	// Key The progression's key in the catalog, such as I-V-vi-IV, as item keys and answers name it.
-	Key string `json:"key"`
+	// Confusable The keys of the drill progressions drills offer as its wrong answers, closest first,
+	// all with its bar count and mode; empty for a progression that isn't in the drills, and
+	// possibly empty for one that is, whose wrong answers drills then make up.
+	Confusable []ProgressionKey `json:"confusable"`
+
+	// CreatedAt When it was created; null for the catalog's progressions.
+	CreatedAt *time.Time `json:"created_at"`
+
+	// CreatedBy The admin who created it, shown only to an admin; null for any other caller, and for
+	// the catalog's progressions.
+	CreatedBy *UserRef `json:"created_by"`
+
+	// InDrills True for a drill progression: drills, practice and songs on it use it. False for a
+	// progression for song charts only, which is never a practice subject.
+	InDrills bool `json:"in_drills"`
+
+	// Key A progression's key, as item keys, answers and song chart tags name it: a catalog
+	// progression's handle, such as I-V-vi-IV or 12-bar-blues, or a created progression's mode
+	// and numerals in ASCII (b for ♭, # for ♯, o for °, h for ø), such as major/I-bVII-IV-I.
+	Key ProgressionKey `json:"key"`
+
+	// Mode The mode its numerals are read in.
+	Mode ProgressionMode `json:"mode"`
 
 	// Names The progression's name in each language, such as "I–V–vi–IV (pop)".
 	Names LocalizedNames `json:"names"`
 
+	// Nicknames A created progression's nickname in each language, shown after its numerals in its
+	// name; absent for one with no nickname and for the catalog's progressions.
+	Nicknames *map[string]string `json:"nicknames,omitempty"`
+
 	// ProgressionId The progression's fixed identifier.
 	ProgressionId openapi_types.UUID `json:"progression_id"`
+
+	// SongChartCount How many song charts tag it in their draft or latest published revision.
+	SongChartCount int `json:"song_chart_count"`
 }
+
+// ProgressionMode The mode its numerals are read in.
+type ProgressionMode string
+
+// ProgressionDrillsInput What a progression practises once it is in the drills; at least one skill or concept.
+type ProgressionDrillsInput struct {
+	// ConceptIds The concepts it practises.
+	ConceptIds *[]openapi_types.UUID `json:"concept_ids,omitempty"`
+
+	// SkillIds The skills it practises.
+	SkillIds *[]openapi_types.UUID `json:"skill_ids,omitempty"`
+}
+
+// ProgressionExistsError Returned when a progression with the same mode and numerals already exists.
+type ProgressionExistsError struct {
+	// Message Human-readable reason for the refusal.
+	Message string `json:"message"`
+
+	// Progression A chord progression by number: one numeral per bar of a major or minor key, asked or
+	// spelled in whatever key a drill or a chart picks. The catalog's progressions and those
+	// admins create are listed together; in_drills tells the drill progressions apart from
+	// those for song charts only.
+	Progression Progression `json:"progression"`
+}
+
+// ProgressionInUseError Returned when a progression can't be removed.
+type ProgressionInUseError struct {
+	// Message Human-readable summary of the refusal.
+	Message string `json:"message"`
+
+	// Reason in_use: a song chart's draft or latest published revision tags it (see uses).
+	// in_drills: it is a drill progression, which is never removed.
+	Reason ProgressionInUseErrorReason `json:"reason"`
+
+	// Uses The sections that tag it; empty unless reason is in_use.
+	Uses []ProgressionUse `json:"uses"`
+}
+
+// ProgressionInUseErrorReason in_use: a song chart's draft or latest published revision tags it (see uses).
+// in_drills: it is a drill progression, which is never removed.
+type ProgressionInUseErrorReason string
+
+// ProgressionInput A progression to create.
+type ProgressionInput struct {
+	// Bars One numeral per bar, as ProgressionNumeral describes, where b, #, o and h may stand
+	// for ♭, ♯, ° and ø.
+	Bars []string `json:"bars"`
+
+	// ConceptIds The concepts it practises in the drills; used only when in_drills is true.
+	ConceptIds *[]openapi_types.UUID `json:"concept_ids,omitempty"`
+
+	// InDrills True to add it to the drills as it is created.
+	InDrills *bool `json:"in_drills,omitempty"`
+
+	// Mode The mode its numerals are read in.
+	Mode ProgressionInputMode `json:"mode"`
+
+	// Nicknames An optional nickname per language, keyed by Language.code.
+	Nicknames *map[string]string `json:"nicknames,omitempty"`
+
+	// SkillIds The skills it practises in the drills; used only when in_drills is true.
+	SkillIds *[]openapi_types.UUID `json:"skill_ids,omitempty"`
+}
+
+// ProgressionInputMode The mode its numerals are read in.
+type ProgressionInputMode string
+
+// ProgressionKey A progression's key, as item keys, answers and song chart tags name it: a catalog
+// progression's handle, such as I-V-vi-IV or 12-bar-blues, or a created progression's mode
+// and numerals in ASCII (b for ♭, # for ♯, o for °, h for ø), such as major/I-bVII-IV-I.
+type ProgressionKey = string
+
+// ProgressionNicknamesInput A created progression's new nicknames.
+type ProgressionNicknamesInput struct {
+	// Nicknames The nickname per language, keyed by Language.code; empty to remove them.
+	Nicknames map[string]string `json:"nicknames"`
+}
+
+// ProgressionNotAddableError Returned when a progression can't be added to the drills, with every reason.
+type ProgressionNotAddableError struct {
+	// Message Human-readable summary of the refusal.
+	Message string `json:"message"`
+
+	// Reasons already_in_drills: it is a drill progression already. unsupported_bar_count: it has a
+	// single bar. unsupported_mode and no_other_drill_progression are no longer returned:
+	// drills ask both modes, and make up wrong answers when too few drill progressions fit.
+	Reasons []ProgressionNotAddableErrorReasons `json:"reasons"`
+}
+
+// ProgressionNotAddableErrorReasons defines model for ProgressionNotAddableError.Reasons.
+type ProgressionNotAddableErrorReasons string
+
+// ProgressionNumeral A chord by number: a root I to VII, optionally ♭ or ♯, upper case for a major chord (7 a
+// dominant seventh, maj7 a major seventh), lower case for a minor chord (7 a minor
+// seventh), or lower case with ° for a diminished chord (ø7 half-diminished, °7 diminished
+// seventh).
+type ProgressionNumeral = string
+
+// ProgressionUse A song chart section tagged with a progression.
+type ProgressionUse struct {
+	// Revision draft: the chart's draft tags it. published: its latest published revision does. A
+	// section tagged in both is listed once for each.
+	Revision ProgressionUseRevision `json:"revision"`
+
+	// SectionIndex The section, numbered from 0 in document order.
+	SectionIndex int `json:"section_index"`
+
+	// SectionLabel The section's label as the chart shows it, such as "Verse 1"; null for an unlabelled section.
+	SectionLabel *string `json:"section_label"`
+
+	// SongChartId The chart.
+	SongChartId openapi_types.UUID `json:"song_chart_id"`
+
+	// Title The chart's title.
+	Title string `json:"title"`
+}
+
+// ProgressionUseRevision draft: the chart's draft tags it. published: its latest published revision does. A
+// section tagged in both is listed once for each.
+type ProgressionUseRevision string
 
 // PromptDocument A structured rich-text document, authored with MotifPath's
 // Tiptap-based content-authoring editor and persisted exactly as the
@@ -7947,6 +10129,129 @@ type PromptNode struct {
 // saved.
 type PromptNodeType string
 
+// PublishRelease Validate and freeze the current dependency manifest without updating existing learner copies.
+type PublishRelease struct {
+	// ExpectedRevision Observed commercial revision.
+	ExpectedRevision int `json:"expected_revision"`
+
+	// Reason Attributable commercial manifest-publication reason.
+	Reason string `json:"reason"`
+}
+
+// Purchase Permanent course or path acquisition independent of learner/teacher subscription; refunded payment rights end separately. A later platform subscription, or its end, never changes it.
+type Purchase struct {
+	// Content Purchased template scope.
+	Content struct {
+		// ContentId Stable core content identifier.
+		ContentId openapi_types.UUID `json:"content_id"`
+
+		// Kind A purchase covers one course or path.
+		Kind interface{} `json:"kind"`
+	} `json:"content"`
+
+	// EvidenceEntryId Latest evidence; retained learner copy follows existing update rules.
+	EvidenceEntryId openapi_types.UUID `json:"evidence_entry_id"`
+
+	// GrantId Independent permanent grant.
+	GrantId openapi_types.UUID `json:"grant_id"`
+
+	// HolderId Buyer identity.
+	HolderId openapi_types.UUID `json:"holder_id"`
+
+	// PaymentId Successful original payment.
+	PaymentId openapi_types.UUID `json:"payment_id"`
+
+	// PurchaseId Stable purchase identity.
+	PurchaseId openapi_types.UUID `json:"purchase_id"`
+
+	// ReleaseId Immutable accepted sale manifest.
+	ReleaseId openapi_types.UUID `json:"release_id"`
+
+	// Status Payment-linked lifecycle, never delete the purchase.
+	Status PurchaseStatus `json:"status"`
+}
+
+// PurchaseStatus Payment-linked lifecycle, never delete the purchase.
+type PurchaseStatus string
+
+// RefundRequest One full-refund case per payment, preserving audit history and independent grants throughout processing.
+type RefundRequest struct {
+	// AmountMinor Full successful payment amount in currency minor units, with no fee deduction; MotifPath absorbs processing fees.
+	AmountMinor int `json:"amount_minor"`
+
+	// Currency Original payment currency; no conversion is requested by this refund surface.
+	Currency string `json:"currency"`
+
+	// Eligibility Commercial seven-day eligibility at requested_at: only first platform subscriptions per
+	// learner and paid course/path purchases (teacher or MotifPath) qualify. Start only after payment
+	// succeeds and access is available. Renewals/rejoining never reset eligibility.
+	// Other cases await audited admin review. review_approved requires a documented
+	// approved policy/statutory basis and current case revision. Approval does not
+	// assert financial success. Window ends inclusively 168 hours after the later
+	// of verified payment success and first access availability, using UTC.
+	Eligibility RefundRequestEligibility `json:"eligibility"`
+
+	// ExecutionOperationId Original durable execution identity, present once execution starts and never replaced; retry attempt identities append in audit history.
+	ExecutionOperationId *openapi_types.UUID `json:"execution_operation_id,omitempty"`
+
+	// PaymentId Authoritative MotifPath payment being refunded, never a caller-supplied provider transaction reference.
+	PaymentId openapi_types.UUID `json:"payment_id"`
+
+	// Reason Original customer explanation, retained unchanged when duplicate request attempts arrive.
+	Reason string `json:"reason"`
+
+	// RefundRequestId Stable full-refund case identifier, unique per successful payment.
+	RefundRequestId openapi_types.UUID `json:"refund_request_id"`
+
+	// RequestOperationId Logical operation identity that first created this case; subsequent attempts do not replace it.
+	RequestOperationId openapi_types.UUID `json:"request_operation_id"`
+
+	// RequestedAt Original durable request-receipt time used for commercial-window evaluation, not admin handling time.
+	RequestedAt time.Time `json:"requested_at"`
+
+	// Review Latest explicit admin review, present after review; prior decisions remain in audit history.
+	Review *struct {
+		// Decision Audited handling decision; approval is not financial refund completion.
+		Decision RefundRequestReviewDecision `json:"decision"`
+
+		// EvidenceEntryId Immutable evidence of the handling decision and its authenticated operator.
+		EvidenceEntryId openapi_types.UUID `json:"evidence_entry_id"`
+
+		// Reason Customer-safe review explanation without confidential evidence or other users' data.
+		Reason string `json:"reason"`
+
+		// ReviewedAt Trusted review instant; never replaces original requested_at for eligibility.
+		ReviewedAt time.Time `json:"reviewed_at"`
+	} `json:"review,omitempty"`
+
+	// Revision Increasing case revision for optimistic concurrency control.
+	Revision int `json:"revision"`
+
+	// Status requested does not initiate a refund. processing includes unknown provider outcomes;
+	// failed requires a reconciled definitive failure. succeeded requires authoritative
+	// refund confirmation and immediate removal only of this payment's access grant,
+	// while retaining progress, financial records and independent valid grants.
+	Status RefundRequestStatus `json:"status"`
+}
+
+// RefundRequestEligibility Commercial seven-day eligibility at requested_at: only first platform subscriptions per
+// learner and paid course/path purchases (teacher or MotifPath) qualify. Start only after payment
+// succeeds and access is available. Renewals/rejoining never reset eligibility.
+// Other cases await audited admin review. review_approved requires a documented
+// approved policy/statutory basis and current case revision. Approval does not
+// assert financial success. Window ends inclusively 168 hours after the later
+// of verified payment success and first access availability, using UTC.
+type RefundRequestEligibility string
+
+// RefundRequestReviewDecision Audited handling decision; approval is not financial refund completion.
+type RefundRequestReviewDecision string
+
+// RefundRequestStatus requested does not initiate a refund. processing includes unknown provider outcomes;
+// failed requires a reconciled definitive failure. succeeded requires authoritative
+// refund confirmation and immediate removal only of this payment's access grant,
+// while retaining progress, financial records and independent valid grants.
+type RefundRequestStatus string
+
 // RegisterUserRequest Payload for registering a new MotifPath user.
 type RegisterUserRequest struct {
 	// Role The role this Clerk identity will hold in the platform. A student
@@ -7967,6 +10272,42 @@ type RegisterUserRequest struct {
 // directly in the database at deploy time and are reserved for internal
 // platform operations.
 type RegisterUserRequestRole string
+
+// Release Immutable commercial manifest, not a new path publishing or learner-update process.
+type Release struct {
+	// Content Stable sale scope.
+	Content ContentRef `json:"content"`
+
+	// ContentSha256 Immutable digest of the referenced content state.
+	ContentSha256 string `json:"content_sha256"`
+
+	// CoreVersionRef Existing core version reference where one exists; null for live path content, whose digest is captured.
+	CoreVersionRef *string `json:"core_version_ref"`
+
+	// CreatedAt Trusted manifest commit time.
+	CreatedAt time.Time `json:"created_at"`
+
+	// Dependencies Complete validated dependency records, including transitive rights evidence.
+	Dependencies []Dependency `json:"dependencies"`
+
+	// DependencyReleaseIds Transitive validated commercial dependency releases.
+	DependencyReleaseIds []openapi_types.UUID `json:"dependency_release_ids"`
+
+	// EvidenceEntryId Publish/validation audit evidence.
+	EvidenceEntryId openapi_types.UUID `json:"evidence_entry_id"`
+
+	// ManifestSha256 Digest of canonical immutable manifest including dependency and rights references.
+	ManifestSha256 string `json:"manifest_sha256"`
+
+	// Ownership Immutable reviewed ownership snapshot at commercial publication.
+	Ownership Ownership `json:"ownership"`
+
+	// ReleaseId Server-issued immutable commercial release identifier.
+	ReleaseId openapi_types.UUID `json:"release_id"`
+
+	// Revision Monotonic manifest revision for this content.
+	Revision int `json:"revision"`
+}
 
 // RemediationTarget One piece of content recommended to a student who answers a
 // specific exercise incorrectly. Exactly one of content_node_id or
@@ -8072,6 +10413,30 @@ type ReplaceLearningPathRequest struct {
 // ReplaceLearningPathRequestLevel The level a learner should be at to follow this path, using the same five-value rubric applied to courses and content nodes.
 type ReplaceLearningPathRequestLevel string
 
+// ResumeRenewalRequest Turn the caller's stopped renewal back on before paid_until; nothing is charged now.
+type ResumeRenewalRequest struct {
+	// ExpectedRevision Subscription revision observed by the caller before resuming renewal.
+	ExpectedRevision int `json:"expected_revision"`
+}
+
+// ReviewedRefund Audited admin eligibility review; approval never proves an external refund succeeded.
+type ReviewedRefund struct {
+	// Decision Explicit review disposition.
+	Decision ReviewedRefundDecision `json:"decision"`
+
+	// ExpectedRevision Observed refund-case revision.
+	ExpectedRevision int `json:"expected_revision"`
+
+	// PolicyBasis Applicable approved policy or documented statutory determination.
+	PolicyBasis string `json:"policy_basis"`
+
+	// Reason Attributable review evidence; do not place sensitive documents in public fields.
+	Reason string `json:"reason"`
+}
+
+// ReviewedRefundDecision Explicit review disposition.
+type ReviewedRefundDecision string
+
 // RightsConfirmation An admin's statement that a song's rights were checked. Rights are
 // cleared outside MotifPath; this records only who confirmed it, and
 // when.
@@ -8086,6 +10451,63 @@ type RightsConfirmation struct {
 	// appears only in responses the caller is already authorized to
 	// receive.
 	ConfirmedBy UserRef `json:"confirmed_by"`
+}
+
+// RolloutCommand Durable receipt for an activation change.
+type RolloutCommand struct {
+	// EvidenceEntryId Audit evidence committed with the change.
+	EvidenceEntryId openapi_types.UUID `json:"evidence_entry_id"`
+
+	// OperationId Durable scoped logical identity of the change.
+	OperationId openapi_types.UUID `json:"operation_id"`
+
+	// Revision Activation revision produced by this change.
+	Revision int `json:"revision"`
+
+	// Status Activation changes commit atomically, so they are applied or not recorded.
+	Status RolloutCommandStatus `json:"status"`
+}
+
+// RolloutCommandStatus Activation changes commit atomically, so they are applied or not recorded.
+type RolloutCommandStatus string
+
+// SaleBlocker One reason core would refuse a paid sale state or new sale now (MOT-130). Never offers a license or purchase as the resolution (ADR-071).
+type SaleBlocker struct {
+	// Code unpublished = no admin-published version learners can get; payout_account_not_verified = the owning teacher's payout account is not verified; unresolved_ownership = no reviewed rights holder; dependency_rights = a dependency the owner may not resell; dependency_missing and dependency_cycle = invalid dependency graph; configuration_missing = no complete selling configuration; new_sales_paused = the applicable rollout flag denies new sale actions.
+	Code SaleBlockerCode `json:"code"`
+
+	// Content The dependency concerned, or null when the blocker is about the item or the seller.
+	Content *ContentRef `json:"content"`
+}
+
+// SaleBlockerCode unpublished = no admin-published version learners can get; payout_account_not_verified = the owning teacher's payout account is not verified; unresolved_ownership = no reviewed rights holder; dependency_rights = a dependency the owner may not resell; dependency_missing and dependency_cycle = invalid dependency graph; configuration_missing = no complete selling configuration; new_sales_paused = the applicable rollout flag denies new sale actions.
+type SaleBlockerCode string
+
+// SaleRecovery Recovery of one refunded sale's earnings, in the earnings currency (MOT-130). Recovery only offsets future earnings and never exceeds the original earnings; the teacher never pays MotifPath back directly.
+type SaleRecovery struct {
+	// DueMinor Transferred earnings to take back, at most the original earnings.
+	DueMinor int `json:"due_minor"`
+
+	// RecoveredMinor Amount already deducted from later settlements, at most due_minor.
+	RecoveredMinor int `json:"recovered_minor"`
+
+	// SettlementIds Later settlements that deducted part of this recovery, oldest first.
+	SettlementIds []openapi_types.UUID `json:"settlement_ids"`
+
+	// Status nothing_due = refunded before the earnings were transferred, so they were cancelled and due_minor is 0; outstanding = recovered_minor is below due_minor; recovered = recovered_minor equals due_minor.
+	Status SaleRecoveryStatus `json:"status"`
+}
+
+// SaleRecoveryStatus nothing_due = refunded before the earnings were transferred, so they were cancelled and due_minor is 0; outstanding = recovered_minor is below due_minor; recovered = recovered_minor equals due_minor.
+type SaleRecoveryStatus string
+
+// ScheduleAnnualRequest Schedule monthly-to-annual renewal using an approved offer; no caller-provided price or mid-period adjustment is accepted.
+type ScheduleAnnualRequest struct {
+	// ExpectedRevision Subscription revision observed before scheduling the change.
+	ExpectedRevision int `json:"expected_revision"`
+
+	// TargetOfferId Annual offer revision for the identical scope and currency, currently eligible for the caller.
+	TargetOfferId openapi_types.UUID `json:"target_offer_id"`
 }
 
 // SequenceStep One step of a diagram playback. Its positions start together (or
@@ -8125,6 +10547,48 @@ type SetCurrentPathRequest struct {
 
 	// StudentPathId A non-archived standalone StudentPath already belonging to the caller, to make current.
 	StudentPathId *openapi_types.UUID `json:"student_path_id,omitempty"`
+}
+
+// Settlement Attributable settlement obligation and provider movement evidence; transfer and bank payout are distinct.
+type Settlement struct {
+	// Amount Currency-specific amount after approved commission/fees/recovery.
+	Amount Money `json:"amount"`
+
+	// CreatedAt When the obligation was created; the period filter uses this time (MOT-130).
+	CreatedAt time.Time `json:"created_at"`
+
+	// EvidenceEntryId Latest obligation evidence.
+	EvidenceEntryId openapi_types.UUID `json:"evidence_entry_id"`
+
+	// SalePaymentIds Exactly identified source sale payments; each allocated earning is reserved once.
+	SalePaymentIds []openapi_types.UUID `json:"sale_payment_ids"`
+
+	// SettlementId Internal obligation identity.
+	SettlementId openapi_types.UUID `json:"settlement_id"`
+
+	// Status Unknown external transfer/payout outcomes remain pending.
+	Status SettlementStatus `json:"status"`
+
+	// TeacherId Beneficiary core teacher identity.
+	TeacherId openapi_types.UUID `json:"teacher_id"`
+}
+
+// SettlementStatus Unknown external transfer/payout outcomes remain pending.
+type SettlementStatus string
+
+// SettlementPage Teacher-owned settlement history ordered by stable settlement identity.
+type SettlementPage struct {
+	// Items Caller settlement records.
+	Items []Settlement `json:"items"`
+
+	// Limit Requested page size.
+	Limit int `json:"limit"`
+
+	// Offset Skipped records.
+	Offset int `json:"offset"`
+
+	// Total Matching records.
+	Total int `json:"total"`
 }
 
 // ShapeInterval A diagram position's interval code, as in Position.interval. In a find the degree
@@ -8398,10 +10862,11 @@ type SongChartDraft struct {
 	// (each written chord moved up by the capo), each counted by its
 	// root and triad (major, minor or diminished), N.C. skipped and a
 	// chord repeated in a row counted once, against the progression's
-	// numerals spelled in the concert key, a dominant seventh counting
-	// as major and a repeated numeral counted once. The chords of
-	// another section never count. With no stated major concert key,
-	// every tag is unplayed. Any entry blocks publication.
+	// numerals spelled in the concert key when their modes match and in
+	// its relative key when they don't, a dominant seventh counting as
+	// major and a repeated numeral counted once. The chords of another
+	// section never count. With no stated concert key, every tag is
+	// unplayed. Any entry blocks publication.
 	UnplayedProgressions []SongChartUnplayedProgression `json:"unplayed_progressions"`
 
 	// UpdatedAt When the draft was last changed.
@@ -8498,14 +10963,16 @@ type SongChartNotPublishableError struct {
 // SongChartNotPublishableErrorReasons defines model for SongChartNotPublishableError.Reasons.
 type SongChartNotPublishableErrorReasons string
 
-// SongChartProgressionKeys The progressions a section plays, by their key in the progression
-// catalog (e.g. "I-IV-V-I"), as its author tagged them. A chart with
-// a tagged section is practised as a song on those progressions'
-// knowledge nodes, played whole; an untagged chart never is. On
-// input, absent means none, and a key the catalog doesn't have is
-// refused. The server always writes it, empty for an untagged
+// SongChartProgressionKeys The progressions a section plays, by their key (e.g. "I-IV-V-I" or
+// "major/I-bVII-IV-I"), as its author tagged them. A chart with a
+// section tagged with a drill progression is practised as a song on
+// that progression's knowledge nodes, played whole; an untagged chart,
+// or one tagged only with progressions for song charts, never is. On
+// input, absent means none, and a key no progression has is refused.
+// A published revision keeps its keys even after a progression is
+// removed; a client shows such a key as the numerals it spells. The server always writes it, empty for an untagged
 // section.
-type SongChartProgressionKeys = []string
+type SongChartProgressionKeys = []ProgressionKey
 
 // SongChartRevision A published revision of a song chart. A revision never changes: a
 // correction is published as a new revision.
@@ -8612,12 +11079,14 @@ type SongChartSection struct {
 		// "Refrão"); null shows no heading.
 		Label *string `json:"label"`
 
-		// ProgressionKeys The progressions a section plays, by their key in the progression
-		// catalog (e.g. "I-IV-V-I"), as its author tagged them. A chart with
-		// a tagged section is practised as a song on those progressions'
-		// knowledge nodes, played whole; an untagged chart never is. On
-		// input, absent means none, and a key the catalog doesn't have is
-		// refused. The server always writes it, empty for an untagged
+		// ProgressionKeys The progressions a section plays, by their key (e.g. "I-IV-V-I" or
+		// "major/I-bVII-IV-I"), as its author tagged them. A chart with a
+		// section tagged with a drill progression is practised as a song on
+		// that progression's knowledge nodes, played whole; an untagged chart,
+		// or one tagged only with progressions for song charts, never is. On
+		// input, absent means none, and a key no progression has is refused.
+		// A published revision keeps its keys even after a progression is
+		// removed; a client shows such a key as the numerals it spells. The server always writes it, empty for an untagged
 		// section.
 		ProgressionKeys *SongChartProgressionKeys `json:"progression_keys,omitempty"`
 	} `json:"attrs"`
@@ -8705,8 +11174,10 @@ type SongChartTextType string
 
 // SongChartUnplayedProgression A progression a section is tagged with but doesn't play.
 type SongChartUnplayedProgression struct {
-	// ProgressionKey The tagged progression, by its key in the progression catalog.
-	ProgressionKey string `json:"progression_key"`
+	// ProgressionKey A progression's key, as item keys, answers and song chart tags name it: a catalog
+	// progression's handle, such as I-V-vi-IV or 12-bar-blues, or a created progression's mode
+	// and numerals in ASCII (b for ♭, # for ♯, o for °, h for ø), such as major/I-bVII-IV-I.
+	ProgressionKey ProgressionKey `json:"progression_key"`
 
 	// SectionIndex The section, numbered from 0 in document order.
 	SectionIndex int `json:"section_index"`
@@ -8793,6 +11264,12 @@ type StartingPointsList struct {
 
 	// Language The language this list is for, as a Language.code other than "any".
 	Language string `json:"language"`
+}
+
+// StripeReceipt Durable transport receipt only; no financial or entitlement completion is asserted.
+type StripeReceipt struct {
+	// ReceiptId Stable internal receipt for the verified environment/account/event identity; duplicates return the existing identity.
+	ReceiptId openapi_types.UUID `json:"receipt_id"`
 }
 
 // StudentPath A student's own copy of a learning path template's items. Created by
@@ -8958,6 +11435,285 @@ type StudentPathView struct {
 
 	// Title Title of the StudentPath.
 	Title string `json:"title"`
+}
+
+// SubjectId Allowlist entry, one of user:<core user UUID>, group:<group slug> or service:<service name>. A group entry allows every user who is a member of that group.
+type SubjectId = string
+
+// Subscription Caller-owned billing state; this is not a complete access decision or a substitute for independent grants.
+type Subscription struct {
+	// BillingPeriod Current billing period; a scheduled change does not replace it before renewal.
+	BillingPeriod SubscriptionBillingPeriod `json:"billing_period"`
+
+	// BillingStatus Paid-period lifecycle only. Refunds, disputes and other grants can independently affect access.
+	BillingStatus SubscriptionBillingStatus `json:"billing_status"`
+
+	// CurrentOffer Immutable price snapshot of the current or most recently paid period, with the same scope and billing period as the subscription.
+	CurrentOffer SubscriptionOffer `json:"current_offer"`
+
+	// FirstAccessAt First time paid access became available for this learner and scope; never reset by renewal, rejoining or a billing-period change.
+	FirstAccessAt time.Time `json:"first_access_at"`
+
+	// PaidUntil End of access from the paid period before any separate refund, dispute or valid independent grant is considered.
+	PaidUntil time.Time `json:"paid_until"`
+
+	// RenewalEnabled Whether another period is scheduled to renew automatically; false does not truncate the paid period.
+	RenewalEnabled bool `json:"renewal_enabled"`
+
+	// RenewalGraceUntil End of the seven-day unpaid-renewal grace period, present only during renewal_grace.
+	RenewalGraceUntil *time.Time `json:"renewal_grace_until,omitempty"`
+
+	// Revision Increasing state revision used to refuse stale commercial commands.
+	Revision int `json:"revision"`
+
+	// ScheduledAnnualOffer Offer revision selected when scheduling annual renewal, not a price guarantee; renewal uses then-applicable authoritative terms. Absent when no change is scheduled.
+	ScheduledAnnualOffer *SubscriptionOffer `json:"scheduled_annual_offer,omitempty"`
+
+	// Scope Coverage of this subscription.
+	Scope SubscriptionScope `json:"scope"`
+
+	// SubscriptionId Stable identity of this subscription lifecycle; refund history also persists across rejoining its scope.
+	SubscriptionId openapi_types.UUID `json:"subscription_id"`
+}
+
+// SubscriptionBillingPeriod Current billing period; a scheduled change does not replace it before renewal.
+type SubscriptionBillingPeriod string
+
+// SubscriptionBillingStatus Paid-period lifecycle only. Refunds, disputes and other grants can independently affect access.
+type SubscriptionBillingStatus string
+
+// SubscriptionCheckout Durable acquisition intent, distinct from proof of paid access; only the owning user can read it.
+type SubscriptionCheckout struct {
+	// CheckoutId Stable MotifPath checkout identity, independent of external session identifiers.
+	CheckoutId openapi_types.UUID `json:"checkout_id"`
+
+	// CheckoutUrl Stripe-provided session destination after confirmation, exposed only while ready; never copied from user input.
+	CheckoutUrl *string `json:"checkout_url,omitempty"`
+
+	// CreatedAt Time the intent and its initial attributable audit evidence were durably accepted.
+	CreatedAt time.Time `json:"created_at"`
+
+	// ExpiresAt Confirmed external session expiry, present while ready; expiration does not prove absence of an uncertain payment.
+	ExpiresAt *time.Time `json:"expires_at,omitempty"`
+
+	// FulfillmentStatus Whether verified payment has produced the intended subscription-period grant; payment receipt alone is not usable access.
+	FulfillmentStatus SubscriptionCheckoutFulfillmentStatus `json:"fulfillment_status"`
+
+	// Offer Immutable accepted offer snapshot; replays do not replace it with a later price revision.
+	Offer SubscriptionOffer `json:"offer"`
+
+	// OperationId Caller operation identity retained across retries, restart and provider reconciliation.
+	OperationId openapi_types.UUID `json:"operation_id"`
+
+	// Status pending includes uncertain external creation; ready has a usable session; paid requires verified successful payment, not a browser return. failed requires a definitive reconciled failure.
+	Status SubscriptionCheckoutStatus `json:"status"`
+}
+
+// SubscriptionCheckoutFulfillmentStatus Whether verified payment has produced the intended subscription-period grant; payment receipt alone is not usable access.
+type SubscriptionCheckoutFulfillmentStatus string
+
+// SubscriptionCheckoutStatus pending includes uncertain external creation; ready has a usable session; paid requires verified successful payment, not a browser return. failed requires a definitive reconciled failure.
+type SubscriptionCheckoutStatus string
+
+// SubscriptionCommand Durable command receipt. Pending means recorded, not that a provider-side change has already succeeded.
+type SubscriptionCommand struct {
+	// Action Commercial action recorded for this operation.
+	Action SubscriptionCommandAction `json:"action"`
+
+	// OperationId Durable idempotency and audit correlation identity, supplied as the Idempotency-Key.
+	OperationId openapi_types.UUID `json:"operation_id"`
+
+	// Status Current command outcome; failed commands require reconciliation before any new external attempt.
+	Status SubscriptionCommandStatus `json:"status"`
+
+	// SubscriptionId Caller-owned subscription targeted by the command.
+	SubscriptionId openapi_types.UUID `json:"subscription_id"`
+}
+
+// SubscriptionCommandAction Commercial action recorded for this operation.
+type SubscriptionCommandAction string
+
+// SubscriptionCommandStatus Current command outcome; failed commands require reconciliation before any new external attempt.
+type SubscriptionCommandStatus string
+
+// SubscriptionOffer Immutable revision of a backend-approved subscription price; editorial metadata cannot override it.
+type SubscriptionOffer struct {
+	// AmountMinor Full charge for one period in the currency's minor units, never a floating-point amount.
+	AmountMinor int `json:"amount_minor"`
+
+	// BillingPeriod Automatically renewing paid period; the annual discount is configured independently of the monthly price.
+	BillingPeriod SubscriptionOfferBillingPeriod `json:"billing_period"`
+
+	// Currency Enabled ISO 4217 currency. The code shape does not enable a currency or approve USD support.
+	Currency string `json:"currency"`
+
+	// OfferId Identifier of this immutable offer revision; changing its price creates a new revision identifier.
+	OfferId openapi_types.UUID `json:"offer_id"`
+
+	// Scope Coverage purchased by this offer.
+	Scope SubscriptionScope `json:"scope"`
+}
+
+// SubscriptionOfferBillingPeriod Automatically renewing paid period; the annual discount is configured independently of the monthly price.
+type SubscriptionOfferBillingPeriod string
+
+// SubscriptionOfferConfig Admin-only immutable subscription offer creation; existing subscription commands remain unchanged.
+type SubscriptionOfferConfig struct {
+	// BillingPeriod Recurring billing interval.
+	BillingPeriod SubscriptionOfferConfigBillingPeriod `json:"billing_period"`
+
+	// ConfigurationId Current approved commercial configuration.
+	ConfigurationId openapi_types.UUID `json:"configuration_id"`
+
+	// ExpectedOfferId Current promoted offer ID observed for this exact scope, period and currency; null only if none exists. Compare and promote atomically; mismatches return conflict.
+	ExpectedOfferId *openapi_types.UUID `json:"expected_offer_id"`
+
+	// Price Full interval price; annual must be discounted against twelve current monthly periods for the same scope/currency.
+	Price PositiveMoney `json:"price"`
+
+	// Reason Price-change justification. Applies to existing subscriptions only at next renewal.
+	Reason string `json:"reason"`
+
+	// Scope Platform subscription offer scope.
+	Scope SubscriptionScope `json:"scope"`
+}
+
+// SubscriptionOfferConfigBillingPeriod Recurring billing interval.
+type SubscriptionOfferConfigBillingPeriod string
+
+// SubscriptionPage Caller-owned subscriptions ordered by subscription identifier for stable page ordering.
+type SubscriptionPage struct {
+	// Items Subscriptions belonging to the authenticated caller only.
+	Items []Subscription `json:"items"`
+
+	// Limit Requested maximum page size.
+	Limit int `json:"limit"`
+
+	// Offset Number of matching subscriptions skipped.
+	Offset int `json:"offset"`
+
+	// Total Total number of the caller's subscriptions before pagination.
+	Total int `json:"total"`
+}
+
+// SubscriptionScope Commercial subscription coverage. The only scope is the platform subscription, which covers MotifPath-owned content and never teacher-priced content.
+type SubscriptionScope struct {
+	// Kind Platform-wide coverage of MotifPath-owned courses, paths, premium exercises and premium tools.
+	Kind SubscriptionScopeKind `json:"kind"`
+}
+
+// SubscriptionScopeKind Platform-wide coverage of MotifPath-owned courses, paths, premium exercises and premium tools.
+type SubscriptionScopeKind string
+
+// SyncHint Restricted CMS notification hint; never authoritative commercial state.
+type SyncHint struct {
+	// EventId Adapter-generated durable notification identity.
+	EventId openapi_types.UUID `json:"event_id"`
+
+	// EventKind Editorial change hint only.
+	EventKind SyncHintEventKind `json:"event_kind"`
+
+	// OccurredAt Untrusted source time, retained as evidence rather than ordering authority.
+	OccurredAt time.Time `json:"occurred_at"`
+
+	// SourceDocumentId CMS document identity mapped to a registered core content identity.
+	SourceDocumentId string `json:"source_document_id"`
+}
+
+// SyncHintEventKind Editorial change hint only.
+type SyncHintEventKind string
+
+// SyncReceipt Durable hint receipt; does not assert synchronized rights or grant access.
+type SyncReceipt struct {
+	// ReceiptId Internal environment/source/event receipt identity.
+	ReceiptId openapi_types.UUID `json:"receipt_id"`
+}
+
+// TeacherSale One sale of the caller's own course or path (MOT-130). Never identifies the buyer or their payment method.
+type TeacherSale struct {
+	// Content The course or path sold.
+	Content ContentRef `json:"content"`
+
+	// Earnings Teacher earnings after commission and the allocated fee share, as originally posted.
+	Earnings Money `json:"earnings"`
+
+	// Price Accepted offer price the buyer paid.
+	Price PositiveMoney `json:"price"`
+
+	// Recovery How the refunded earnings are taken back; required when refunded, null otherwise.
+	Recovery *SaleRecovery `json:"recovery"`
+
+	// RefundedAt Time the full refund succeeded; required when refunded.
+	RefundedAt *time.Time `json:"refunded_at"`
+
+	// SalePaymentId Original sale payment, as referenced by settlements.
+	SalePaymentId openapi_types.UUID `json:"sale_payment_id"`
+
+	// SettlementId Settlement that included these earnings, if any.
+	SettlementId *openapi_types.UUID `json:"settlement_id"`
+
+	// SoldAt Verified payment time.
+	SoldAt time.Time `json:"sold_at"`
+
+	// Status pending = earned, not yet available; available = settled by the provider and payable; transferred = included in a settlement; refunded = fully refunded, with recovery shown on the balance when already paid.
+	Status TeacherSaleStatus `json:"status"`
+}
+
+// TeacherSaleStatus pending = earned, not yet available; available = settled by the provider and payable; transferred = included in a settlement; refunded = fully refunded, with recovery shown on the balance when already paid.
+type TeacherSaleStatus string
+
+// TeacherSalePage Caller's own sales in the requested period, newest first.
+type TeacherSalePage struct {
+	// Items Sales.
+	Items []TeacherSale `json:"items"`
+
+	// Limit Requested page size.
+	Limit int `json:"limit"`
+
+	// Offset Skipped records.
+	Offset int `json:"offset"`
+
+	// Summary Totals for every sale in the requested period, not just this page; one row per currency.
+	Summary []TeacherSalesSummary `json:"summary"`
+
+	// Total Matching records.
+	Total int `json:"total"`
+}
+
+// TeacherSalesSummary Totals of the caller's sales sold in the requested period, in one currency (MOT-130).
+type TeacherSalesSummary struct {
+	// Currency Original accounting currency.
+	Currency string `json:"currency"`
+
+	// EarnedMinor Posted earnings of the period's sales that were not refunded.
+	EarnedMinor int `json:"earned_minor"`
+
+	// RefundedCount Sales sold in the period that were later fully refunded.
+	RefundedCount int `json:"refunded_count"`
+
+	// SalesCount Sales sold in the period, including those later refunded.
+	SalesCount int `json:"sales_count"`
+}
+
+// TeacherSellingTerms The current selling terms a teacher prices against (MOT-130). Derived from the promoted configuration without its reason, identity or history.
+type TeacherSellingTerms struct {
+	// CommissionBasisPoints Platform commission on each sale; it also covers embedded MotifPath premium exercises.
+	CommissionBasisPoints int `json:"commission_basis_points"`
+
+	// ConfigurationRevision Promoted configuration revision these terms come from.
+	ConfigurationRevision int `json:"configuration_revision"`
+
+	// Currency Enabled selling currency.
+	Currency string `json:"currency"`
+
+	// TeacherFeeBasisPoints Teacher share of actual provider sale fees; the exact fee is known only per sale.
+	TeacherFeeBasisPoints int `json:"teacher_fee_basis_points"`
+
+	// TeacherMaximum Highest teacher price.
+	TeacherMaximum PositiveMoney `json:"teacher_maximum"`
+
+	// TeacherMinimum Lowest teacher price.
+	TeacherMinimum PositiveMoney `json:"teacher_minimum"`
 }
 
 // TimeSignature The diagram's meter, as written (4/4, 3/4, 6/8, 7/8, ...). It decides
@@ -9495,14 +12251,26 @@ type AlphaWeek = openapi_types.Date
 // AuthoringSort defines model for AuthoringSort.
 type AuthoringSort string
 
+// CheckoutIdempotencyKey defines model for CheckoutIdempotencyKey.
+type CheckoutIdempotencyKey = openapi_types.UUID
+
 // ConceptIds defines model for ConceptIds.
 type ConceptIds = []openapi_types.UUID
+
+// IdempotencyKey defines model for IdempotencyKey.
+type IdempotencyKey = openapi_types.UUID
+
+// IdempotencyKey2 defines model for IdempotencyKey-2.
+type IdempotencyKey2 = openapi_types.UUID
 
 // Limit defines model for Limit.
 type Limit = int
 
 // Offset defines model for Offset.
 type Offset = int
+
+// RefundRequestID defines model for RefundRequestID.
+type RefundRequestID = openapi_types.UUID
 
 // SearchText defines model for SearchText.
 type SearchText = string
@@ -9512,6 +12280,39 @@ type SkillIds = []openapi_types.UUID
 
 // SongChartId defines model for SongChartId.
 type SongChartId = openapi_types.UUID
+
+// SubscriptionID defines model for SubscriptionID.
+type SubscriptionID = openapi_types.UUID
+
+// CaseResponse One full-refund case per payment, preserving audit history and independent grants throughout processing.
+type CaseResponse = RefundRequest
+
+// CheckoutResponse Durable acquisition intent, distinct from proof of paid access; only the owning user can read it.
+type CheckoutResponse = SubscriptionCheckout
+
+// CommandReceipt Durable command receipt. Pending means recorded, not that a provider-side change has already succeeded.
+type CommandReceipt = SubscriptionCommand
+
+// Conflict Returned when a resource already exists and cannot be created again.
+type Conflict = ConflictError
+
+// Conflict2 Returned when a resource already exists and cannot be created again.
+type Conflict2 = ConflictError
+
+// Forbidden Returned when the authenticated user lacks permission for the requested operation.
+type Forbidden = ForbiddenError
+
+// InvalidRequest Returned when the request body fails schema validation.
+type InvalidRequest = ValidationError
+
+// NotFound Returned when the requested resource does not exist.
+type NotFound = NotFoundError
+
+// Unauthenticated Returned when the Bearer token is missing or invalid.
+type Unauthenticated = UnauthorizedError
+
+// Unavailable Authoritative commercial state or durable processing is temporarily unavailable.
+type Unavailable = CommercialUnavailable
 
 // GetAlphaObservationParams defines parameters for GetAlphaObservation.
 type GetAlphaObservationParams struct {
@@ -9555,6 +12356,101 @@ type ListAlphaStudentsParams struct {
 type GetAlphaStudentObservationParams struct {
 	// Week The Monday the week starts on, in São Paulo time (e.g. 2026-10-12). Defaults to the running week. A date that is not a Monday, or a week after the running one, is rejected.
 	Week *AlphaWeek `form:"week,omitempty" json:"week,omitempty"`
+}
+
+// ListCommercialAuditEntriesParams defines parameters for ListCommercialAuditEntries.
+type ListCommercialAuditEntriesParams struct {
+	// OperationId Logical operation UUID; matches retain their complete trusted namespace.
+	OperationId *openapi_types.UUID `form:"operation_id,omitempty" json:"operation_id,omitempty"`
+
+	// ResourceKind Stable commercial resource category, paired with resource_id.
+	ResourceKind *string `form:"resource_kind,omitempty" json:"resource_kind,omitempty"`
+
+	// ResourceId Stable business resource identity, paired with resource_kind.
+	ResourceId *string `form:"resource_id,omitempty" json:"resource_id,omitempty"`
+
+	// Cursor Opaque continuation; repeat the original filters and limit.
+	Cursor *string `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Maximum number of items to return in this page (ADR-031).
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// CreateCommercialConfigurationParams defines parameters for CreateCommercialConfiguration.
+type CreateCommercialConfigurationParams struct {
+	// IdempotencyKey UUID scoped by trusted environment, actor, action and resource. Fingerprint canonical full intent. Same identity/intent returns recorded status before stale-revision checks; conflicting intent returns 409. Persist identity and attempts beyond provider cache lifetime; concurrent business uniqueness spans keys and actors.
+	IdempotencyKey openapi_types.UUID `json:"Idempotency-Key"`
+}
+
+// SaveCommercialGroupParams defines parameters for SaveCommercialGroup.
+type SaveCommercialGroupParams struct {
+	// IdempotencyKey UUID scoped by trusted environment, administrator, action and group. Fingerprint the full request intent.
+	IdempotencyKey openapi_types.UUID `json:"Idempotency-Key"`
+}
+
+// ChangeCommercialGroupMembersParams defines parameters for ChangeCommercialGroupMembers.
+type ChangeCommercialGroupMembersParams struct {
+	// IdempotencyKey UUID scoped by trusted environment, administrator, action and group. Fingerprint the full request intent.
+	IdempotencyKey openapi_types.UUID `json:"Idempotency-Key"`
+}
+
+// TurnOffAllCommercialFlagsParams defines parameters for TurnOffAllCommercialFlags.
+type TurnOffAllCommercialFlagsParams struct {
+	// IdempotencyKey UUID scoped by trusted environment, administrator and action. Fingerprint the full request intent.
+	IdempotencyKey openapi_types.UUID `json:"Idempotency-Key"`
+}
+
+// ChangeCommercialFlagParams defines parameters for ChangeCommercialFlag.
+type ChangeCommercialFlagParams struct {
+	// IdempotencyKey UUID scoped by trusted environment, administrator, action and flag. Fingerprint the full request intent.
+	IdempotencyKey openapi_types.UUID `json:"Idempotency-Key"`
+}
+
+// ExecuteFullPaymentRefundParams defines parameters for ExecuteFullPaymentRefund.
+type ExecuteFullPaymentRefundParams struct {
+	// IdempotencyKey UUID for one logical request or execution, scoped by trusted environment, authenticated
+	// actor and action. Fingerprint complete intent, including payment/case, reason and observed
+	// revision. Same key with changed intent returns 409; same intent returns the original
+	// request/execution's current case without repeating effects after concurrency or restart.
+	// Separate business uniqueness prevents two refunds for one payment across different actors
+	// or keys. Durable identity and attempts remain traceable after transient cache expiry.
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
+
+// RetryFailedFullRefundParams defines parameters for RetryFailedFullRefund.
+type RetryFailedFullRefundParams struct {
+	// IdempotencyKey UUID scoped by trusted environment, actor, action and resource. Fingerprint canonical full intent. Same identity/intent returns recorded status before stale-revision checks; conflicting intent returns 409. Persist identity and attempts beyond provider cache lifetime; concurrent business uniqueness spans keys and actors.
+	IdempotencyKey openapi_types.UUID `json:"Idempotency-Key"`
+}
+
+// ReviewFullRefundEligibilityParams defines parameters for ReviewFullRefundEligibility.
+type ReviewFullRefundEligibilityParams struct {
+	// IdempotencyKey UUID scoped by trusted environment, actor, action and resource. Fingerprint canonical full intent. Same identity/intent returns recorded status before stale-revision checks; conflicting intent returns 409. Persist identity and attempts beyond provider cache lifetime; concurrent business uniqueness spans keys and actors.
+	IdempotencyKey openapi_types.UUID `json:"Idempotency-Key"`
+}
+
+// GetCurrentSubscriptionOfferParams defines parameters for GetCurrentSubscriptionOffer.
+type GetCurrentSubscriptionOfferParams struct {
+	// ScopeKind Exact coverage kind.
+	ScopeKind GetCurrentSubscriptionOfferParamsScopeKind `form:"scope_kind" json:"scope_kind"`
+
+	// BillingPeriod Exact recurring interval.
+	BillingPeriod GetCurrentSubscriptionOfferParamsBillingPeriod `form:"billing_period" json:"billing_period"`
+
+	// Currency Enabled original currency.
+	Currency string `form:"currency" json:"currency"`
+}
+
+// GetCurrentSubscriptionOfferParamsScopeKind defines parameters for GetCurrentSubscriptionOffer.
+type GetCurrentSubscriptionOfferParamsScopeKind string
+
+// GetCurrentSubscriptionOfferParamsBillingPeriod defines parameters for GetCurrentSubscriptionOffer.
+type GetCurrentSubscriptionOfferParamsBillingPeriod string
+
+// CreateSubscriptionOfferRevisionParams defines parameters for CreateSubscriptionOfferRevision.
+type CreateSubscriptionOfferRevisionParams struct {
+	// IdempotencyKey UUID scoped by trusted environment, actor, action and resource. Fingerprint canonical full intent. Same identity/intent returns recorded status before stale-revision checks; conflicting intent returns 409. Persist identity and attempts beyond provider cache lifetime; concurrent business uniqueness spans keys and actors.
+	IdempotencyKey openapi_types.UUID `json:"Idempotency-Key"`
 }
 
 // ListCatalogCoursesParams defines parameters for ListCatalogCourses.
@@ -9654,6 +12550,60 @@ type SearchChordsParams struct {
 	// Symbol The chord symbol as written, e.g. "Bbmaj7", "F#m7♭5", "D/F#".
 	Symbol string `form:"symbol" json:"symbol"`
 }
+
+// GetCommercialContentParamsContentKind defines parameters for GetCommercialContent.
+type GetCommercialContentParamsContentKind string
+
+// CreateCommercialOfferParams defines parameters for CreateCommercialOffer.
+type CreateCommercialOfferParams struct {
+	// IdempotencyKey UUID scoped by trusted environment, actor, action and resource. Fingerprint canonical full intent. Same identity/intent returns recorded status before stale-revision checks; conflicting intent returns 409. Persist identity and attempts beyond provider cache lifetime; concurrent business uniqueness spans keys and actors.
+	IdempotencyKey openapi_types.UUID `json:"Idempotency-Key"`
+}
+
+// CreateCommercialOfferParamsContentKind defines parameters for CreateCommercialOffer.
+type CreateCommercialOfferParamsContentKind string
+
+// CorrectCommercialOwnershipParams defines parameters for CorrectCommercialOwnership.
+type CorrectCommercialOwnershipParams struct {
+	// IdempotencyKey UUID scoped by trusted environment, actor, action and resource. Fingerprint canonical full intent. Same identity/intent returns recorded status before stale-revision checks; conflicting intent returns 409. Persist identity and attempts beyond provider cache lifetime; concurrent business uniqueness spans keys and actors.
+	IdempotencyKey openapi_types.UUID `json:"Idempotency-Key"`
+}
+
+// CorrectCommercialOwnershipParamsContentKind defines parameters for CorrectCommercialOwnership.
+type CorrectCommercialOwnershipParamsContentKind string
+
+// PublishCommercialReleaseParams defines parameters for PublishCommercialRelease.
+type PublishCommercialReleaseParams struct {
+	// IdempotencyKey UUID scoped by trusted environment, actor, action and resource. Fingerprint canonical full intent. Same identity/intent returns recorded status before stale-revision checks; conflicting intent returns 409. Persist identity and attempts beyond provider cache lifetime; concurrent business uniqueness spans keys and actors.
+	IdempotencyKey openapi_types.UUID `json:"Idempotency-Key"`
+}
+
+// PublishCommercialReleaseParamsContentKind defines parameters for PublishCommercialRelease.
+type PublishCommercialReleaseParamsContentKind string
+
+// ChangeCommercialSaleStateParams defines parameters for ChangeCommercialSaleState.
+type ChangeCommercialSaleStateParams struct {
+	// IdempotencyKey UUID scoped by trusted environment, actor, action and resource. Fingerprint canonical full intent. Same identity/intent returns recorded status before stale-revision checks; conflicting intent returns 409. Persist identity and attempts beyond provider cache lifetime; concurrent business uniqueness spans keys and actors.
+	IdempotencyKey openapi_types.UUID `json:"Idempotency-Key"`
+}
+
+// ChangeCommercialSaleStateParamsContentKind defines parameters for ChangeCommercialSaleState.
+type ChangeCommercialSaleStateParamsContentKind string
+
+// ListCommercialOffersParams defines parameters for ListCommercialOffers.
+type ListCommercialOffersParams struct {
+	// Kind Requested one-time product family.
+	Kind ListCommercialOffersParamsKind `form:"kind" json:"kind"`
+
+	// ContentId Target course or path, matching kind.
+	ContentId openapi_types.UUID `form:"content_id" json:"content_id"`
+
+	// Currency Enabled currency.
+	Currency string `form:"currency" json:"currency"`
+}
+
+// ListCommercialOffersParamsKind defines parameters for ListCommercialOffers.
+type ListCommercialOffersParamsKind string
 
 // ListContentNodesParams defines parameters for ListContentNodes.
 type ListContentNodesParams struct {
@@ -9986,6 +12936,21 @@ type ListLearningPathCreatorsParams struct {
 	Q *string `form:"q,omitempty" json:"q,omitempty"`
 }
 
+// ReceiveStripePaymentEventJSONBody defines parameters for ReceiveStripePaymentEvent.
+type ReceiveStripePaymentEventJSONBody struct {
+	// Id Stripe's immutable event identity, scoped by the trusted receiving environment and account.
+	Id string `json:"id"`
+
+	// Type Native provider event kind; unfamiliar values are retained for reconciliation without issuing rights.
+	Type                 string                 `json:"type"`
+	AdditionalProperties map[string]interface{} `json:"-"`
+}
+
+// CreateProgression409JSONResponseBody defines parameters for CreateProgression.
+type CreateProgression409JSONResponseBody struct {
+	union json.RawMessage
+}
+
 // ListSongChartsParams defines parameters for ListSongCharts.
 type ListSongChartsParams struct {
 	// Limit Maximum number of items to return in this page (ADR-031).
@@ -10048,11 +13013,198 @@ type GetPracticeSummaryParams struct {
 	TimeZone *string `form:"time_zone,omitempty" json:"time_zone,omitempty"`
 }
 
+// ListSubscriptionOffersParams defines parameters for ListSubscriptionOffers.
+type ListSubscriptionOffersParams struct {
+	// ScopeKind Coverage of the requested subscription offers.
+	ScopeKind ListSubscriptionOffersParamsScopeKind `form:"scope_kind" json:"scope_kind"`
+
+	// Currency Explicit enabled currency; no automatic currency conversion is performed.
+	Currency string `form:"currency" json:"currency"`
+}
+
+// ListSubscriptionOffersParamsScopeKind defines parameters for ListSubscriptionOffers.
+type ListSubscriptionOffersParamsScopeKind string
+
+// ListMyTeacherSalesParams defines parameters for ListMyTeacherSales.
+type ListMyTeacherSalesParams struct {
+	// Limit Maximum number of items to return in this page (ADR-031).
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Number of matching items to skip before this page (ADR-031).
+	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
+
+	// SoldFrom Inclusive start of the period, as an instant the client computes in the teacher's time zone (MOT-130). Filters on sold_at.
+	SoldFrom time.Time `form:"sold_from" json:"sold_from"`
+
+	// SoldBefore Exclusive end of the period; must be after sold_from and at most 366 days later, otherwise 400. Filters on sold_at.
+	SoldBefore time.Time `form:"sold_before" json:"sold_before"`
+}
+
+// ListMyCommercialSettlementsParams defines parameters for ListMyCommercialSettlements.
+type ListMyCommercialSettlementsParams struct {
+	// Limit Maximum number of items to return in this page (ADR-031).
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Number of matching items to skip before this page (ADR-031).
+	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
+
+	// CreatedFrom Inclusive start of the period, as an instant the client computes in the teacher's time zone (MOT-130). Filters on created_at. Optional; when one is given, both are required.
+	CreatedFrom *time.Time `form:"created_from,omitempty" json:"created_from,omitempty"`
+
+	// CreatedBefore Exclusive end of the period; must be after created_from and at most 366 days later, otherwise 400. Filters on created_at.
+	CreatedBefore *time.Time `form:"created_before,omitempty" json:"created_before,omitempty"`
+}
+
+// CreateMyPayoutDashboardLinkParams defines parameters for CreateMyPayoutDashboardLink.
+type CreateMyPayoutDashboardLinkParams struct {
+	// IdempotencyKey UUID scoped by trusted environment, actor and action. A replay within the link's lifetime returns the same link.
+	IdempotencyKey openapi_types.UUID `json:"Idempotency-Key"`
+}
+
+// CreateMyPayoutOnboardingLinkParams defines parameters for CreateMyPayoutOnboardingLink.
+type CreateMyPayoutOnboardingLinkParams struct {
+	// IdempotencyKey UUID scoped by trusted environment, actor and action. A replay within the link's lifetime returns the same link.
+	IdempotencyKey openapi_types.UUID `json:"Idempotency-Key"`
+}
+
+// CreateMyCommercialCheckoutParams defines parameters for CreateMyCommercialCheckout.
+type CreateMyCommercialCheckoutParams struct {
+	// IdempotencyKey UUID scoped by trusted environment, actor, action and resource. Fingerprint canonical full intent. Same identity/intent returns recorded status before stale-revision checks; conflicting intent returns 409. Persist identity and attempts beyond provider cache lifetime; concurrent business uniqueness spans keys and actors.
+	IdempotencyKey openapi_types.UUID `json:"Idempotency-Key"`
+}
+
+// ListMyCommercialHoldingsParams defines parameters for ListMyCommercialHoldings.
+type ListMyCommercialHoldingsParams struct {
+	// Limit Maximum number of items to return in this page (ADR-031).
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Number of matching items to skip before this page (ADR-031).
+	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
+}
+
+// ListMyCommercialPaymentsParams defines parameters for ListMyCommercialPayments.
+type ListMyCommercialPaymentsParams struct {
+	// Limit Maximum number of items to return in this page (ADR-031).
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Number of matching items to skip before this page (ADR-031).
+	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
+}
+
+// RequestMyPaymentRefundParams defines parameters for RequestMyPaymentRefund.
+type RequestMyPaymentRefundParams struct {
+	// IdempotencyKey UUID for one logical request or execution, scoped by trusted environment, authenticated
+	// actor and action. Fingerprint complete intent, including payment/case, reason and observed
+	// revision. Same key with changed intent returns 409; same intent returns the original
+	// request/execution's current case without repeating effects after concurrency or restart.
+	// Separate business uniqueness prevents two refunds for one payment across different actors
+	// or keys. Durable identity and attempts remain traceable after transient cache expiry.
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
+
+// CreateMySubscriptionCheckoutParams defines parameters for CreateMySubscriptionCheckout.
+type CreateMySubscriptionCheckoutParams struct {
+	// IdempotencyKey UUID of one logical acquisition, scoped by trusted environment and authenticated caller/action. Fingerprint the offer intent. Retain it durably beyond provider-key retention and reconcile unknown outcomes before any resubmission.
+	IdempotencyKey CheckoutIdempotencyKey `json:"Idempotency-Key"`
+}
+
+// ListMySubscriptionsParams defines parameters for ListMySubscriptions.
+type ListMySubscriptionsParams struct {
+	// Limit Maximum number of items to return in this page (ADR-031).
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Number of matching items to skip before this page (ADR-031).
+	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
+}
+
+// CancelMySubscriptionRenewalParams defines parameters for CancelMySubscriptionRenewal.
+type CancelMySubscriptionRenewalParams struct {
+	// IdempotencyKey Caller-generated UUID identifying one logical command. Scoped by trusted environment,
+	// authenticated user, action and subscription; fingerprint the complete request intent.
+	// Same key and intent returns the same operation identity with its current recorded status,
+	// without repeating effects, even after a restart or revision change. A conflicting
+	// fingerprint returns 409. Concurrent submissions must converge on one operation.
+	// Never discard operation identity merely because a transient retry cache expires.
+	IdempotencyKey IdempotencyKey2 `json:"Idempotency-Key"`
+}
+
+// CreateMyPaymentMethodSessionParams defines parameters for CreateMyPaymentMethodSession.
+type CreateMyPaymentMethodSessionParams struct {
+	// IdempotencyKey Caller-generated UUID identifying one logical command. Scoped by trusted environment,
+	// authenticated user, action and subscription; fingerprint the complete request intent.
+	// Same key and intent returns the same operation identity with its current recorded status,
+	// without repeating effects, even after a restart or revision change. A conflicting
+	// fingerprint returns 409. Concurrent submissions must converge on one operation.
+	// Never discard operation identity merely because a transient retry cache expires.
+	IdempotencyKey IdempotencyKey2 `json:"Idempotency-Key"`
+}
+
+// ResumeMySubscriptionRenewalParams defines parameters for ResumeMySubscriptionRenewal.
+type ResumeMySubscriptionRenewalParams struct {
+	// IdempotencyKey Caller-generated UUID identifying one logical command. Scoped by trusted environment,
+	// authenticated user, action and subscription; fingerprint the complete request intent.
+	// Same key and intent returns the same operation identity with its current recorded status,
+	// without repeating effects, even after a restart or revision change. A conflicting
+	// fingerprint returns 409. Concurrent submissions must converge on one operation.
+	// Never discard operation identity merely because a transient retry cache expires.
+	IdempotencyKey IdempotencyKey2 `json:"Idempotency-Key"`
+}
+
+// ScheduleMyAnnualSubscriptionParams defines parameters for ScheduleMyAnnualSubscription.
+type ScheduleMyAnnualSubscriptionParams struct {
+	// IdempotencyKey Caller-generated UUID identifying one logical command. Scoped by trusted environment,
+	// authenticated user, action and subscription; fingerprint the complete request intent.
+	// Same key and intent returns the same operation identity with its current recorded status,
+	// without repeating effects, even after a restart or revision change. A conflicting
+	// fingerprint returns 409. Concurrent submissions must converge on one operation.
+	// Never discard operation identity merely because a transient retry cache expires.
+	IdempotencyKey IdempotencyKey2 `json:"Idempotency-Key"`
+}
+
+// CreateCommercialConfigurationJSONRequestBody defines body for CreateCommercialConfiguration for application/json ContentType.
+type CreateCommercialConfigurationJSONRequestBody = ConfigurationInput
+
+// SaveCommercialGroupJSONRequestBody defines body for SaveCommercialGroup for application/json ContentType.
+type SaveCommercialGroupJSONRequestBody = GroupChange
+
+// ChangeCommercialGroupMembersJSONRequestBody defines body for ChangeCommercialGroupMembers for application/json ContentType.
+type ChangeCommercialGroupMembersJSONRequestBody = MembershipChange
+
+// TurnOffAllCommercialFlagsJSONRequestBody defines body for TurnOffAllCommercialFlags for application/json ContentType.
+type TurnOffAllCommercialFlagsJSONRequestBody = KillSwitch
+
+// ChangeCommercialFlagJSONRequestBody defines body for ChangeCommercialFlag for application/json ContentType.
+type ChangeCommercialFlagJSONRequestBody = FlagChange
+
 // SetAppConfigJSONRequestBody defines body for SetAppConfig for application/json ContentType.
 type SetAppConfigJSONRequestBody = AppConfigValue
 
+// ExecuteFullPaymentRefundJSONRequestBody defines body for ExecuteFullPaymentRefund for application/json ContentType.
+type ExecuteFullPaymentRefundJSONRequestBody = ExecuteRefundRequest
+
+// RetryFailedFullRefundJSONRequestBody defines body for RetryFailedFullRefund for application/json ContentType.
+type RetryFailedFullRefundJSONRequestBody = ExecuteRefundRequest
+
+// ReviewFullRefundEligibilityJSONRequestBody defines body for ReviewFullRefundEligibility for application/json ContentType.
+type ReviewFullRefundEligibilityJSONRequestBody = ReviewedRefund
+
+// CreateSubscriptionOfferRevisionJSONRequestBody defines body for CreateSubscriptionOfferRevision for application/json ContentType.
+type CreateSubscriptionOfferRevisionJSONRequestBody = SubscriptionOfferConfig
+
 // UpdateChallengeJSONRequestBody defines body for UpdateChallenge for application/json ContentType.
 type UpdateChallengeJSONRequestBody = UpdateChallengeRequest
+
+// CreateCommercialOfferJSONRequestBody defines body for CreateCommercialOffer for application/json ContentType.
+type CreateCommercialOfferJSONRequestBody = CreateOffer
+
+// CorrectCommercialOwnershipJSONRequestBody defines body for CorrectCommercialOwnership for application/json ContentType.
+type CorrectCommercialOwnershipJSONRequestBody = OwnershipCommand
+
+// PublishCommercialReleaseJSONRequestBody defines body for PublishCommercialRelease for application/json ContentType.
+type PublishCommercialReleaseJSONRequestBody = PublishRelease
+
+// ChangeCommercialSaleStateJSONRequestBody defines body for ChangeCommercialSaleState for application/json ContentType.
+type ChangeCommercialSaleStateJSONRequestBody = ChangeSale
 
 // CreateContentNodeJSONRequestBody defines body for CreateContentNode for application/json ContentType.
 type CreateContentNodeJSONRequestBody = CreateContentNodeRequest
@@ -10099,6 +13251,9 @@ type CreateInstrumentJSONRequestBody = CreateInstrumentRequest
 // UpdateInstrumentJSONRequestBody defines body for UpdateInstrument for application/json ContentType.
 type UpdateInstrumentJSONRequestBody = UpdateInstrumentRequest
 
+// ReceiveCMSCommercialHintJSONRequestBody defines body for ReceiveCMSCommercialHint for application/json ContentType.
+type ReceiveCMSCommercialHintJSONRequestBody = SyncHint
+
 // CreateKnowledgeEdgeJSONRequestBody defines body for CreateKnowledgeEdge for application/json ContentType.
 type CreateKnowledgeEdgeJSONRequestBody = CreateKnowledgeEdgeRequest
 
@@ -10119,6 +13274,18 @@ type ReplaceLearningPathJSONRequestBody = ReplaceLearningPathRequest
 
 // CreateMediaUploadUrlJSONRequestBody defines body for CreateMediaUploadUrl for application/json ContentType.
 type CreateMediaUploadUrlJSONRequestBody = CreateMediaUploadUrlRequest
+
+// ReceiveStripePaymentEventJSONRequestBody defines body for ReceiveStripePaymentEvent for application/json ContentType.
+type ReceiveStripePaymentEventJSONRequestBody ReceiveStripePaymentEventJSONBody
+
+// CreateProgressionJSONRequestBody defines body for CreateProgression for application/json ContentType.
+type CreateProgressionJSONRequestBody = ProgressionInput
+
+// UpdateProgressionJSONRequestBody defines body for UpdateProgression for application/json ContentType.
+type UpdateProgressionJSONRequestBody = ProgressionNicknamesInput
+
+// AddProgressionToDrillsJSONRequestBody defines body for AddProgressionToDrills for application/json ContentType.
+type AddProgressionToDrillsJSONRequestBody = ProgressionDrillsInput
 
 // CreateSongChartJSONRequestBody defines body for CreateSongChart for application/json ContentType.
 type CreateSongChartJSONRequestBody = SongChartDraftInput
@@ -10156,6 +13323,103 @@ type RegisterUserJSONRequestBody = RegisterUserRequest
 // UpdateMyProfileJSONRequestBody defines body for UpdateMyProfile for application/json ContentType.
 type UpdateMyProfileJSONRequestBody = UpdateMyProfileRequest
 
+// CreateMyCommercialCheckoutJSONRequestBody defines body for CreateMyCommercialCheckout for application/json ContentType.
+type CreateMyCommercialCheckoutJSONRequestBody = CheckoutRequest
+
+// RequestMyPaymentRefundJSONRequestBody defines body for RequestMyPaymentRefund for application/json ContentType.
+type RequestMyPaymentRefundJSONRequestBody = CreateRefundRequest
+
+// CreateMySubscriptionCheckoutJSONRequestBody defines body for CreateMySubscriptionCheckout for application/json ContentType.
+type CreateMySubscriptionCheckoutJSONRequestBody = CreateSubscriptionCheckout
+
+// CancelMySubscriptionRenewalJSONRequestBody defines body for CancelMySubscriptionRenewal for application/json ContentType.
+type CancelMySubscriptionRenewalJSONRequestBody = CancelSubscriptionRequest
+
+// ResumeMySubscriptionRenewalJSONRequestBody defines body for ResumeMySubscriptionRenewal for application/json ContentType.
+type ResumeMySubscriptionRenewalJSONRequestBody = ResumeRenewalRequest
+
+// ScheduleMyAnnualSubscriptionJSONRequestBody defines body for ScheduleMyAnnualSubscription for application/json ContentType.
+type ScheduleMyAnnualSubscriptionJSONRequestBody = ScheduleAnnualRequest
+
+// Getter for additional properties for ReceiveStripePaymentEventJSONBody. Returns the specified
+// element and whether it was found
+func (a ReceiveStripePaymentEventJSONBody) Get(fieldName string) (value interface{}, found bool) {
+	if a.AdditionalProperties != nil {
+		value, found = a.AdditionalProperties[fieldName]
+	}
+	return
+}
+
+// Setter for additional properties for ReceiveStripePaymentEventJSONBody
+func (a *ReceiveStripePaymentEventJSONBody) Set(fieldName string, value interface{}) {
+	if a.AdditionalProperties == nil {
+		a.AdditionalProperties = make(map[string]interface{})
+	}
+	a.AdditionalProperties[fieldName] = value
+}
+
+// Override default JSON handling for ReceiveStripePaymentEventJSONBody to handle AdditionalProperties
+func (a *ReceiveStripePaymentEventJSONBody) UnmarshalJSON(b []byte) error {
+	object := make(map[string]json.RawMessage)
+	err := json.Unmarshal(b, &object)
+	if err != nil {
+		return err
+	}
+
+	if raw, found := object["id"]; found {
+		err = json.Unmarshal(raw, &a.Id)
+		if err != nil {
+			return fmt.Errorf("error reading 'id': %w", err)
+		}
+		delete(object, "id")
+	}
+
+	if raw, found := object["type"]; found {
+		err = json.Unmarshal(raw, &a.Type)
+		if err != nil {
+			return fmt.Errorf("error reading 'type': %w", err)
+		}
+		delete(object, "type")
+	}
+
+	if len(object) != 0 {
+		a.AdditionalProperties = make(map[string]interface{})
+		for fieldName, fieldBuf := range object {
+			var fieldVal interface{}
+			err := json.Unmarshal(fieldBuf, &fieldVal)
+			if err != nil {
+				return fmt.Errorf("error unmarshaling field %s: %w", fieldName, err)
+			}
+			a.AdditionalProperties[fieldName] = fieldVal
+		}
+	}
+	return nil
+}
+
+// Override default JSON handling for ReceiveStripePaymentEventJSONBody to handle AdditionalProperties
+func (a ReceiveStripePaymentEventJSONBody) MarshalJSON() ([]byte, error) {
+	var err error
+	object := make(map[string]json.RawMessage)
+
+	object["id"], err = json.Marshal(a.Id)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling 'id': %w", err)
+	}
+
+	object["type"], err = json.Marshal(a.Type)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling 'type': %w", err)
+	}
+
+	for fieldName, field := range a.AdditionalProperties {
+		object[fieldName], err = json.Marshal(field)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling '%s': %w", fieldName, err)
+		}
+	}
+	return json.Marshal(object)
+}
+
 // AsStartingPointsConfig returns the union data inside the AppConfigValue as a StartingPointsConfig
 func (t AppConfigValue) AsStartingPointsConfig() (StartingPointsConfig, error) {
 	var body StartingPointsConfig
@@ -10189,6 +13453,128 @@ func (t AppConfigValue) MarshalJSON() ([]byte, error) {
 
 func (t *AppConfigValue) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsMembershipChange0 returns the union data inside the MembershipChange as a MembershipChange0
+func (t MembershipChange) AsMembershipChange0() (MembershipChange0, error) {
+	var body MembershipChange0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromMembershipChange0 overwrites any union data inside the MembershipChange as the provided MembershipChange0
+func (t *MembershipChange) FromMembershipChange0(v MembershipChange0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeMembershipChange0 performs a merge with any union data inside the MembershipChange, using the provided MembershipChange0
+func (t *MembershipChange) MergeMembershipChange0(v MembershipChange0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsMembershipChange1 returns the union data inside the MembershipChange as a MembershipChange1
+func (t MembershipChange) AsMembershipChange1() (MembershipChange1, error) {
+	var body MembershipChange1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromMembershipChange1 overwrites any union data inside the MembershipChange as the provided MembershipChange1
+func (t *MembershipChange) FromMembershipChange1(v MembershipChange1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeMembershipChange1 performs a merge with any union data inside the MembershipChange, using the provided MembershipChange1
+func (t *MembershipChange) MergeMembershipChange1(v MembershipChange1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t MembershipChange) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	object := make(map[string]json.RawMessage)
+	if t.union != nil {
+		err = json.Unmarshal(b, &object)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if t.Add != nil {
+		object["add"], err = json.Marshal(t.Add)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'add': %w", err)
+		}
+	}
+
+	object["reason"], err = json.Marshal(t.Reason)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling 'reason': %w", err)
+	}
+
+	if t.Remove != nil {
+		object["remove"], err = json.Marshal(t.Remove)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'remove': %w", err)
+		}
+	}
+	b, err = json.Marshal(object)
+	return b, err
+}
+
+func (t *MembershipChange) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	if err != nil {
+		return err
+	}
+	object := make(map[string]json.RawMessage)
+	err = json.Unmarshal(b, &object)
+	if err != nil {
+		return err
+	}
+
+	if raw, found := object["add"]; found {
+		err = json.Unmarshal(raw, &t.Add)
+		if err != nil {
+			return fmt.Errorf("error reading 'add': %w", err)
+		}
+	}
+
+	if raw, found := object["reason"]; found {
+		err = json.Unmarshal(raw, &t.Reason)
+		if err != nil {
+			return fmt.Errorf("error reading 'reason': %w", err)
+		}
+	}
+
+	if raw, found := object["remove"]; found {
+		err = json.Unmarshal(raw, &t.Remove)
+		if err != nil {
+			return fmt.Errorf("error reading 'remove': %w", err)
+		}
+	}
+
 	return err
 }
 
@@ -10254,6 +13640,68 @@ func (t *SongChartSection_Content_Item) UnmarshalJSON(b []byte) error {
 	return err
 }
 
+// AsProgressionExistsError returns the union data inside the CreateProgression409JSONResponseBody as a ProgressionExistsError
+func (t CreateProgression409JSONResponseBody) AsProgressionExistsError() (ProgressionExistsError, error) {
+	var body ProgressionExistsError
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromProgressionExistsError overwrites any union data inside the CreateProgression409JSONResponseBody as the provided ProgressionExistsError
+func (t *CreateProgression409JSONResponseBody) FromProgressionExistsError(v ProgressionExistsError) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeProgressionExistsError performs a merge with any union data inside the CreateProgression409JSONResponseBody, using the provided ProgressionExistsError
+func (t *CreateProgression409JSONResponseBody) MergeProgressionExistsError(v ProgressionExistsError) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsProgressionNotAddableError returns the union data inside the CreateProgression409JSONResponseBody as a ProgressionNotAddableError
+func (t CreateProgression409JSONResponseBody) AsProgressionNotAddableError() (ProgressionNotAddableError, error) {
+	var body ProgressionNotAddableError
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromProgressionNotAddableError overwrites any union data inside the CreateProgression409JSONResponseBody as the provided ProgressionNotAddableError
+func (t *CreateProgression409JSONResponseBody) FromProgressionNotAddableError(v ProgressionNotAddableError) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeProgressionNotAddableError performs a merge with any union data inside the CreateProgression409JSONResponseBody, using the provided ProgressionNotAddableError
+func (t *CreateProgression409JSONResponseBody) MergeProgressionNotAddableError(v ProgressionNotAddableError) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateProgression409JSONResponseBody) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateProgression409JSONResponseBody) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// GetAlphaObservation Observe the alpha for one week
@@ -10265,6 +13713,33 @@ type ServerInterface interface {
 	// GetAlphaStudentObservation Observe one student of the alpha
 	// (GET /admin/alpha-observation/students/{student_id})
 	GetAlphaStudentObservation(w http.ResponseWriter, r *http.Request, studentId openapi_types.UUID, params GetAlphaStudentObservationParams)
+	// ListCommercialAuditEntries Trace commercial operations and their attempts
+	// (GET /admin/commercial-audit)
+	ListCommercialAuditEntries(w http.ResponseWriter, r *http.Request, params ListCommercialAuditEntriesParams)
+	// CreateCommercialConfiguration Record immutable platform pricing and allocation configuration
+	// (POST /admin/commercial-configurations)
+	CreateCommercialConfiguration(w http.ResponseWriter, r *http.Request, params CreateCommercialConfigurationParams)
+	// GetCurrentCommercialConfiguration Read the current authoritative commercial configuration
+	// (GET /admin/commercial-configurations/current)
+	GetCurrentCommercialConfiguration(w http.ResponseWriter, r *http.Request)
+	// ListCommercialGroups List rollout groups and their members as an administrator
+	// (GET /admin/commercial-groups)
+	ListCommercialGroups(w http.ResponseWriter, r *http.Request)
+	// SaveCommercialGroup Create or rename a rollout group
+	// (PUT /admin/commercial-groups/{slug})
+	SaveCommercialGroup(w http.ResponseWriter, r *http.Request, slug GroupSlug, params SaveCommercialGroupParams)
+	// ChangeCommercialGroupMembers Add and remove members of a rollout group
+	// (POST /admin/commercial-groups/{slug}/membership)
+	ChangeCommercialGroupMembers(w http.ResponseWriter, r *http.Request, slug GroupSlug, params ChangeCommercialGroupMembersParams)
+	// GetCommercialRollout Read commercial activation as an administrator
+	// (GET /admin/commercial-rollout)
+	GetCommercialRollout(w http.ResponseWriter, r *http.Request)
+	// TurnOffAllCommercialFlags Turn every commercial flag OFF
+	// (POST /admin/commercial-rollout/kill-switch)
+	TurnOffAllCommercialFlags(w http.ResponseWriter, r *http.Request, params TurnOffAllCommercialFlagsParams)
+	// ChangeCommercialFlag Change one commercial flag's switch and audience
+	// (PUT /admin/commercial-rollout/{flag})
+	ChangeCommercialFlag(w http.ResponseWriter, r *http.Request, flag FlagName, params ChangeCommercialFlagParams)
 	// ListAppConfig List the app's settings
 	// (GET /admin/config)
 	ListAppConfig(w http.ResponseWriter, r *http.Request)
@@ -10274,6 +13749,21 @@ type ServerInterface interface {
 	// SetAppConfig Replace one of the app's settings
 	// (PUT /admin/config/{key})
 	SetAppConfig(w http.ResponseWriter, r *http.Request, key string)
+	// ExecuteFullPaymentRefund Execute an eligible full refund as an admin
+	// (POST /admin/refund-requests/{refund_request_id}/execute)
+	ExecuteFullPaymentRefund(w http.ResponseWriter, r *http.Request, refundRequestId RefundRequestID, params ExecuteFullPaymentRefundParams)
+	// RetryFailedFullRefund Retry a definitively failed refund as an administrator
+	// (POST /admin/refund-requests/{refund_request_id}/retry)
+	RetryFailedFullRefund(w http.ResponseWriter, r *http.Request, refundRequestId openapi_types.UUID, params RetryFailedFullRefundParams)
+	// ReviewFullRefundEligibility Record an explicit admin refund review
+	// (POST /admin/refund-requests/{refund_request_id}/review)
+	ReviewFullRefundEligibility(w http.ResponseWriter, r *http.Request, refundRequestId openapi_types.UUID, params ReviewFullRefundEligibilityParams)
+	// GetCurrentSubscriptionOffer Read the promoted subscription offer as an administrator
+	// (GET /admin/subscription-offers)
+	GetCurrentSubscriptionOffer(w http.ResponseWriter, r *http.Request, params GetCurrentSubscriptionOfferParams)
+	// CreateSubscriptionOfferRevision Create an authoritative subscription offer revision
+	// (POST /admin/subscription-offers)
+	CreateSubscriptionOfferRevision(w http.ResponseWriter, r *http.Request, params CreateSubscriptionOfferRevisionParams)
 	// ListCatalogCourses Browse the published course catalog
 	// (GET /catalog/courses)
 	ListCatalogCourses(w http.ResponseWriter, r *http.Request, params ListCatalogCoursesParams)
@@ -10313,6 +13803,27 @@ type ServerInterface interface {
 	// GetChord Get a chord from the chord catalog with its voicings
 	// (GET /chords/{chord_definition_id})
 	GetChord(w http.ResponseWriter, r *http.Request, chordDefinitionId openapi_types.UUID)
+	// GetCommercialContent Read authoritative commercial content
+	// (GET /commercial-content/{content_kind}/{content_id})
+	GetCommercialContent(w http.ResponseWriter, r *http.Request, contentKind GetCommercialContentParamsContentKind, contentId openapi_types.UUID)
+	// CreateCommercialOffer Create an immutable one-time offer revision
+	// (POST /commercial-content/{content_kind}/{content_id}/offers)
+	CreateCommercialOffer(w http.ResponseWriter, r *http.Request, contentKind CreateCommercialOfferParamsContentKind, contentId openapi_types.UUID, params CreateCommercialOfferParams)
+	// CorrectCommercialOwnership Correct authoritative ownership as an administrator
+	// (POST /commercial-content/{content_kind}/{content_id}/ownership)
+	CorrectCommercialOwnership(w http.ResponseWriter, r *http.Request, contentKind CorrectCommercialOwnershipParamsContentKind, contentId openapi_types.UUID, params CorrectCommercialOwnershipParams)
+	// PublishCommercialRelease Freeze validated commercial dependency references
+	// (POST /commercial-content/{content_kind}/{content_id}/releases)
+	PublishCommercialRelease(w http.ResponseWriter, r *http.Request, contentKind PublishCommercialReleaseParamsContentKind, contentId openapi_types.UUID, params PublishCommercialReleaseParams)
+	// ChangeCommercialSaleState Change free, paid or withdrawn commercial state
+	// (POST /commercial-content/{content_kind}/{content_id}/sale-state)
+	ChangeCommercialSaleState(w http.ResponseWriter, r *http.Request, contentKind ChangeCommercialSaleStateParamsContentKind, contentId openapi_types.UUID, params ChangeCommercialSaleStateParams)
+	// ListCommercialOffers List eligible one-time acquisition offers
+	// (GET /commercial-offers)
+	ListCommercialOffers(w http.ResponseWriter, r *http.Request, params ListCommercialOffersParams)
+	// GetCommercialRelease Read an authorized immutable commercial manifest
+	// (GET /commercial-releases/{release_id})
+	GetCommercialRelease(w http.ResponseWriter, r *http.Request, releaseId openapi_types.UUID)
 	// ListContentNodes List content nodes for authoring
 	// (GET /content-nodes)
 	ListContentNodes(w http.ResponseWriter, r *http.Request, params ListContentNodesParams)
@@ -10436,6 +13947,9 @@ type ServerInterface interface {
 	// UpdateInstrument Replace an instrument's names, default voice and icon
 	// (PATCH /instruments/{instrument_id})
 	UpdateInstrument(w http.ResponseWriter, r *http.Request, instrumentId openapi_types.UUID)
+	// ReceiveCMSCommercialHint Durably accept a CMS editorial synchronization hint
+	// (POST /integrations/cms/commercial-hints)
+	ReceiveCMSCommercialHint(w http.ResponseWriter, r *http.Request)
 	// ListKnowledgeEdges List knowledge edges
 	// (GET /knowledge-edges)
 	ListKnowledgeEdges(w http.ResponseWriter, r *http.Request, params ListKnowledgeEdgesParams)
@@ -10490,12 +14004,33 @@ type ServerInterface interface {
 	// CreateMediaUploadUrl Request a presigned URL to upload a content-authoring media asset
 	// (POST /media/upload-url)
 	CreateMediaUploadUrl(w http.ResponseWriter, r *http.Request)
-	// ListProgressions List the progression catalog
+	// ReceiveStripePaymentEvent Durably receive verified Stripe financial notifications
+	// (POST /payments/stripe/webhook)
+	ReceiveStripePaymentEvent(w http.ResponseWriter, r *http.Request)
+	// ListProgressions List the progressions
 	// (GET /progressions)
 	ListProgressions(w http.ResponseWriter, r *http.Request)
+	// CreateProgression Create a progression for song charts
+	// (POST /progressions)
+	CreateProgression(w http.ResponseWriter, r *http.Request)
+	// DeleteProgression Remove a progression created by mistake
+	// (DELETE /progressions/{progression_id})
+	DeleteProgression(w http.ResponseWriter, r *http.Request, progressionId openapi_types.UUID)
+	// UpdateProgression Change a created progression's nickname
+	// (PATCH /progressions/{progression_id})
+	UpdateProgression(w http.ResponseWriter, r *http.Request, progressionId openapi_types.UUID)
+	// AddProgressionToDrills Add a created progression to the drills
+	// (POST /progressions/{progression_id}/drills)
+	AddProgressionToDrills(w http.ResponseWriter, r *http.Request, progressionId openapi_types.UUID)
+	// GetProgressionUses Read which song chart sections tag a progression
+	// (GET /progressions/{progression_id}/uses)
+	GetProgressionUses(w http.ResponseWriter, r *http.Request, progressionId openapi_types.UUID)
 	// ReadinessCheck Readiness probe
 	// (GET /readyz)
 	ReadinessCheck(w http.ResponseWriter, r *http.Request)
+	// GetRefundRequest Read an owned refund case or an admin handling case
+	// (GET /refund-requests/{refund_request_id})
+	GetRefundRequest(w http.ResponseWriter, r *http.Request, refundRequestId RefundRequestID)
 	// ListSongCharts List song charts for authoring and review
 	// (GET /song-charts)
 	ListSongCharts(w http.ResponseWriter, r *http.Request, params ListSongChartsParams)
@@ -10586,9 +14121,36 @@ type ServerInterface interface {
 	// GetMyStudentPath Get one of the authenticated student's paths with progress
 	// (GET /students/me/student-paths/{student_path_id})
 	GetMyStudentPath(w http.ResponseWriter, r *http.Request, studentPathId openapi_types.UUID)
+	// GetMyLessonCommercialAccess Evaluate commercial access for a lesson in the caller's copy
+	// (GET /students/me/student-paths/{student_path_id}/content-nodes/{content_node_id}/commercial-access)
+	GetMyLessonCommercialAccess(w http.ResponseWriter, r *http.Request, studentPathId openapi_types.UUID, contentNodeId openapi_types.UUID)
 	// AssignLearningPath Assign a learning path to a student
 	// (POST /students/{student_id}/student-paths)
 	AssignLearningPath(w http.ResponseWriter, r *http.Request, studentId openapi_types.UUID)
+	// ListSubscriptionOffers List available offers for one subscription scope
+	// (GET /subscription-offers)
+	ListSubscriptionOffers(w http.ResponseWriter, r *http.Request, params ListSubscriptionOffersParams)
+	// ListMyCommercialBalances Read teacher earnings by currency
+	// (GET /teachers/me/commercial-balances)
+	ListMyCommercialBalances(w http.ResponseWriter, r *http.Request)
+	// ListMyTeacherSales List the caller's own sales
+	// (GET /teachers/me/commercial-sales)
+	ListMyTeacherSales(w http.ResponseWriter, r *http.Request, params ListMyTeacherSalesParams)
+	// ListMyCommercialSettlements Read teacher settlement history
+	// (GET /teachers/me/commercial-settlements)
+	ListMyCommercialSettlements(w http.ResponseWriter, r *http.Request, params ListMyCommercialSettlementsParams)
+	// GetMyTeacherSellingTerms Read the current selling terms
+	// (GET /teachers/me/commercial-terms)
+	GetMyTeacherSellingTerms(w http.ResponseWriter, r *http.Request)
+	// GetMyPayoutAccount Read the caller's payout account readiness
+	// (GET /teachers/me/payout-account)
+	GetMyPayoutAccount(w http.ResponseWriter, r *http.Request)
+	// CreateMyPayoutDashboardLink Create a provider-hosted payout dashboard link
+	// (POST /teachers/me/payout-account/dashboard-links)
+	CreateMyPayoutDashboardLink(w http.ResponseWriter, r *http.Request, params CreateMyPayoutDashboardLinkParams)
+	// CreateMyPayoutOnboardingLink Create a provider-hosted payout onboarding link
+	// (POST /teachers/me/payout-account/onboarding-links)
+	CreateMyPayoutOnboardingLink(w http.ResponseWriter, r *http.Request, params CreateMyPayoutOnboardingLinkParams)
 	// RegisterUser Register an authenticated user
 	// (POST /users)
 	RegisterUser(w http.ResponseWriter, r *http.Request)
@@ -10598,6 +14160,42 @@ type ServerInterface interface {
 	// UpdateMyProfile Update the authenticated user's preferences
 	// (PATCH /users/me)
 	UpdateMyProfile(w http.ResponseWriter, r *http.Request)
+	// CreateMyCommercialCheckout Start a permanent course or path purchase checkout
+	// (POST /users/me/commercial-checkouts)
+	CreateMyCommercialCheckout(w http.ResponseWriter, r *http.Request, params CreateMyCommercialCheckoutParams)
+	// GetMyCommercialCheckout Read one-time acquisition status
+	// (GET /users/me/commercial-checkouts/{checkout_id})
+	GetMyCommercialCheckout(w http.ResponseWriter, r *http.Request, checkoutId openapi_types.UUID)
+	// ListMyCommercialHoldings List permanent purchases
+	// (GET /users/me/commercial-holdings)
+	ListMyCommercialHoldings(w http.ResponseWriter, r *http.Request, params ListMyCommercialHoldingsParams)
+	// ListMyCommercialPayments List successful payments for refund/support references
+	// (GET /users/me/payments)
+	ListMyCommercialPayments(w http.ResponseWriter, r *http.Request, params ListMyCommercialPaymentsParams)
+	// RequestMyPaymentRefund Request a full refund of a caller-owned payment
+	// (POST /users/me/refund-requests)
+	RequestMyPaymentRefund(w http.ResponseWriter, r *http.Request, params RequestMyPaymentRefundParams)
+	// CreateMySubscriptionCheckout Create a Stripe session for an authoritative subscription offer
+	// (POST /users/me/subscription-checkouts)
+	CreateMySubscriptionCheckout(w http.ResponseWriter, r *http.Request, params CreateMySubscriptionCheckoutParams)
+	// GetMySubscriptionCheckout Read the caller's checkout and fulfillment status
+	// (GET /users/me/subscription-checkouts/{checkout_id})
+	GetMySubscriptionCheckout(w http.ResponseWriter, r *http.Request, checkoutId openapi_types.UUID)
+	// ListMySubscriptions List the caller's existing subscriptions
+	// (GET /users/me/subscriptions)
+	ListMySubscriptions(w http.ResponseWriter, r *http.Request, params ListMySubscriptionsParams)
+	// CancelMySubscriptionRenewal Stop the next renewal without truncating paid access
+	// (POST /users/me/subscriptions/{subscription_id}/cancel-renewal)
+	CancelMySubscriptionRenewal(w http.ResponseWriter, r *http.Request, subscriptionId SubscriptionID, params CancelMySubscriptionRenewalParams)
+	// CreateMyPaymentMethodSession Open the provider-hosted page to update the subscription payment method
+	// (POST /users/me/subscriptions/{subscription_id}/payment-method-session)
+	CreateMyPaymentMethodSession(w http.ResponseWriter, r *http.Request, subscriptionId SubscriptionID, params CreateMyPaymentMethodSessionParams)
+	// ResumeMySubscriptionRenewal Turn a stopped renewal back on before the paid period ends
+	// (POST /users/me/subscriptions/{subscription_id}/resume-renewal)
+	ResumeMySubscriptionRenewal(w http.ResponseWriter, r *http.Request, subscriptionId SubscriptionID, params ResumeMySubscriptionRenewalParams)
+	// ScheduleMyAnnualSubscription Schedule monthly-to-annual billing at the next renewal
+	// (POST /users/me/subscriptions/{subscription_id}/schedule-annual)
+	ScheduleMyAnnualSubscription(w http.ResponseWriter, r *http.Request, subscriptionId SubscriptionID, params ScheduleMyAnnualSubscriptionParams)
 	// ListVoices List the voices diagrams can be played with
 	// (GET /voices)
 	ListVoices(w http.ResponseWriter, r *http.Request)
@@ -10625,6 +14223,60 @@ func (_ Unimplemented) GetAlphaStudentObservation(w http.ResponseWriter, r *http
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// ListCommercialAuditEntries Trace commercial operations and their attempts
+// (GET /admin/commercial-audit)
+func (_ Unimplemented) ListCommercialAuditEntries(w http.ResponseWriter, r *http.Request, params ListCommercialAuditEntriesParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CreateCommercialConfiguration Record immutable platform pricing and allocation configuration
+// (POST /admin/commercial-configurations)
+func (_ Unimplemented) CreateCommercialConfiguration(w http.ResponseWriter, r *http.Request, params CreateCommercialConfigurationParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetCurrentCommercialConfiguration Read the current authoritative commercial configuration
+// (GET /admin/commercial-configurations/current)
+func (_ Unimplemented) GetCurrentCommercialConfiguration(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListCommercialGroups List rollout groups and their members as an administrator
+// (GET /admin/commercial-groups)
+func (_ Unimplemented) ListCommercialGroups(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// SaveCommercialGroup Create or rename a rollout group
+// (PUT /admin/commercial-groups/{slug})
+func (_ Unimplemented) SaveCommercialGroup(w http.ResponseWriter, r *http.Request, slug GroupSlug, params SaveCommercialGroupParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ChangeCommercialGroupMembers Add and remove members of a rollout group
+// (POST /admin/commercial-groups/{slug}/membership)
+func (_ Unimplemented) ChangeCommercialGroupMembers(w http.ResponseWriter, r *http.Request, slug GroupSlug, params ChangeCommercialGroupMembersParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetCommercialRollout Read commercial activation as an administrator
+// (GET /admin/commercial-rollout)
+func (_ Unimplemented) GetCommercialRollout(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// TurnOffAllCommercialFlags Turn every commercial flag OFF
+// (POST /admin/commercial-rollout/kill-switch)
+func (_ Unimplemented) TurnOffAllCommercialFlags(w http.ResponseWriter, r *http.Request, params TurnOffAllCommercialFlagsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ChangeCommercialFlag Change one commercial flag's switch and audience
+// (PUT /admin/commercial-rollout/{flag})
+func (_ Unimplemented) ChangeCommercialFlag(w http.ResponseWriter, r *http.Request, flag FlagName, params ChangeCommercialFlagParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // ListAppConfig List the app's settings
 // (GET /admin/config)
 func (_ Unimplemented) ListAppConfig(w http.ResponseWriter, r *http.Request) {
@@ -10640,6 +14292,36 @@ func (_ Unimplemented) GetAppConfig(w http.ResponseWriter, r *http.Request, key 
 // SetAppConfig Replace one of the app's settings
 // (PUT /admin/config/{key})
 func (_ Unimplemented) SetAppConfig(w http.ResponseWriter, r *http.Request, key string) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ExecuteFullPaymentRefund Execute an eligible full refund as an admin
+// (POST /admin/refund-requests/{refund_request_id}/execute)
+func (_ Unimplemented) ExecuteFullPaymentRefund(w http.ResponseWriter, r *http.Request, refundRequestId RefundRequestID, params ExecuteFullPaymentRefundParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// RetryFailedFullRefund Retry a definitively failed refund as an administrator
+// (POST /admin/refund-requests/{refund_request_id}/retry)
+func (_ Unimplemented) RetryFailedFullRefund(w http.ResponseWriter, r *http.Request, refundRequestId openapi_types.UUID, params RetryFailedFullRefundParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ReviewFullRefundEligibility Record an explicit admin refund review
+// (POST /admin/refund-requests/{refund_request_id}/review)
+func (_ Unimplemented) ReviewFullRefundEligibility(w http.ResponseWriter, r *http.Request, refundRequestId openapi_types.UUID, params ReviewFullRefundEligibilityParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetCurrentSubscriptionOffer Read the promoted subscription offer as an administrator
+// (GET /admin/subscription-offers)
+func (_ Unimplemented) GetCurrentSubscriptionOffer(w http.ResponseWriter, r *http.Request, params GetCurrentSubscriptionOfferParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CreateSubscriptionOfferRevision Create an authoritative subscription offer revision
+// (POST /admin/subscription-offers)
+func (_ Unimplemented) CreateSubscriptionOfferRevision(w http.ResponseWriter, r *http.Request, params CreateSubscriptionOfferRevisionParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -10718,6 +14400,48 @@ func (_ Unimplemented) SearchChords(w http.ResponseWriter, r *http.Request, para
 // GetChord Get a chord from the chord catalog with its voicings
 // (GET /chords/{chord_definition_id})
 func (_ Unimplemented) GetChord(w http.ResponseWriter, r *http.Request, chordDefinitionId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetCommercialContent Read authoritative commercial content
+// (GET /commercial-content/{content_kind}/{content_id})
+func (_ Unimplemented) GetCommercialContent(w http.ResponseWriter, r *http.Request, contentKind GetCommercialContentParamsContentKind, contentId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CreateCommercialOffer Create an immutable one-time offer revision
+// (POST /commercial-content/{content_kind}/{content_id}/offers)
+func (_ Unimplemented) CreateCommercialOffer(w http.ResponseWriter, r *http.Request, contentKind CreateCommercialOfferParamsContentKind, contentId openapi_types.UUID, params CreateCommercialOfferParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CorrectCommercialOwnership Correct authoritative ownership as an administrator
+// (POST /commercial-content/{content_kind}/{content_id}/ownership)
+func (_ Unimplemented) CorrectCommercialOwnership(w http.ResponseWriter, r *http.Request, contentKind CorrectCommercialOwnershipParamsContentKind, contentId openapi_types.UUID, params CorrectCommercialOwnershipParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// PublishCommercialRelease Freeze validated commercial dependency references
+// (POST /commercial-content/{content_kind}/{content_id}/releases)
+func (_ Unimplemented) PublishCommercialRelease(w http.ResponseWriter, r *http.Request, contentKind PublishCommercialReleaseParamsContentKind, contentId openapi_types.UUID, params PublishCommercialReleaseParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ChangeCommercialSaleState Change free, paid or withdrawn commercial state
+// (POST /commercial-content/{content_kind}/{content_id}/sale-state)
+func (_ Unimplemented) ChangeCommercialSaleState(w http.ResponseWriter, r *http.Request, contentKind ChangeCommercialSaleStateParamsContentKind, contentId openapi_types.UUID, params ChangeCommercialSaleStateParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListCommercialOffers List eligible one-time acquisition offers
+// (GET /commercial-offers)
+func (_ Unimplemented) ListCommercialOffers(w http.ResponseWriter, r *http.Request, params ListCommercialOffersParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetCommercialRelease Read an authorized immutable commercial manifest
+// (GET /commercial-releases/{release_id})
+func (_ Unimplemented) GetCommercialRelease(w http.ResponseWriter, r *http.Request, releaseId openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -10967,6 +14691,12 @@ func (_ Unimplemented) UpdateInstrument(w http.ResponseWriter, r *http.Request, 
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// ReceiveCMSCommercialHint Durably accept a CMS editorial synchronization hint
+// (POST /integrations/cms/commercial-hints)
+func (_ Unimplemented) ReceiveCMSCommercialHint(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // ListKnowledgeEdges List knowledge edges
 // (GET /knowledge-edges)
 func (_ Unimplemented) ListKnowledgeEdges(w http.ResponseWriter, r *http.Request, params ListKnowledgeEdgesParams) {
@@ -11075,15 +14805,57 @@ func (_ Unimplemented) CreateMediaUploadUrl(w http.ResponseWriter, r *http.Reque
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// ListProgressions List the progression catalog
+// ReceiveStripePaymentEvent Durably receive verified Stripe financial notifications
+// (POST /payments/stripe/webhook)
+func (_ Unimplemented) ReceiveStripePaymentEvent(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListProgressions List the progressions
 // (GET /progressions)
 func (_ Unimplemented) ListProgressions(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CreateProgression Create a progression for song charts
+// (POST /progressions)
+func (_ Unimplemented) CreateProgression(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// DeleteProgression Remove a progression created by mistake
+// (DELETE /progressions/{progression_id})
+func (_ Unimplemented) DeleteProgression(w http.ResponseWriter, r *http.Request, progressionId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UpdateProgression Change a created progression's nickname
+// (PATCH /progressions/{progression_id})
+func (_ Unimplemented) UpdateProgression(w http.ResponseWriter, r *http.Request, progressionId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// AddProgressionToDrills Add a created progression to the drills
+// (POST /progressions/{progression_id}/drills)
+func (_ Unimplemented) AddProgressionToDrills(w http.ResponseWriter, r *http.Request, progressionId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetProgressionUses Read which song chart sections tag a progression
+// (GET /progressions/{progression_id}/uses)
+func (_ Unimplemented) GetProgressionUses(w http.ResponseWriter, r *http.Request, progressionId openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // ReadinessCheck Readiness probe
 // (GET /readyz)
 func (_ Unimplemented) ReadinessCheck(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetRefundRequest Read an owned refund case or an admin handling case
+// (GET /refund-requests/{refund_request_id})
+func (_ Unimplemented) GetRefundRequest(w http.ResponseWriter, r *http.Request, refundRequestId RefundRequestID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -11267,9 +15039,63 @@ func (_ Unimplemented) GetMyStudentPath(w http.ResponseWriter, r *http.Request, 
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// GetMyLessonCommercialAccess Evaluate commercial access for a lesson in the caller's copy
+// (GET /students/me/student-paths/{student_path_id}/content-nodes/{content_node_id}/commercial-access)
+func (_ Unimplemented) GetMyLessonCommercialAccess(w http.ResponseWriter, r *http.Request, studentPathId openapi_types.UUID, contentNodeId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // AssignLearningPath Assign a learning path to a student
 // (POST /students/{student_id}/student-paths)
 func (_ Unimplemented) AssignLearningPath(w http.ResponseWriter, r *http.Request, studentId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListSubscriptionOffers List available offers for one subscription scope
+// (GET /subscription-offers)
+func (_ Unimplemented) ListSubscriptionOffers(w http.ResponseWriter, r *http.Request, params ListSubscriptionOffersParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListMyCommercialBalances Read teacher earnings by currency
+// (GET /teachers/me/commercial-balances)
+func (_ Unimplemented) ListMyCommercialBalances(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListMyTeacherSales List the caller's own sales
+// (GET /teachers/me/commercial-sales)
+func (_ Unimplemented) ListMyTeacherSales(w http.ResponseWriter, r *http.Request, params ListMyTeacherSalesParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListMyCommercialSettlements Read teacher settlement history
+// (GET /teachers/me/commercial-settlements)
+func (_ Unimplemented) ListMyCommercialSettlements(w http.ResponseWriter, r *http.Request, params ListMyCommercialSettlementsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetMyTeacherSellingTerms Read the current selling terms
+// (GET /teachers/me/commercial-terms)
+func (_ Unimplemented) GetMyTeacherSellingTerms(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetMyPayoutAccount Read the caller's payout account readiness
+// (GET /teachers/me/payout-account)
+func (_ Unimplemented) GetMyPayoutAccount(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CreateMyPayoutDashboardLink Create a provider-hosted payout dashboard link
+// (POST /teachers/me/payout-account/dashboard-links)
+func (_ Unimplemented) CreateMyPayoutDashboardLink(w http.ResponseWriter, r *http.Request, params CreateMyPayoutDashboardLinkParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CreateMyPayoutOnboardingLink Create a provider-hosted payout onboarding link
+// (POST /teachers/me/payout-account/onboarding-links)
+func (_ Unimplemented) CreateMyPayoutOnboardingLink(w http.ResponseWriter, r *http.Request, params CreateMyPayoutOnboardingLinkParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -11288,6 +15114,78 @@ func (_ Unimplemented) GetMyProfile(w http.ResponseWriter, r *http.Request) {
 // UpdateMyProfile Update the authenticated user's preferences
 // (PATCH /users/me)
 func (_ Unimplemented) UpdateMyProfile(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CreateMyCommercialCheckout Start a permanent course or path purchase checkout
+// (POST /users/me/commercial-checkouts)
+func (_ Unimplemented) CreateMyCommercialCheckout(w http.ResponseWriter, r *http.Request, params CreateMyCommercialCheckoutParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetMyCommercialCheckout Read one-time acquisition status
+// (GET /users/me/commercial-checkouts/{checkout_id})
+func (_ Unimplemented) GetMyCommercialCheckout(w http.ResponseWriter, r *http.Request, checkoutId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListMyCommercialHoldings List permanent purchases
+// (GET /users/me/commercial-holdings)
+func (_ Unimplemented) ListMyCommercialHoldings(w http.ResponseWriter, r *http.Request, params ListMyCommercialHoldingsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListMyCommercialPayments List successful payments for refund/support references
+// (GET /users/me/payments)
+func (_ Unimplemented) ListMyCommercialPayments(w http.ResponseWriter, r *http.Request, params ListMyCommercialPaymentsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// RequestMyPaymentRefund Request a full refund of a caller-owned payment
+// (POST /users/me/refund-requests)
+func (_ Unimplemented) RequestMyPaymentRefund(w http.ResponseWriter, r *http.Request, params RequestMyPaymentRefundParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CreateMySubscriptionCheckout Create a Stripe session for an authoritative subscription offer
+// (POST /users/me/subscription-checkouts)
+func (_ Unimplemented) CreateMySubscriptionCheckout(w http.ResponseWriter, r *http.Request, params CreateMySubscriptionCheckoutParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetMySubscriptionCheckout Read the caller's checkout and fulfillment status
+// (GET /users/me/subscription-checkouts/{checkout_id})
+func (_ Unimplemented) GetMySubscriptionCheckout(w http.ResponseWriter, r *http.Request, checkoutId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListMySubscriptions List the caller's existing subscriptions
+// (GET /users/me/subscriptions)
+func (_ Unimplemented) ListMySubscriptions(w http.ResponseWriter, r *http.Request, params ListMySubscriptionsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CancelMySubscriptionRenewal Stop the next renewal without truncating paid access
+// (POST /users/me/subscriptions/{subscription_id}/cancel-renewal)
+func (_ Unimplemented) CancelMySubscriptionRenewal(w http.ResponseWriter, r *http.Request, subscriptionId SubscriptionID, params CancelMySubscriptionRenewalParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CreateMyPaymentMethodSession Open the provider-hosted page to update the subscription payment method
+// (POST /users/me/subscriptions/{subscription_id}/payment-method-session)
+func (_ Unimplemented) CreateMyPaymentMethodSession(w http.ResponseWriter, r *http.Request, subscriptionId SubscriptionID, params CreateMyPaymentMethodSessionParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ResumeMySubscriptionRenewal Turn a stopped renewal back on before the paid period ends
+// (POST /users/me/subscriptions/{subscription_id}/resume-renewal)
+func (_ Unimplemented) ResumeMySubscriptionRenewal(w http.ResponseWriter, r *http.Request, subscriptionId SubscriptionID, params ResumeMySubscriptionRenewalParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ScheduleMyAnnualSubscription Schedule monthly-to-annual billing at the next renewal
+// (POST /users/me/subscriptions/{subscription_id}/schedule-annual)
+func (_ Unimplemented) ScheduleMyAnnualSubscription(w http.ResponseWriter, r *http.Request, subscriptionId SubscriptionID, params ScheduleMyAnnualSubscriptionParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -11505,6 +15403,385 @@ func (siw *ServerInterfaceWrapper) GetAlphaStudentObservation(w http.ResponseWri
 	handler.ServeHTTP(w, r)
 }
 
+// ListCommercialAuditEntries operation middleware
+func (siw *ServerInterfaceWrapper) ListCommercialAuditEntries(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListCommercialAuditEntriesParams
+
+	// ------------- Optional query parameter "operation_id" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "operation_id", r.URL.Query(), &params.OperationId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "operation_id"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "operation_id", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "resource_kind" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "resource_kind", r.URL.Query(), &params.ResourceKind, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "resource_kind"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resource_kind", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "resource_id" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "resource_id", r.URL.Query(), &params.ResourceId, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "resource_id"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resource_id", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "cursor" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", r.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "cursor"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "cursor", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListCommercialAuditEntries(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateCommercialConfiguration operation middleware
+func (siw *ServerInterfaceWrapper) CreateCommercialConfiguration(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreateCommercialConfigurationParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey openapi_types.UUID
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateCommercialConfiguration(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetCurrentCommercialConfiguration operation middleware
+func (siw *ServerInterfaceWrapper) GetCurrentCommercialConfiguration(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetCurrentCommercialConfiguration(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListCommercialGroups operation middleware
+func (siw *ServerInterfaceWrapper) ListCommercialGroups(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListCommercialGroups(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SaveCommercialGroup operation middleware
+func (siw *ServerInterfaceWrapper) SaveCommercialGroup(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "slug" -------------
+	var slug GroupSlug
+
+	err = runtime.BindStyledParameterWithOptions("simple", "slug", chi.URLParam(r, "slug"), &slug, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "slug", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params SaveCommercialGroupParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey openapi_types.UUID
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SaveCommercialGroup(w, r, slug, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ChangeCommercialGroupMembers operation middleware
+func (siw *ServerInterfaceWrapper) ChangeCommercialGroupMembers(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "slug" -------------
+	var slug GroupSlug
+
+	err = runtime.BindStyledParameterWithOptions("simple", "slug", chi.URLParam(r, "slug"), &slug, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "slug", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ChangeCommercialGroupMembersParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey openapi_types.UUID
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ChangeCommercialGroupMembers(w, r, slug, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetCommercialRollout operation middleware
+func (siw *ServerInterfaceWrapper) GetCommercialRollout(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetCommercialRollout(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// TurnOffAllCommercialFlags operation middleware
+func (siw *ServerInterfaceWrapper) TurnOffAllCommercialFlags(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params TurnOffAllCommercialFlagsParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey openapi_types.UUID
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.TurnOffAllCommercialFlags(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ChangeCommercialFlag operation middleware
+func (siw *ServerInterfaceWrapper) ChangeCommercialFlag(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "flag" -------------
+	var flag FlagName
+
+	err = runtime.BindStyledParameterWithOptions("simple", "flag", chi.URLParam(r, "flag"), &flag, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "flag", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ChangeCommercialFlagParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey openapi_types.UUID
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ChangeCommercialFlag(w, r, flag, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListAppConfig operation middleware
 func (siw *ServerInterfaceWrapper) ListAppConfig(w http.ResponseWriter, r *http.Request) {
 
@@ -11562,6 +15839,272 @@ func (siw *ServerInterfaceWrapper) SetAppConfig(w http.ResponseWriter, r *http.R
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.SetAppConfig(w, r, key)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ExecuteFullPaymentRefund operation middleware
+func (siw *ServerInterfaceWrapper) ExecuteFullPaymentRefund(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "refund_request_id" -------------
+	var refundRequestId RefundRequestID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "refund_request_id", chi.URLParam(r, "refund_request_id"), &refundRequestId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "refund_request_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ExecuteFullPaymentRefundParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ExecuteFullPaymentRefund(w, r, refundRequestId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RetryFailedFullRefund operation middleware
+func (siw *ServerInterfaceWrapper) RetryFailedFullRefund(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "refund_request_id" -------------
+	var refundRequestId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "refund_request_id", chi.URLParam(r, "refund_request_id"), &refundRequestId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "refund_request_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params RetryFailedFullRefundParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey openapi_types.UUID
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RetryFailedFullRefund(w, r, refundRequestId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ReviewFullRefundEligibility operation middleware
+func (siw *ServerInterfaceWrapper) ReviewFullRefundEligibility(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "refund_request_id" -------------
+	var refundRequestId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "refund_request_id", chi.URLParam(r, "refund_request_id"), &refundRequestId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "refund_request_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ReviewFullRefundEligibilityParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey openapi_types.UUID
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ReviewFullRefundEligibility(w, r, refundRequestId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetCurrentSubscriptionOffer operation middleware
+func (siw *ServerInterfaceWrapper) GetCurrentSubscriptionOffer(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetCurrentSubscriptionOfferParams
+
+	// ------------- Required query parameter "scope_kind" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "scope_kind", r.URL.Query(), &params.ScopeKind, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "scope_kind"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "scope_kind", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "billing_period" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "billing_period", r.URL.Query(), &params.BillingPeriod, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "billing_period"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "billing_period", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "currency" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "currency", r.URL.Query(), &params.Currency, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "currency"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "currency", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetCurrentSubscriptionOffer(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateSubscriptionOfferRevision operation middleware
+func (siw *ServerInterfaceWrapper) CreateSubscriptionOfferRevision(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreateSubscriptionOfferRevisionParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey openapi_types.UUID
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateSubscriptionOfferRevision(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -12194,6 +16737,378 @@ func (siw *ServerInterfaceWrapper) GetChord(w http.ResponseWriter, r *http.Reque
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetChord(w, r, chordDefinitionId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetCommercialContent operation middleware
+func (siw *ServerInterfaceWrapper) GetCommercialContent(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "content_kind" -------------
+	var contentKind GetCommercialContentParamsContentKind
+
+	err = runtime.BindStyledParameterWithOptions("simple", "content_kind", chi.URLParam(r, "content_kind"), &contentKind, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "content_kind", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "content_id" -------------
+	var contentId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "content_id", chi.URLParam(r, "content_id"), &contentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "content_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetCommercialContent(w, r, contentKind, contentId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateCommercialOffer operation middleware
+func (siw *ServerInterfaceWrapper) CreateCommercialOffer(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "content_kind" -------------
+	var contentKind CreateCommercialOfferParamsContentKind
+
+	err = runtime.BindStyledParameterWithOptions("simple", "content_kind", chi.URLParam(r, "content_kind"), &contentKind, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "content_kind", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "content_id" -------------
+	var contentId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "content_id", chi.URLParam(r, "content_id"), &contentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "content_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreateCommercialOfferParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey openapi_types.UUID
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateCommercialOffer(w, r, contentKind, contentId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CorrectCommercialOwnership operation middleware
+func (siw *ServerInterfaceWrapper) CorrectCommercialOwnership(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "content_kind" -------------
+	var contentKind CorrectCommercialOwnershipParamsContentKind
+
+	err = runtime.BindStyledParameterWithOptions("simple", "content_kind", chi.URLParam(r, "content_kind"), &contentKind, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "content_kind", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "content_id" -------------
+	var contentId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "content_id", chi.URLParam(r, "content_id"), &contentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "content_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CorrectCommercialOwnershipParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey openapi_types.UUID
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CorrectCommercialOwnership(w, r, contentKind, contentId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PublishCommercialRelease operation middleware
+func (siw *ServerInterfaceWrapper) PublishCommercialRelease(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "content_kind" -------------
+	var contentKind PublishCommercialReleaseParamsContentKind
+
+	err = runtime.BindStyledParameterWithOptions("simple", "content_kind", chi.URLParam(r, "content_kind"), &contentKind, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "content_kind", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "content_id" -------------
+	var contentId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "content_id", chi.URLParam(r, "content_id"), &contentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "content_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PublishCommercialReleaseParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey openapi_types.UUID
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PublishCommercialRelease(w, r, contentKind, contentId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ChangeCommercialSaleState operation middleware
+func (siw *ServerInterfaceWrapper) ChangeCommercialSaleState(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "content_kind" -------------
+	var contentKind ChangeCommercialSaleStateParamsContentKind
+
+	err = runtime.BindStyledParameterWithOptions("simple", "content_kind", chi.URLParam(r, "content_kind"), &contentKind, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "content_kind", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "content_id" -------------
+	var contentId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "content_id", chi.URLParam(r, "content_id"), &contentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "content_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ChangeCommercialSaleStateParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey openapi_types.UUID
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ChangeCommercialSaleState(w, r, contentKind, contentId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListCommercialOffers operation middleware
+func (siw *ServerInterfaceWrapper) ListCommercialOffers(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListCommercialOffersParams
+
+	// ------------- Required query parameter "kind" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "kind", r.URL.Query(), &params.Kind, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "kind"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "kind", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "content_id" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "content_id", r.URL.Query(), &params.ContentId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "content_id"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "content_id", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "currency" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "currency", r.URL.Query(), &params.Currency, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "currency"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "currency", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListCommercialOffers(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetCommercialRelease operation middleware
+func (siw *ServerInterfaceWrapper) GetCommercialRelease(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "release_id" -------------
+	var releaseId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "release_id", chi.URLParam(r, "release_id"), &releaseId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "release_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetCommercialRelease(w, r, releaseId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -13812,6 +18727,20 @@ func (siw *ServerInterfaceWrapper) UpdateInstrument(w http.ResponseWriter, r *ht
 	handler.ServeHTTP(w, r)
 }
 
+// ReceiveCMSCommercialHint operation middleware
+func (siw *ServerInterfaceWrapper) ReceiveCMSCommercialHint(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ReceiveCMSCommercialHint(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListKnowledgeEdges operation middleware
 func (siw *ServerInterfaceWrapper) ListKnowledgeEdges(w http.ResponseWriter, r *http.Request) {
 
@@ -14429,6 +19358,20 @@ func (siw *ServerInterfaceWrapper) CreateMediaUploadUrl(w http.ResponseWriter, r
 	handler.ServeHTTP(w, r)
 }
 
+// ReceiveStripePaymentEvent operation middleware
+func (siw *ServerInterfaceWrapper) ReceiveStripePaymentEvent(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ReceiveStripePaymentEvent(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListProgressions operation middleware
 func (siw *ServerInterfaceWrapper) ListProgressions(w http.ResponseWriter, r *http.Request) {
 
@@ -14443,11 +19386,155 @@ func (siw *ServerInterfaceWrapper) ListProgressions(w http.ResponseWriter, r *ht
 	handler.ServeHTTP(w, r)
 }
 
+// CreateProgression operation middleware
+func (siw *ServerInterfaceWrapper) CreateProgression(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateProgression(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteProgression operation middleware
+func (siw *ServerInterfaceWrapper) DeleteProgression(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "progression_id" -------------
+	var progressionId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "progression_id", chi.URLParam(r, "progression_id"), &progressionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "progression_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteProgression(w, r, progressionId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateProgression operation middleware
+func (siw *ServerInterfaceWrapper) UpdateProgression(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "progression_id" -------------
+	var progressionId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "progression_id", chi.URLParam(r, "progression_id"), &progressionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "progression_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateProgression(w, r, progressionId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AddProgressionToDrills operation middleware
+func (siw *ServerInterfaceWrapper) AddProgressionToDrills(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "progression_id" -------------
+	var progressionId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "progression_id", chi.URLParam(r, "progression_id"), &progressionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "progression_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AddProgressionToDrills(w, r, progressionId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetProgressionUses operation middleware
+func (siw *ServerInterfaceWrapper) GetProgressionUses(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "progression_id" -------------
+	var progressionId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "progression_id", chi.URLParam(r, "progression_id"), &progressionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "progression_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetProgressionUses(w, r, progressionId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ReadinessCheck operation middleware
 func (siw *ServerInterfaceWrapper) ReadinessCheck(w http.ResponseWriter, r *http.Request) {
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ReadinessCheck(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetRefundRequest operation middleware
+func (siw *ServerInterfaceWrapper) GetRefundRequest(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "refund_request_id" -------------
+	var refundRequestId RefundRequestID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "refund_request_id", chi.URLParam(r, "refund_request_id"), &refundRequestId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "refund_request_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetRefundRequest(w, r, refundRequestId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -15245,6 +20332,41 @@ func (siw *ServerInterfaceWrapper) GetMyStudentPath(w http.ResponseWriter, r *ht
 	handler.ServeHTTP(w, r)
 }
 
+// GetMyLessonCommercialAccess operation middleware
+func (siw *ServerInterfaceWrapper) GetMyLessonCommercialAccess(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "student_path_id" -------------
+	var studentPathId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "student_path_id", chi.URLParam(r, "student_path_id"), &studentPathId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "student_path_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "content_node_id" -------------
+	var contentNodeId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "content_node_id", chi.URLParam(r, "content_node_id"), &contentNodeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "content_node_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetMyLessonCommercialAccess(w, r, studentPathId, contentNodeId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // AssignLearningPath operation middleware
 func (siw *ServerInterfaceWrapper) AssignLearningPath(w http.ResponseWriter, r *http.Request) {
 
@@ -15262,6 +20384,328 @@ func (siw *ServerInterfaceWrapper) AssignLearningPath(w http.ResponseWriter, r *
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.AssignLearningPath(w, r, studentId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListSubscriptionOffers operation middleware
+func (siw *ServerInterfaceWrapper) ListSubscriptionOffers(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListSubscriptionOffersParams
+
+	// ------------- Required query parameter "scope_kind" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "scope_kind", r.URL.Query(), &params.ScopeKind, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "scope_kind"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "scope_kind", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "currency" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "currency", r.URL.Query(), &params.Currency, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "currency"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "currency", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListSubscriptionOffers(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListMyCommercialBalances operation middleware
+func (siw *ServerInterfaceWrapper) ListMyCommercialBalances(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListMyCommercialBalances(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListMyTeacherSales operation middleware
+func (siw *ServerInterfaceWrapper) ListMyTeacherSales(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListMyTeacherSalesParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", r.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "offset"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "sold_from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "sold_from", r.URL.Query(), &params.SoldFrom, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "sold_from"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sold_from", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "sold_before" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "sold_before", r.URL.Query(), &params.SoldBefore, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "sold_before"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sold_before", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListMyTeacherSales(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListMyCommercialSettlements operation middleware
+func (siw *ServerInterfaceWrapper) ListMyCommercialSettlements(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListMyCommercialSettlementsParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", r.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "offset"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "created_from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "created_from", r.URL.Query(), &params.CreatedFrom, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "created_from"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "created_from", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "created_before" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "created_before", r.URL.Query(), &params.CreatedBefore, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "created_before"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "created_before", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListMyCommercialSettlements(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetMyTeacherSellingTerms operation middleware
+func (siw *ServerInterfaceWrapper) GetMyTeacherSellingTerms(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetMyTeacherSellingTerms(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetMyPayoutAccount operation middleware
+func (siw *ServerInterfaceWrapper) GetMyPayoutAccount(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetMyPayoutAccount(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateMyPayoutDashboardLink operation middleware
+func (siw *ServerInterfaceWrapper) CreateMyPayoutDashboardLink(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreateMyPayoutDashboardLinkParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey openapi_types.UUID
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateMyPayoutDashboardLink(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateMyPayoutOnboardingLink operation middleware
+func (siw *ServerInterfaceWrapper) CreateMyPayoutOnboardingLink(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreateMyPayoutOnboardingLinkParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey openapi_types.UUID
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateMyPayoutOnboardingLink(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -15304,6 +20748,547 @@ func (siw *ServerInterfaceWrapper) UpdateMyProfile(w http.ResponseWriter, r *htt
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateMyProfile(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateMyCommercialCheckout operation middleware
+func (siw *ServerInterfaceWrapper) CreateMyCommercialCheckout(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreateMyCommercialCheckoutParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey openapi_types.UUID
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateMyCommercialCheckout(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetMyCommercialCheckout operation middleware
+func (siw *ServerInterfaceWrapper) GetMyCommercialCheckout(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "checkout_id" -------------
+	var checkoutId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "checkout_id", chi.URLParam(r, "checkout_id"), &checkoutId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "checkout_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetMyCommercialCheckout(w, r, checkoutId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListMyCommercialHoldings operation middleware
+func (siw *ServerInterfaceWrapper) ListMyCommercialHoldings(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListMyCommercialHoldingsParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", r.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "offset"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListMyCommercialHoldings(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListMyCommercialPayments operation middleware
+func (siw *ServerInterfaceWrapper) ListMyCommercialPayments(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListMyCommercialPaymentsParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", r.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "offset"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListMyCommercialPayments(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RequestMyPaymentRefund operation middleware
+func (siw *ServerInterfaceWrapper) RequestMyPaymentRefund(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params RequestMyPaymentRefundParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RequestMyPaymentRefund(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateMySubscriptionCheckout operation middleware
+func (siw *ServerInterfaceWrapper) CreateMySubscriptionCheckout(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreateMySubscriptionCheckoutParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey CheckoutIdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateMySubscriptionCheckout(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetMySubscriptionCheckout operation middleware
+func (siw *ServerInterfaceWrapper) GetMySubscriptionCheckout(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "checkout_id" -------------
+	var checkoutId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "checkout_id", chi.URLParam(r, "checkout_id"), &checkoutId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "checkout_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetMySubscriptionCheckout(w, r, checkoutId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListMySubscriptions operation middleware
+func (siw *ServerInterfaceWrapper) ListMySubscriptions(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListMySubscriptionsParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", r.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "offset"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListMySubscriptions(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CancelMySubscriptionRenewal operation middleware
+func (siw *ServerInterfaceWrapper) CancelMySubscriptionRenewal(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "subscription_id" -------------
+	var subscriptionId SubscriptionID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "subscription_id", chi.URLParam(r, "subscription_id"), &subscriptionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "subscription_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CancelMySubscriptionRenewalParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey2
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CancelMySubscriptionRenewal(w, r, subscriptionId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateMyPaymentMethodSession operation middleware
+func (siw *ServerInterfaceWrapper) CreateMyPaymentMethodSession(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "subscription_id" -------------
+	var subscriptionId SubscriptionID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "subscription_id", chi.URLParam(r, "subscription_id"), &subscriptionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "subscription_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreateMyPaymentMethodSessionParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey2
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateMyPaymentMethodSession(w, r, subscriptionId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ResumeMySubscriptionRenewal operation middleware
+func (siw *ServerInterfaceWrapper) ResumeMySubscriptionRenewal(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "subscription_id" -------------
+	var subscriptionId SubscriptionID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "subscription_id", chi.URLParam(r, "subscription_id"), &subscriptionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "subscription_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ResumeMySubscriptionRenewalParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey2
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ResumeMySubscriptionRenewal(w, r, subscriptionId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ScheduleMyAnnualSubscription operation middleware
+func (siw *ServerInterfaceWrapper) ScheduleMyAnnualSubscription(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "subscription_id" -------------
+	var subscriptionId SubscriptionID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "subscription_id", chi.URLParam(r, "subscription_id"), &subscriptionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "subscription_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ScheduleMyAnnualSubscriptionParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey2
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: "uuid"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ScheduleMyAnnualSubscription(w, r, subscriptionId, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -15440,6 +21425,141 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/admin/commercial-configurations/current", wrapper.GetCurrentCommercialConfiguration)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/users/me/payments", wrapper.ListMyCommercialPayments)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/commercial-releases/{release_id}", wrapper.GetCommercialRelease)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/admin/refund-requests/{refund_request_id}/retry", wrapper.RetryFailedFullRefund)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/commercial-content/{content_kind}/{content_id}/ownership", wrapper.CorrectCommercialOwnership)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/commercial-content/{content_kind}/{content_id}/releases", wrapper.PublishCommercialRelease)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/admin/subscription-offers", wrapper.GetCurrentSubscriptionOffer)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/admin/subscription-offers", wrapper.CreateSubscriptionOfferRevision)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/admin/refund-requests/{refund_request_id}/review", wrapper.ReviewFullRefundEligibility)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/teachers/me/commercial-settlements", wrapper.ListMyCommercialSettlements)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/commercial-content/{content_kind}/{content_id}", wrapper.GetCommercialContent)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/commercial-content/{content_kind}/{content_id}/sale-state", wrapper.ChangeCommercialSaleState)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/commercial-content/{content_kind}/{content_id}/offers", wrapper.CreateCommercialOffer)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/commercial-offers", wrapper.ListCommercialOffers)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/users/me/commercial-checkouts", wrapper.CreateMyCommercialCheckout)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/users/me/commercial-checkouts/{checkout_id}", wrapper.GetMyCommercialCheckout)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/users/me/commercial-holdings", wrapper.ListMyCommercialHoldings)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/teachers/me/commercial-balances", wrapper.ListMyCommercialBalances)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/teachers/me/commercial-terms", wrapper.GetMyTeacherSellingTerms)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/teachers/me/commercial-sales", wrapper.ListMyTeacherSales)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/teachers/me/payout-account", wrapper.GetMyPayoutAccount)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/teachers/me/payout-account/onboarding-links", wrapper.CreateMyPayoutOnboardingLink)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/teachers/me/payout-account/dashboard-links", wrapper.CreateMyPayoutDashboardLink)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/admin/commercial-configurations", wrapper.CreateCommercialConfiguration)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/integrations/cms/commercial-hints", wrapper.ReceiveCMSCommercialHint)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/students/me/student-paths/{student_path_id}/content-nodes/{content_node_id}/commercial-access", wrapper.GetMyLessonCommercialAccess)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/admin/commercial-audit", wrapper.ListCommercialAuditEntries)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/admin/commercial-rollout", wrapper.GetCommercialRollout)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/admin/commercial-rollout/kill-switch", wrapper.TurnOffAllCommercialFlags)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/admin/commercial-rollout/{flag}", wrapper.ChangeCommercialFlag)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/admin/commercial-groups", wrapper.ListCommercialGroups)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/admin/commercial-groups/{slug}", wrapper.SaveCommercialGroup)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/admin/commercial-groups/{slug}/membership", wrapper.ChangeCommercialGroupMembers)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/users/me/subscription-checkouts", wrapper.CreateMySubscriptionCheckout)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/users/me/subscription-checkouts/{checkout_id}", wrapper.GetMySubscriptionCheckout)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/payments/stripe/webhook", wrapper.ReceiveStripePaymentEvent)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/users/me/refund-requests", wrapper.RequestMyPaymentRefund)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/refund-requests/{refund_request_id}", wrapper.GetRefundRequest)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/admin/refund-requests/{refund_request_id}/execute", wrapper.ExecuteFullPaymentRefund)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/subscription-offers", wrapper.ListSubscriptionOffers)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/users/me/subscriptions", wrapper.ListMySubscriptions)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/users/me/subscriptions/{subscription_id}/cancel-renewal", wrapper.CancelMySubscriptionRenewal)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/users/me/subscriptions/{subscription_id}/resume-renewal", wrapper.ResumeMySubscriptionRenewal)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/users/me/subscriptions/{subscription_id}/payment-method-session", wrapper.CreateMyPaymentMethodSession)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/users/me/subscriptions/{subscription_id}/schedule-annual", wrapper.ScheduleMyAnnualSubscription)
+	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/users", wrapper.RegisterUser)
 	})
@@ -15583,6 +21703,21 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/progressions", wrapper.ListProgressions)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/progressions", wrapper.CreateProgression)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/progressions/{progression_id}", wrapper.DeleteProgression)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/progressions/{progression_id}", wrapper.UpdateProgression)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/progressions/{progression_id}/uses", wrapper.GetProgressionUses)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/progressions/{progression_id}/drills", wrapper.AddProgressionToDrills)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/chords", wrapper.SearchChords)
@@ -15789,6 +21924,26 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	return r
 }
 
+type CaseResponseJSONResponse RefundRequest
+
+type CheckoutResponseJSONResponse SubscriptionCheckout
+
+type CommandReceiptJSONResponse SubscriptionCommand
+
+type ConflictJSONResponse ConflictError
+
+type Conflict2JSONResponse ConflictError
+
+type ForbiddenJSONResponse ForbiddenError
+
+type InvalidRequestJSONResponse ValidationError
+
+type NotFoundJSONResponse NotFoundError
+
+type UnauthenticatedJSONResponse UnauthorizedError
+
+type UnavailableJSONResponse CommercialUnavailable
+
 type GetAlphaObservationRequestObject struct {
 	Params GetAlphaObservationParams
 }
@@ -15992,6 +22147,839 @@ func (response GetAlphaStudentObservation404JSONResponse) VisitGetAlphaStudentOb
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListCommercialAuditEntriesRequestObject struct {
+	Params ListCommercialAuditEntriesParams
+}
+
+type ListCommercialAuditEntriesResponseObject interface {
+	VisitListCommercialAuditEntriesResponse(w http.ResponseWriter) error
+}
+
+type ListCommercialAuditEntries200JSONResponse AuditPage
+
+func (response ListCommercialAuditEntries200JSONResponse) VisitListCommercialAuditEntriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListCommercialAuditEntries400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response ListCommercialAuditEntries400JSONResponse) VisitListCommercialAuditEntriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListCommercialAuditEntries401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response ListCommercialAuditEntries401JSONResponse) VisitListCommercialAuditEntriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListCommercialAuditEntries403JSONResponse ForbiddenError
+
+func (response ListCommercialAuditEntries403JSONResponse) VisitListCommercialAuditEntriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListCommercialAuditEntries503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response ListCommercialAuditEntries503JSONResponse) VisitListCommercialAuditEntriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateCommercialConfigurationRequestObject struct {
+	Params CreateCommercialConfigurationParams
+	Body   *CreateCommercialConfigurationJSONRequestBody
+}
+
+type CreateCommercialConfigurationResponseObject interface {
+	VisitCreateCommercialConfigurationResponse(w http.ResponseWriter) error
+}
+
+type CreateCommercialConfiguration200JSONResponse Configuration
+
+func (response CreateCommercialConfiguration200JSONResponse) VisitCreateCommercialConfigurationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateCommercialConfiguration400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response CreateCommercialConfiguration400JSONResponse) VisitCreateCommercialConfigurationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateCommercialConfiguration401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response CreateCommercialConfiguration401JSONResponse) VisitCreateCommercialConfigurationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateCommercialConfiguration403JSONResponse ForbiddenError
+
+func (response CreateCommercialConfiguration403JSONResponse) VisitCreateCommercialConfigurationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateCommercialConfiguration409JSONResponse struct{ ConflictJSONResponse }
+
+func (response CreateCommercialConfiguration409JSONResponse) VisitCreateCommercialConfigurationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateCommercialConfiguration503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response CreateCommercialConfiguration503JSONResponse) VisitCreateCommercialConfigurationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCurrentCommercialConfigurationRequestObject struct {
+}
+
+type GetCurrentCommercialConfigurationResponseObject interface {
+	VisitGetCurrentCommercialConfigurationResponse(w http.ResponseWriter) error
+}
+
+type GetCurrentCommercialConfiguration200JSONResponse Configuration
+
+func (response GetCurrentCommercialConfiguration200JSONResponse) VisitGetCurrentCommercialConfigurationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCurrentCommercialConfiguration400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response GetCurrentCommercialConfiguration400JSONResponse) VisitGetCurrentCommercialConfigurationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCurrentCommercialConfiguration401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetCurrentCommercialConfiguration401JSONResponse) VisitGetCurrentCommercialConfigurationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCurrentCommercialConfiguration403JSONResponse ForbiddenError
+
+func (response GetCurrentCommercialConfiguration403JSONResponse) VisitGetCurrentCommercialConfigurationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCurrentCommercialConfiguration404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetCurrentCommercialConfiguration404JSONResponse) VisitGetCurrentCommercialConfigurationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCurrentCommercialConfiguration409JSONResponse struct{ ConflictJSONResponse }
+
+func (response GetCurrentCommercialConfiguration409JSONResponse) VisitGetCurrentCommercialConfigurationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCurrentCommercialConfiguration503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response GetCurrentCommercialConfiguration503JSONResponse) VisitGetCurrentCommercialConfigurationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListCommercialGroupsRequestObject struct {
+}
+
+type ListCommercialGroupsResponseObject interface {
+	VisitListCommercialGroupsResponse(w http.ResponseWriter) error
+}
+
+type ListCommercialGroups200JSONResponse CommercialGroups
+
+func (response ListCommercialGroups200JSONResponse) VisitListCommercialGroupsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListCommercialGroups400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response ListCommercialGroups400JSONResponse) VisitListCommercialGroupsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListCommercialGroups401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response ListCommercialGroups401JSONResponse) VisitListCommercialGroupsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListCommercialGroups403JSONResponse ForbiddenError
+
+func (response ListCommercialGroups403JSONResponse) VisitListCommercialGroupsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListCommercialGroups503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response ListCommercialGroups503JSONResponse) VisitListCommercialGroupsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SaveCommercialGroupRequestObject struct {
+	Slug   GroupSlug `json:"slug"`
+	Params SaveCommercialGroupParams
+	Body   *SaveCommercialGroupJSONRequestBody
+}
+
+type SaveCommercialGroupResponseObject interface {
+	VisitSaveCommercialGroupResponse(w http.ResponseWriter) error
+}
+
+type SaveCommercialGroup200JSONResponse RolloutCommand
+
+func (response SaveCommercialGroup200JSONResponse) VisitSaveCommercialGroupResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SaveCommercialGroup400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response SaveCommercialGroup400JSONResponse) VisitSaveCommercialGroupResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SaveCommercialGroup401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response SaveCommercialGroup401JSONResponse) VisitSaveCommercialGroupResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SaveCommercialGroup403JSONResponse ForbiddenError
+
+func (response SaveCommercialGroup403JSONResponse) VisitSaveCommercialGroupResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SaveCommercialGroup409JSONResponse struct{ ConflictJSONResponse }
+
+func (response SaveCommercialGroup409JSONResponse) VisitSaveCommercialGroupResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SaveCommercialGroup503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response SaveCommercialGroup503JSONResponse) VisitSaveCommercialGroupResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangeCommercialGroupMembersRequestObject struct {
+	Slug   GroupSlug `json:"slug"`
+	Params ChangeCommercialGroupMembersParams
+	Body   *ChangeCommercialGroupMembersJSONRequestBody
+}
+
+type ChangeCommercialGroupMembersResponseObject interface {
+	VisitChangeCommercialGroupMembersResponse(w http.ResponseWriter) error
+}
+
+type ChangeCommercialGroupMembers200JSONResponse RolloutCommand
+
+func (response ChangeCommercialGroupMembers200JSONResponse) VisitChangeCommercialGroupMembersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangeCommercialGroupMembers400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response ChangeCommercialGroupMembers400JSONResponse) VisitChangeCommercialGroupMembersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangeCommercialGroupMembers401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response ChangeCommercialGroupMembers401JSONResponse) VisitChangeCommercialGroupMembersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangeCommercialGroupMembers403JSONResponse ForbiddenError
+
+func (response ChangeCommercialGroupMembers403JSONResponse) VisitChangeCommercialGroupMembersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangeCommercialGroupMembers404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ChangeCommercialGroupMembers404JSONResponse) VisitChangeCommercialGroupMembersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangeCommercialGroupMembers409JSONResponse struct{ ConflictJSONResponse }
+
+func (response ChangeCommercialGroupMembers409JSONResponse) VisitChangeCommercialGroupMembersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangeCommercialGroupMembers503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response ChangeCommercialGroupMembers503JSONResponse) VisitChangeCommercialGroupMembersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCommercialRolloutRequestObject struct {
+}
+
+type GetCommercialRolloutResponseObject interface {
+	VisitGetCommercialRolloutResponse(w http.ResponseWriter) error
+}
+
+type GetCommercialRollout200JSONResponse CommercialRollout
+
+func (response GetCommercialRollout200JSONResponse) VisitGetCommercialRolloutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCommercialRollout400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response GetCommercialRollout400JSONResponse) VisitGetCommercialRolloutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCommercialRollout401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetCommercialRollout401JSONResponse) VisitGetCommercialRolloutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCommercialRollout403JSONResponse ForbiddenError
+
+func (response GetCommercialRollout403JSONResponse) VisitGetCommercialRolloutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCommercialRollout503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response GetCommercialRollout503JSONResponse) VisitGetCommercialRolloutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TurnOffAllCommercialFlagsRequestObject struct {
+	Params TurnOffAllCommercialFlagsParams
+	Body   *TurnOffAllCommercialFlagsJSONRequestBody
+}
+
+type TurnOffAllCommercialFlagsResponseObject interface {
+	VisitTurnOffAllCommercialFlagsResponse(w http.ResponseWriter) error
+}
+
+type TurnOffAllCommercialFlags200JSONResponse RolloutCommand
+
+func (response TurnOffAllCommercialFlags200JSONResponse) VisitTurnOffAllCommercialFlagsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TurnOffAllCommercialFlags400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response TurnOffAllCommercialFlags400JSONResponse) VisitTurnOffAllCommercialFlagsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TurnOffAllCommercialFlags401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response TurnOffAllCommercialFlags401JSONResponse) VisitTurnOffAllCommercialFlagsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TurnOffAllCommercialFlags403JSONResponse ForbiddenError
+
+func (response TurnOffAllCommercialFlags403JSONResponse) VisitTurnOffAllCommercialFlagsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TurnOffAllCommercialFlags409JSONResponse struct{ ConflictJSONResponse }
+
+func (response TurnOffAllCommercialFlags409JSONResponse) VisitTurnOffAllCommercialFlagsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TurnOffAllCommercialFlags503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response TurnOffAllCommercialFlags503JSONResponse) VisitTurnOffAllCommercialFlagsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangeCommercialFlagRequestObject struct {
+	Flag   FlagName `json:"flag"`
+	Params ChangeCommercialFlagParams
+	Body   *ChangeCommercialFlagJSONRequestBody
+}
+
+type ChangeCommercialFlagResponseObject interface {
+	VisitChangeCommercialFlagResponse(w http.ResponseWriter) error
+}
+
+type ChangeCommercialFlag200JSONResponse RolloutCommand
+
+func (response ChangeCommercialFlag200JSONResponse) VisitChangeCommercialFlagResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangeCommercialFlag400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response ChangeCommercialFlag400JSONResponse) VisitChangeCommercialFlagResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangeCommercialFlag401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response ChangeCommercialFlag401JSONResponse) VisitChangeCommercialFlagResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangeCommercialFlag403JSONResponse ForbiddenError
+
+func (response ChangeCommercialFlag403JSONResponse) VisitChangeCommercialFlagResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangeCommercialFlag404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ChangeCommercialFlag404JSONResponse) VisitChangeCommercialFlagResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangeCommercialFlag409JSONResponse struct{ ConflictJSONResponse }
+
+func (response ChangeCommercialFlag409JSONResponse) VisitChangeCommercialFlagResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangeCommercialFlag503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response ChangeCommercialFlag503JSONResponse) VisitChangeCommercialFlagResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -16212,6 +23200,529 @@ func (response SetAppConfig404JSONResponse) VisitSetAppConfigResponse(w http.Res
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ExecuteFullPaymentRefundRequestObject struct {
+	RefundRequestId RefundRequestID `json:"refund_request_id"`
+	Params          ExecuteFullPaymentRefundParams
+	Body            *ExecuteFullPaymentRefundJSONRequestBody
+}
+
+type ExecuteFullPaymentRefundResponseObject interface {
+	VisitExecuteFullPaymentRefundResponse(w http.ResponseWriter) error
+}
+
+type ExecuteFullPaymentRefund200JSONResponse struct{ CaseResponseJSONResponse }
+
+func (response ExecuteFullPaymentRefund200JSONResponse) VisitExecuteFullPaymentRefundResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ExecuteFullPaymentRefund400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response ExecuteFullPaymentRefund400JSONResponse) VisitExecuteFullPaymentRefundResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ExecuteFullPaymentRefund401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response ExecuteFullPaymentRefund401JSONResponse) VisitExecuteFullPaymentRefundResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ExecuteFullPaymentRefund403JSONResponse ForbiddenError
+
+func (response ExecuteFullPaymentRefund403JSONResponse) VisitExecuteFullPaymentRefundResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ExecuteFullPaymentRefund404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ExecuteFullPaymentRefund404JSONResponse) VisitExecuteFullPaymentRefundResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ExecuteFullPaymentRefund409JSONResponse struct{ Conflict2JSONResponse }
+
+func (response ExecuteFullPaymentRefund409JSONResponse) VisitExecuteFullPaymentRefundResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ExecuteFullPaymentRefund503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response ExecuteFullPaymentRefund503JSONResponse) VisitExecuteFullPaymentRefundResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RetryFailedFullRefundRequestObject struct {
+	RefundRequestId openapi_types.UUID `json:"refund_request_id"`
+	Params          RetryFailedFullRefundParams
+	Body            *RetryFailedFullRefundJSONRequestBody
+}
+
+type RetryFailedFullRefundResponseObject interface {
+	VisitRetryFailedFullRefundResponse(w http.ResponseWriter) error
+}
+
+type RetryFailedFullRefund200JSONResponse RefundRequest
+
+func (response RetryFailedFullRefund200JSONResponse) VisitRetryFailedFullRefundResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RetryFailedFullRefund400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response RetryFailedFullRefund400JSONResponse) VisitRetryFailedFullRefundResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RetryFailedFullRefund401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response RetryFailedFullRefund401JSONResponse) VisitRetryFailedFullRefundResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RetryFailedFullRefund403JSONResponse ForbiddenError
+
+func (response RetryFailedFullRefund403JSONResponse) VisitRetryFailedFullRefundResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RetryFailedFullRefund404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response RetryFailedFullRefund404JSONResponse) VisitRetryFailedFullRefundResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RetryFailedFullRefund409JSONResponse struct{ ConflictJSONResponse }
+
+func (response RetryFailedFullRefund409JSONResponse) VisitRetryFailedFullRefundResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RetryFailedFullRefund503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response RetryFailedFullRefund503JSONResponse) VisitRetryFailedFullRefundResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReviewFullRefundEligibilityRequestObject struct {
+	RefundRequestId openapi_types.UUID `json:"refund_request_id"`
+	Params          ReviewFullRefundEligibilityParams
+	Body            *ReviewFullRefundEligibilityJSONRequestBody
+}
+
+type ReviewFullRefundEligibilityResponseObject interface {
+	VisitReviewFullRefundEligibilityResponse(w http.ResponseWriter) error
+}
+
+type ReviewFullRefundEligibility200JSONResponse Command
+
+func (response ReviewFullRefundEligibility200JSONResponse) VisitReviewFullRefundEligibilityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReviewFullRefundEligibility400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response ReviewFullRefundEligibility400JSONResponse) VisitReviewFullRefundEligibilityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReviewFullRefundEligibility401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response ReviewFullRefundEligibility401JSONResponse) VisitReviewFullRefundEligibilityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReviewFullRefundEligibility403JSONResponse ForbiddenError
+
+func (response ReviewFullRefundEligibility403JSONResponse) VisitReviewFullRefundEligibilityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReviewFullRefundEligibility404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ReviewFullRefundEligibility404JSONResponse) VisitReviewFullRefundEligibilityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReviewFullRefundEligibility409JSONResponse struct{ ConflictJSONResponse }
+
+func (response ReviewFullRefundEligibility409JSONResponse) VisitReviewFullRefundEligibilityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReviewFullRefundEligibility503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response ReviewFullRefundEligibility503JSONResponse) VisitReviewFullRefundEligibilityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCurrentSubscriptionOfferRequestObject struct {
+	Params GetCurrentSubscriptionOfferParams
+}
+
+type GetCurrentSubscriptionOfferResponseObject interface {
+	VisitGetCurrentSubscriptionOfferResponse(w http.ResponseWriter) error
+}
+
+type GetCurrentSubscriptionOffer200JSONResponse SubscriptionOffer
+
+func (response GetCurrentSubscriptionOffer200JSONResponse) VisitGetCurrentSubscriptionOfferResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCurrentSubscriptionOffer400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response GetCurrentSubscriptionOffer400JSONResponse) VisitGetCurrentSubscriptionOfferResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCurrentSubscriptionOffer401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetCurrentSubscriptionOffer401JSONResponse) VisitGetCurrentSubscriptionOfferResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCurrentSubscriptionOffer403JSONResponse ForbiddenError
+
+func (response GetCurrentSubscriptionOffer403JSONResponse) VisitGetCurrentSubscriptionOfferResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCurrentSubscriptionOffer404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetCurrentSubscriptionOffer404JSONResponse) VisitGetCurrentSubscriptionOfferResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCurrentSubscriptionOffer503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response GetCurrentSubscriptionOffer503JSONResponse) VisitGetCurrentSubscriptionOfferResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateSubscriptionOfferRevisionRequestObject struct {
+	Params CreateSubscriptionOfferRevisionParams
+	Body   *CreateSubscriptionOfferRevisionJSONRequestBody
+}
+
+type CreateSubscriptionOfferRevisionResponseObject interface {
+	VisitCreateSubscriptionOfferRevisionResponse(w http.ResponseWriter) error
+}
+
+type CreateSubscriptionOfferRevision200JSONResponse SubscriptionOffer
+
+func (response CreateSubscriptionOfferRevision200JSONResponse) VisitCreateSubscriptionOfferRevisionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateSubscriptionOfferRevision400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response CreateSubscriptionOfferRevision400JSONResponse) VisitCreateSubscriptionOfferRevisionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateSubscriptionOfferRevision401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response CreateSubscriptionOfferRevision401JSONResponse) VisitCreateSubscriptionOfferRevisionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateSubscriptionOfferRevision403JSONResponse ForbiddenError
+
+func (response CreateSubscriptionOfferRevision403JSONResponse) VisitCreateSubscriptionOfferRevisionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateSubscriptionOfferRevision404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response CreateSubscriptionOfferRevision404JSONResponse) VisitCreateSubscriptionOfferRevisionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateSubscriptionOfferRevision409JSONResponse struct{ ConflictJSONResponse }
+
+func (response CreateSubscriptionOfferRevision409JSONResponse) VisitCreateSubscriptionOfferRevisionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateSubscriptionOfferRevision503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response CreateSubscriptionOfferRevision503JSONResponse) VisitCreateSubscriptionOfferRevisionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -16971,6 +24482,677 @@ func (response GetChord404JSONResponse) VisitGetChordResponse(w http.ResponseWri
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCommercialContentRequestObject struct {
+	ContentKind GetCommercialContentParamsContentKind `json:"content_kind"`
+	ContentId   openapi_types.UUID                    `json:"content_id"`
+}
+
+type GetCommercialContentResponseObject interface {
+	VisitGetCommercialContentResponse(w http.ResponseWriter) error
+}
+
+type GetCommercialContent200JSONResponse CommercialContent
+
+func (response GetCommercialContent200JSONResponse) VisitGetCommercialContentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCommercialContent400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response GetCommercialContent400JSONResponse) VisitGetCommercialContentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCommercialContent401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetCommercialContent401JSONResponse) VisitGetCommercialContentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCommercialContent404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetCommercialContent404JSONResponse) VisitGetCommercialContentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCommercialContent503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response GetCommercialContent503JSONResponse) VisitGetCommercialContentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateCommercialOfferRequestObject struct {
+	ContentKind CreateCommercialOfferParamsContentKind `json:"content_kind"`
+	ContentId   openapi_types.UUID                     `json:"content_id"`
+	Params      CreateCommercialOfferParams
+	Body        *CreateCommercialOfferJSONRequestBody
+}
+
+type CreateCommercialOfferResponseObject interface {
+	VisitCreateCommercialOfferResponse(w http.ResponseWriter) error
+}
+
+type CreateCommercialOffer200JSONResponse Offer
+
+func (response CreateCommercialOffer200JSONResponse) VisitCreateCommercialOfferResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateCommercialOffer400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response CreateCommercialOffer400JSONResponse) VisitCreateCommercialOfferResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateCommercialOffer401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response CreateCommercialOffer401JSONResponse) VisitCreateCommercialOfferResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateCommercialOffer403JSONResponse ForbiddenError
+
+func (response CreateCommercialOffer403JSONResponse) VisitCreateCommercialOfferResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateCommercialOffer404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response CreateCommercialOffer404JSONResponse) VisitCreateCommercialOfferResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateCommercialOffer409JSONResponse struct{ ConflictJSONResponse }
+
+func (response CreateCommercialOffer409JSONResponse) VisitCreateCommercialOfferResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateCommercialOffer503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response CreateCommercialOffer503JSONResponse) VisitCreateCommercialOfferResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CorrectCommercialOwnershipRequestObject struct {
+	ContentKind CorrectCommercialOwnershipParamsContentKind `json:"content_kind"`
+	ContentId   openapi_types.UUID                          `json:"content_id"`
+	Params      CorrectCommercialOwnershipParams
+	Body        *CorrectCommercialOwnershipJSONRequestBody
+}
+
+type CorrectCommercialOwnershipResponseObject interface {
+	VisitCorrectCommercialOwnershipResponse(w http.ResponseWriter) error
+}
+
+type CorrectCommercialOwnership200JSONResponse Command
+
+func (response CorrectCommercialOwnership200JSONResponse) VisitCorrectCommercialOwnershipResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CorrectCommercialOwnership400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response CorrectCommercialOwnership400JSONResponse) VisitCorrectCommercialOwnershipResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CorrectCommercialOwnership401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response CorrectCommercialOwnership401JSONResponse) VisitCorrectCommercialOwnershipResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CorrectCommercialOwnership403JSONResponse ForbiddenError
+
+func (response CorrectCommercialOwnership403JSONResponse) VisitCorrectCommercialOwnershipResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CorrectCommercialOwnership404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response CorrectCommercialOwnership404JSONResponse) VisitCorrectCommercialOwnershipResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CorrectCommercialOwnership409JSONResponse struct{ ConflictJSONResponse }
+
+func (response CorrectCommercialOwnership409JSONResponse) VisitCorrectCommercialOwnershipResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CorrectCommercialOwnership503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response CorrectCommercialOwnership503JSONResponse) VisitCorrectCommercialOwnershipResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PublishCommercialReleaseRequestObject struct {
+	ContentKind PublishCommercialReleaseParamsContentKind `json:"content_kind"`
+	ContentId   openapi_types.UUID                        `json:"content_id"`
+	Params      PublishCommercialReleaseParams
+	Body        *PublishCommercialReleaseJSONRequestBody
+}
+
+type PublishCommercialReleaseResponseObject interface {
+	VisitPublishCommercialReleaseResponse(w http.ResponseWriter) error
+}
+
+type PublishCommercialRelease200JSONResponse Release
+
+func (response PublishCommercialRelease200JSONResponse) VisitPublishCommercialReleaseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PublishCommercialRelease400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response PublishCommercialRelease400JSONResponse) VisitPublishCommercialReleaseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PublishCommercialRelease401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response PublishCommercialRelease401JSONResponse) VisitPublishCommercialReleaseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PublishCommercialRelease403JSONResponse ForbiddenError
+
+func (response PublishCommercialRelease403JSONResponse) VisitPublishCommercialReleaseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PublishCommercialRelease404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response PublishCommercialRelease404JSONResponse) VisitPublishCommercialReleaseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PublishCommercialRelease409JSONResponse struct{ ConflictJSONResponse }
+
+func (response PublishCommercialRelease409JSONResponse) VisitPublishCommercialReleaseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PublishCommercialRelease503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response PublishCommercialRelease503JSONResponse) VisitPublishCommercialReleaseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangeCommercialSaleStateRequestObject struct {
+	ContentKind ChangeCommercialSaleStateParamsContentKind `json:"content_kind"`
+	ContentId   openapi_types.UUID                         `json:"content_id"`
+	Params      ChangeCommercialSaleStateParams
+	Body        *ChangeCommercialSaleStateJSONRequestBody
+}
+
+type ChangeCommercialSaleStateResponseObject interface {
+	VisitChangeCommercialSaleStateResponse(w http.ResponseWriter) error
+}
+
+type ChangeCommercialSaleState200JSONResponse Command
+
+func (response ChangeCommercialSaleState200JSONResponse) VisitChangeCommercialSaleStateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangeCommercialSaleState400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response ChangeCommercialSaleState400JSONResponse) VisitChangeCommercialSaleStateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangeCommercialSaleState401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response ChangeCommercialSaleState401JSONResponse) VisitChangeCommercialSaleStateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangeCommercialSaleState403JSONResponse ForbiddenError
+
+func (response ChangeCommercialSaleState403JSONResponse) VisitChangeCommercialSaleStateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangeCommercialSaleState404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ChangeCommercialSaleState404JSONResponse) VisitChangeCommercialSaleStateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangeCommercialSaleState409JSONResponse struct{ ConflictJSONResponse }
+
+func (response ChangeCommercialSaleState409JSONResponse) VisitChangeCommercialSaleStateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangeCommercialSaleState503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response ChangeCommercialSaleState503JSONResponse) VisitChangeCommercialSaleStateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListCommercialOffersRequestObject struct {
+	Params ListCommercialOffersParams
+}
+
+type ListCommercialOffersResponseObject interface {
+	VisitListCommercialOffersResponse(w http.ResponseWriter) error
+}
+
+type ListCommercialOffers200JSONResponse OfferList
+
+func (response ListCommercialOffers200JSONResponse) VisitListCommercialOffersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListCommercialOffers400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response ListCommercialOffers400JSONResponse) VisitListCommercialOffersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListCommercialOffers401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response ListCommercialOffers401JSONResponse) VisitListCommercialOffersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListCommercialOffers404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ListCommercialOffers404JSONResponse) VisitListCommercialOffersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListCommercialOffers503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response ListCommercialOffers503JSONResponse) VisitListCommercialOffersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCommercialReleaseRequestObject struct {
+	ReleaseId openapi_types.UUID `json:"release_id"`
+}
+
+type GetCommercialReleaseResponseObject interface {
+	VisitGetCommercialReleaseResponse(w http.ResponseWriter) error
+}
+
+type GetCommercialRelease200JSONResponse Release
+
+func (response GetCommercialRelease200JSONResponse) VisitGetCommercialReleaseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCommercialRelease400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response GetCommercialRelease400JSONResponse) VisitGetCommercialReleaseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCommercialRelease401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetCommercialRelease401JSONResponse) VisitGetCommercialReleaseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCommercialRelease404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetCommercialRelease404JSONResponse) VisitGetCommercialReleaseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCommercialRelease503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response GetCommercialRelease503JSONResponse) VisitGetCommercialReleaseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -19575,6 +27757,84 @@ func (response UpdateInstrument404JSONResponse) VisitUpdateInstrumentResponse(w 
 	return err
 }
 
+type ReceiveCMSCommercialHintRequestObject struct {
+	Body *ReceiveCMSCommercialHintJSONRequestBody
+}
+
+type ReceiveCMSCommercialHintResponseObject interface {
+	VisitReceiveCMSCommercialHintResponse(w http.ResponseWriter) error
+}
+
+type ReceiveCMSCommercialHint200JSONResponse SyncReceipt
+
+func (response ReceiveCMSCommercialHint200JSONResponse) VisitReceiveCMSCommercialHintResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReceiveCMSCommercialHint400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response ReceiveCMSCommercialHint400JSONResponse) VisitReceiveCMSCommercialHintResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReceiveCMSCommercialHint401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response ReceiveCMSCommercialHint401JSONResponse) VisitReceiveCMSCommercialHintResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReceiveCMSCommercialHint409JSONResponse struct{ ConflictJSONResponse }
+
+func (response ReceiveCMSCommercialHint409JSONResponse) VisitReceiveCMSCommercialHintResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReceiveCMSCommercialHint503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response ReceiveCMSCommercialHint503JSONResponse) VisitReceiveCMSCommercialHintResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListKnowledgeEdgesRequestObject struct {
 	Params ListKnowledgeEdgesParams
 }
@@ -20866,6 +29126,70 @@ func (response CreateMediaUploadUrl404JSONResponse) VisitCreateMediaUploadUrlRes
 	return err
 }
 
+type ReceiveStripePaymentEventRequestObject struct {
+	Body *ReceiveStripePaymentEventJSONRequestBody
+}
+
+type ReceiveStripePaymentEventResponseObject interface {
+	VisitReceiveStripePaymentEventResponse(w http.ResponseWriter) error
+}
+
+type ReceiveStripePaymentEvent200JSONResponse StripeReceipt
+
+func (response ReceiveStripePaymentEvent200JSONResponse) VisitReceiveStripePaymentEventResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReceiveStripePaymentEvent400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response ReceiveStripePaymentEvent400JSONResponse) VisitReceiveStripePaymentEventResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReceiveStripePaymentEvent401JSONResponse UnauthorizedError
+
+func (response ReceiveStripePaymentEvent401JSONResponse) VisitReceiveStripePaymentEventResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReceiveStripePaymentEvent503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response ReceiveStripePaymentEvent503JSONResponse) VisitReceiveStripePaymentEventResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListProgressionsRequestObject struct {
 }
 
@@ -20901,6 +29225,434 @@ func (response ListProgressions401JSONResponse) VisitListProgressionsResponse(w 
 	return err
 }
 
+type CreateProgressionRequestObject struct {
+	Body *CreateProgressionJSONRequestBody
+}
+
+type CreateProgressionResponseObject interface {
+	VisitCreateProgressionResponse(w http.ResponseWriter) error
+}
+
+type CreateProgression201JSONResponse Progression
+
+func (response CreateProgression201JSONResponse) VisitCreateProgressionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateProgression400JSONResponse ValidationError
+
+func (response CreateProgression400JSONResponse) VisitCreateProgressionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateProgression401JSONResponse UnauthorizedError
+
+func (response CreateProgression401JSONResponse) VisitCreateProgressionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateProgression403JSONResponse ForbiddenError
+
+func (response CreateProgression403JSONResponse) VisitCreateProgressionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateProgression409JSONResponse = CreateProgression409JSONResponseBody
+
+func (response CreateProgression409JSONResponse) VisitCreateProgressionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.union); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteProgressionRequestObject struct {
+	ProgressionId openapi_types.UUID `json:"progression_id"`
+}
+
+type DeleteProgressionResponseObject interface {
+	VisitDeleteProgressionResponse(w http.ResponseWriter) error
+}
+
+type DeleteProgression204Response struct {
+}
+
+func (response DeleteProgression204Response) VisitDeleteProgressionResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteProgression400JSONResponse ValidationError
+
+func (response DeleteProgression400JSONResponse) VisitDeleteProgressionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteProgression401JSONResponse UnauthorizedError
+
+func (response DeleteProgression401JSONResponse) VisitDeleteProgressionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteProgression403JSONResponse ForbiddenError
+
+func (response DeleteProgression403JSONResponse) VisitDeleteProgressionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteProgression404JSONResponse NotFoundError
+
+func (response DeleteProgression404JSONResponse) VisitDeleteProgressionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteProgression409JSONResponse ProgressionInUseError
+
+func (response DeleteProgression409JSONResponse) VisitDeleteProgressionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateProgressionRequestObject struct {
+	ProgressionId openapi_types.UUID `json:"progression_id"`
+	Body          *UpdateProgressionJSONRequestBody
+}
+
+type UpdateProgressionResponseObject interface {
+	VisitUpdateProgressionResponse(w http.ResponseWriter) error
+}
+
+type UpdateProgression200JSONResponse Progression
+
+func (response UpdateProgression200JSONResponse) VisitUpdateProgressionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateProgression400JSONResponse ValidationError
+
+func (response UpdateProgression400JSONResponse) VisitUpdateProgressionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateProgression401JSONResponse UnauthorizedError
+
+func (response UpdateProgression401JSONResponse) VisitUpdateProgressionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateProgression403JSONResponse ForbiddenError
+
+func (response UpdateProgression403JSONResponse) VisitUpdateProgressionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateProgression404JSONResponse NotFoundError
+
+func (response UpdateProgression404JSONResponse) VisitUpdateProgressionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateProgression409JSONResponse ConflictError
+
+func (response UpdateProgression409JSONResponse) VisitUpdateProgressionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddProgressionToDrillsRequestObject struct {
+	ProgressionId openapi_types.UUID `json:"progression_id"`
+	Body          *AddProgressionToDrillsJSONRequestBody
+}
+
+type AddProgressionToDrillsResponseObject interface {
+	VisitAddProgressionToDrillsResponse(w http.ResponseWriter) error
+}
+
+type AddProgressionToDrills200JSONResponse Progression
+
+func (response AddProgressionToDrills200JSONResponse) VisitAddProgressionToDrillsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddProgressionToDrills400JSONResponse ValidationError
+
+func (response AddProgressionToDrills400JSONResponse) VisitAddProgressionToDrillsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddProgressionToDrills401JSONResponse UnauthorizedError
+
+func (response AddProgressionToDrills401JSONResponse) VisitAddProgressionToDrillsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddProgressionToDrills403JSONResponse ForbiddenError
+
+func (response AddProgressionToDrills403JSONResponse) VisitAddProgressionToDrillsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddProgressionToDrills404JSONResponse NotFoundError
+
+func (response AddProgressionToDrills404JSONResponse) VisitAddProgressionToDrillsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddProgressionToDrills409JSONResponse ProgressionNotAddableError
+
+func (response AddProgressionToDrills409JSONResponse) VisitAddProgressionToDrillsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProgressionUsesRequestObject struct {
+	ProgressionId openapi_types.UUID `json:"progression_id"`
+}
+
+type GetProgressionUsesResponseObject interface {
+	VisitGetProgressionUsesResponse(w http.ResponseWriter) error
+}
+
+type GetProgressionUses200JSONResponse []ProgressionUse
+
+func (response GetProgressionUses200JSONResponse) VisitGetProgressionUsesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProgressionUses400JSONResponse ValidationError
+
+func (response GetProgressionUses400JSONResponse) VisitGetProgressionUsesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProgressionUses401JSONResponse UnauthorizedError
+
+func (response GetProgressionUses401JSONResponse) VisitGetProgressionUsesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProgressionUses403JSONResponse ForbiddenError
+
+func (response GetProgressionUses403JSONResponse) VisitGetProgressionUsesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProgressionUses404JSONResponse NotFoundError
+
+func (response GetProgressionUses404JSONResponse) VisitGetProgressionUsesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ReadinessCheckRequestObject struct {
 }
 
@@ -20925,6 +29677,84 @@ func (response ReadinessCheck200JSONResponse) VisitReadinessCheckResponse(w http
 type ReadinessCheck503JSONResponse HealthStatus
 
 func (response ReadinessCheck503JSONResponse) VisitReadinessCheckResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetRefundRequestRequestObject struct {
+	RefundRequestId RefundRequestID `json:"refund_request_id"`
+}
+
+type GetRefundRequestResponseObject interface {
+	VisitGetRefundRequestResponse(w http.ResponseWriter) error
+}
+
+type GetRefundRequest200JSONResponse struct{ CaseResponseJSONResponse }
+
+func (response GetRefundRequest200JSONResponse) VisitGetRefundRequestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetRefundRequest400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response GetRefundRequest400JSONResponse) VisitGetRefundRequestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetRefundRequest401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetRefundRequest401JSONResponse) VisitGetRefundRequestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetRefundRequest404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetRefundRequest404JSONResponse) VisitGetRefundRequestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetRefundRequest503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response GetRefundRequest503JSONResponse) VisitGetRefundRequestResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -22952,6 +31782,95 @@ func (response GetMyStudentPath404JSONResponse) VisitGetMyStudentPathResponse(w 
 	return err
 }
 
+type GetMyLessonCommercialAccessRequestObject struct {
+	StudentPathId openapi_types.UUID `json:"student_path_id"`
+	ContentNodeId openapi_types.UUID `json:"content_node_id"`
+}
+
+type GetMyLessonCommercialAccessResponseObject interface {
+	VisitGetMyLessonCommercialAccessResponse(w http.ResponseWriter) error
+}
+
+type GetMyLessonCommercialAccess200ResponseHeaders struct {
+	CacheControl *string
+}
+
+type GetMyLessonCommercialAccess200JSONResponse struct {
+	Body    CommercialAccessDecision
+	Headers GetMyLessonCommercialAccess200ResponseHeaders
+}
+
+func (response GetMyLessonCommercialAccess200JSONResponse) VisitGetMyLessonCommercialAccessResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.CacheControl != nil {
+		w.Header().Set("Cache-Control", fmt.Sprint(*response.Headers.CacheControl))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMyLessonCommercialAccess400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response GetMyLessonCommercialAccess400JSONResponse) VisitGetMyLessonCommercialAccessResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMyLessonCommercialAccess401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetMyLessonCommercialAccess401JSONResponse) VisitGetMyLessonCommercialAccessResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMyLessonCommercialAccess404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetMyLessonCommercialAccess404JSONResponse) VisitGetMyLessonCommercialAccessResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMyLessonCommercialAccess503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response GetMyLessonCommercialAccess503JSONResponse) VisitGetMyLessonCommercialAccessResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type AssignLearningPathRequestObject struct {
 	StudentId openapi_types.UUID `json:"student_id"`
 	Body      *AssignLearningPathJSONRequestBody
@@ -23055,6 +31974,753 @@ func (response AssignLearningPath409JSONResponse) VisitAssignLearningPathRespons
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListSubscriptionOffersRequestObject struct {
+	Params ListSubscriptionOffersParams
+}
+
+type ListSubscriptionOffersResponseObject interface {
+	VisitListSubscriptionOffersResponse(w http.ResponseWriter) error
+}
+
+type ListSubscriptionOffers200JSONResponse OfferList2
+
+func (response ListSubscriptionOffers200JSONResponse) VisitListSubscriptionOffersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListSubscriptionOffers400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response ListSubscriptionOffers400JSONResponse) VisitListSubscriptionOffersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListSubscriptionOffers401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response ListSubscriptionOffers401JSONResponse) VisitListSubscriptionOffersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListSubscriptionOffers503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response ListSubscriptionOffers503JSONResponse) VisitListSubscriptionOffersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyCommercialBalancesRequestObject struct {
+}
+
+type ListMyCommercialBalancesResponseObject interface {
+	VisitListMyCommercialBalancesResponse(w http.ResponseWriter) error
+}
+
+type ListMyCommercialBalances200JSONResponse BalanceList
+
+func (response ListMyCommercialBalances200JSONResponse) VisitListMyCommercialBalancesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyCommercialBalances400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response ListMyCommercialBalances400JSONResponse) VisitListMyCommercialBalancesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyCommercialBalances401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response ListMyCommercialBalances401JSONResponse) VisitListMyCommercialBalancesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyCommercialBalances403JSONResponse ForbiddenError
+
+func (response ListMyCommercialBalances403JSONResponse) VisitListMyCommercialBalancesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyCommercialBalances404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ListMyCommercialBalances404JSONResponse) VisitListMyCommercialBalancesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyCommercialBalances503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response ListMyCommercialBalances503JSONResponse) VisitListMyCommercialBalancesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyTeacherSalesRequestObject struct {
+	Params ListMyTeacherSalesParams
+}
+
+type ListMyTeacherSalesResponseObject interface {
+	VisitListMyTeacherSalesResponse(w http.ResponseWriter) error
+}
+
+type ListMyTeacherSales200JSONResponse TeacherSalePage
+
+func (response ListMyTeacherSales200JSONResponse) VisitListMyTeacherSalesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyTeacherSales400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response ListMyTeacherSales400JSONResponse) VisitListMyTeacherSalesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyTeacherSales401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response ListMyTeacherSales401JSONResponse) VisitListMyTeacherSalesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyTeacherSales403JSONResponse ForbiddenError
+
+func (response ListMyTeacherSales403JSONResponse) VisitListMyTeacherSalesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyTeacherSales404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ListMyTeacherSales404JSONResponse) VisitListMyTeacherSalesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyTeacherSales503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response ListMyTeacherSales503JSONResponse) VisitListMyTeacherSalesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyCommercialSettlementsRequestObject struct {
+	Params ListMyCommercialSettlementsParams
+}
+
+type ListMyCommercialSettlementsResponseObject interface {
+	VisitListMyCommercialSettlementsResponse(w http.ResponseWriter) error
+}
+
+type ListMyCommercialSettlements200JSONResponse SettlementPage
+
+func (response ListMyCommercialSettlements200JSONResponse) VisitListMyCommercialSettlementsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyCommercialSettlements400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response ListMyCommercialSettlements400JSONResponse) VisitListMyCommercialSettlementsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyCommercialSettlements401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response ListMyCommercialSettlements401JSONResponse) VisitListMyCommercialSettlementsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyCommercialSettlements403JSONResponse ForbiddenError
+
+func (response ListMyCommercialSettlements403JSONResponse) VisitListMyCommercialSettlementsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyCommercialSettlements404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ListMyCommercialSettlements404JSONResponse) VisitListMyCommercialSettlementsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyCommercialSettlements409JSONResponse struct{ ConflictJSONResponse }
+
+func (response ListMyCommercialSettlements409JSONResponse) VisitListMyCommercialSettlementsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyCommercialSettlements503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response ListMyCommercialSettlements503JSONResponse) VisitListMyCommercialSettlementsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMyTeacherSellingTermsRequestObject struct {
+}
+
+type GetMyTeacherSellingTermsResponseObject interface {
+	VisitGetMyTeacherSellingTermsResponse(w http.ResponseWriter) error
+}
+
+type GetMyTeacherSellingTerms200JSONResponse TeacherSellingTerms
+
+func (response GetMyTeacherSellingTerms200JSONResponse) VisitGetMyTeacherSellingTermsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMyTeacherSellingTerms400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response GetMyTeacherSellingTerms400JSONResponse) VisitGetMyTeacherSellingTermsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMyTeacherSellingTerms401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetMyTeacherSellingTerms401JSONResponse) VisitGetMyTeacherSellingTermsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMyTeacherSellingTerms403JSONResponse ForbiddenError
+
+func (response GetMyTeacherSellingTerms403JSONResponse) VisitGetMyTeacherSellingTermsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMyTeacherSellingTerms404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetMyTeacherSellingTerms404JSONResponse) VisitGetMyTeacherSellingTermsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMyTeacherSellingTerms503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response GetMyTeacherSellingTerms503JSONResponse) VisitGetMyTeacherSellingTermsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMyPayoutAccountRequestObject struct {
+}
+
+type GetMyPayoutAccountResponseObject interface {
+	VisitGetMyPayoutAccountResponse(w http.ResponseWriter) error
+}
+
+type GetMyPayoutAccount200JSONResponse PayoutAccount
+
+func (response GetMyPayoutAccount200JSONResponse) VisitGetMyPayoutAccountResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMyPayoutAccount400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response GetMyPayoutAccount400JSONResponse) VisitGetMyPayoutAccountResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMyPayoutAccount401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetMyPayoutAccount401JSONResponse) VisitGetMyPayoutAccountResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMyPayoutAccount403JSONResponse ForbiddenError
+
+func (response GetMyPayoutAccount403JSONResponse) VisitGetMyPayoutAccountResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMyPayoutAccount404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetMyPayoutAccount404JSONResponse) VisitGetMyPayoutAccountResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMyPayoutAccount503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response GetMyPayoutAccount503JSONResponse) VisitGetMyPayoutAccountResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateMyPayoutDashboardLinkRequestObject struct {
+	Params CreateMyPayoutDashboardLinkParams
+}
+
+type CreateMyPayoutDashboardLinkResponseObject interface {
+	VisitCreateMyPayoutDashboardLinkResponse(w http.ResponseWriter) error
+}
+
+type CreateMyPayoutDashboardLink200JSONResponse PayoutDashboardLink
+
+func (response CreateMyPayoutDashboardLink200JSONResponse) VisitCreateMyPayoutDashboardLinkResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateMyPayoutDashboardLink400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response CreateMyPayoutDashboardLink400JSONResponse) VisitCreateMyPayoutDashboardLinkResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateMyPayoutDashboardLink401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response CreateMyPayoutDashboardLink401JSONResponse) VisitCreateMyPayoutDashboardLinkResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateMyPayoutDashboardLink403JSONResponse ForbiddenError
+
+func (response CreateMyPayoutDashboardLink403JSONResponse) VisitCreateMyPayoutDashboardLinkResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateMyPayoutDashboardLink404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response CreateMyPayoutDashboardLink404JSONResponse) VisitCreateMyPayoutDashboardLinkResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateMyPayoutDashboardLink409JSONResponse struct{ ConflictJSONResponse }
+
+func (response CreateMyPayoutDashboardLink409JSONResponse) VisitCreateMyPayoutDashboardLinkResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateMyPayoutDashboardLink503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response CreateMyPayoutDashboardLink503JSONResponse) VisitCreateMyPayoutDashboardLinkResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateMyPayoutOnboardingLinkRequestObject struct {
+	Params CreateMyPayoutOnboardingLinkParams
+}
+
+type CreateMyPayoutOnboardingLinkResponseObject interface {
+	VisitCreateMyPayoutOnboardingLinkResponse(w http.ResponseWriter) error
+}
+
+type CreateMyPayoutOnboardingLink200JSONResponse PayoutOnboardingLink
+
+func (response CreateMyPayoutOnboardingLink200JSONResponse) VisitCreateMyPayoutOnboardingLinkResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateMyPayoutOnboardingLink400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response CreateMyPayoutOnboardingLink400JSONResponse) VisitCreateMyPayoutOnboardingLinkResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateMyPayoutOnboardingLink401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response CreateMyPayoutOnboardingLink401JSONResponse) VisitCreateMyPayoutOnboardingLinkResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateMyPayoutOnboardingLink403JSONResponse ForbiddenError
+
+func (response CreateMyPayoutOnboardingLink403JSONResponse) VisitCreateMyPayoutOnboardingLinkResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateMyPayoutOnboardingLink404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response CreateMyPayoutOnboardingLink404JSONResponse) VisitCreateMyPayoutOnboardingLinkResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateMyPayoutOnboardingLink409JSONResponse struct{ ConflictJSONResponse }
+
+func (response CreateMyPayoutOnboardingLink409JSONResponse) VisitCreateMyPayoutOnboardingLinkResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateMyPayoutOnboardingLink503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response CreateMyPayoutOnboardingLink503JSONResponse) VisitCreateMyPayoutOnboardingLinkResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -23236,6 +32902,1092 @@ func (response UpdateMyProfile404JSONResponse) VisitUpdateMyProfileResponse(w ht
 	return err
 }
 
+type CreateMyCommercialCheckoutRequestObject struct {
+	Params CreateMyCommercialCheckoutParams
+	Body   *CreateMyCommercialCheckoutJSONRequestBody
+}
+
+type CreateMyCommercialCheckoutResponseObject interface {
+	VisitCreateMyCommercialCheckoutResponse(w http.ResponseWriter) error
+}
+
+type CreateMyCommercialCheckout200JSONResponse Checkout
+
+func (response CreateMyCommercialCheckout200JSONResponse) VisitCreateMyCommercialCheckoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateMyCommercialCheckout400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response CreateMyCommercialCheckout400JSONResponse) VisitCreateMyCommercialCheckoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateMyCommercialCheckout401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response CreateMyCommercialCheckout401JSONResponse) VisitCreateMyCommercialCheckoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateMyCommercialCheckout403JSONResponse ForbiddenError
+
+func (response CreateMyCommercialCheckout403JSONResponse) VisitCreateMyCommercialCheckoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateMyCommercialCheckout404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response CreateMyCommercialCheckout404JSONResponse) VisitCreateMyCommercialCheckoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateMyCommercialCheckout409JSONResponse struct{ ConflictJSONResponse }
+
+func (response CreateMyCommercialCheckout409JSONResponse) VisitCreateMyCommercialCheckoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateMyCommercialCheckout503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response CreateMyCommercialCheckout503JSONResponse) VisitCreateMyCommercialCheckoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMyCommercialCheckoutRequestObject struct {
+	CheckoutId openapi_types.UUID `json:"checkout_id"`
+}
+
+type GetMyCommercialCheckoutResponseObject interface {
+	VisitGetMyCommercialCheckoutResponse(w http.ResponseWriter) error
+}
+
+type GetMyCommercialCheckout200JSONResponse Checkout
+
+func (response GetMyCommercialCheckout200JSONResponse) VisitGetMyCommercialCheckoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMyCommercialCheckout400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response GetMyCommercialCheckout400JSONResponse) VisitGetMyCommercialCheckoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMyCommercialCheckout401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetMyCommercialCheckout401JSONResponse) VisitGetMyCommercialCheckoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMyCommercialCheckout404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetMyCommercialCheckout404JSONResponse) VisitGetMyCommercialCheckoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMyCommercialCheckout503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response GetMyCommercialCheckout503JSONResponse) VisitGetMyCommercialCheckoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyCommercialHoldingsRequestObject struct {
+	Params ListMyCommercialHoldingsParams
+}
+
+type ListMyCommercialHoldingsResponseObject interface {
+	VisitListMyCommercialHoldingsResponse(w http.ResponseWriter) error
+}
+
+type ListMyCommercialHoldings200JSONResponse HoldingsPage
+
+func (response ListMyCommercialHoldings200JSONResponse) VisitListMyCommercialHoldingsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyCommercialHoldings400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response ListMyCommercialHoldings400JSONResponse) VisitListMyCommercialHoldingsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyCommercialHoldings401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response ListMyCommercialHoldings401JSONResponse) VisitListMyCommercialHoldingsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyCommercialHoldings404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ListMyCommercialHoldings404JSONResponse) VisitListMyCommercialHoldingsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyCommercialHoldings503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response ListMyCommercialHoldings503JSONResponse) VisitListMyCommercialHoldingsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyCommercialPaymentsRequestObject struct {
+	Params ListMyCommercialPaymentsParams
+}
+
+type ListMyCommercialPaymentsResponseObject interface {
+	VisitListMyCommercialPaymentsResponse(w http.ResponseWriter) error
+}
+
+type ListMyCommercialPayments200JSONResponse PaymentPage
+
+func (response ListMyCommercialPayments200JSONResponse) VisitListMyCommercialPaymentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyCommercialPayments400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response ListMyCommercialPayments400JSONResponse) VisitListMyCommercialPaymentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyCommercialPayments401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response ListMyCommercialPayments401JSONResponse) VisitListMyCommercialPaymentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyCommercialPayments404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ListMyCommercialPayments404JSONResponse) VisitListMyCommercialPaymentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMyCommercialPayments503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response ListMyCommercialPayments503JSONResponse) VisitListMyCommercialPaymentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RequestMyPaymentRefundRequestObject struct {
+	Params RequestMyPaymentRefundParams
+	Body   *RequestMyPaymentRefundJSONRequestBody
+}
+
+type RequestMyPaymentRefundResponseObject interface {
+	VisitRequestMyPaymentRefundResponse(w http.ResponseWriter) error
+}
+
+type RequestMyPaymentRefund200JSONResponse struct{ CaseResponseJSONResponse }
+
+func (response RequestMyPaymentRefund200JSONResponse) VisitRequestMyPaymentRefundResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RequestMyPaymentRefund400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response RequestMyPaymentRefund400JSONResponse) VisitRequestMyPaymentRefundResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RequestMyPaymentRefund401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response RequestMyPaymentRefund401JSONResponse) VisitRequestMyPaymentRefundResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RequestMyPaymentRefund404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response RequestMyPaymentRefund404JSONResponse) VisitRequestMyPaymentRefundResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RequestMyPaymentRefund409JSONResponse struct{ Conflict2JSONResponse }
+
+func (response RequestMyPaymentRefund409JSONResponse) VisitRequestMyPaymentRefundResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RequestMyPaymentRefund503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response RequestMyPaymentRefund503JSONResponse) VisitRequestMyPaymentRefundResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateMySubscriptionCheckoutRequestObject struct {
+	Params CreateMySubscriptionCheckoutParams
+	Body   *CreateMySubscriptionCheckoutJSONRequestBody
+}
+
+type CreateMySubscriptionCheckoutResponseObject interface {
+	VisitCreateMySubscriptionCheckoutResponse(w http.ResponseWriter) error
+}
+
+type CreateMySubscriptionCheckout200JSONResponse struct{ CheckoutResponseJSONResponse }
+
+func (response CreateMySubscriptionCheckout200JSONResponse) VisitCreateMySubscriptionCheckoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateMySubscriptionCheckout400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response CreateMySubscriptionCheckout400JSONResponse) VisitCreateMySubscriptionCheckoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateMySubscriptionCheckout401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response CreateMySubscriptionCheckout401JSONResponse) VisitCreateMySubscriptionCheckoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateMySubscriptionCheckout403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response CreateMySubscriptionCheckout403JSONResponse) VisitCreateMySubscriptionCheckoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateMySubscriptionCheckout404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response CreateMySubscriptionCheckout404JSONResponse) VisitCreateMySubscriptionCheckoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateMySubscriptionCheckout409JSONResponse ConflictError
+
+func (response CreateMySubscriptionCheckout409JSONResponse) VisitCreateMySubscriptionCheckoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateMySubscriptionCheckout503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response CreateMySubscriptionCheckout503JSONResponse) VisitCreateMySubscriptionCheckoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMySubscriptionCheckoutRequestObject struct {
+	CheckoutId openapi_types.UUID `json:"checkout_id"`
+}
+
+type GetMySubscriptionCheckoutResponseObject interface {
+	VisitGetMySubscriptionCheckoutResponse(w http.ResponseWriter) error
+}
+
+type GetMySubscriptionCheckout200JSONResponse struct{ CheckoutResponseJSONResponse }
+
+func (response GetMySubscriptionCheckout200JSONResponse) VisitGetMySubscriptionCheckoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMySubscriptionCheckout400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response GetMySubscriptionCheckout400JSONResponse) VisitGetMySubscriptionCheckoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMySubscriptionCheckout401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response GetMySubscriptionCheckout401JSONResponse) VisitGetMySubscriptionCheckoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMySubscriptionCheckout404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetMySubscriptionCheckout404JSONResponse) VisitGetMySubscriptionCheckoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMySubscriptionCheckout503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response GetMySubscriptionCheckout503JSONResponse) VisitGetMySubscriptionCheckoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMySubscriptionsRequestObject struct {
+	Params ListMySubscriptionsParams
+}
+
+type ListMySubscriptionsResponseObject interface {
+	VisitListMySubscriptionsResponse(w http.ResponseWriter) error
+}
+
+type ListMySubscriptions200JSONResponse SubscriptionPage
+
+func (response ListMySubscriptions200JSONResponse) VisitListMySubscriptionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMySubscriptions400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response ListMySubscriptions400JSONResponse) VisitListMySubscriptionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMySubscriptions401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response ListMySubscriptions401JSONResponse) VisitListMySubscriptionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMySubscriptions503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response ListMySubscriptions503JSONResponse) VisitListMySubscriptionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CancelMySubscriptionRenewalRequestObject struct {
+	SubscriptionId SubscriptionID `json:"subscription_id"`
+	Params         CancelMySubscriptionRenewalParams
+	Body           *CancelMySubscriptionRenewalJSONRequestBody
+}
+
+type CancelMySubscriptionRenewalResponseObject interface {
+	VisitCancelMySubscriptionRenewalResponse(w http.ResponseWriter) error
+}
+
+type CancelMySubscriptionRenewal200JSONResponse struct{ CommandReceiptJSONResponse }
+
+func (response CancelMySubscriptionRenewal200JSONResponse) VisitCancelMySubscriptionRenewalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CancelMySubscriptionRenewal400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response CancelMySubscriptionRenewal400JSONResponse) VisitCancelMySubscriptionRenewalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CancelMySubscriptionRenewal401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response CancelMySubscriptionRenewal401JSONResponse) VisitCancelMySubscriptionRenewalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CancelMySubscriptionRenewal404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response CancelMySubscriptionRenewal404JSONResponse) VisitCancelMySubscriptionRenewalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CancelMySubscriptionRenewal409JSONResponse struct{ ConflictJSONResponse }
+
+func (response CancelMySubscriptionRenewal409JSONResponse) VisitCancelMySubscriptionRenewalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CancelMySubscriptionRenewal503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response CancelMySubscriptionRenewal503JSONResponse) VisitCancelMySubscriptionRenewalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateMyPaymentMethodSessionRequestObject struct {
+	SubscriptionId SubscriptionID `json:"subscription_id"`
+	Params         CreateMyPaymentMethodSessionParams
+}
+
+type CreateMyPaymentMethodSessionResponseObject interface {
+	VisitCreateMyPaymentMethodSessionResponse(w http.ResponseWriter) error
+}
+
+type CreateMyPaymentMethodSession200JSONResponse PaymentMethodSession
+
+func (response CreateMyPaymentMethodSession200JSONResponse) VisitCreateMyPaymentMethodSessionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateMyPaymentMethodSession400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response CreateMyPaymentMethodSession400JSONResponse) VisitCreateMyPaymentMethodSessionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateMyPaymentMethodSession401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response CreateMyPaymentMethodSession401JSONResponse) VisitCreateMyPaymentMethodSessionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateMyPaymentMethodSession404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response CreateMyPaymentMethodSession404JSONResponse) VisitCreateMyPaymentMethodSessionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateMyPaymentMethodSession409JSONResponse struct{ ConflictJSONResponse }
+
+func (response CreateMyPaymentMethodSession409JSONResponse) VisitCreateMyPaymentMethodSessionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateMyPaymentMethodSession503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response CreateMyPaymentMethodSession503JSONResponse) VisitCreateMyPaymentMethodSessionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResumeMySubscriptionRenewalRequestObject struct {
+	SubscriptionId SubscriptionID `json:"subscription_id"`
+	Params         ResumeMySubscriptionRenewalParams
+	Body           *ResumeMySubscriptionRenewalJSONRequestBody
+}
+
+type ResumeMySubscriptionRenewalResponseObject interface {
+	VisitResumeMySubscriptionRenewalResponse(w http.ResponseWriter) error
+}
+
+type ResumeMySubscriptionRenewal200JSONResponse struct{ CommandReceiptJSONResponse }
+
+func (response ResumeMySubscriptionRenewal200JSONResponse) VisitResumeMySubscriptionRenewalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResumeMySubscriptionRenewal400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response ResumeMySubscriptionRenewal400JSONResponse) VisitResumeMySubscriptionRenewalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResumeMySubscriptionRenewal401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response ResumeMySubscriptionRenewal401JSONResponse) VisitResumeMySubscriptionRenewalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResumeMySubscriptionRenewal403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response ResumeMySubscriptionRenewal403JSONResponse) VisitResumeMySubscriptionRenewalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResumeMySubscriptionRenewal404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ResumeMySubscriptionRenewal404JSONResponse) VisitResumeMySubscriptionRenewalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResumeMySubscriptionRenewal409JSONResponse struct{ ConflictJSONResponse }
+
+func (response ResumeMySubscriptionRenewal409JSONResponse) VisitResumeMySubscriptionRenewalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResumeMySubscriptionRenewal503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response ResumeMySubscriptionRenewal503JSONResponse) VisitResumeMySubscriptionRenewalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ScheduleMyAnnualSubscriptionRequestObject struct {
+	SubscriptionId SubscriptionID `json:"subscription_id"`
+	Params         ScheduleMyAnnualSubscriptionParams
+	Body           *ScheduleMyAnnualSubscriptionJSONRequestBody
+}
+
+type ScheduleMyAnnualSubscriptionResponseObject interface {
+	VisitScheduleMyAnnualSubscriptionResponse(w http.ResponseWriter) error
+}
+
+type ScheduleMyAnnualSubscription200JSONResponse struct{ CommandReceiptJSONResponse }
+
+func (response ScheduleMyAnnualSubscription200JSONResponse) VisitScheduleMyAnnualSubscriptionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ScheduleMyAnnualSubscription400JSONResponse struct{ InvalidRequestJSONResponse }
+
+func (response ScheduleMyAnnualSubscription400JSONResponse) VisitScheduleMyAnnualSubscriptionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ScheduleMyAnnualSubscription401JSONResponse struct{ UnauthenticatedJSONResponse }
+
+func (response ScheduleMyAnnualSubscription401JSONResponse) VisitScheduleMyAnnualSubscriptionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ScheduleMyAnnualSubscription403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response ScheduleMyAnnualSubscription403JSONResponse) VisitScheduleMyAnnualSubscriptionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ScheduleMyAnnualSubscription404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ScheduleMyAnnualSubscription404JSONResponse) VisitScheduleMyAnnualSubscriptionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ScheduleMyAnnualSubscription409JSONResponse struct{ ConflictJSONResponse }
+
+func (response ScheduleMyAnnualSubscription409JSONResponse) VisitScheduleMyAnnualSubscriptionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ScheduleMyAnnualSubscription503JSONResponse struct{ UnavailableJSONResponse }
+
+func (response ScheduleMyAnnualSubscription503JSONResponse) VisitScheduleMyAnnualSubscriptionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListVoicesRequestObject struct {
 }
 
@@ -23296,6 +34048,33 @@ type StrictServerInterface interface {
 	// GetAlphaStudentObservation Observe one student of the alpha
 	// (GET /admin/alpha-observation/students/{student_id})
 	GetAlphaStudentObservation(ctx context.Context, request GetAlphaStudentObservationRequestObject) (GetAlphaStudentObservationResponseObject, error)
+	// ListCommercialAuditEntries Trace commercial operations and their attempts
+	// (GET /admin/commercial-audit)
+	ListCommercialAuditEntries(ctx context.Context, request ListCommercialAuditEntriesRequestObject) (ListCommercialAuditEntriesResponseObject, error)
+	// CreateCommercialConfiguration Record immutable platform pricing and allocation configuration
+	// (POST /admin/commercial-configurations)
+	CreateCommercialConfiguration(ctx context.Context, request CreateCommercialConfigurationRequestObject) (CreateCommercialConfigurationResponseObject, error)
+	// GetCurrentCommercialConfiguration Read the current authoritative commercial configuration
+	// (GET /admin/commercial-configurations/current)
+	GetCurrentCommercialConfiguration(ctx context.Context, request GetCurrentCommercialConfigurationRequestObject) (GetCurrentCommercialConfigurationResponseObject, error)
+	// ListCommercialGroups List rollout groups and their members as an administrator
+	// (GET /admin/commercial-groups)
+	ListCommercialGroups(ctx context.Context, request ListCommercialGroupsRequestObject) (ListCommercialGroupsResponseObject, error)
+	// SaveCommercialGroup Create or rename a rollout group
+	// (PUT /admin/commercial-groups/{slug})
+	SaveCommercialGroup(ctx context.Context, request SaveCommercialGroupRequestObject) (SaveCommercialGroupResponseObject, error)
+	// ChangeCommercialGroupMembers Add and remove members of a rollout group
+	// (POST /admin/commercial-groups/{slug}/membership)
+	ChangeCommercialGroupMembers(ctx context.Context, request ChangeCommercialGroupMembersRequestObject) (ChangeCommercialGroupMembersResponseObject, error)
+	// GetCommercialRollout Read commercial activation as an administrator
+	// (GET /admin/commercial-rollout)
+	GetCommercialRollout(ctx context.Context, request GetCommercialRolloutRequestObject) (GetCommercialRolloutResponseObject, error)
+	// TurnOffAllCommercialFlags Turn every commercial flag OFF
+	// (POST /admin/commercial-rollout/kill-switch)
+	TurnOffAllCommercialFlags(ctx context.Context, request TurnOffAllCommercialFlagsRequestObject) (TurnOffAllCommercialFlagsResponseObject, error)
+	// ChangeCommercialFlag Change one commercial flag's switch and audience
+	// (PUT /admin/commercial-rollout/{flag})
+	ChangeCommercialFlag(ctx context.Context, request ChangeCommercialFlagRequestObject) (ChangeCommercialFlagResponseObject, error)
 	// ListAppConfig List the app's settings
 	// (GET /admin/config)
 	ListAppConfig(ctx context.Context, request ListAppConfigRequestObject) (ListAppConfigResponseObject, error)
@@ -23305,6 +34084,21 @@ type StrictServerInterface interface {
 	// SetAppConfig Replace one of the app's settings
 	// (PUT /admin/config/{key})
 	SetAppConfig(ctx context.Context, request SetAppConfigRequestObject) (SetAppConfigResponseObject, error)
+	// ExecuteFullPaymentRefund Execute an eligible full refund as an admin
+	// (POST /admin/refund-requests/{refund_request_id}/execute)
+	ExecuteFullPaymentRefund(ctx context.Context, request ExecuteFullPaymentRefundRequestObject) (ExecuteFullPaymentRefundResponseObject, error)
+	// RetryFailedFullRefund Retry a definitively failed refund as an administrator
+	// (POST /admin/refund-requests/{refund_request_id}/retry)
+	RetryFailedFullRefund(ctx context.Context, request RetryFailedFullRefundRequestObject) (RetryFailedFullRefundResponseObject, error)
+	// ReviewFullRefundEligibility Record an explicit admin refund review
+	// (POST /admin/refund-requests/{refund_request_id}/review)
+	ReviewFullRefundEligibility(ctx context.Context, request ReviewFullRefundEligibilityRequestObject) (ReviewFullRefundEligibilityResponseObject, error)
+	// GetCurrentSubscriptionOffer Read the promoted subscription offer as an administrator
+	// (GET /admin/subscription-offers)
+	GetCurrentSubscriptionOffer(ctx context.Context, request GetCurrentSubscriptionOfferRequestObject) (GetCurrentSubscriptionOfferResponseObject, error)
+	// CreateSubscriptionOfferRevision Create an authoritative subscription offer revision
+	// (POST /admin/subscription-offers)
+	CreateSubscriptionOfferRevision(ctx context.Context, request CreateSubscriptionOfferRevisionRequestObject) (CreateSubscriptionOfferRevisionResponseObject, error)
 	// ListCatalogCourses Browse the published course catalog
 	// (GET /catalog/courses)
 	ListCatalogCourses(ctx context.Context, request ListCatalogCoursesRequestObject) (ListCatalogCoursesResponseObject, error)
@@ -23344,6 +34138,27 @@ type StrictServerInterface interface {
 	// GetChord Get a chord from the chord catalog with its voicings
 	// (GET /chords/{chord_definition_id})
 	GetChord(ctx context.Context, request GetChordRequestObject) (GetChordResponseObject, error)
+	// GetCommercialContent Read authoritative commercial content
+	// (GET /commercial-content/{content_kind}/{content_id})
+	GetCommercialContent(ctx context.Context, request GetCommercialContentRequestObject) (GetCommercialContentResponseObject, error)
+	// CreateCommercialOffer Create an immutable one-time offer revision
+	// (POST /commercial-content/{content_kind}/{content_id}/offers)
+	CreateCommercialOffer(ctx context.Context, request CreateCommercialOfferRequestObject) (CreateCommercialOfferResponseObject, error)
+	// CorrectCommercialOwnership Correct authoritative ownership as an administrator
+	// (POST /commercial-content/{content_kind}/{content_id}/ownership)
+	CorrectCommercialOwnership(ctx context.Context, request CorrectCommercialOwnershipRequestObject) (CorrectCommercialOwnershipResponseObject, error)
+	// PublishCommercialRelease Freeze validated commercial dependency references
+	// (POST /commercial-content/{content_kind}/{content_id}/releases)
+	PublishCommercialRelease(ctx context.Context, request PublishCommercialReleaseRequestObject) (PublishCommercialReleaseResponseObject, error)
+	// ChangeCommercialSaleState Change free, paid or withdrawn commercial state
+	// (POST /commercial-content/{content_kind}/{content_id}/sale-state)
+	ChangeCommercialSaleState(ctx context.Context, request ChangeCommercialSaleStateRequestObject) (ChangeCommercialSaleStateResponseObject, error)
+	// ListCommercialOffers List eligible one-time acquisition offers
+	// (GET /commercial-offers)
+	ListCommercialOffers(ctx context.Context, request ListCommercialOffersRequestObject) (ListCommercialOffersResponseObject, error)
+	// GetCommercialRelease Read an authorized immutable commercial manifest
+	// (GET /commercial-releases/{release_id})
+	GetCommercialRelease(ctx context.Context, request GetCommercialReleaseRequestObject) (GetCommercialReleaseResponseObject, error)
 	// ListContentNodes List content nodes for authoring
 	// (GET /content-nodes)
 	ListContentNodes(ctx context.Context, request ListContentNodesRequestObject) (ListContentNodesResponseObject, error)
@@ -23467,6 +34282,9 @@ type StrictServerInterface interface {
 	// UpdateInstrument Replace an instrument's names, default voice and icon
 	// (PATCH /instruments/{instrument_id})
 	UpdateInstrument(ctx context.Context, request UpdateInstrumentRequestObject) (UpdateInstrumentResponseObject, error)
+	// ReceiveCMSCommercialHint Durably accept a CMS editorial synchronization hint
+	// (POST /integrations/cms/commercial-hints)
+	ReceiveCMSCommercialHint(ctx context.Context, request ReceiveCMSCommercialHintRequestObject) (ReceiveCMSCommercialHintResponseObject, error)
 	// ListKnowledgeEdges List knowledge edges
 	// (GET /knowledge-edges)
 	ListKnowledgeEdges(ctx context.Context, request ListKnowledgeEdgesRequestObject) (ListKnowledgeEdgesResponseObject, error)
@@ -23521,12 +34339,33 @@ type StrictServerInterface interface {
 	// CreateMediaUploadUrl Request a presigned URL to upload a content-authoring media asset
 	// (POST /media/upload-url)
 	CreateMediaUploadUrl(ctx context.Context, request CreateMediaUploadUrlRequestObject) (CreateMediaUploadUrlResponseObject, error)
-	// ListProgressions List the progression catalog
+	// ReceiveStripePaymentEvent Durably receive verified Stripe financial notifications
+	// (POST /payments/stripe/webhook)
+	ReceiveStripePaymentEvent(ctx context.Context, request ReceiveStripePaymentEventRequestObject) (ReceiveStripePaymentEventResponseObject, error)
+	// ListProgressions List the progressions
 	// (GET /progressions)
 	ListProgressions(ctx context.Context, request ListProgressionsRequestObject) (ListProgressionsResponseObject, error)
+	// CreateProgression Create a progression for song charts
+	// (POST /progressions)
+	CreateProgression(ctx context.Context, request CreateProgressionRequestObject) (CreateProgressionResponseObject, error)
+	// DeleteProgression Remove a progression created by mistake
+	// (DELETE /progressions/{progression_id})
+	DeleteProgression(ctx context.Context, request DeleteProgressionRequestObject) (DeleteProgressionResponseObject, error)
+	// UpdateProgression Change a created progression's nickname
+	// (PATCH /progressions/{progression_id})
+	UpdateProgression(ctx context.Context, request UpdateProgressionRequestObject) (UpdateProgressionResponseObject, error)
+	// AddProgressionToDrills Add a created progression to the drills
+	// (POST /progressions/{progression_id}/drills)
+	AddProgressionToDrills(ctx context.Context, request AddProgressionToDrillsRequestObject) (AddProgressionToDrillsResponseObject, error)
+	// GetProgressionUses Read which song chart sections tag a progression
+	// (GET /progressions/{progression_id}/uses)
+	GetProgressionUses(ctx context.Context, request GetProgressionUsesRequestObject) (GetProgressionUsesResponseObject, error)
 	// ReadinessCheck Readiness probe
 	// (GET /readyz)
 	ReadinessCheck(ctx context.Context, request ReadinessCheckRequestObject) (ReadinessCheckResponseObject, error)
+	// GetRefundRequest Read an owned refund case or an admin handling case
+	// (GET /refund-requests/{refund_request_id})
+	GetRefundRequest(ctx context.Context, request GetRefundRequestRequestObject) (GetRefundRequestResponseObject, error)
 	// ListSongCharts List song charts for authoring and review
 	// (GET /song-charts)
 	ListSongCharts(ctx context.Context, request ListSongChartsRequestObject) (ListSongChartsResponseObject, error)
@@ -23617,9 +34456,36 @@ type StrictServerInterface interface {
 	// GetMyStudentPath Get one of the authenticated student's paths with progress
 	// (GET /students/me/student-paths/{student_path_id})
 	GetMyStudentPath(ctx context.Context, request GetMyStudentPathRequestObject) (GetMyStudentPathResponseObject, error)
+	// GetMyLessonCommercialAccess Evaluate commercial access for a lesson in the caller's copy
+	// (GET /students/me/student-paths/{student_path_id}/content-nodes/{content_node_id}/commercial-access)
+	GetMyLessonCommercialAccess(ctx context.Context, request GetMyLessonCommercialAccessRequestObject) (GetMyLessonCommercialAccessResponseObject, error)
 	// AssignLearningPath Assign a learning path to a student
 	// (POST /students/{student_id}/student-paths)
 	AssignLearningPath(ctx context.Context, request AssignLearningPathRequestObject) (AssignLearningPathResponseObject, error)
+	// ListSubscriptionOffers List available offers for one subscription scope
+	// (GET /subscription-offers)
+	ListSubscriptionOffers(ctx context.Context, request ListSubscriptionOffersRequestObject) (ListSubscriptionOffersResponseObject, error)
+	// ListMyCommercialBalances Read teacher earnings by currency
+	// (GET /teachers/me/commercial-balances)
+	ListMyCommercialBalances(ctx context.Context, request ListMyCommercialBalancesRequestObject) (ListMyCommercialBalancesResponseObject, error)
+	// ListMyTeacherSales List the caller's own sales
+	// (GET /teachers/me/commercial-sales)
+	ListMyTeacherSales(ctx context.Context, request ListMyTeacherSalesRequestObject) (ListMyTeacherSalesResponseObject, error)
+	// ListMyCommercialSettlements Read teacher settlement history
+	// (GET /teachers/me/commercial-settlements)
+	ListMyCommercialSettlements(ctx context.Context, request ListMyCommercialSettlementsRequestObject) (ListMyCommercialSettlementsResponseObject, error)
+	// GetMyTeacherSellingTerms Read the current selling terms
+	// (GET /teachers/me/commercial-terms)
+	GetMyTeacherSellingTerms(ctx context.Context, request GetMyTeacherSellingTermsRequestObject) (GetMyTeacherSellingTermsResponseObject, error)
+	// GetMyPayoutAccount Read the caller's payout account readiness
+	// (GET /teachers/me/payout-account)
+	GetMyPayoutAccount(ctx context.Context, request GetMyPayoutAccountRequestObject) (GetMyPayoutAccountResponseObject, error)
+	// CreateMyPayoutDashboardLink Create a provider-hosted payout dashboard link
+	// (POST /teachers/me/payout-account/dashboard-links)
+	CreateMyPayoutDashboardLink(ctx context.Context, request CreateMyPayoutDashboardLinkRequestObject) (CreateMyPayoutDashboardLinkResponseObject, error)
+	// CreateMyPayoutOnboardingLink Create a provider-hosted payout onboarding link
+	// (POST /teachers/me/payout-account/onboarding-links)
+	CreateMyPayoutOnboardingLink(ctx context.Context, request CreateMyPayoutOnboardingLinkRequestObject) (CreateMyPayoutOnboardingLinkResponseObject, error)
 	// RegisterUser Register an authenticated user
 	// (POST /users)
 	RegisterUser(ctx context.Context, request RegisterUserRequestObject) (RegisterUserResponseObject, error)
@@ -23629,6 +34495,42 @@ type StrictServerInterface interface {
 	// UpdateMyProfile Update the authenticated user's preferences
 	// (PATCH /users/me)
 	UpdateMyProfile(ctx context.Context, request UpdateMyProfileRequestObject) (UpdateMyProfileResponseObject, error)
+	// CreateMyCommercialCheckout Start a permanent course or path purchase checkout
+	// (POST /users/me/commercial-checkouts)
+	CreateMyCommercialCheckout(ctx context.Context, request CreateMyCommercialCheckoutRequestObject) (CreateMyCommercialCheckoutResponseObject, error)
+	// GetMyCommercialCheckout Read one-time acquisition status
+	// (GET /users/me/commercial-checkouts/{checkout_id})
+	GetMyCommercialCheckout(ctx context.Context, request GetMyCommercialCheckoutRequestObject) (GetMyCommercialCheckoutResponseObject, error)
+	// ListMyCommercialHoldings List permanent purchases
+	// (GET /users/me/commercial-holdings)
+	ListMyCommercialHoldings(ctx context.Context, request ListMyCommercialHoldingsRequestObject) (ListMyCommercialHoldingsResponseObject, error)
+	// ListMyCommercialPayments List successful payments for refund/support references
+	// (GET /users/me/payments)
+	ListMyCommercialPayments(ctx context.Context, request ListMyCommercialPaymentsRequestObject) (ListMyCommercialPaymentsResponseObject, error)
+	// RequestMyPaymentRefund Request a full refund of a caller-owned payment
+	// (POST /users/me/refund-requests)
+	RequestMyPaymentRefund(ctx context.Context, request RequestMyPaymentRefundRequestObject) (RequestMyPaymentRefundResponseObject, error)
+	// CreateMySubscriptionCheckout Create a Stripe session for an authoritative subscription offer
+	// (POST /users/me/subscription-checkouts)
+	CreateMySubscriptionCheckout(ctx context.Context, request CreateMySubscriptionCheckoutRequestObject) (CreateMySubscriptionCheckoutResponseObject, error)
+	// GetMySubscriptionCheckout Read the caller's checkout and fulfillment status
+	// (GET /users/me/subscription-checkouts/{checkout_id})
+	GetMySubscriptionCheckout(ctx context.Context, request GetMySubscriptionCheckoutRequestObject) (GetMySubscriptionCheckoutResponseObject, error)
+	// ListMySubscriptions List the caller's existing subscriptions
+	// (GET /users/me/subscriptions)
+	ListMySubscriptions(ctx context.Context, request ListMySubscriptionsRequestObject) (ListMySubscriptionsResponseObject, error)
+	// CancelMySubscriptionRenewal Stop the next renewal without truncating paid access
+	// (POST /users/me/subscriptions/{subscription_id}/cancel-renewal)
+	CancelMySubscriptionRenewal(ctx context.Context, request CancelMySubscriptionRenewalRequestObject) (CancelMySubscriptionRenewalResponseObject, error)
+	// CreateMyPaymentMethodSession Open the provider-hosted page to update the subscription payment method
+	// (POST /users/me/subscriptions/{subscription_id}/payment-method-session)
+	CreateMyPaymentMethodSession(ctx context.Context, request CreateMyPaymentMethodSessionRequestObject) (CreateMyPaymentMethodSessionResponseObject, error)
+	// ResumeMySubscriptionRenewal Turn a stopped renewal back on before the paid period ends
+	// (POST /users/me/subscriptions/{subscription_id}/resume-renewal)
+	ResumeMySubscriptionRenewal(ctx context.Context, request ResumeMySubscriptionRenewalRequestObject) (ResumeMySubscriptionRenewalResponseObject, error)
+	// ScheduleMyAnnualSubscription Schedule monthly-to-annual billing at the next renewal
+	// (POST /users/me/subscriptions/{subscription_id}/schedule-annual)
+	ScheduleMyAnnualSubscription(ctx context.Context, request ScheduleMyAnnualSubscriptionRequestObject) (ScheduleMyAnnualSubscriptionResponseObject, error)
 	// ListVoices List the voices diagrams can be played with
 	// (GET /voices)
 	ListVoices(ctx context.Context, request ListVoicesRequestObject) (ListVoicesResponseObject, error)
@@ -23752,6 +34654,272 @@ func (sh *strictHandler) GetAlphaStudentObservation(w http.ResponseWriter, r *ht
 	}
 }
 
+// ListCommercialAuditEntries operation middleware
+func (sh *strictHandler) ListCommercialAuditEntries(w http.ResponseWriter, r *http.Request, params ListCommercialAuditEntriesParams) {
+	var request ListCommercialAuditEntriesRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListCommercialAuditEntries(ctx, request.(ListCommercialAuditEntriesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListCommercialAuditEntries")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListCommercialAuditEntriesResponseObject); ok {
+		if err := validResponse.VisitListCommercialAuditEntriesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateCommercialConfiguration operation middleware
+func (sh *strictHandler) CreateCommercialConfiguration(w http.ResponseWriter, r *http.Request, params CreateCommercialConfigurationParams) {
+	var request CreateCommercialConfigurationRequestObject
+
+	request.Params = params
+
+	var body CreateCommercialConfigurationJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateCommercialConfiguration(ctx, request.(CreateCommercialConfigurationRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateCommercialConfiguration")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateCommercialConfigurationResponseObject); ok {
+		if err := validResponse.VisitCreateCommercialConfigurationResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetCurrentCommercialConfiguration operation middleware
+func (sh *strictHandler) GetCurrentCommercialConfiguration(w http.ResponseWriter, r *http.Request) {
+	var request GetCurrentCommercialConfigurationRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetCurrentCommercialConfiguration(ctx, request.(GetCurrentCommercialConfigurationRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetCurrentCommercialConfiguration")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetCurrentCommercialConfigurationResponseObject); ok {
+		if err := validResponse.VisitGetCurrentCommercialConfigurationResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListCommercialGroups operation middleware
+func (sh *strictHandler) ListCommercialGroups(w http.ResponseWriter, r *http.Request) {
+	var request ListCommercialGroupsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListCommercialGroups(ctx, request.(ListCommercialGroupsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListCommercialGroups")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListCommercialGroupsResponseObject); ok {
+		if err := validResponse.VisitListCommercialGroupsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SaveCommercialGroup operation middleware
+func (sh *strictHandler) SaveCommercialGroup(w http.ResponseWriter, r *http.Request, slug GroupSlug, params SaveCommercialGroupParams) {
+	var request SaveCommercialGroupRequestObject
+
+	request.Slug = slug
+	request.Params = params
+
+	var body SaveCommercialGroupJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SaveCommercialGroup(ctx, request.(SaveCommercialGroupRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SaveCommercialGroup")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SaveCommercialGroupResponseObject); ok {
+		if err := validResponse.VisitSaveCommercialGroupResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ChangeCommercialGroupMembers operation middleware
+func (sh *strictHandler) ChangeCommercialGroupMembers(w http.ResponseWriter, r *http.Request, slug GroupSlug, params ChangeCommercialGroupMembersParams) {
+	var request ChangeCommercialGroupMembersRequestObject
+
+	request.Slug = slug
+	request.Params = params
+
+	var body ChangeCommercialGroupMembersJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ChangeCommercialGroupMembers(ctx, request.(ChangeCommercialGroupMembersRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ChangeCommercialGroupMembers")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ChangeCommercialGroupMembersResponseObject); ok {
+		if err := validResponse.VisitChangeCommercialGroupMembersResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetCommercialRollout operation middleware
+func (sh *strictHandler) GetCommercialRollout(w http.ResponseWriter, r *http.Request) {
+	var request GetCommercialRolloutRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetCommercialRollout(ctx, request.(GetCommercialRolloutRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetCommercialRollout")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetCommercialRolloutResponseObject); ok {
+		if err := validResponse.VisitGetCommercialRolloutResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// TurnOffAllCommercialFlags operation middleware
+func (sh *strictHandler) TurnOffAllCommercialFlags(w http.ResponseWriter, r *http.Request, params TurnOffAllCommercialFlagsParams) {
+	var request TurnOffAllCommercialFlagsRequestObject
+
+	request.Params = params
+
+	var body TurnOffAllCommercialFlagsJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.TurnOffAllCommercialFlags(ctx, request.(TurnOffAllCommercialFlagsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "TurnOffAllCommercialFlags")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(TurnOffAllCommercialFlagsResponseObject); ok {
+		if err := validResponse.VisitTurnOffAllCommercialFlagsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ChangeCommercialFlag operation middleware
+func (sh *strictHandler) ChangeCommercialFlag(w http.ResponseWriter, r *http.Request, flag FlagName, params ChangeCommercialFlagParams) {
+	var request ChangeCommercialFlagRequestObject
+
+	request.Flag = flag
+	request.Params = params
+
+	var body ChangeCommercialFlagJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ChangeCommercialFlag(ctx, request.(ChangeCommercialFlagRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ChangeCommercialFlag")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ChangeCommercialFlagResponseObject); ok {
+		if err := validResponse.VisitChangeCommercialFlagResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // ListAppConfig operation middleware
 func (sh *strictHandler) ListAppConfig(w http.ResponseWriter, r *http.Request) {
 	var request ListAppConfigRequestObject
@@ -23828,6 +34996,167 @@ func (sh *strictHandler) SetAppConfig(w http.ResponseWriter, r *http.Request, ke
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(SetAppConfigResponseObject); ok {
 		if err := validResponse.VisitSetAppConfigResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ExecuteFullPaymentRefund operation middleware
+func (sh *strictHandler) ExecuteFullPaymentRefund(w http.ResponseWriter, r *http.Request, refundRequestId RefundRequestID, params ExecuteFullPaymentRefundParams) {
+	var request ExecuteFullPaymentRefundRequestObject
+
+	request.RefundRequestId = refundRequestId
+	request.Params = params
+
+	var body ExecuteFullPaymentRefundJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ExecuteFullPaymentRefund(ctx, request.(ExecuteFullPaymentRefundRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ExecuteFullPaymentRefund")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ExecuteFullPaymentRefundResponseObject); ok {
+		if err := validResponse.VisitExecuteFullPaymentRefundResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RetryFailedFullRefund operation middleware
+func (sh *strictHandler) RetryFailedFullRefund(w http.ResponseWriter, r *http.Request, refundRequestId openapi_types.UUID, params RetryFailedFullRefundParams) {
+	var request RetryFailedFullRefundRequestObject
+
+	request.RefundRequestId = refundRequestId
+	request.Params = params
+
+	var body RetryFailedFullRefundJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RetryFailedFullRefund(ctx, request.(RetryFailedFullRefundRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RetryFailedFullRefund")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RetryFailedFullRefundResponseObject); ok {
+		if err := validResponse.VisitRetryFailedFullRefundResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ReviewFullRefundEligibility operation middleware
+func (sh *strictHandler) ReviewFullRefundEligibility(w http.ResponseWriter, r *http.Request, refundRequestId openapi_types.UUID, params ReviewFullRefundEligibilityParams) {
+	var request ReviewFullRefundEligibilityRequestObject
+
+	request.RefundRequestId = refundRequestId
+	request.Params = params
+
+	var body ReviewFullRefundEligibilityJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ReviewFullRefundEligibility(ctx, request.(ReviewFullRefundEligibilityRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ReviewFullRefundEligibility")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ReviewFullRefundEligibilityResponseObject); ok {
+		if err := validResponse.VisitReviewFullRefundEligibilityResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetCurrentSubscriptionOffer operation middleware
+func (sh *strictHandler) GetCurrentSubscriptionOffer(w http.ResponseWriter, r *http.Request, params GetCurrentSubscriptionOfferParams) {
+	var request GetCurrentSubscriptionOfferRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetCurrentSubscriptionOffer(ctx, request.(GetCurrentSubscriptionOfferRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetCurrentSubscriptionOffer")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetCurrentSubscriptionOfferResponseObject); ok {
+		if err := validResponse.VisitGetCurrentSubscriptionOfferResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateSubscriptionOfferRevision operation middleware
+func (sh *strictHandler) CreateSubscriptionOfferRevision(w http.ResponseWriter, r *http.Request, params CreateSubscriptionOfferRevisionParams) {
+	var request CreateSubscriptionOfferRevisionRequestObject
+
+	request.Params = params
+
+	var body CreateSubscriptionOfferRevisionJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateSubscriptionOfferRevision(ctx, request.(CreateSubscriptionOfferRevisionRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateSubscriptionOfferRevision")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateSubscriptionOfferRevisionResponseObject); ok {
+		if err := validResponse.VisitCreateSubscriptionOfferRevisionResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -24175,6 +35504,225 @@ func (sh *strictHandler) GetChord(w http.ResponseWriter, r *http.Request, chordD
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetChordResponseObject); ok {
 		if err := validResponse.VisitGetChordResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetCommercialContent operation middleware
+func (sh *strictHandler) GetCommercialContent(w http.ResponseWriter, r *http.Request, contentKind GetCommercialContentParamsContentKind, contentId openapi_types.UUID) {
+	var request GetCommercialContentRequestObject
+
+	request.ContentKind = contentKind
+	request.ContentId = contentId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetCommercialContent(ctx, request.(GetCommercialContentRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetCommercialContent")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetCommercialContentResponseObject); ok {
+		if err := validResponse.VisitGetCommercialContentResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateCommercialOffer operation middleware
+func (sh *strictHandler) CreateCommercialOffer(w http.ResponseWriter, r *http.Request, contentKind CreateCommercialOfferParamsContentKind, contentId openapi_types.UUID, params CreateCommercialOfferParams) {
+	var request CreateCommercialOfferRequestObject
+
+	request.ContentKind = contentKind
+	request.ContentId = contentId
+	request.Params = params
+
+	var body CreateCommercialOfferJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateCommercialOffer(ctx, request.(CreateCommercialOfferRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateCommercialOffer")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateCommercialOfferResponseObject); ok {
+		if err := validResponse.VisitCreateCommercialOfferResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CorrectCommercialOwnership operation middleware
+func (sh *strictHandler) CorrectCommercialOwnership(w http.ResponseWriter, r *http.Request, contentKind CorrectCommercialOwnershipParamsContentKind, contentId openapi_types.UUID, params CorrectCommercialOwnershipParams) {
+	var request CorrectCommercialOwnershipRequestObject
+
+	request.ContentKind = contentKind
+	request.ContentId = contentId
+	request.Params = params
+
+	var body CorrectCommercialOwnershipJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CorrectCommercialOwnership(ctx, request.(CorrectCommercialOwnershipRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CorrectCommercialOwnership")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CorrectCommercialOwnershipResponseObject); ok {
+		if err := validResponse.VisitCorrectCommercialOwnershipResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// PublishCommercialRelease operation middleware
+func (sh *strictHandler) PublishCommercialRelease(w http.ResponseWriter, r *http.Request, contentKind PublishCommercialReleaseParamsContentKind, contentId openapi_types.UUID, params PublishCommercialReleaseParams) {
+	var request PublishCommercialReleaseRequestObject
+
+	request.ContentKind = contentKind
+	request.ContentId = contentId
+	request.Params = params
+
+	var body PublishCommercialReleaseJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.PublishCommercialRelease(ctx, request.(PublishCommercialReleaseRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PublishCommercialRelease")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(PublishCommercialReleaseResponseObject); ok {
+		if err := validResponse.VisitPublishCommercialReleaseResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ChangeCommercialSaleState operation middleware
+func (sh *strictHandler) ChangeCommercialSaleState(w http.ResponseWriter, r *http.Request, contentKind ChangeCommercialSaleStateParamsContentKind, contentId openapi_types.UUID, params ChangeCommercialSaleStateParams) {
+	var request ChangeCommercialSaleStateRequestObject
+
+	request.ContentKind = contentKind
+	request.ContentId = contentId
+	request.Params = params
+
+	var body ChangeCommercialSaleStateJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ChangeCommercialSaleState(ctx, request.(ChangeCommercialSaleStateRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ChangeCommercialSaleState")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ChangeCommercialSaleStateResponseObject); ok {
+		if err := validResponse.VisitChangeCommercialSaleStateResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListCommercialOffers operation middleware
+func (sh *strictHandler) ListCommercialOffers(w http.ResponseWriter, r *http.Request, params ListCommercialOffersParams) {
+	var request ListCommercialOffersRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListCommercialOffers(ctx, request.(ListCommercialOffersRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListCommercialOffers")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListCommercialOffersResponseObject); ok {
+		if err := validResponse.VisitListCommercialOffersResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetCommercialRelease operation middleware
+func (sh *strictHandler) GetCommercialRelease(w http.ResponseWriter, r *http.Request, releaseId openapi_types.UUID) {
+	var request GetCommercialReleaseRequestObject
+
+	request.ReleaseId = releaseId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetCommercialRelease(ctx, request.(GetCommercialReleaseRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetCommercialRelease")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetCommercialReleaseResponseObject); ok {
+		if err := validResponse.VisitGetCommercialReleaseResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -25351,6 +36899,37 @@ func (sh *strictHandler) UpdateInstrument(w http.ResponseWriter, r *http.Request
 	}
 }
 
+// ReceiveCMSCommercialHint operation middleware
+func (sh *strictHandler) ReceiveCMSCommercialHint(w http.ResponseWriter, r *http.Request) {
+	var request ReceiveCMSCommercialHintRequestObject
+
+	var body ReceiveCMSCommercialHintJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ReceiveCMSCommercialHint(ctx, request.(ReceiveCMSCommercialHintRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ReceiveCMSCommercialHint")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ReceiveCMSCommercialHintResponseObject); ok {
+		if err := validResponse.VisitReceiveCMSCommercialHintResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // ListKnowledgeEdges operation middleware
 func (sh *strictHandler) ListKnowledgeEdges(w http.ResponseWriter, r *http.Request, params ListKnowledgeEdgesParams) {
 	var request ListKnowledgeEdgesRequestObject
@@ -25860,6 +37439,37 @@ func (sh *strictHandler) CreateMediaUploadUrl(w http.ResponseWriter, r *http.Req
 	}
 }
 
+// ReceiveStripePaymentEvent operation middleware
+func (sh *strictHandler) ReceiveStripePaymentEvent(w http.ResponseWriter, r *http.Request) {
+	var request ReceiveStripePaymentEventRequestObject
+
+	var body ReceiveStripePaymentEventJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ReceiveStripePaymentEvent(ctx, request.(ReceiveStripePaymentEventRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ReceiveStripePaymentEvent")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ReceiveStripePaymentEventResponseObject); ok {
+		if err := validResponse.VisitReceiveStripePaymentEventResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // ListProgressions operation middleware
 func (sh *strictHandler) ListProgressions(w http.ResponseWriter, r *http.Request) {
 	var request ListProgressionsRequestObject
@@ -25884,6 +37494,155 @@ func (sh *strictHandler) ListProgressions(w http.ResponseWriter, r *http.Request
 	}
 }
 
+// CreateProgression operation middleware
+func (sh *strictHandler) CreateProgression(w http.ResponseWriter, r *http.Request) {
+	var request CreateProgressionRequestObject
+
+	var body CreateProgressionJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateProgression(ctx, request.(CreateProgressionRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateProgression")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateProgressionResponseObject); ok {
+		if err := validResponse.VisitCreateProgressionResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteProgression operation middleware
+func (sh *strictHandler) DeleteProgression(w http.ResponseWriter, r *http.Request, progressionId openapi_types.UUID) {
+	var request DeleteProgressionRequestObject
+
+	request.ProgressionId = progressionId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteProgression(ctx, request.(DeleteProgressionRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteProgression")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteProgressionResponseObject); ok {
+		if err := validResponse.VisitDeleteProgressionResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateProgression operation middleware
+func (sh *strictHandler) UpdateProgression(w http.ResponseWriter, r *http.Request, progressionId openapi_types.UUID) {
+	var request UpdateProgressionRequestObject
+
+	request.ProgressionId = progressionId
+
+	var body UpdateProgressionJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateProgression(ctx, request.(UpdateProgressionRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateProgression")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateProgressionResponseObject); ok {
+		if err := validResponse.VisitUpdateProgressionResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AddProgressionToDrills operation middleware
+func (sh *strictHandler) AddProgressionToDrills(w http.ResponseWriter, r *http.Request, progressionId openapi_types.UUID) {
+	var request AddProgressionToDrillsRequestObject
+
+	request.ProgressionId = progressionId
+
+	var body AddProgressionToDrillsJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AddProgressionToDrills(ctx, request.(AddProgressionToDrillsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AddProgressionToDrills")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AddProgressionToDrillsResponseObject); ok {
+		if err := validResponse.VisitAddProgressionToDrillsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetProgressionUses operation middleware
+func (sh *strictHandler) GetProgressionUses(w http.ResponseWriter, r *http.Request, progressionId openapi_types.UUID) {
+	var request GetProgressionUsesRequestObject
+
+	request.ProgressionId = progressionId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetProgressionUses(ctx, request.(GetProgressionUsesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetProgressionUses")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetProgressionUsesResponseObject); ok {
+		if err := validResponse.VisitGetProgressionUsesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // ReadinessCheck operation middleware
 func (sh *strictHandler) ReadinessCheck(w http.ResponseWriter, r *http.Request) {
 	var request ReadinessCheckRequestObject
@@ -25901,6 +37660,32 @@ func (sh *strictHandler) ReadinessCheck(w http.ResponseWriter, r *http.Request) 
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ReadinessCheckResponseObject); ok {
 		if err := validResponse.VisitReadinessCheckResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetRefundRequest operation middleware
+func (sh *strictHandler) GetRefundRequest(w http.ResponseWriter, r *http.Request, refundRequestId RefundRequestID) {
+	var request GetRefundRequestRequestObject
+
+	request.RefundRequestId = refundRequestId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetRefundRequest(ctx, request.(GetRefundRequestRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetRefundRequest")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetRefundRequestResponseObject); ok {
+		if err := validResponse.VisitGetRefundRequestResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -26736,6 +38521,33 @@ func (sh *strictHandler) GetMyStudentPath(w http.ResponseWriter, r *http.Request
 	}
 }
 
+// GetMyLessonCommercialAccess operation middleware
+func (sh *strictHandler) GetMyLessonCommercialAccess(w http.ResponseWriter, r *http.Request, studentPathId openapi_types.UUID, contentNodeId openapi_types.UUID) {
+	var request GetMyLessonCommercialAccessRequestObject
+
+	request.StudentPathId = studentPathId
+	request.ContentNodeId = contentNodeId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetMyLessonCommercialAccess(ctx, request.(GetMyLessonCommercialAccessRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetMyLessonCommercialAccess")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetMyLessonCommercialAccessResponseObject); ok {
+		if err := validResponse.VisitGetMyLessonCommercialAccessResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // AssignLearningPath operation middleware
 func (sh *strictHandler) AssignLearningPath(w http.ResponseWriter, r *http.Request, studentId openapi_types.UUID) {
 	var request AssignLearningPathRequestObject
@@ -26762,6 +38574,208 @@ func (sh *strictHandler) AssignLearningPath(w http.ResponseWriter, r *http.Reque
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(AssignLearningPathResponseObject); ok {
 		if err := validResponse.VisitAssignLearningPathResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListSubscriptionOffers operation middleware
+func (sh *strictHandler) ListSubscriptionOffers(w http.ResponseWriter, r *http.Request, params ListSubscriptionOffersParams) {
+	var request ListSubscriptionOffersRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListSubscriptionOffers(ctx, request.(ListSubscriptionOffersRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListSubscriptionOffers")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListSubscriptionOffersResponseObject); ok {
+		if err := validResponse.VisitListSubscriptionOffersResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListMyCommercialBalances operation middleware
+func (sh *strictHandler) ListMyCommercialBalances(w http.ResponseWriter, r *http.Request) {
+	var request ListMyCommercialBalancesRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListMyCommercialBalances(ctx, request.(ListMyCommercialBalancesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListMyCommercialBalances")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListMyCommercialBalancesResponseObject); ok {
+		if err := validResponse.VisitListMyCommercialBalancesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListMyTeacherSales operation middleware
+func (sh *strictHandler) ListMyTeacherSales(w http.ResponseWriter, r *http.Request, params ListMyTeacherSalesParams) {
+	var request ListMyTeacherSalesRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListMyTeacherSales(ctx, request.(ListMyTeacherSalesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListMyTeacherSales")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListMyTeacherSalesResponseObject); ok {
+		if err := validResponse.VisitListMyTeacherSalesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListMyCommercialSettlements operation middleware
+func (sh *strictHandler) ListMyCommercialSettlements(w http.ResponseWriter, r *http.Request, params ListMyCommercialSettlementsParams) {
+	var request ListMyCommercialSettlementsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListMyCommercialSettlements(ctx, request.(ListMyCommercialSettlementsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListMyCommercialSettlements")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListMyCommercialSettlementsResponseObject); ok {
+		if err := validResponse.VisitListMyCommercialSettlementsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetMyTeacherSellingTerms operation middleware
+func (sh *strictHandler) GetMyTeacherSellingTerms(w http.ResponseWriter, r *http.Request) {
+	var request GetMyTeacherSellingTermsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetMyTeacherSellingTerms(ctx, request.(GetMyTeacherSellingTermsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetMyTeacherSellingTerms")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetMyTeacherSellingTermsResponseObject); ok {
+		if err := validResponse.VisitGetMyTeacherSellingTermsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetMyPayoutAccount operation middleware
+func (sh *strictHandler) GetMyPayoutAccount(w http.ResponseWriter, r *http.Request) {
+	var request GetMyPayoutAccountRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetMyPayoutAccount(ctx, request.(GetMyPayoutAccountRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetMyPayoutAccount")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetMyPayoutAccountResponseObject); ok {
+		if err := validResponse.VisitGetMyPayoutAccountResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateMyPayoutDashboardLink operation middleware
+func (sh *strictHandler) CreateMyPayoutDashboardLink(w http.ResponseWriter, r *http.Request, params CreateMyPayoutDashboardLinkParams) {
+	var request CreateMyPayoutDashboardLinkRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateMyPayoutDashboardLink(ctx, request.(CreateMyPayoutDashboardLinkRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateMyPayoutDashboardLink")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateMyPayoutDashboardLinkResponseObject); ok {
+		if err := validResponse.VisitCreateMyPayoutDashboardLinkResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateMyPayoutOnboardingLink operation middleware
+func (sh *strictHandler) CreateMyPayoutOnboardingLink(w http.ResponseWriter, r *http.Request, params CreateMyPayoutOnboardingLinkParams) {
+	var request CreateMyPayoutOnboardingLinkRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateMyPayoutOnboardingLink(ctx, request.(CreateMyPayoutOnboardingLinkRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateMyPayoutOnboardingLink")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateMyPayoutOnboardingLinkResponseObject); ok {
+		if err := validResponse.VisitCreateMyPayoutOnboardingLinkResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -26848,6 +38862,364 @@ func (sh *strictHandler) UpdateMyProfile(w http.ResponseWriter, r *http.Request)
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(UpdateMyProfileResponseObject); ok {
 		if err := validResponse.VisitUpdateMyProfileResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateMyCommercialCheckout operation middleware
+func (sh *strictHandler) CreateMyCommercialCheckout(w http.ResponseWriter, r *http.Request, params CreateMyCommercialCheckoutParams) {
+	var request CreateMyCommercialCheckoutRequestObject
+
+	request.Params = params
+
+	var body CreateMyCommercialCheckoutJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateMyCommercialCheckout(ctx, request.(CreateMyCommercialCheckoutRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateMyCommercialCheckout")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateMyCommercialCheckoutResponseObject); ok {
+		if err := validResponse.VisitCreateMyCommercialCheckoutResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetMyCommercialCheckout operation middleware
+func (sh *strictHandler) GetMyCommercialCheckout(w http.ResponseWriter, r *http.Request, checkoutId openapi_types.UUID) {
+	var request GetMyCommercialCheckoutRequestObject
+
+	request.CheckoutId = checkoutId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetMyCommercialCheckout(ctx, request.(GetMyCommercialCheckoutRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetMyCommercialCheckout")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetMyCommercialCheckoutResponseObject); ok {
+		if err := validResponse.VisitGetMyCommercialCheckoutResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListMyCommercialHoldings operation middleware
+func (sh *strictHandler) ListMyCommercialHoldings(w http.ResponseWriter, r *http.Request, params ListMyCommercialHoldingsParams) {
+	var request ListMyCommercialHoldingsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListMyCommercialHoldings(ctx, request.(ListMyCommercialHoldingsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListMyCommercialHoldings")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListMyCommercialHoldingsResponseObject); ok {
+		if err := validResponse.VisitListMyCommercialHoldingsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListMyCommercialPayments operation middleware
+func (sh *strictHandler) ListMyCommercialPayments(w http.ResponseWriter, r *http.Request, params ListMyCommercialPaymentsParams) {
+	var request ListMyCommercialPaymentsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListMyCommercialPayments(ctx, request.(ListMyCommercialPaymentsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListMyCommercialPayments")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListMyCommercialPaymentsResponseObject); ok {
+		if err := validResponse.VisitListMyCommercialPaymentsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RequestMyPaymentRefund operation middleware
+func (sh *strictHandler) RequestMyPaymentRefund(w http.ResponseWriter, r *http.Request, params RequestMyPaymentRefundParams) {
+	var request RequestMyPaymentRefundRequestObject
+
+	request.Params = params
+
+	var body RequestMyPaymentRefundJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RequestMyPaymentRefund(ctx, request.(RequestMyPaymentRefundRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RequestMyPaymentRefund")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RequestMyPaymentRefundResponseObject); ok {
+		if err := validResponse.VisitRequestMyPaymentRefundResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateMySubscriptionCheckout operation middleware
+func (sh *strictHandler) CreateMySubscriptionCheckout(w http.ResponseWriter, r *http.Request, params CreateMySubscriptionCheckoutParams) {
+	var request CreateMySubscriptionCheckoutRequestObject
+
+	request.Params = params
+
+	var body CreateMySubscriptionCheckoutJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateMySubscriptionCheckout(ctx, request.(CreateMySubscriptionCheckoutRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateMySubscriptionCheckout")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateMySubscriptionCheckoutResponseObject); ok {
+		if err := validResponse.VisitCreateMySubscriptionCheckoutResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetMySubscriptionCheckout operation middleware
+func (sh *strictHandler) GetMySubscriptionCheckout(w http.ResponseWriter, r *http.Request, checkoutId openapi_types.UUID) {
+	var request GetMySubscriptionCheckoutRequestObject
+
+	request.CheckoutId = checkoutId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetMySubscriptionCheckout(ctx, request.(GetMySubscriptionCheckoutRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetMySubscriptionCheckout")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetMySubscriptionCheckoutResponseObject); ok {
+		if err := validResponse.VisitGetMySubscriptionCheckoutResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListMySubscriptions operation middleware
+func (sh *strictHandler) ListMySubscriptions(w http.ResponseWriter, r *http.Request, params ListMySubscriptionsParams) {
+	var request ListMySubscriptionsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListMySubscriptions(ctx, request.(ListMySubscriptionsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListMySubscriptions")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListMySubscriptionsResponseObject); ok {
+		if err := validResponse.VisitListMySubscriptionsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CancelMySubscriptionRenewal operation middleware
+func (sh *strictHandler) CancelMySubscriptionRenewal(w http.ResponseWriter, r *http.Request, subscriptionId SubscriptionID, params CancelMySubscriptionRenewalParams) {
+	var request CancelMySubscriptionRenewalRequestObject
+
+	request.SubscriptionId = subscriptionId
+	request.Params = params
+
+	var body CancelMySubscriptionRenewalJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CancelMySubscriptionRenewal(ctx, request.(CancelMySubscriptionRenewalRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CancelMySubscriptionRenewal")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CancelMySubscriptionRenewalResponseObject); ok {
+		if err := validResponse.VisitCancelMySubscriptionRenewalResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateMyPaymentMethodSession operation middleware
+func (sh *strictHandler) CreateMyPaymentMethodSession(w http.ResponseWriter, r *http.Request, subscriptionId SubscriptionID, params CreateMyPaymentMethodSessionParams) {
+	var request CreateMyPaymentMethodSessionRequestObject
+
+	request.SubscriptionId = subscriptionId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateMyPaymentMethodSession(ctx, request.(CreateMyPaymentMethodSessionRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateMyPaymentMethodSession")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateMyPaymentMethodSessionResponseObject); ok {
+		if err := validResponse.VisitCreateMyPaymentMethodSessionResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ResumeMySubscriptionRenewal operation middleware
+func (sh *strictHandler) ResumeMySubscriptionRenewal(w http.ResponseWriter, r *http.Request, subscriptionId SubscriptionID, params ResumeMySubscriptionRenewalParams) {
+	var request ResumeMySubscriptionRenewalRequestObject
+
+	request.SubscriptionId = subscriptionId
+	request.Params = params
+
+	var body ResumeMySubscriptionRenewalJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ResumeMySubscriptionRenewal(ctx, request.(ResumeMySubscriptionRenewalRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ResumeMySubscriptionRenewal")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ResumeMySubscriptionRenewalResponseObject); ok {
+		if err := validResponse.VisitResumeMySubscriptionRenewalResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ScheduleMyAnnualSubscription operation middleware
+func (sh *strictHandler) ScheduleMyAnnualSubscription(w http.ResponseWriter, r *http.Request, subscriptionId SubscriptionID, params ScheduleMyAnnualSubscriptionParams) {
+	var request ScheduleMyAnnualSubscriptionRequestObject
+
+	request.SubscriptionId = subscriptionId
+	request.Params = params
+
+	var body ScheduleMyAnnualSubscriptionJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ScheduleMyAnnualSubscription(ctx, request.(ScheduleMyAnnualSubscriptionRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ScheduleMyAnnualSubscription")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ScheduleMyAnnualSubscriptionResponseObject); ok {
+		if err := validResponse.VisitScheduleMyAnnualSubscriptionResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

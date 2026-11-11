@@ -29,3 +29,69 @@ func TestSyncPracticeReference_GivesUpAtItsTimeout(t *testing.T) {
 
 	assert.Less(t, time.Since(start), 5*time.Second)
 }
+
+func setRequiredEnv(t *testing.T) {
+	t.Helper()
+	for name, value := range map[string]string{
+		"DATABASE_URL":             "postgres://localhost/motifpath",
+		"MONGO_URI":                "mongodb://localhost",
+		"CLERK_SECRET_KEY":         "sk_test_x",
+		"MEDIA_S3_BUCKET":          "bucket",
+		"MEDIA_PUBLIC_BASE_URL":    "http://localhost:9000/bucket",
+		"EMAIL_UNSUBSCRIBE_SECRET": "secret",
+		"MOTIFPATH_ENV":            "local",
+		"COMMERCIAL_CURSOR_SECRET": "cursor-secret",
+	} {
+		t.Setenv(name, value)
+	}
+}
+
+// Commercial evidence and operation keys are namespaced by the deployment,
+// so the service must know which one it is before it serves anything.
+func TestLoadConfig_Environment(t *testing.T) {
+	t.Run("a known deployment is loaded", func(t *testing.T) {
+		setRequiredEnv(t)
+		t.Setenv("MOTIFPATH_ENV", "staging")
+
+		cfg, err := loadConfig()
+
+		require.NoError(t, err)
+		assert.Equal(t, "staging", cfg.environment.String())
+	})
+
+	for name, value := range map[string]string{
+		"missing": "",
+		"unknown": "qa",
+	} {
+		t.Run("refused when "+name, func(t *testing.T) {
+			setRequiredEnv(t)
+			t.Setenv("MOTIFPATH_ENV", value)
+
+			_, err := loadConfig()
+
+			require.ErrorContains(t, err, "MOTIFPATH_ENV")
+		})
+	}
+}
+
+// Audit continuations are signed with this secret; without it a traversal's
+// scope could not be bound, so the service refuses to start.
+func TestLoadConfig_CommercialCursorSecret(t *testing.T) {
+	t.Run("is loaded", func(t *testing.T) {
+		setRequiredEnv(t)
+
+		cfg, err := loadConfig()
+
+		require.NoError(t, err)
+		assert.Equal(t, []byte("cursor-secret"), cfg.commercialCursorSecret)
+	})
+
+	t.Run("refused when missing", func(t *testing.T) {
+		setRequiredEnv(t)
+		t.Setenv("COMMERCIAL_CURSOR_SECRET", "")
+
+		_, err := loadConfig()
+
+		require.ErrorContains(t, err, "COMMERCIAL_CURSOR_SECRET")
+	})
+}

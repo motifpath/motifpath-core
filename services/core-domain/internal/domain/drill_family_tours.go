@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 	"slices"
-	"strings"
 )
 
 // PracticeItemKindProgressionKeys is a progression key tour: a progression of
@@ -25,9 +24,9 @@ const (
 	tourFirstTempoShare = 0.6
 	tourMinTempoShare   = 0.6
 	tourTempoStepBPM    = 5
-	// fourBarTimesThrough is how often a take plays a four-bar progression; a
-	// longer form plays once.
-	fourBarTimesThrough = 4
+	// tourTakeBars is how many bars a take fills with whole times through the
+	// progression: a four-bar progression plays four times, a 12-bar form once.
+	tourTakeBars = 16
 	// tourBeatsPerBar is the tour's time signature, 4/4.
 	tourBeatsPerBar = 4
 	// tourWay is the one way a tour is answered: rated by the student.
@@ -117,11 +116,10 @@ func (i ProgressionKeysItem) Seconds() int {
 // SuitsSession holds in hand only: a tour is played.
 func (ProgressionKeysItem) SuitsSession(inHand bool) bool { return inHand }
 
+// timesThrough is how many whole times the progression fits in a take's
+// tourTakeBars, and at least once.
 func (i ProgressionKeysItem) timesThrough() int {
-	if len(i.Progression.Bars) == HeardProgressionBars {
-		return fourBarTimesThrough
-	}
-	return 1
+	return max(1, tourTakeBars/max(1, len(i.Progression.Bars)))
 }
 
 // Plan lays the tour out in every key, starting where planning.State left it:
@@ -145,7 +143,8 @@ func (i ProgressionKeysItem) Plan(_ string, planning DrillPlanning) PlannedDrill
 		TargetTempoBPM: ProgressionKeysTargetTempoBPM,
 		MinTempoBPM:    tourMinTempo(),
 	}
-	for _, key := range ProgressionKeyOrder {
+	order := TourKeyOrderOf(ProgressionMode(i.Progression.Mode))
+	for _, key := range order {
 		clean := slices.Contains(tour.CleanKeys, key)
 		if !clean && planned.StartMusicKey == "" {
 			planned.StartMusicKey = key
@@ -153,7 +152,7 @@ func (i ProgressionKeysItem) Plan(_ string, planning DrillPlanning) PlannedDrill
 		planned.Keys = append(planned.Keys, i.planKey(key, clean, planning))
 	}
 	if planned.StartMusicKey == "" {
-		planned.StartMusicKey = ProgressionKeyOrder[0]
+		planned.StartMusicKey = order[0]
 	}
 	return plannedTour{planned: planned}
 }
@@ -220,14 +219,20 @@ func tourMinTempo() int {
 }
 
 // chordThirdAndFifth are the semitones from chord's root to its third and its
-// fifth: minor and diminished chords have a minor third, a diminished one a
-// flat fifth, and a seventh keeps its triad's.
+// fifth: its triad's, since a seventh keeps the triad under it. Minor and
+// diminished triads have a minor third, a diminished one a flat fifth.
 func chordThirdAndFifth(chord string) (third, fifth int) {
-	switch {
-	case strings.HasSuffix(chord, "dim"):
+	reading := ParseChordSymbol(chord)
+	if reading.Parsed == nil {
+		return 4, 7
+	}
+	switch triadOf[reading.Parsed.Quality] {
+	case triadDiminished:
 		return 3, 6
-	case strings.HasSuffix(chord, "m"):
+	case triadMinor:
 		return 3, 7
+	case triadMajor, triadNone:
+		return 4, 7
 	}
 	return 4, 7
 }

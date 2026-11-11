@@ -301,6 +301,32 @@ func TestEntNodeItemSource_HarmonyItems(t *testing.T) {
 	})
 }
 
+func TestEntNodeItemSource_ChartOnlyProgressions(t *testing.T) {
+	ctx := context.Background()
+	db := startMigrationPostgres(t, ctx)
+	for _, file := range migrationFiles(t) {
+		_, err := execMigrationFile(ctx, db, file)
+		require.NoError(t, err)
+	}
+	client := ent.NewClient(ent.Driver(entsql.OpenDB(dialect.Postgres, db)))
+	source := NewEntNodeItemSource(client)
+	client.Progression.Create().SetID(uuid.New()).SetKey("major/I-bVII-IV-I").SetMode("major").SetBars([]string{"I", "♭VII", "IV", "I"}).
+		SetNodeIds([]string{catalogID("knowledge-node/common-progressions")}).SetConfusable([]string{}).
+		SetNames(map[string]string{"en": "I–♭VII–IV–I"}).SaveX(ctx)
+
+	got, err := source.ClassifiedItems(ctx, acousticGuitarID)
+	require.NoError(t, err)
+
+	keys := make([]string, len(got))
+	for i, item := range got {
+		keys[i] = item.ItemKey
+	}
+	assert.Contains(t, keys, "chart_progression:ii-V-I")
+	for _, key := range keys {
+		assert.NotContains(t, key, "major/I-bVII-IV-I", "a chart-only progression is never a practice subject")
+	}
+}
+
 func TestEntNodeItemSource_FretboardLayouts(t *testing.T) {
 	ctx := context.Background()
 	db := startMigrationPostgres(t, ctx)

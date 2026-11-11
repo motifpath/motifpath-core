@@ -5,13 +5,17 @@ package repo
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
+	"entgo.io/ent/dialect"
+	entsql "entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent"
 	"github.com/motifpath/core-domain/internal/domain"
 )
 
@@ -277,4 +281,102 @@ func TestEntSongChartRepository_PublishedRevisions(t *testing.T) {
 	assert.Equal(t, "Luiz Gonzaga", rev.Artist)
 	assert.Equal(t, []domain.SectionProgression{{SectionIndex: 0, ProgressionKey: "tag-2"}}, rev.SectionProgressions)
 	assert.Empty(t, rev.Body.Sections, "the body isn't read")
+}
+
+func TestEntSongChartRepository_ProgressionUses(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	charts := NewEntSongChartRepository(client)
+	publishTagged := func(chart domain.SongChart, keys ...string) domain.SongChart {
+		published, rev, err := tagged(chart, keys...).Publish(uuid.NewString(), fixedAt)
+		require.NoError(t, err)
+		require.NoError(t, charts.Publish(ctx, published, rev))
+		return published
+	}
+	newPublishable := func(title string) domain.SongChart {
+		chart := newSongChart(title, fixedAt)
+		chart.Draft.RightsConfirmation = &domain.RightsConfirmation{ConfirmedBy: uuid.NewString(), ConfirmedAt: fixedAt}
+		require.NoError(t, charts.Create(ctx, chart))
+		return chart
+	}
+
+	require.NoError(t, charts.Create(ctx, newSongChart("Untagged", fixedAt)))
+
+	drafted := newPublishable("Drafted")
+	require.NoError(t, charts.Save(ctx, tagged(drafted, "major/in-draft")))
+
+	corrected := publishTagged(publishTagged(newPublishable("Corrected"), "major/old"), "major/latest")
+	require.NoError(t, charts.Save(ctx, tagged(corrected)))
+
+	withdrawn, err := publishTagged(newPublishable("Withdrawn"), "major/withdrawn").Withdraw(uuid.NewString(), fixedAt, "Rights disputed")
+	require.NoError(t, err)
+	require.NoError(t, charts.Save(ctx, tagged(withdrawn)))
+
+	got, err := charts.ProgressionUses(ctx)
+	require.NoError(t, err)
+
+	byKey := map[string][]domain.ProgressionUse{}
+	for _, use := range got {
+		byKey[use.ProgressionKey] = append(byKey[use.ProgressionKey], use)
+	}
+	label := drafted.Draft.Body.Sections[0].Label
+	assert.Equal(t, []domain.ProgressionUse{{ProgressionKey: "major/in-draft", SongChartID: drafted.ID, Title: "Drafted", Revision: domain.ProgressionUseDraft, SectionLabel: label}}, byKey["major/in-draft"])
+	assert.Equal(t, []domain.ProgressionUse{{ProgressionKey: "major/latest", SongChartID: corrected.ID, Title: "Corrected", Revision: domain.ProgressionUsePublished, SectionLabel: label}}, byKey["major/latest"],
+		"the draft dropped it, the latest revision keeps it")
+	assert.NotContains(t, byKey, "major/old", "an older revision doesn't count")
+	assert.Len(t, byKey["major/withdrawn"], 1, "a withdrawn chart's latest revision still counts")
+	assert.Len(t, got, 3)
+}
+
+// Students ask for progressions on every page load, so finding the uses must not
+// read bodies that can't hold one.
+func TestEntSongChartRepository_ProgressionUsesReadsOnlyWhatCounts(t *testing.T) {
+	ctx := context.Background()
+	db := startMigrationPostgres(t, ctx)
+	for _, file := range migrationFiles(t) {
+		_, err := execMigrationFile(ctx, db, file)
+		require.NoError(t, err)
+	}
+	var queries []string
+	driver := dialect.DebugWithContext(entsql.OpenDB(dialect.Postgres, db), func(_ context.Context, args ...any) {
+		queries = append(queries, fmt.Sprint(args...))
+	})
+	charts := NewEntSongChartRepository(ent.NewClient(ent.Driver(driver)))
+
+	chart := newSongChart("Corrected", fixedAt)
+	chart.Draft.RightsConfirmation = &domain.RightsConfirmation{ConfirmedBy: uuid.NewString(), ConfirmedAt: fixedAt}
+	require.NoError(t, charts.Create(ctx, chart))
+	first, rev, err := tagged(chart, "major/old").Publish(uuid.NewString(), fixedAt)
+	require.NoError(t, err)
+	require.NoError(t, charts.Publish(ctx, first, rev))
+	second, rev, err := tagged(first, "major/latest").Publish(uuid.NewString(), fixedAt)
+	require.NoError(t, err)
+	require.NoError(t, charts.Publish(ctx, second, rev))
+	require.NoError(t, charts.Save(ctx, tagged(second)))
+
+	queries = nil
+
+	got, err := charts.ProgressionUses(ctx)
+
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	assert.Equal(t, "major/latest", got[0].ProgressionKey)
+	reading := func(table string) []string {
+		var found []string
+		for _, q := range queries {
+			if strings.Contains(q, `"`+table+`"`) && strings.Contains(q, `"body"`) {
+				found = append(found, q)
+			}
+		}
+		return found
+	}
+	for _, table := range []string{"song_charts", "song_chart_revisions"} {
+		require.NotEmpty(t, reading(table), table)
+		for _, q := range reading(table) {
+			assert.Contains(t, q, "LIKE", "untagged %s bodies stay in the database", table)
+		}
+	}
+	for _, q := range reading("song_chart_revisions") {
+		assert.Contains(t, q, `"revision_number" = `, "older revisions stay in the database")
+	}
 }
