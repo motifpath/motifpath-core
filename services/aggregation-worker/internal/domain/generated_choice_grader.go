@@ -15,6 +15,21 @@ type generatedChoiceV1 struct{}
 
 func (generatedChoiceV1) ID() string { return "generated_choice.v1" }
 
+// generatedChoiceV2 grades as generatedChoiceV1 does, with minor keys, and with
+// made-up wrong answers among a progression question's options: any progression
+// of the asked length and mode is a possible answer.
+type generatedChoiceV2 struct{}
+
+func (generatedChoiceV2) ID() string { return "generated_choice.v2" }
+
+func (generatedChoiceV2) Grade(key PracticeItemKey, r PracticeResponse, ref PracticeReference) GradeResult {
+	return gradeGeneratedChoice(key, r, ref, true)
+}
+
+func (generatedChoiceV1) Grade(key PracticeItemKey, r PracticeResponse, ref PracticeReference) GradeResult {
+	return gradeGeneratedChoice(key, r, ref, false)
+}
+
 // waysOf are the ways each kind is asked.
 var waysOf = map[PracticeItemKind][]string{
 	PracticeItemKindDiatonicChord:    {"numeral_to_chord", "chord_to_numeral"},
@@ -34,12 +49,14 @@ var keyedByTheAnswer = map[PracticeItemKind]bool{
 	PracticeItemKindHeardProgression: true,
 }
 
-// generatedQuestion is what a question asks: its key, and its numeral or progression.
+// generatedQuestion is what a question asks: its key, and its numeral or
+// progression with its mode.
 type generatedQuestion struct {
 	key            int
 	numeral        string
 	progressionKey string
 	progression    []string
+	mode           string
 }
 
 // answerSpace is what the options of one way can be: identify reads an option into
@@ -50,7 +67,8 @@ type answerSpace struct {
 	answer   string
 }
 
-func (generatedChoiceV1) Grade(key PracticeItemKey, r PracticeResponse, ref PracticeReference) GradeResult {
+// gradeGeneratedChoice grades r under v1's rules, or v2's when v2 holds.
+func gradeGeneratedChoice(key PracticeItemKey, r PracticeResponse, ref PracticeReference, v2 bool) GradeResult {
 	ways, ok := waysOf[key.Kind]
 	if !ok || r.Type != PracticeResponseGeneratedChoice || r.LatencyMs == nil || !slices.Contains(ways, r.Way) {
 		return rejected(GradeRejectionResponseDoesNotFitItem)
@@ -59,11 +77,11 @@ func (generatedChoiceV1) Grade(key PracticeItemKey, r PracticeResponse, ref Prac
 		return rejected(GradeRejectionResponseDoesNotFitItem)
 	}
 
-	q, rejection := questionOf(key, r, ref)
+	q, rejection := questionOf(key, r, ref, v2)
 	if rejection != "" {
 		return rejected(rejection)
 	}
-	space := answerSpaceOf(r.Way, q, ref)
+	space := answerSpaceOf(r.Way, q, ref, v2)
 
 	picked, valid := checkOptions(r, space)
 	if !valid {
@@ -88,8 +106,9 @@ func (generatedChoiceV1) Grade(key PracticeItemKey, r PracticeResponse, ref Prac
 }
 
 // questionOf reads what the question asks from the item key and, for an item asked
-// in any key, the key sent with the answer.
-func questionOf(key PracticeItemKey, r PracticeResponse, ref PracticeReference) (generatedQuestion, GradeRejection) {
+// in any key, the key sent with the answer. Under v2 a progression is asked in a
+// key of its mode, minor keys included.
+func questionOf(key PracticeItemKey, r PracticeResponse, ref PracticeReference, v2 bool) (generatedQuestion, GradeRejection) {
 	musicKey := r.MusicKey
 	var q generatedQuestion
 	if progressionKey := key.ProgressionKey(); progressionKey != "" {
@@ -97,7 +116,15 @@ func questionOf(key PracticeItemKey, r PracticeResponse, ref PracticeReference) 
 		if !ok {
 			return q, GradeRejectionUnknownReference
 		}
-		q.progressionKey, q.progression = p.Key, p.Bars
+		q.progressionKey, q.progression, q.mode = p.Key, p.Bars, modeOf(p)
+		if v2 {
+			pc, mode, ok := musicKeyOf(musicKey)
+			if !ok || mode != q.mode {
+				return q, GradeRejectionResponseDoesNotFitItem
+			}
+			q.key = pc
+			return q, ""
+		}
 	} else if keyedByTheAnswer[key.Kind] {
 		q.numeral = key.parts[0]
 	} else {
@@ -112,7 +139,9 @@ func questionOf(key PracticeItemKey, r PracticeResponse, ref PracticeReference) 
 }
 
 // answerSpaceOf is what the options of way can be, and which of them is right.
-func answerSpaceOf(way string, q generatedQuestion, ref PracticeReference) answerSpace {
+// Under v2 a progression question's options are any progression of its length
+// and mode, made-up ones included.
+func answerSpaceOf(way string, q generatedQuestion, ref PracticeReference, v2 bool) answerSpace {
 	switch way {
 	case "numeral_to_chord", "function_to_chord":
 		right, _ := chordOf(q.key, q.numeral)
@@ -125,10 +154,63 @@ func answerSpaceOf(way string, q generatedQuestion, ref PracticeReference) answe
 	case "numbers_to_chart":
 		chart, _ := chartOf(q.key, q.progression)
 		right := chartSymbol(chart)
-		return answerSpace{identify: chartOfTheKey(q.key, ref), right: right, answer: right}
+		identify := chartOfTheKey(q.key, ref)
+		if v2 {
+			identify = chartOfLength(len(q.progression))
+		}
+		return answerSpace{identify: identify, right: right, answer: right}
 	}
 	// chart_to_numbers and progression_by_number: the progression's key.
-	return answerSpace{identify: catalogProgression(ref), right: q.progressionKey, answer: q.progressionKey}
+	identify := catalogProgression(ref)
+	if v2 {
+		identify = progressionOfShape(ref, len(q.progression), q.mode)
+	}
+	return answerSpace{identify: identify, right: q.progressionKey, answer: q.progressionKey}
+}
+
+// chartOfLength reads an option as a chart of bars chord symbols, whatever
+// progression it is.
+func chartOfLength(bars int) func(string) (string, bool) {
+	return func(option string) (string, bool) {
+		symbols := strings.Split(option, " ")
+		if len(symbols) != bars {
+			return "", false
+		}
+		chart := make([]chord, len(symbols))
+		for i, s := range symbols {
+			c, ok := parseChord(s, true)
+			if !ok {
+				return "", false
+			}
+			chart[i] = c
+		}
+		return chartSymbol(chart), true
+	}
+}
+
+// progressionOfShape reads an option as a progression of bars bars in mode: a
+// drill progression's key, or a made-up one's, its mode and ASCII numerals, such
+// as major/I-ii-V.
+func progressionOfShape(ref PracticeReference, bars int, mode string) func(string) (string, bool) {
+	return func(option string) (string, bool) {
+		if p, ok := ref.Progressions[option]; ok {
+			return option, len(p.Bars) == bars && modeOf(p) == mode
+		}
+		optionMode, numerals, ok := strings.Cut(option, "/")
+		if !ok || optionMode != mode {
+			return "", false
+		}
+		parts := strings.Split(numerals, "-")
+		if len(parts) != bars {
+			return "", false
+		}
+		for _, part := range parts {
+			if _, _, ok := readNumeral(asciiNumerals.Replace(part)); !ok {
+				return "", false
+			}
+		}
+		return option, true
+	}
 }
 
 // checkOptions reports the pick, read as the way reads it, and whether the options

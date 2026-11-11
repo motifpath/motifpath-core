@@ -161,6 +161,9 @@ func TestMongoPracticeReferenceReader_Progressions(t *testing.T) {
 		{{Key: "kind", Value: "progression"}, {Key: "id", Value: "455a8344-26f7-5fb2-922a-ece7032c8f2a"}, {Key: "key", Value: "IV-V-I"},
 			{Key: "mode", Value: "major"}, {Key: "bars", Value: bson.A{"IV", "V", "I", "I"}}, {Key: "confusable", Value: bson.A{"ii-V-I"}},
 			{Key: "updated_at", Value: time.Now()}, {Key: "snapshot_version", Value: 4}},
+		{{Key: "kind", Value: "progression"}, {Key: "id", Value: "00000000-0000-4000-8000-0000000000d3"}, {Key: "key", Value: "minor/i-iv-v-i"},
+			{Key: "mode", Value: "minor"}, {Key: "bars", Value: bson.A{"i", "iv", "v", "i"}}, {Key: "confusable", Value: bson.A{}},
+			{Key: "updated_at", Value: time.Now()}, {Key: "snapshot_version", Value: 4}},
 		{{Key: "kind", Value: "diagram"}, {Key: "id", Value: "ii-V-I"}, {Key: "instrument_ids", Value: bson.A{}}, {Key: "snapshot_version", Value: 1}},
 	})
 	require.NoError(t, err)
@@ -170,8 +173,9 @@ func TestMongoPracticeReferenceReader_Progressions(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, map[string]domain.ProgressionReference{
-		"ii-V-I": {Key: "ii-V-I", Bars: []string{"ii", "V", "I", "I"}},
-		"IV-V-I": {Key: "IV-V-I", Bars: []string{"IV", "V", "I", "I"}},
+		"ii-V-I":         {Key: "ii-V-I", Bars: []string{"ii", "V", "I", "I"}, Mode: "major"},
+		"IV-V-I":         {Key: "IV-V-I", Bars: []string{"IV", "V", "I", "I"}, Mode: "major"},
+		"minor/i-iv-v-i": {Key: "minor/i-iv-v-i", Bars: []string{"i", "iv", "v", "i"}, Mode: "minor"},
 	}, got)
 }
 

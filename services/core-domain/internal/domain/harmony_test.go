@@ -23,7 +23,25 @@ func TestNumeralChord(t *testing.T) {
 		{name: "a sharp key's minor chord spelled with flats as the catalog does", key: "F#", numeral: "iii", want: "Bbm"},
 		{name: "a dominant seventh on a progression's V7", key: "A", numeral: "V7", want: "E7"},
 		{name: "a dominant seventh on I7", key: "G", numeral: "I7", want: "G7"},
+		{name: "a borrowed flat root is spelled as the catalog spells roots", key: "C", numeral: "♭VII", want: "Bb"},
+		{name: "a borrowed chord moves with the key", key: "G", numeral: "♭VII", want: "F"},
+		{name: "a sharp root that sounds like its flat twin spells the same chord", key: "C", numeral: "♯VI", want: "Bb"},
+		{name: "a borrowed minor chord", key: "C", numeral: "iv", want: "Fm"},
+		{name: "a written major seventh", key: "C", numeral: "Imaj7", want: "Cmaj7"},
+		{name: "a written minor seventh", key: "C", numeral: "ii7", want: "Dm7"},
+		{name: "a written half-diminished seventh", key: "C", numeral: "iiø7", want: "Dm7b5"},
+		{name: "a written diminished seventh", key: "C", numeral: "vii°7", want: "Bdim7"},
+		{name: "the stored diminished triad", key: "C", numeral: "vii°", want: "Bdim"},
+		{name: "a borrowed dominant seventh", key: "C", numeral: "♭VII7", want: "Bb7"},
+		{name: "a flat root below the tonic wraps round the octave", key: "C", numeral: "♭I", want: "B"},
+		{name: "a minor key's tonic chord is its name", key: "Am", numeral: "i", want: "Am"},
+		{name: "a minor key spells from its tonic", key: "Am", numeral: "♭VII", want: "G"},
+		{name: "a minor key's harmonic V is major", key: "Am", numeral: "V", want: "E"},
+		{name: "a minor key keeps the catalog's root names", key: "Dbm", numeral: "♭VII", want: "B"},
+		{name: "a minor key's iv keeps the catalog's root names", key: "Dbm", numeral: "iv", want: "F#m"},
+		{name: "a minor key's vii° keeps the catalog's root names", key: "Em", numeral: "vii°", want: "Ebdim"},
 		{name: "an unknown key has no chord", key: "H", numeral: "I", want: ""},
+		{name: "a minor ending on an unknown root has no chord", key: "Hm", numeral: "i", want: ""},
 		{name: "an unknown numeral has no chord", key: "C", numeral: "VIII", want: ""},
 	}
 	for _, tt := range tests {
@@ -86,5 +104,26 @@ func TestHarmonyKeyOrders(t *testing.T) {
 	})
 	t.Run("a chart is asked in an easy key while it is being learnt", func(t *testing.T) {
 		assert.Equal(t, []string{"C", "G", "D", "F", "A"}, domain.EasyChartKeys)
+	})
+}
+
+func TestKeysOfAMode(t *testing.T) {
+	t.Run("a major progression is asked in the 12 major keys", func(t *testing.T) {
+		assert.Equal(t, domain.MusicKeys, domain.MusicKeysOf(domain.ProgressionModeMajor))
+	})
+	t.Run("a minor progression is asked in the 12 minor keys, with the catalog's root names", func(t *testing.T) {
+		assert.Equal(t, []string{"Cm", "Dbm", "Dm", "Ebm", "Em", "Fm", "F#m", "Gm", "Abm", "Am", "Bbm", "Bm"}, domain.MusicKeysOf(domain.ProgressionModeMinor))
+	})
+	t.Run("a minor chart is learnt in the relative minors of the easy major keys", func(t *testing.T) {
+		assert.Equal(t, []string{"C", "G", "D", "F", "A"}, domain.EasyChartKeysOf(domain.ProgressionModeMajor))
+		assert.Equal(t, []string{"Am", "Em", "Bm", "Dm", "F#m"}, domain.EasyChartKeysOf(domain.ProgressionModeMinor))
+	})
+	t.Run("a minor tour goes through the relative minors of the major tour", func(t *testing.T) {
+		assert.Equal(t, domain.ProgressionKeyOrder, domain.TourKeyOrderOf(domain.ProgressionModeMajor))
+		assert.Equal(t, []string{"Am", "Dm", "Gm", "Cm", "Fm", "Bbm", "Ebm", "Abm", "Dbm", "F#m", "Bm", "Em"}, domain.TourKeyOrderOf(domain.ProgressionModeMinor))
+	})
+	t.Run("a key says its mode", func(t *testing.T) {
+		assert.Equal(t, domain.ProgressionModeMinor, domain.KeyMode("F#m"))
+		assert.Equal(t, domain.ProgressionModeMajor, domain.KeyMode("F#"))
 	})
 }

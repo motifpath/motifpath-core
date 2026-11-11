@@ -2177,6 +2177,16 @@ func (f fakeProgressions) List(context.Context) ([]domain.Progression, error) {
 	return f, nil
 }
 
+func (f fakeProgressions) ListInDrills(context.Context) ([]domain.Progression, error) {
+	var inDrills []domain.Progression
+	for _, p := range f {
+		if p.InDrills {
+			inDrills = append(inDrills, p)
+		}
+	}
+	return inDrills, nil
+}
+
 // fakeChordDrills is a ports.ChordDrillRepository holding the given installed
 // chord drill catalog.
 type fakeChordDrills domain.ChordDrillCatalog

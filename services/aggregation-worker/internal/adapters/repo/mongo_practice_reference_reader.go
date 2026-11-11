@@ -58,6 +58,7 @@ type instrumentReferenceDocument struct {
 type progressionReferenceDocument struct {
 	Key  string   `bson:"key"`
 	Bars []string `bson:"bars"`
+	Mode string   `bson:"mode"`
 }
 
 // songChartReferenceDocument is a `practice_reference` document of kind
@@ -217,7 +218,7 @@ func (r *MongoPracticeReferenceReader) Progressions(ctx context.Context) (map[st
 		return nil, err
 	}
 	for _, d := range docs {
-		found[d.Key] = domain.ProgressionReference{Key: d.Key, Bars: d.Bars}
+		found[d.Key] = domain.ProgressionReference{Key: d.Key, Bars: d.Bars, Mode: d.Mode}
 	}
 	return found, nil
 }

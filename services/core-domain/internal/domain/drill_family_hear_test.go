@@ -75,13 +75,14 @@ func TestHeardChordItem_AsADrillItem(t *testing.T) {
 		}
 	})
 
-	t.Run("its playback starts at the tempo of the student's level", func(t *testing.T) {
-		for level, bpm := range map[domain.KnowledgeLevel]int{
-			"": 70, domain.KnowledgeLevelNew: 70, domain.KnowledgeLevelLearning: 70,
-			domain.KnowledgeLevelAccurate: 90, domain.KnowledgeLevelFluent: 110, domain.KnowledgeLevelRetained: 110,
+	t.Run("its playback starts at 70 BPM in eighths, whatever the student's level", func(t *testing.T) {
+		for _, level := range []domain.KnowledgeLevel{
+			"", domain.KnowledgeLevelNew, domain.KnowledgeLevelLearning,
+			domain.KnowledgeLevelAccurate, domain.KnowledgeLevelFluent, domain.KnowledgeLevelRetained,
 		} {
 			q, _ := plannedChoice(t, vi, "cadence_then_chord", domain.DrillPlanning{Pick: firstPick, Level: level})
-			assert.Equal(t, bpm, q.Playback.TempoBPM, level)
+			assert.Equal(t, 70, q.Playback.TempoBPM, level)
+			assert.Equal(t, domain.TempoNoteValueEighths, q.Playback.NoteValue, level)
 		}
 	})
 
@@ -137,7 +138,8 @@ func TestHeardProgressionItem_AsADrillItem(t *testing.T) {
 		require.NotNil(t, q.Playback)
 		assert.Equal(t, []string{"G", "D", "Em", "C"}, playbackChords(q.Playback))
 		assert.Equal(t, []string{"", "", "", ""}, playbackNumerals(q.Playback))
-		assert.Equal(t, 110, q.Playback.TempoBPM)
+		assert.Equal(t, 70, q.Playback.TempoBPM)
+		assert.Equal(t, domain.TempoNoteValueEighths, q.Playback.NoteValue)
 		assert.ElementsMatch(t, []string{"I-V-vi-IV", "I-vi-IV-V", "vi-IV-I-V", "I-vi-ii-V"}, optionValues(q))
 		assert.Equal(t, "I-V-vi-IV", q.Answer)
 		assert.Empty(t, q.Chart)
@@ -191,5 +193,11 @@ func TestHearDrills_EveryPlanChallenges(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+func TestAHeardProgressionHasTwoToFourBars(t *testing.T) {
+	for bars, want := range map[int]bool{1: false, 2: true, 3: true, 4: true, 5: false, 12: false} {
+		assert.Equal(t, want, domain.IsHeardProgressionLength(bars), "%d bars", bars)
 	}
 }

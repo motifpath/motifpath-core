@@ -50,6 +50,9 @@ func TestFeatures(t *testing.T) {
 				featuresBase + "/practice/practice-summary.feature",
 				featuresBase + "/practice/practice-overview.feature",
 				featuresBase + "/practice/tap-check.feature",
+				featuresBase + "/monetization/commercial-activation.feature",
+				featuresBase + "/monetization/commercial-audit.feature",
+				featuresBase + "/monetization/commercial-controls.feature",
 			},
 			TestingT: t,
 			// Without this, godog reports an undefined step as a warning and
@@ -63,13 +66,11 @@ func TestFeatures(t *testing.T) {
 			Strict: true,
 			// Strict makes the suite fail on any scenario without step
 			// definitions, and motifpath-specs runs ahead of this repo by
-			// design (spec first). A scenario tagged @wip is a spec whose
-			// implementation has not landed yet; excluding it keeps the build
-			// green for unrelated work. Strict still applies to everything
-			// untagged, so an untagged scenario cannot go undefined silently.
-			// Remove the tag in motifpath-specs when the feature is implemented.
-			// @web scenarios are client behaviour, pinned by motifpath-web's own tests.
-			Tags: "~@wip && ~@web",
+			// design (spec first). Scenarios whose implementation has not
+			// landed yet are skipped by tag (bddTags), keeping the build green
+			// for unrelated work. Strict still applies to everything else, so
+			// a scenario that should run cannot go undefined silently.
+			Tags: bddTags(t),
 		},
 	}
 
@@ -78,11 +79,28 @@ func TestFeatures(t *testing.T) {
 	}
 }
 
+// bddTags is the tag expression `make test:bdd` builds: it skips @wip
+// (parked), @web (client behaviour, pinned by motifpath-web's own tests) and
+// the scenarios of every ticket motifpath-specs tags that this repo doesn't
+// implement yet, because motifpath-specs runs ahead of this repo by design.
+// Running without it would run those scenarios, so the suite refuses.
+func bddTags(t *testing.T) string {
+	t.Helper()
+	tags := os.Getenv("BDD_TAGS")
+	if tags == "" {
+		t.Fatal("BDD_TAGS is unset: run `make test:bdd`, which builds it from bdd/implemented-tickets.txt")
+	}
+	return tags
+}
+
 // InitializeScenario is called once per scenario by godog, so a fresh
 // *world (and therefore fresh fakes) backs every scenario independently.
 func InitializeScenario(sc *godog.ScenarioContext) {
 	w := newWorld()
 	registerCommonSteps(sc, w)
+	registerCommercialActivationSteps(sc, w)
+	registerCommercialAuditSteps(sc, w)
+	registerProgressionAuthoringSteps(sc, w)
 	registerUserRegistrationSteps(sc, w)
 	registerDisplayNameSteps(sc, w)
 	registerLocaleSteps(sc, w)
@@ -137,6 +155,7 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	registerPracticeSummarySteps(sc, w)
 	registerPracticeDaysSteps(sc, w)
 	registerSongsPlayedSteps(sc, w)
+	registerAnyProgressionDrillSteps(sc, w)
 	registerPracticeOverviewEffortSteps(sc, w)
 	registerNodeLevelSteps(sc, w)
 	registerFretboardCellSteps(sc, w)

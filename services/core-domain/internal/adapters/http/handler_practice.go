@@ -502,7 +502,7 @@ func toGeneratedChoiceQuestion(q domain.PlannedGeneratedChoice, locale string) *
 // with no numeral shown has a null numeral, and a playback with no bass
 // line a null bass instrument.
 func toGeneratedChoicePlayback(p domain.GeneratedPlayback) *generated.GeneratedChoicePlayback {
-	out := &generated.GeneratedChoicePlayback{TempoBpm: p.TempoBPM, BassLine: p.BassInstrumentID != ""}
+	out := &generated.GeneratedChoicePlayback{TempoBpm: p.TempoBPM, NoteValue: generated.NoteValue2(p.NoteValue), BassLine: p.BassInstrumentID != ""}
 	if p.BassInstrumentID != "" {
 		bass := mustUUID(p.BassInstrumentID)
 		out.BassInstrumentId = &bass
@@ -570,28 +570,52 @@ func toGeneratedDiagramShape(d domain.PlannedDiagramShape, locale string) *gener
 
 // ListProgressions lists the progression catalog to any signed-in user.
 func (h *Handler) ListProgressions(ctx context.Context, _ generated.ListProgressionsRequestObject) (generated.ListProgressionsResponseObject, error) {
-	if _, ok := h.resolveCaller(ctx); !ok {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
 		return generated.ListProgressions401JSONResponse(unauthorizedError()), nil
 	}
-	progressions, err := h.progressionCatalog.List(ctx)
+	progressions, err := h.progressionCatalog.List(ctx, caller)
+	if err != nil {
+		return nil, err
+	}
+	names, err := h.identity.KnownDisplayNames(ctx, progressionUserIDs(progressions...))
 	if err != nil {
 		return nil, err
 	}
 	out := make(generated.ListProgressions200JSONResponse, len(progressions))
 	for i, p := range progressions {
-		out[i] = toGeneratedProgression(p)
+		out[i] = toGeneratedProgression(p, names)
 	}
 	return out, nil
 }
 
-// toGeneratedProgression maps a catalog progression; its lists are never
-// null.
-func toGeneratedProgression(p domain.Progression) generated.Progression {
+// toGeneratedProgression maps a progression, its creator named from names and left
+// out when names doesn't hold them: every client needs this list to grade drills,
+// so one missing user must not fail it. Its lists are never null.
+func toGeneratedProgression(p domain.Progression, names userNames) generated.Progression {
+	var createdBy *generated.UserRef
+	if p.CreatedBy != nil {
+		if _, known := names[*p.CreatedBy]; known {
+			ref := names.ref(*p.CreatedBy)
+			createdBy = &ref
+		}
+	}
+	var nicknames *map[string]string
+	if len(p.Nicknames) > 0 {
+		nicknames = &p.Nicknames
+	}
 	return generated.Progression{
-		ProgressionId: mustUUID(p.ID),
-		Key:           p.Key,
-		Bars:          nonNilStrings(p.Bars),
-		Confusable:    nonNilStrings(p.Confusable),
-		Names:         generated.LocalizedNames(p.Names),
+		ProgressionId:  mustUUID(p.ID),
+		Key:            p.Key,
+		Mode:           generated.ProgressionMode(p.Mode),
+		Bars:           nonNilStrings(p.Bars),
+		BorrowedBars:   p.BorrowedBars(),
+		InDrills:       p.InDrills,
+		Confusable:     nonNilStrings(p.Confusable),
+		Names:          generated.LocalizedNames(p.Names),
+		Nicknames:      nicknames,
+		SongChartCount: p.SongChartCount,
+		CreatedBy:      createdBy,
+		CreatedAt:      p.CreatedAt,
 	}
 }

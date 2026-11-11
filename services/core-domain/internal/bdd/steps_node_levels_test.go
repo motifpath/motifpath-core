@@ -14,11 +14,13 @@ import (
 
 // fakeNodeItemSource is an in-memory ports.NodeItemSource. It reads the
 // play-alongs, diagram shapes and exercises from the world's diagram and
-// exercise fakes, plus the fretboard cells a scenario declares, which belong
-// to a layout instrument and suit every instrument sharing that layout.
+// exercise fakes, the chart items of the progressions a scenario put in the
+// drills, plus the fretboard cells a scenario declares, which belong to a
+// layout instrument and suit every instrument sharing that layout.
 type fakeNodeItemSource struct {
-	diagrams  *fakeDiagramRepo
-	exercises *fakeExerciseRepo
+	diagrams     *fakeDiagramRepo
+	exercises    *fakeExerciseRepo
+	progressions *fakeProgressionRepo
 	// layouts maps an instrument to the layout instrument whose fretboard
 	// it shares; cells holds the declared cells per layout instrument.
 	layouts map[string]string
@@ -31,8 +33,8 @@ type fakeNodeItemSource struct {
 	chords map[string][]domain.ClassifiedItem
 }
 
-func newFakeNodeItemSource(diagrams *fakeDiagramRepo, exercises *fakeExerciseRepo) *fakeNodeItemSource {
-	return &fakeNodeItemSource{diagrams: diagrams, exercises: exercises, layouts: map[string]string{}, cells: map[string][]domain.ClassifiedItem{}, chords: map[string][]domain.ClassifiedItem{}}
+func newFakeNodeItemSource(diagrams *fakeDiagramRepo, exercises *fakeExerciseRepo, progressions *fakeProgressionRepo) *fakeNodeItemSource {
+	return &fakeNodeItemSource{diagrams: diagrams, exercises: exercises, progressions: progressions, layouts: map[string]string{}, cells: map[string][]domain.ClassifiedItem{}, chords: map[string][]domain.ClassifiedItem{}}
 }
 
 func (f *fakeNodeItemSource) ClassifiedItems(_ context.Context, instrumentID string) ([]domain.ClassifiedItem, error) {
@@ -54,6 +56,14 @@ func (f *fakeNodeItemSource) ClassifiedItems(_ context.Context, instrumentID str
 		}
 	}
 	f.exercises.mu.Unlock()
+	// A progression in the drills is practised as a chart under its own nodes,
+	// as the stored items are. The catalog's reach scenarios through the harmony
+	// items instead, under the drill families' nodes.
+	for _, p := range f.progressions.created {
+		if p.InDrills {
+			items = append(items, domain.ClassifiedItem{ItemKey: domain.ChartProgressionItemKey(p.Key), NodeIDs: slices.Clone(p.NodeIDs)})
+		}
+	}
 	if layout, ok := f.layouts[instrumentID]; ok {
 		items = append(items, f.cells[layout]...)
 	}

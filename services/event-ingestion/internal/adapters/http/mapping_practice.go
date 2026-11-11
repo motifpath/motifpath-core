@@ -32,7 +32,7 @@ const (
 	noteChoices        = 4
 	minOptions         = 2
 	maxOptions         = 8
-	maxOptionLength    = 120
+	maxOptionLength    = 200
 	maxTaps            = 400
 	maxTappedCells     = 72
 )
@@ -51,10 +51,13 @@ var generatedChoiceWays = map[string]bool{
 	"see_then_name": true,
 }
 
-// musicKeys are the major keys, spelled as the chord catalog spells roots.
+// musicKeys are the keys a drill is asked in: the major keys, spelled as the chord
+// catalog spells roots, and the minor keys, written as their tonic chords.
 var musicKeys = map[string]bool{
 	"C": true, "Db": true, "D": true, "Eb": true, "E": true, "F": true,
 	"F#": true, "G": true, "Ab": true, "A": true, "Bb": true, "B": true,
+	"Cm": true, "Dbm": true, "Dm": true, "Ebm": true, "Em": true, "Fm": true,
+	"F#m": true, "Gm": true, "Abm": true, "Am": true, "Bbm": true, "Bm": true,
 }
 
 // fretWindowStarts are the lowest frets a fret window can start at; never 1, since

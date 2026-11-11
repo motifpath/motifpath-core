@@ -19,7 +19,23 @@ const GuideToneTargetTempoBPM = 90
 // divided by the tempo.
 const beatsPerBarMs = 4 * 60_000
 
+// timedTapsV2 grades as timedTapsV1 does, with minor keys: in a minor
+// progression, a chord with no written seventh takes natural minor's seventh,
+// harmonic minor's on V and vii°.
+type timedTapsV2 struct{}
+
+func (timedTapsV2) ID() string { return "timed_taps.v2" }
+
+func (timedTapsV2) Grade(key PracticeItemKey, r PracticeResponse, ref PracticeReference) GradeResult {
+	return gradeTimedTaps(key, r, ref, true)
+}
+
 func (timedTapsV1) Grade(key PracticeItemKey, r PracticeResponse, ref PracticeReference) GradeResult {
+	return gradeTimedTaps(key, r, ref, false)
+}
+
+// gradeTimedTaps grades r under v1's rules, or v2's when v2 holds.
+func gradeTimedTaps(key PracticeItemKey, r PracticeResponse, ref PracticeReference, v2 bool) GradeResult {
 	if !fitsGuideTone(key, r) {
 		return rejected(GradeRejectionResponseDoesNotFitItem)
 	}
@@ -32,6 +48,15 @@ func (timedTapsV1) Grade(key PracticeItemKey, r PracticeResponse, ref PracticeRe
 		return rejected(GradeRejectionUnknownReference)
 	}
 	musicKey, ok := pitchClass(r.MusicKey)
+	seventh := seventhOf
+	if v2 {
+		var mode string
+		musicKey, mode, ok = musicKeyOf(r.MusicKey)
+		ok = ok && mode == modeOf(progression)
+		if mode == minorMode {
+			seventh = minorSeventhOf
+		}
+	}
 	if !ok {
 		return rejected(GradeRejectionResponseDoesNotFitItem)
 	}
@@ -47,7 +72,7 @@ func (timedTapsV1) Grade(key PracticeItemKey, r PracticeResponse, ref PracticeRe
 	bars := make([]AnswerBar, len(progression.Bars))
 	correct, latency := true, 0
 	for i, numeral := range progression.Bars {
-		bar, delay, ok := gradeBar(r, tapped, musicKey, i, numeral)
+		bar, delay, ok := gradeBar(r, tapped, musicKey, i, numeral, seventh)
 		if !ok {
 			return rejected(GradeRejectionUnknownReference)
 		}
@@ -75,7 +100,7 @@ func fitsGuideTone(key PracticeItemKey, r PracticeResponse) bool {
 // it sounds the asked tone and none sounds another note. Its delay is how long
 // after the bar's start its first right tap came, or the bar's length when it
 // wasn't hit. It reports false for a numeral that isn't one.
-func gradeBar(r PracticeResponse, tapped []int, musicKey, i int, numeral string) (AnswerBar, int, bool) {
+func gradeBar(r PracticeResponse, tapped []int, musicKey, i int, numeral string, seventhOf func(key int, numeral string) int) (AnswerBar, int, bool) {
 	c, ok := chordOf(musicKey, numeral)
 	if !ok {
 		return AnswerBar{}, 0, false

@@ -351,8 +351,8 @@ func TestPracticeReferenceService_SyncChangeTargets(t *testing.T) {
 // catalog installs them.
 func catalogProgressions() []domain.Progression {
 	return []domain.Progression{
-		{ID: "pr-pop", Key: "I-V-vi-IV", Mode: "major", Bars: []string{"I", "V", "vi", "IV"}, NodeIDs: []string{"node-cp"}, Confusable: []string{"I-vi-IV-V"}, Names: domain.LocalizedText{"en": "I–V–vi–IV (pop)"}},
-		{ID: "pr-doo-wop", Key: "I-vi-IV-V", Mode: "major", Bars: []string{"I", "vi", "IV", "V"}, NodeIDs: []string{"node-cp"}, Confusable: []string{"I-V-vi-IV"}, Names: domain.LocalizedText{"en": "I–vi–IV–V (doo-wop)"}},
+		{InDrills: true, ID: "pr-pop", Key: "I-V-vi-IV", Mode: "major", Bars: []string{"I", "V", "vi", "IV"}, NodeIDs: []string{"node-cp"}, Confusable: []string{"I-vi-IV-V"}, Names: domain.LocalizedText{"en": "I–V–vi–IV (pop)"}},
+		{InDrills: true, ID: "pr-doo-wop", Key: "I-vi-IV-V", Mode: "major", Bars: []string{"I", "vi", "IV", "V"}, NodeIDs: []string{"node-cp"}, Confusable: []string{"I-V-vi-IV"}, Names: domain.LocalizedText{"en": "I–vi–IV–V (doo-wop)"}},
 	}
 }
 

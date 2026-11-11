@@ -28,12 +28,12 @@ func TestGraderFor(t *testing.T) {
 		{PracticeItemKindFretboardCell, PracticeResponseFindTheNote, "fretboard_cell.v2"},
 		{PracticeItemKindFretboardCell, PracticeResponseMultiTap, "multi_tap.v2"},
 		{PracticeItemKindDiagramShape, PracticeResponseNameTheShape, "diagram_shape.v1"},
-		{PracticeItemKindDiatonicChord, PracticeResponseGeneratedChoice, "generated_choice.v1"},
-		{PracticeItemKindChordFunction, PracticeResponseGeneratedChoice, "generated_choice.v1"},
-		{PracticeItemKindChartProgression, PracticeResponseGeneratedChoice, "generated_choice.v1"},
-		{PracticeItemKindHeardChord, PracticeResponseGeneratedChoice, "generated_choice.v1"},
-		{PracticeItemKindHeardProgression, PracticeResponseGeneratedChoice, "generated_choice.v1"},
-		{PracticeItemKindGuideTone, PracticeResponseTimedTaps, "timed_taps.v1"},
+		{PracticeItemKindDiatonicChord, PracticeResponseGeneratedChoice, "generated_choice.v2"},
+		{PracticeItemKindChordFunction, PracticeResponseGeneratedChoice, "generated_choice.v2"},
+		{PracticeItemKindChartProgression, PracticeResponseGeneratedChoice, "generated_choice.v2"},
+		{PracticeItemKindHeardChord, PracticeResponseGeneratedChoice, "generated_choice.v2"},
+		{PracticeItemKindHeardProgression, PracticeResponseGeneratedChoice, "generated_choice.v2"},
+		{PracticeItemKindGuideTone, PracticeResponseTimedTaps, "timed_taps.v2"},
 	}
 	for _, tt := range tests {
 		t.Run(string(tt.kind)+"/"+string(tt.response), func(t *testing.T) {

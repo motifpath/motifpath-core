@@ -45,6 +45,25 @@ func TestParsePracticeItemKey_ProgressionKeyTour(t *testing.T) {
 	assert.Nil(t, key.DiagramIDs())
 }
 
+func TestParsePracticeItemKey_CreatedProgression(t *testing.T) {
+	cases := []struct {
+		raw            string
+		progressionKey string
+	}{
+		{"chart_progression:major/I-bVII-IV-I", "major/I-bVII-IV-I"},
+		{"heard_progression:major/I-#VI-IV-I", "major/I-#VI-IV-I"},
+		{"guide_tone:" + diagramA + ":major/Imaj7-iih7-viio7-bVImaj7", "major/Imaj7-iih7-viio7-bVImaj7"},
+		{"progression_keys:" + diagramA + ":major/I-bVII-IV-I", "major/I-bVII-IV-I"},
+	}
+	for _, c := range cases {
+		t.Run(c.raw, func(t *testing.T) {
+			key, err := ParsePracticeItemKey(c.raw)
+			require.NoError(t, err)
+			assert.Equal(t, c.progressionKey, key.ProgressionKey())
+		})
+	}
+}
+
 func TestParsePracticeItemKey_Song(t *testing.T) {
 	key, err := ParsePracticeItemKey("song:" + diagramA + ":" + diagramB)
 	require.NoError(t, err)

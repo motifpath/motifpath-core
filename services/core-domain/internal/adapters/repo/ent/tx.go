@@ -30,6 +30,20 @@ type Tx struct {
 	ChordDrill *ChordDrillClient
 	// ChordVoicing is the client for interacting with the ChordVoicing builders.
 	ChordVoicing *ChordVoicingClient
+	// CommercialActivation is the client for interacting with the CommercialActivation builders.
+	CommercialActivation *CommercialActivationClient
+	// CommercialAuditEntry is the client for interacting with the CommercialAuditEntry builders.
+	CommercialAuditEntry *CommercialAuditEntryClient
+	// CommercialFlag is the client for interacting with the CommercialFlag builders.
+	CommercialFlag *CommercialFlagClient
+	// CommercialGroup is the client for interacting with the CommercialGroup builders.
+	CommercialGroup *CommercialGroupClient
+	// CommercialGroupMember is the client for interacting with the CommercialGroupMember builders.
+	CommercialGroupMember *CommercialGroupMemberClient
+	// CommercialOperation is the client for interacting with the CommercialOperation builders.
+	CommercialOperation *CommercialOperationClient
+	// CommercialOperationAttempt is the client for interacting with the CommercialOperationAttempt builders.
+	CommercialOperationAttempt *CommercialOperationAttemptClient
 	// ContentNode is the client for interacting with the ContentNode builders.
 	ContentNode *ContentNodeClient
 	// ContentNodeConcept is the client for interacting with the ContentNodeConcept builders.
@@ -269,6 +283,13 @@ func (tx *Tx) init() {
 	tx.ChordDefinition = NewChordDefinitionClient(tx.config)
 	tx.ChordDrill = NewChordDrillClient(tx.config)
 	tx.ChordVoicing = NewChordVoicingClient(tx.config)
+	tx.CommercialActivation = NewCommercialActivationClient(tx.config)
+	tx.CommercialAuditEntry = NewCommercialAuditEntryClient(tx.config)
+	tx.CommercialFlag = NewCommercialFlagClient(tx.config)
+	tx.CommercialGroup = NewCommercialGroupClient(tx.config)
+	tx.CommercialGroupMember = NewCommercialGroupMemberClient(tx.config)
+	tx.CommercialOperation = NewCommercialOperationClient(tx.config)
+	tx.CommercialOperationAttempt = NewCommercialOperationAttemptClient(tx.config)
 	tx.ContentNode = NewContentNodeClient(tx.config)
 	tx.ContentNodeConcept = NewContentNodeConceptClient(tx.config)
 	tx.ContentNodeExercise = NewContentNodeExerciseClient(tx.config)
