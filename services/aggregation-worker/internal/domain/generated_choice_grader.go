@@ -37,7 +37,12 @@ var waysOf = map[PracticeItemKind][]string{
 	PracticeItemKindChartProgression: {"chart_to_numbers", "numbers_to_chart"},
 	PracticeItemKindHeardChord:       {"cadence_then_chord", "see_then_name"},
 	PracticeItemKindHeardProgression: {"progression_by_number"},
+	// A chord quality is asked in no key, and only from the version that knows it.
+	PracticeItemKindHeardChordQuality: {"chord_quality_by_ear"},
 }
+
+// chordQualities are the qualities a chord heard alone can be asked as.
+var chordQualities = []string{"major", "minor", "dominant7", "diminished", "augmented"}
 
 // WaysOf are the ways a generated question of kind is asked, none for any other kind.
 func WaysOf(kind PracticeItemKind) []string { return waysOf[kind] }
@@ -57,6 +62,8 @@ type generatedQuestion struct {
 	progressionKey string
 	progression    []string
 	mode           string
+	// quality is a heard chord quality's quality; its question has no key.
+	quality string
 }
 
 // answerSpace is what the options of one way can be: identify reads an option into
@@ -71,6 +78,9 @@ type answerSpace struct {
 func gradeGeneratedChoice(key PracticeItemKey, r PracticeResponse, ref PracticeReference, v2 bool) GradeResult {
 	ways, ok := waysOf[key.Kind]
 	if !ok || r.Type != PracticeResponseGeneratedChoice || r.LatencyMs == nil || !slices.Contains(ways, r.Way) {
+		return rejected(GradeRejectionResponseDoesNotFitItem)
+	}
+	if key.Kind == PracticeItemKindHeardChordQuality && !v2 {
 		return rejected(GradeRejectionResponseDoesNotFitItem)
 	}
 	if keyedByTheAnswer[key.Kind] != (r.MusicKey != "") {
@@ -111,6 +121,10 @@ func gradeGeneratedChoice(key PracticeItemKey, r PracticeResponse, ref PracticeR
 func questionOf(key PracticeItemKey, r PracticeResponse, ref PracticeReference, v2 bool) (generatedQuestion, GradeRejection) {
 	musicKey := r.MusicKey
 	var q generatedQuestion
+	if key.Kind == PracticeItemKindHeardChordQuality {
+		q.quality = key.parts[0]
+		return q, ""
+	}
 	if progressionKey := key.ProgressionKey(); progressionKey != "" {
 		p, ok := ref.Progressions[progressionKey]
 		if !ok {
@@ -148,6 +162,8 @@ func answerSpaceOf(way string, q generatedQuestion, ref PracticeReference, v2 bo
 		return answerSpace{identify: chordOfTheKey(q.key), right: right.symbol(), answer: right.symbol()}
 	case "chord_to_numeral", "cadence_then_chord", "see_then_name":
 		return answerSpace{identify: oneOf(keyNumerals), right: q.numeral, answer: q.numeral}
+	case "chord_quality_by_ear":
+		return answerSpace{identify: oneOf(chordQualities), right: q.quality, answer: q.quality}
 	case "chord_to_function":
 		fn := numeralFunction[q.numeral]
 		return answerSpace{identify: oneOf([]string{"tonic", "subdominant", "dominant"}), right: fn, answer: fn}

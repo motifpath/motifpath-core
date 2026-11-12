@@ -26,12 +26,15 @@ const (
 	PracticeItemKindChartProgression PracticeItemKind = "chart_progression"
 	PracticeItemKindHeardChord       PracticeItemKind = "heard_chord"
 	PracticeItemKindHeardProgression PracticeItemKind = "heard_progression"
-	PracticeItemKindChordVoicing     PracticeItemKind = "chord_voicing"
-	PracticeItemKindRootFifth        PracticeItemKind = "root_fifth"
-	PracticeItemKindRootChange       PracticeItemKind = "root_change"
-	PracticeItemKindGuideTone        PracticeItemKind = "guide_tone"
-	PracticeItemKindProgressionKeys  PracticeItemKind = "progression_keys"
-	PracticeItemKindSong             PracticeItemKind = "song"
+	// PracticeItemKindHeardChordQuality is a chord's quality recognised by ear,
+	// one chord heard alone on a root picked each time, in no key.
+	PracticeItemKindHeardChordQuality PracticeItemKind = "heard_chord_quality"
+	PracticeItemKindChordVoicing      PracticeItemKind = "chord_voicing"
+	PracticeItemKindRootFifth         PracticeItemKind = "root_fifth"
+	PracticeItemKindRootChange        PracticeItemKind = "root_change"
+	PracticeItemKindGuideTone         PracticeItemKind = "guide_tone"
+	PracticeItemKindProgressionKeys   PracticeItemKind = "progression_keys"
+	PracticeItemKindSong              PracticeItemKind = "song"
 )
 
 const (
@@ -60,6 +63,7 @@ var practiceItemKeyPattern = regexp.MustCompile(`^(` +
 	`|chart_progression:` + progressionKeyPattern +
 	`|heard_chord:` + numeralPattern +
 	`|heard_progression:` + progressionKeyPattern +
+	`|heard_chord_quality:(major|minor|dominant7|diminished|augmented)` +
 	`|chord_voicing:` + uuidPattern +
 	`|root_fifth:` + uuidPattern + `:` + chordPattern +
 	`|root_change:` + uuidPattern + `:` + chordPattern + `:` + chordPattern +
@@ -147,7 +151,7 @@ func (k PracticeItemKey) DiagramIDs() []string {
 		return k.parts
 	case PracticeItemKindFretboardCell, PracticeItemKindExercise, PracticeItemKindDiatonicChord, PracticeItemKindChordFunction,
 		PracticeItemKindChartProgression, PracticeItemKindHeardChord, PracticeItemKindHeardProgression,
-		PracticeItemKindRootFifth, PracticeItemKindRootChange, PracticeItemKindGuideTone,
+		PracticeItemKindHeardChordQuality, PracticeItemKindRootFifth, PracticeItemKindRootChange, PracticeItemKindGuideTone,
 		PracticeItemKindProgressionKeys, PracticeItemKindSong:
 		return nil
 	}

@@ -16,13 +16,13 @@ func TestGraderFor(t *testing.T) {
 		response PracticeResponseType
 		want     string
 	}{
-		{PracticeItemKindPlayAlong, PracticeResponseSelfRating, "self_rating.v1"},
-		{PracticeItemKindChordChange, PracticeResponseSelfRating, "self_rating.v1"},
-		{PracticeItemKindChordVoicing, PracticeResponseSelfRating, "self_rating.v1"},
-		{PracticeItemKindRootFifth, PracticeResponseSelfRating, "self_rating.v1"},
-		{PracticeItemKindRootChange, PracticeResponseSelfRating, "self_rating.v1"},
-		{PracticeItemKindProgressionKeys, PracticeResponseSelfRating, "self_rating.v1"},
-		{PracticeItemKindSong, PracticeResponseSelfRating, "self_rating.v1"},
+		{PracticeItemKindPlayAlong, PracticeResponseSelfRating, "self_rating.v2"},
+		{PracticeItemKindChordChange, PracticeResponseSelfRating, "self_rating.v2"},
+		{PracticeItemKindChordVoicing, PracticeResponseSelfRating, "self_rating.v2"},
+		{PracticeItemKindRootFifth, PracticeResponseSelfRating, "self_rating.v2"},
+		{PracticeItemKindRootChange, PracticeResponseSelfRating, "self_rating.v2"},
+		{PracticeItemKindProgressionKeys, PracticeResponseSelfRating, "self_rating.v2"},
+		{PracticeItemKindSong, PracticeResponseSelfRating, "self_rating.v2"},
 		{PracticeItemKindExercise, PracticeResponseOptionChoice, "exercise_option.v1"},
 		{PracticeItemKindFretboardCell, PracticeResponseNameTheNote, "fretboard_cell.v2"},
 		{PracticeItemKindFretboardCell, PracticeResponseFindTheNote, "fretboard_cell.v2"},
@@ -33,6 +33,7 @@ func TestGraderFor(t *testing.T) {
 		{PracticeItemKindChartProgression, PracticeResponseGeneratedChoice, "generated_choice.v2"},
 		{PracticeItemKindHeardChord, PracticeResponseGeneratedChoice, "generated_choice.v2"},
 		{PracticeItemKindHeardProgression, PracticeResponseGeneratedChoice, "generated_choice.v2"},
+		{PracticeItemKindHeardChordQuality, PracticeResponseGeneratedChoice, "generated_choice.v2"},
 		{PracticeItemKindGuideTone, PracticeResponseTimedTaps, "timed_taps.v2"},
 	}
 	for _, tt := range tests {
