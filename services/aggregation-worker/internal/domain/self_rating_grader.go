@@ -93,6 +93,9 @@ func checkMeasure(measure selfRatedMeasure, r PracticeResponse) GradeRejection {
 			return GradeRejectionResponseDoesNotFitItem
 		}
 		return ""
+	case measureChangeTake:
+		// Takes came after this version; it never grades one.
+		return GradeRejectionResponseDoesNotFitItem
 	}
 	if own == nil {
 		return GradeRejectionMeasureMissing

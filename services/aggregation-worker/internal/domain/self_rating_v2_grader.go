@@ -74,6 +74,11 @@ func checkMeasureV2(kind PracticeItemKind, measure selfRatedMeasure, r PracticeR
 	if r.CleanSharePercent != nil && (measure != measureChangeTake || !slices.Contains(CleanShares, *r.CleanSharePercent)) {
 		return GradeRejectionResponseDoesNotFitItem
 	}
+	return checkOwnMeasure(measure, r)
+}
+
+// checkOwnMeasure checks the measure the kind takes is all there.
+func checkOwnMeasure(measure selfRatedMeasure, r PracticeResponse) GradeRejection {
 	switch measure {
 	case measureNone:
 		if r.TempoBPM != nil {

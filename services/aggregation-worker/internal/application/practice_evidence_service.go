@@ -230,6 +230,7 @@ func toEvidence(answer domain.PracticeAnswer, graderID string, graded domain.Gra
 		TempoBPM:          graded.TempoBPM,
 		NoteValue:         graded.NoteValue,
 		ChangesPerMinute:  graded.ChangesPerMinute,
+		CleanSharePercent: graded.CleanSharePercent,
 		MusicKey:          graded.MusicKey,
 		AnswerKey:         graded.AnswerKey,
 	}
@@ -256,7 +257,7 @@ func (s *PracticeEvidenceService) goalOf(ctx context.Context, key domain.Practic
 	case domain.PracticeItemKindDiagramShape:
 		return s.goalByWayAsked(ctx, key.Kind, string(domain.PracticeResponseNameTheShape), string(domain.PracticeResponseFindTheDegree))
 	case domain.PracticeItemKindDiatonicChord, domain.PracticeItemKindChordFunction, domain.PracticeItemKindChartProgression,
-		domain.PracticeItemKindHeardChord, domain.PracticeItemKindHeardProgression:
+		domain.PracticeItemKindHeardChord, domain.PracticeItemKindHeardProgression, domain.PracticeItemKindHeardChordQuality:
 		return s.goalByWayAsked(ctx, key.Kind, domain.WaysOf(key.Kind)...)
 	case domain.PracticeItemKindGuideTone:
 		target := domain.GuideToneTargetTempoBPM

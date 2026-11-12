@@ -140,17 +140,16 @@ type songChartCompletionDocument struct {
 // state at the end of a UTC day it was practised on, stored as its midnight. level
 // is the earned level, before the reader applies any lapse.
 type practiceItemSnapshotDocument struct {
-	StudentID            string    `bson:"student_id"`
-	ItemKey              string    `bson:"item_key"`
-	Day                  time.Time `bson:"day"`
-	RulesVersion         int       `bson:"rules_version"`
-	Level                string    `bson:"level"`
-	Counted              int       `bson:"counted"`
-	Accuracy             float64   `bson:"accuracy"`
-	Fluency              float64   `bson:"fluency"`
-	Box                  int       `bson:"box"`
-	BestCleanBPM         *int      `bson:"best_clean_bpm"`
-	BestCleanNoteValue   *string   `bson:"best_clean_note_value"`
-	BestChangesPerMinute *int      `bson:"best_changes_per_minute"`
-	UpdatedAt            time.Time `bson:"updated_at"`
+	StudentID          string    `bson:"student_id"`
+	ItemKey            string    `bson:"item_key"`
+	Day                time.Time `bson:"day"`
+	RulesVersion       int       `bson:"rules_version"`
+	Level              string    `bson:"level"`
+	Counted            int       `bson:"counted"`
+	Accuracy           float64   `bson:"accuracy"`
+	Fluency            float64   `bson:"fluency"`
+	Box                int       `bson:"box"`
+	BestCleanBPM       *int      `bson:"best_clean_bpm"`
+	BestCleanNoteValue *string   `bson:"best_clean_note_value"`
+	UpdatedAt          time.Time `bson:"updated_at"`
 }

@@ -40,6 +40,14 @@ func TestToDomainEvent_PracticeItemAnswered(t *testing.T) {
 			},
 		},
 		{
+			name:    "chord change take with its clean share",
+			payload: `{` + base + `,"item_key":"chord_change:55555555-5555-4555-8555-555555555555:66666666-6666-4666-8666-666666666666","response":{"response_type":"self_rating","rating":"almost","tempo_bpm":45,"clean_share_percent":75}}`,
+			want: domain.PracticeAnswer{
+				ItemKey:  "chord_change:55555555-5555-4555-8555-555555555555:66666666-6666-4666-8666-666666666666",
+				Response: domain.PracticeResponse{Type: domain.PracticeResponseSelfRating, Rating: domain.SelfRatingAlmost, TempoBPM: intPtr(45), CleanSharePercent: intPtr(75)},
+			},
+		},
+		{
 			name:    "timed answer with its tap",
 			payload: `{` + base + `,"item_key":"fretboard_cell:6ea2d087-ab9c-59dc-9657-8546025414d2:5:3","response":{"response_type":"name_the_note","note_name":"C","latency_ms":1800},"tap_ms":350}`,
 			want: domain.PracticeAnswer{
