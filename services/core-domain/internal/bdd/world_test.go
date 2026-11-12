@@ -78,6 +78,8 @@ type world struct {
 	// lastShapeKey is the diagram shape a step set up, for a following step.
 	lastShapeKey     string
 	practiceActivity *fakePracticeActivity
+	// sessionStudent is the student whose session the latest "started a session" step seeded.
+	sessionStudent string
 	alpha            *alphaWorld
 	tapChecks        *fakeTapChecks
 	feltRatings      *fakeFeltRatings

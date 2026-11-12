@@ -23,6 +23,10 @@ func registerPracticeOverviewEffortSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" started a session at (\d+):(\d+) yesterday, answered until (\d+):(\d+) and left early$`, w.startedAndLeftEarly)
 	sc.Step(`^"([^"]+)" started a (\d+)-minute session at (\d+):(\d+) yesterday and sent nothing for it after an answer at (\d+):(\d+)$`, w.startedAndAbandoned)
 	sc.Step(`^"([^"]+)" practised for (\d+) minutes and (\d+) seconds yesterday$`, w.practisedMinutesAndSeconds)
+	sc.Step(`^"([^"]+)" started a session at (\d+):(\d+) yesterday$`, w.startedASessionYesterday)
+	sc.Step(`^sent an answer at (\d+):(\d+) with (\d+) minutes? visible(?:, the app having been in the background in between)?$`, w.sentAnAnswerWithVisibleTime)
+	sc.Step(`^ended the session at (\d+):(\d+) with (\d+) minutes? visible$`, w.endedTheSessionWithVisibleTime)
+	sc.Step(`^sent answers without visible time at (\d+):(\d+) and at (\d+):(\d+)$`, w.sentAnswersWithoutVisibleTime)
 
 	sc.Step(`^"([^"]+)" finished a session on each of the last (\d+) days, today included$`, w.finishedOnLastDaysTodayIncluded)
 	sc.Step(`^"([^"]+)" finished a session on each of the (\d+) days before today$`, w.finishedOnDaysBeforeToday)
@@ -58,13 +62,52 @@ func (w *world) newStudentHasNeverPractised(name string) error {
 }
 
 // recordSession seeds a guitar session of name's that started at
-// startedAt and last heard from at lastEventAt. A nil end means it was
+// startedAt and last heard from at lastEventAt, on screen the whole time: its
+// last event carries all of it as visible time. A nil end means it was
 // abandoned.
 func (w *world) recordSession(name string, startedAt, lastEventAt time.Time, endedAt *time.Time, leftEarly bool) {
 	id := instrumentID("guitar").String()
+	visible := int(lastEventAt.Sub(startedAt).Milliseconds())
+	moments := []domain.SessionMoment{{At: lastEventAt, VisibleMs: &visible}}
 	w.practiceActivity.addSession(w.ensureRegistered(name, domain.RoleStudent).String(), fakePracticeSession{
-		instrumentID: &id, startedAt: &startedAt, lastEventAt: lastEventAt, endedAt: endedAt, leftEarly: leftEarly,
+		instrumentID: &id, startedAt: &startedAt, lastEventAt: lastEventAt, endedAt: endedAt, leftEarly: leftEarly, moments: &moments,
 	})
+}
+
+// startedASessionYesterday seeds a guitar session of name's started yesterday,
+// with nothing sent for it yet; the steps that follow add its answers and end.
+func (w *world) startedASessionYesterday(name string, hour, minute int) error {
+	id := instrumentID("guitar").String()
+	start := w.localTime(1, hour, minute)
+	moments := []domain.SessionMoment{}
+	w.sessionStudent = name
+	w.practiceActivity.addSession(w.ensureRegistered(name, domain.RoleStudent).String(), fakePracticeSession{
+		instrumentID: &id, startedAt: &start, lastEventAt: start, moments: &moments,
+	})
+	return nil
+}
+
+func minutesInMs(minutes int) *int {
+	ms := minutes * int(time.Minute/time.Millisecond)
+	return &ms
+}
+
+func (w *world) sentAnAnswerWithVisibleTime(hour, minute, visibleMinutes int) error {
+	return w.practiceActivity.addMoment(w.ensureRegistered(w.sessionStudent, domain.RoleStudent).String(),
+		w.localTime(1, hour, minute), minutesInMs(visibleMinutes), false)
+}
+
+func (w *world) endedTheSessionWithVisibleTime(hour, minute, visibleMinutes int) error {
+	return w.practiceActivity.addMoment(w.ensureRegistered(w.sessionStudent, domain.RoleStudent).String(),
+		w.localTime(1, hour, minute), minutesInMs(visibleMinutes), true)
+}
+
+func (w *world) sentAnswersWithoutVisibleTime(h1, m1, h2, m2 int) error {
+	studentID := w.ensureRegistered(w.sessionStudent, domain.RoleStudent).String()
+	if err := w.practiceActivity.addMoment(studentID, w.localTime(1, h1, m1), nil, false); err != nil {
+		return err
+	}
+	return w.practiceActivity.addMoment(studentID, w.localTime(1, h2, m2), nil, false)
 }
 
 // practisedBetween seeds a session finished at to, started at from.
