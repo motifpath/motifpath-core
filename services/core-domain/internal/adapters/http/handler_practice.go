@@ -401,19 +401,21 @@ func toGeneratedPracticeSessionItem(item domain.PracticeSessionItem, names userN
 	if c := item.ChordChange; c != nil {
 		out.ChordChange = &generated.PlannedChordChange{
 			FromDiagramId: mustUUID(c.FromDiagramID), ToDiagramId: mustUUID(c.ToDiagramID),
-			FromChordSymbol: c.FromChordSymbol, ToChordSymbol: c.ToChordSymbol, Minute: toGeneratedChangeMinute(c.Minute),
+			FromChordSymbol: c.FromChordSymbol, ToChordSymbol: c.ToChordSymbol, Take: toGeneratedChangeTake(c.Take),
 		}
 	}
 	if r := item.RootFifth; r != nil {
 		out.RootFifth = &generated.PlannedRootFifth{
-			LayoutInstrumentId: mustUUID(r.LayoutInstrumentID), ChordSymbol: r.ChordSymbol,
-			Root: toGeneratedFretPlace(r.Root), Fifth: toGeneratedFretPlace(r.Fifth),
+			LayoutInstrumentId: mustUUID(r.LayoutInstrumentID), ChordSymbol: r.ChordSymbol, WindowStartFret: r.WindowStartFret,
+			Root: toGeneratedFretPlace(r.Root), Fifth: toGeneratedFretPlace(r.Fifth), FifthBelow: toGeneratedOptionalFretPlace(r.FifthBelow),
+			StartTempoBpm: r.StartTempoBPM,
 		}
 	}
 	if r := item.RootChange; r != nil {
 		out.RootChange = &generated.PlannedRootChange{
 			LayoutInstrumentId: mustUUID(r.LayoutInstrumentID), FromChordSymbol: r.FromChordSymbol, ToChordSymbol: r.ToChordSymbol,
-			FromRoot: toGeneratedFretPlace(r.FromRoot), ToRoot: toGeneratedFretPlace(r.ToRoot), Minute: toGeneratedChangeMinute(r.Minute),
+			WindowStartFret: r.WindowStartFret,
+			FromRoot:        toGeneratedFretPlace(r.FromRoot), ToRoot: toGeneratedFretPlace(r.ToRoot), Take: toGeneratedChangeTake(r.Take),
 		}
 	}
 	if tour := item.ProgressionKeys; tour != nil {
@@ -432,10 +434,10 @@ func toGeneratedPracticeSessionItem(item domain.PracticeSessionItem, names userN
 	return out
 }
 
-func toGeneratedChangeMinute(m domain.PlannedChangeMinute) generated.ChangeMinute {
-	return generated.ChangeMinute{
-		StartTempoBpm: m.StartTempoBPM, TargetChangesPerMinute: m.TargetChangesPerMinute,
-		BestCleanChangesPerMinute: m.BestCleanChangesPerMinute, LastChangesPerMinute: m.LastChangesPerMinute,
+func toGeneratedChangeTake(t domain.PlannedChangeTake) generated.ChangeTake {
+	return generated.ChangeTake{
+		Cycles: generated.ChangeTakeCycles(t.Cycles), StartTempoBpm: t.StartTempoBPM,
+		TargetTempoBpm: t.TargetTempoBPM, BestCleanTempoBpm: t.BestCleanTempoBPM,
 	}
 }
 
@@ -443,15 +445,27 @@ func toGeneratedFretPlace(p domain.Place) generated.FretPlace {
 	return generated.FretPlace{String: p.String, Fret: p.Fret}
 }
 
+// toGeneratedOptionalFretPlace is p as the API sends it, null when nil.
+func toGeneratedOptionalFretPlace(p *domain.Place) *generated.FretPlace {
+	if p == nil {
+		return nil
+	}
+	place := toGeneratedFretPlace(*p)
+	return &place
+}
+
 // toGeneratedChoiceQuestion maps a planned harmony or ear question, its names in
 // locale. What the way doesn't give is null, and every list is a list,
 // empty when unused.
 func toGeneratedChoiceQuestion(q domain.PlannedGeneratedChoice, locale string) *generated.GeneratedChoiceQuestion {
 	out := &generated.GeneratedChoiceQuestion{
-		Way:      generated.GeneratedChoiceWay(q.Way()),
-		MusicKey: generated.MusicKey(q.MusicKey),
-		Chart:    nonNilStrings(q.Chart),
-		DrawnAs:  generated.GeneratedChordDrawing(q.DrawnAs),
+		Way:     generated.GeneratedChoiceWay(q.Way()),
+		Chart:   nonNilStrings(q.Chart),
+		DrawnAs: generated.GeneratedChordDrawing(q.DrawnAs),
+	}
+	if q.MusicKey != "" {
+		key := generated.MusicKey(q.MusicKey)
+		out.MusicKey = &key
 	}
 	if q.Numeral != "" {
 		numeral := generated.ChordNumeral(q.Numeral)

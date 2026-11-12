@@ -61,25 +61,62 @@ type PlannedProgressionKeys struct {
 	StartNoteValue TempoNoteValue
 	TargetTempoBPM int
 	MinTempoBPM    int
-	Keys           []PlannedTourKey
+	// BassPattern is what every bar of a take plays on bass, by the student's
+	// level on the tour; empty on guitar.
+	BassPattern BassPattern
+	Keys        []PlannedTourKey
+}
+
+// BassPattern is what a bass key tour plays on every bar of 4/4.
+type BassPattern string
+
+// The bass patterns, by the student's level on the tour: the root as a whole
+// note; the root then the fifth above, a half note each; root, third, fifth,
+// third in quarters; root, third, fifth, seventh in quarters.
+const (
+	BassPatternRoot                  BassPattern = "root"
+	BassPatternRootFifth             BassPattern = "root_fifth"
+	BassPatternRootThirdFifthThird   BassPattern = "root_third_fifth_third"
+	BassPatternRootThirdFifthSeventh BassPattern = "root_third_fifth_seventh"
+)
+
+// BassPatternOf is the pattern a student at level plays a bass tour in.
+func BassPatternOf(level KnowledgeLevel) BassPattern {
+	switch level {
+	case KnowledgeLevelAccurate:
+		return BassPatternRootFifth
+	case KnowledgeLevelFluent:
+		return BassPatternRootThirdFifthThird
+	case KnowledgeLevelRetained:
+		return BassPatternRootThirdFifthSeventh
+	case KnowledgeLevelNew, KnowledgeLevelLearning:
+		return BassPatternRoot
+	}
+	return BassPatternRoot
 }
 
 // PlannedTourKey is one key of a tour: whether it is clean at the tour tempo,
 // the progression's chart in it, the voicing of each of its chords, and on bass
-// each chord's root, third and fifth.
+// the window its tones are in (nil on guitar) and each chord's tones there.
 type PlannedTourKey struct {
-	MusicKey   string
-	Clean      bool
-	Chart      []string
-	Voicings   []ChordBox
-	ChordTones []ChordTonePlaces
+	MusicKey        string
+	Clean           bool
+	Chart           []string
+	Voicings        []ChordBox
+	WindowStartFret *int
+	ChordTones      []BassChordTones
 }
 
-// ChordTonePlaces is where a chord's root, third and fifth are played on a
-// bass layout.
-type ChordTonePlaces struct {
-	Chord              string
-	Root, Third, Fifth Place
+// BassChordTones is where a chord's tones are played on a bass layout inside
+// a key's window: the root, on the lowest string holding it there, and its
+// third and fifth above and an octave below, and with the seventh pattern its
+// seventh above. A tone no string reaches in the window is nil.
+type BassChordTones struct {
+	Chord                  string
+	Root                   Place
+	ThirdAbove, FifthAbove *Place
+	ThirdBelow, FifthBelow *Place
+	Seventh                *Place
 }
 
 // ProgressionKeysItem is a progression toured key after key on a layout, as a
@@ -143,13 +180,16 @@ func (i ProgressionKeysItem) Plan(_ string, planning DrillPlanning) PlannedDrill
 		TargetTempoBPM: ProgressionKeysTargetTempoBPM,
 		MinTempoBPM:    tourMinTempo(),
 	}
+	if i.Bass {
+		planned.BassPattern = BassPatternOf(planning.Level)
+	}
 	order := TourKeyOrderOf(ProgressionMode(i.Progression.Mode))
 	for _, key := range order {
 		clean := slices.Contains(tour.CleanKeys, key)
 		if !clean && planned.StartMusicKey == "" {
 			planned.StartMusicKey = key
 		}
-		planned.Keys = append(planned.Keys, i.planKey(key, clean, planning))
+		planned.Keys = append(planned.Keys, i.planKey(key, clean, planned.BassPattern, planning))
 	}
 	if planned.StartMusicKey == "" {
 		planned.StartMusicKey = order[0]
@@ -158,40 +198,119 @@ func (i ProgressionKeysItem) Plan(_ string, planning DrillPlanning) PlannedDrill
 }
 
 // planKey draws the progression in key: its chart, a voicing for each chord
-// the backing sounds, and on bass where each chord's root, third and fifth
-// are. A chord without a voicing or a bass place is left out of that list.
-func (i ProgressionKeysItem) planKey(key string, clean bool, planning DrillPlanning) PlannedTourKey {
+// the backing sounds, and on bass a window and each chord's tones in it. A
+// chord without a voicing or a readable root is left out of that list.
+func (i ProgressionKeysItem) planKey(key string, clean bool, pattern BassPattern, planning DrillPlanning) PlannedTourKey {
 	k := PlannedTourKey{MusicKey: key, Clean: clean, Chart: ProgressionChart(i.Progression.Bars, key)}
-	for _, chord := range distinct(k.Chart) {
+	chords := distinct(k.Chart)
+	for _, chord := range chords {
 		if planning.Voicing != nil {
 			if id, ok := planning.Voicing(chord); ok {
 				k.Voicings = append(k.Voicings, ChordBox{Chord: chord, DiagramID: id})
 			}
 		}
-		if i.Bass {
-			if tones, err := chordTonePlaces(i.Layout, chord); err == nil {
-				k.ChordTones = append(k.ChordTones, tones)
-			}
+	}
+	if !i.Bass {
+		return k
+	}
+	board, ok := tourBassBoard(i.Layout, chords, pattern, planning.Pick)
+	if !ok {
+		return k
+	}
+	start := board.window.start
+	k.WindowStartFret = &start
+	for _, chord := range chords {
+		if tones, ok := board.chordTones(chord, pattern); ok {
+			k.ChordTones = append(k.ChordTones, tones)
 		}
 	}
 	return k
 }
 
-// chordTonePlaces places chord's root, third and fifth on a bass layout: see
-// bassPlace.
-func chordTonePlaces(layout Instrument, chord string) (ChordTonePlaces, error) {
-	root, err := chordRootPitchClass(chord)
-	if err != nil {
-		return ChordTonePlaces{}, err
-	}
-	third, fifth := chordThirdAndFifth(chord)
-	places := make([]Place, 3)
-	for n, interval := range []int{0, third, fifth} {
-		if places[n], err = bassPlace(layout, (root+interval)%12); err != nil {
-			return ChordTonePlaces{}, err
+// tourBassBoard is the layout in a window the session picks for a key: among
+// the windows where every chord's pattern tones are held above its root, or
+// among all of them when none is.
+func tourBassBoard(layout Instrument, chords []string, pattern BassPattern, pick func(n int) int) (bassBoard, bool) {
+	var fitting, all []bassBoard
+	for start := range bassWindowStarts {
+		board, err := newBassBoard(layout, bassWindow{start: start})
+		if err != nil {
+			return bassBoard{}, false
+		}
+		all = append(all, board)
+		if board.holdsPatterns(chords, pattern) {
+			fitting = append(fitting, board)
 		}
 	}
-	return ChordTonePlaces{Chord: chord, Root: places[0], Third: places[1], Fifth: places[2]}, nil
+	if len(fitting) == 0 {
+		fitting = all
+	}
+	if pick == nil {
+		return fitting[0], true
+	}
+	return fitting[pick(len(fitting))], true
+}
+
+// holdsPatterns reports whether every chord's pattern tones are held above
+// its root in b's window.
+func (b bassBoard) holdsPatterns(chords []string, pattern BassPattern) bool {
+	for _, chord := range chords {
+		root, err := chordRootPitchClass(chord)
+		if err != nil {
+			continue
+		}
+		pitch, ok := b.root(root, nil)
+		if !ok {
+			return false
+		}
+		for _, interval := range patternIntervals(chord, pattern) {
+			if !b.holds(pitch + interval) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// patternIntervals are the semitones above chord's root that pattern plays.
+func patternIntervals(chord string, pattern BassPattern) []int {
+	third, fifth := chordThirdAndFifth(chord)
+	switch pattern {
+	case BassPatternRootFifth:
+		return []int{fifth}
+	case BassPatternRootThirdFifthThird:
+		return []int{third, fifth}
+	case BassPatternRootThirdFifthSeventh:
+		if seventh, ok := chordSeventh(chord); ok {
+			return []int{third, fifth, seventh}
+		}
+		return []int{third, fifth}
+	case BassPatternRoot:
+	}
+	return nil
+}
+
+// chordTones places chord's tones in b's window: false when its root can't
+// be read or isn't there.
+func (b bassBoard) chordTones(chord string, pattern BassPattern) (BassChordTones, bool) {
+	rootClass, err := chordRootPitchClass(chord)
+	if err != nil {
+		return BassChordTones{}, false
+	}
+	root, ok := b.root(rootClass, nil)
+	if !ok {
+		return BassChordTones{}, false
+	}
+	third, fifth := chordThirdAndFifth(chord)
+	tones := BassChordTones{
+		Chord: chord, Root: b.placeOf(root),
+		ThirdAbove: b.optionalPlace(root + third), FifthAbove: b.optionalPlace(root + fifth),
+		ThirdBelow: b.optionalPlace(root + third - 12), FifthBelow: b.optionalPlace(root + fifth - 12),
+	}
+	if seventh, ok := chordSeventh(chord); ok && pattern == BassPatternRootThirdFifthSeventh {
+		tones.Seventh = b.optionalPlace(root + seventh)
+	}
+	return tones, true
 }
 
 // plannedTour is a tour as a session plays it: rated, never asked, so it
@@ -235,6 +354,28 @@ func chordThirdAndFifth(chord string) (third, fifth int) {
 		return 4, 7
 	}
 	return 4, 7
+}
+
+// chordSeventh is the semitones from chord's root to its own seventh; false
+// for a chord without one.
+func chordSeventh(chord string) (int, bool) {
+	reading := ParseChordSymbol(chord)
+	if reading.Parsed == nil {
+		return 0, false
+	}
+	switch reading.Parsed.Quality {
+	case ChordQualityDominant7, ChordQualityMinor7, ChordQualityHalfDiminished7, ChordQualityDominant7Sus4,
+		ChordQualityDominant9, ChordQualityMinor9, ChordQualityDominant11, ChordQualityMinor11, ChordQualityDominant13,
+		ChordQualityDominant7Flat5, ChordQualityDominant7Sharp5, ChordQualityDominant7Flat9, ChordQualityDominant7Sharp9:
+		return 10, true
+	case ChordQualityMajor7, ChordQualityMinorMajor7, ChordQualityMajor9:
+		return 11, true
+	case ChordQualityDiminished7:
+		return 9, true
+	case ChordQualityMajor, ChordQualityMinor, ChordQualityPower, ChordQualityDiminished, ChordQualityAugmented,
+		ChordQualitySus2, ChordQualitySus4, ChordQualityMajor6, ChordQualityMinor6, ChordQualityAdd9, ChordQualityMinorAdd9:
+	}
+	return 0, false
 }
 
 // distinct is chords, each once, in the order they first appear.

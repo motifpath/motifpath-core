@@ -24,17 +24,18 @@ type ChordChangePair struct {
 	Ordinal          int
 }
 
-// ChangeTarget is one version of the clean changes a minute that count as fully
-// fluent on a chord or root change, the same for every pair and instrument.
+// ChangeTarget is one version of the tempo a clean take of changes counts as
+// fully fluent at on a chord or root change, the same for every pair and
+// instrument.
 // Versions are reference data, never edited: a new one starts at a later
-// EffectiveFrom, and each minute is judged by the version in force when it was
+// EffectiveFrom, and each take is judged by the version in force when it was
 // played.
 type ChangeTarget struct {
-	ID               string
-	Version          int
-	EffectiveFrom    time.Time
-	ChangesPerMinute int
-	Source           DrillThresholdSource
+	ID            string
+	Version       int
+	EffectiveFrom time.Time
+	TempoBPM      int
+	Source        DrillThresholdSource
 }
 
 // ChordDrillCatalog is every installed chord drill and change pair, in catalog

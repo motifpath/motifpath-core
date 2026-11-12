@@ -3,6 +3,7 @@ package domain_test
 import (
 	"math/rand/v2"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -146,6 +147,81 @@ func TestHeardProgressionItem_AsADrillItem(t *testing.T) {
 		assert.Len(t, q.Voicings, 4)
 		require.NoError(t, domain.CheckChallenge(s))
 	})
+}
+
+func TestAHeardProgressionsOptionsAreNamedByEveryBarHeard(t *testing.T) {
+	item := domain.HeardProgressionItem{Progression: progression("IV-V-I"), Catalog: catalogProgressions}
+	q, _ := plannedChoice(t, item, "progression_by_number", domain.DrillPlanning{Pick: picks(7), Voicing: boxOf})
+
+	assert.Equal(t, []string{"C", "D", "G", "G"}, playbackChords(q.Playback))
+	for _, o := range q.Options {
+		if o.Value == "IV-V-I" {
+			assert.Equal(t, "IV–V–I–I", o.Names["en"])
+		}
+		assert.Len(t, strings.Split(o.Names["en"], "–"), 4, o.Value)
+	}
+}
+
+func TestHeardChordQualityItem_AsADrillItem(t *testing.T) {
+	minor := domain.HeardChordQualityItem{Quality: "minor"}
+
+	t.Run("is a quality heard on any root, in the head", func(t *testing.T) {
+		assert.Equal(t, "heard_chord_quality:minor", minor.ItemKey())
+		assert.Equal(t, domain.PracticeItemKindHeardChordQuality, minor.Kind())
+		assert.Equal(t, []string{"chord_quality_by_ear"}, minor.Ways())
+		assert.Equal(t, 20, minor.Seconds())
+		assert.True(t, minor.SuitsSession(false))
+		assert.False(t, minor.SuitsSession(true), "never with an instrument in hand")
+	})
+
+	t.Run("plays one chord alone, in no key, and offers three qualities", func(t *testing.T) {
+		q, s := plannedChoice(t, minor, "chord_quality_by_ear", domain.DrillPlanning{Pick: picks(9), Voicing: boxOf, Level: domain.KnowledgeLevelLearning})
+
+		assert.Empty(t, q.MusicKey)
+		require.NotNil(t, q.Playback)
+		assert.Equal(t, []string{"Am"}, playbackChords(q.Playback))
+		assert.Equal(t, []string{""}, playbackNumerals(q.Playback))
+		assert.Equal(t, []string{"major", "minor", "dominant7"}, optionValues(q))
+		assert.Equal(t, "minor", q.Answer)
+		assert.Len(t, q.Voicings, 1)
+		require.NoError(t, domain.CheckChallenge(s))
+	})
+
+	t.Run("offers five qualities once the student is fluent on it", func(t *testing.T) {
+		for _, level := range []domain.KnowledgeLevel{domain.KnowledgeLevelFluent, domain.KnowledgeLevelRetained} {
+			q, _ := plannedChoice(t, minor, "chord_quality_by_ear", domain.DrillPlanning{Pick: picks(0), Voicing: boxOf, Level: level})
+			assert.Equal(t, []string{"major", "minor", "dominant7", "diminished", "augmented"}, optionValues(q), string(level))
+		}
+	})
+
+	t.Run("sounds each quality's chord", func(t *testing.T) {
+		for quality, chord := range map[string]string{"major": "C", "minor": "Cm", "dominant7": "C7", "diminished": "Cdim", "augmented": "Caug"} {
+			q, _ := plannedChoice(t, domain.HeardChordQualityItem{Quality: quality}, "chord_quality_by_ear", domain.DrillPlanning{Pick: picks(0), Voicing: boxOf, Level: domain.KnowledgeLevelFluent})
+			assert.Equal(t, []string{chord}, playbackChords(q.Playback), quality)
+		}
+	})
+
+	t.Run("is played on a root picked each time", func(t *testing.T) {
+		roots := map[string]bool{}
+		for range 20 {
+			q, _ := plannedChoice(t, minor, "chord_quality_by_ear", domain.DrillPlanning{Pick: rand.IntN, Voicing: boxOf})
+			roots[q.Playback.Bars[0].Chord] = true
+		}
+		assert.Greater(t, len(roots), 1)
+	})
+}
+
+func TestParseHeardChordQualityItemKey(t *testing.T) {
+	for _, quality := range []string{"major", "minor", "dominant7", "diminished", "augmented"} {
+		item, ok := domain.ParseHeardChordQualityItemKey("heard_chord_quality:" + quality)
+		assert.True(t, ok, quality)
+		assert.Equal(t, quality, item.Quality)
+	}
+	for _, key := range []string{"heard_chord_quality:sus4", "heard_chord:minor", "heard_chord_quality:"} {
+		_, ok := domain.ParseHeardChordQualityItemKey(key)
+		assert.False(t, ok, key)
+	}
+	assert.Equal(t, []string{"major", "minor", "dominant7", "diminished", "augmented"}, domain.HeardChordQualities)
 }
 
 // Every heard item, asked every way, at every level and in every reading,

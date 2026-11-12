@@ -78,6 +78,9 @@ type PracticeSessionService struct {
 	now         func() time.Time
 	// shuffle puts equally urgent candidates in random order.
 	shuffle func(n int, swap func(i, j int))
+	// choose picks one of n equally fitting choices when a drill item is
+	// planned: a key, a root, a bass window, an option's place.
+	choose func(n int) int
 }
 
 func NewPracticeSessionService(
@@ -113,6 +116,7 @@ func NewPracticeSessionService(
 		newID:       newID,
 		now:         now,
 		shuffle:     rand.Shuffle,
+		choose:      rand.IntN,
 	}
 	s.sources = []DrillSource{diagramShapeSource{service: s}, fretboardCellSource{}}
 	return s
@@ -157,6 +161,13 @@ func (s *PracticeSessionService) forComposition() *PracticeSessionService {
 // order, so a test can tell what is picked without chance.
 func (s *PracticeSessionService) WithShuffle(shuffle func(n int, swap func(i, j int))) *PracticeSessionService {
 	s.shuffle = shuffle
+	return s
+}
+
+// WithPick replaces how a drill item's equally fitting choices are picked
+// when it is planned, so a test can tell what is planned without chance.
+func (s *PracticeSessionService) WithPick(pick func(n int) int) *PracticeSessionService {
+	s.choose = pick
 	return s
 }
 
@@ -295,6 +306,7 @@ func (s *PracticeSessionService) ComposePlan(ctx context.Context, caller domain.
 		return domain.PracticeSessionPlan{}, err
 	}
 	c := newComposer(s.now(), minutes, s.shuffle, templates)
+	c.choose = s.choose
 	if c.newTurn, err = s.newCellTurn(ctx, caller.ID, instrumentID != nil); err != nil {
 		return domain.PracticeSessionPlan{}, err
 	}
@@ -885,7 +897,9 @@ type composer struct {
 	budget  int
 	used    int
 	shuffle func(n int, swap func(i, j int))
-	picked  map[string]bool
+	// choose picks among a drill item's equally fitting choices.
+	choose func(n int) int
+	picked map[string]bool
 	// drills counts the picks of each generated drill, which stop at
 	// domain.MaxGeneratedDrillItems.
 	drills map[string]int
@@ -957,7 +971,7 @@ func windowKey(cand practiceCandidate) (drillWindowKey, bool) {
 
 func newComposer(now time.Time, minutes int, shuffle func(n int, swap func(i, j int)), templates map[string]domain.DrillTemplate) *composer {
 	return &composer{
-		now: now, budget: minutes * 60, shuffle: shuffle, picked: map[string]bool{}, drills: map[string]int{},
+		now: now, budget: minutes * 60, shuffle: shuffle, choose: rand.IntN, picked: map[string]bool{}, drills: map[string]int{},
 		windows: map[drillWindowKey]domain.FretWindow{}, templates: templates,
 		subjectOf: candidateNode, newRungs: map[string][]domain.PracticeRung{}, confusable: map[string][]string{},
 		comebacks: map[string]domain.PracticeSessionItem{}, everyInstance: map[string]bool{},
@@ -1498,7 +1512,7 @@ func (c *composer) item(cand practiceCandidate, reason domain.PracticePickReason
 		c.confusable[item.ItemKey] = confusable.ConfusableWith()
 	}
 	if cand.drill != nil {
-		planning := domain.DrillPlanning{Pick: rand.IntN, Level: level, Reading: c.reading, Voicing: c.voicing, BassInstrumentID: c.bassInstrumentID, State: cand.state}
+		planning := domain.DrillPlanning{Pick: c.choose, Level: level, Reading: c.reading, Voicing: c.voicing, BassInstrumentID: c.bassInstrumentID, State: cand.state}
 		// take already passed over a cell whose way doesn't fit its window.
 		way, _ := c.wayOf(cand)
 		if cell := cand.cell(); cell != nil {

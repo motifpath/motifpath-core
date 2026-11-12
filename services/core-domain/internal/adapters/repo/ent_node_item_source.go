@@ -386,7 +386,7 @@ func (s *EntNodeItemSource) bassLayout(ctx context.Context, instrumentID uuid.UU
 // harmonyItems generates the harmony and ear drills' items, which suit
 // every instrument: every numeral but the tonic in every major key, as a
 // diatonic chord and as a chord function; every numeral but the tonic as a
-// heard chord; every progression as a chart, and every 4-bar one as a heard
+// heard chord; every heard quality; every progression as a chart, and every 4-bar one as a heard
 // progression, each under its family's nodes (a progression's item also
 // under the progression's).
 func (s *EntNodeItemSource) harmonyItems(ctx context.Context) ([]domain.ClassifiedItem, error) {
@@ -405,6 +405,9 @@ func (s *EntNodeItemSource) harmonyItems(ctx context.Context) ([]domain.Classifi
 	}
 	for _, numeral := range domain.HarmonyItemNumerals {
 		items = append(items, domain.ClassifiedItem{ItemKey: domain.HeardChordItem{Numeral: numeral}.ItemKey(), NodeIDs: nodes[domain.PracticeItemKindHeardChord]})
+	}
+	for _, quality := range domain.HeardChordQualities {
+		items = append(items, domain.ClassifiedItem{ItemKey: domain.HeardChordQualityItem{Quality: quality}.ItemKey(), NodeIDs: nodes[domain.PracticeItemKindHeardChordQuality]})
 	}
 	progressions, err := NewEntProgressionRepository(s.client).ListInDrills(ctx)
 	if err != nil {

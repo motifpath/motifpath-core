@@ -46,7 +46,7 @@ func (r *EntChordDrillRepository) Catalog(ctx context.Context) (domain.ChordDril
 	}
 	for i, t := range targets {
 		catalog.Targets[i] = domain.ChangeTarget{
-			ID: t.ID.String(), Version: t.Version, EffectiveFrom: t.EffectiveFrom.UTC(), ChangesPerMinute: t.ChangesPerMinute,
+			ID: t.ID.String(), Version: t.Version, EffectiveFrom: t.EffectiveFrom.UTC(), TempoBPM: t.ChangesPerMinute,
 			Source: domain.DrillThresholdSource(t.Source),
 		}
 	}

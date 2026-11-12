@@ -28,12 +28,14 @@ type practiceItemStateDocument struct {
 	BestCleanNoteValue *string `bson:"best_clean_note_value"`
 	// RightByResponse is absent until the item has a right answer.
 	RightByResponse map[string]int `bson:"right_by_response"`
-	// A chord or root change's best clean count and last minute; absent for
-	// any other item.
-	BestChangesPerMinute *int   `bson:"best_changes_per_minute"`
+	// A chord or root change's last take: its tempo, its rating and the clean
+	// takes in a row it ended; absent for any other item. A change folded
+	// before takes keeps its last minute instead: the clean changes it
+	// counted and the clean minutes in a row.
 	LastChangeTempoBPM   *int   `bson:"last_change_tempo_bpm"`
-	LastChangesPerMinute *int   `bson:"last_changes_per_minute"`
 	LastRating           string `bson:"last_rating"`
+	CleanTakesInARow     int    `bson:"clean_takes_in_a_row"`
+	LastChangesPerMinute *int   `bson:"last_changes_per_minute"`
 	CleanMinutesInARow   int    `bson:"clean_minutes_in_a_row"`
 	// A progression key tour's tempo at effective speed, its keys clean at
 	// that tempo and the note value of its last clean take; absent for any
@@ -54,15 +56,18 @@ func (d practiceItemStateDocument) keyTour() *domain.KeyTourState {
 	return &domain.KeyTourState{TempoBPM: *d.TourTempoBPM, CleanKeys: d.TourCleanKeys, NoteValue: tempoNoteValue(d.TourNoteValue)}
 }
 
-// lastChangeMinute is the document's last change minute; nil without one.
-func (d practiceItemStateDocument) lastChangeMinute() *domain.ChangeMinuteState {
-	if d.LastChangeTempoBPM == nil || d.LastChangesPerMinute == nil {
+// lastChangeTake is the document's last change take; nil without one. A
+// minute counted before takes reads as a take (domain.LegacyChangeTake).
+func (d practiceItemStateDocument) lastChangeTake() *domain.ChangeTakeState {
+	if d.LastChangeTempoBPM == nil {
 		return nil
 	}
-	return &domain.ChangeMinuteState{
-		TempoBPM: *d.LastChangeTempoBPM, ChangesPerMinute: *d.LastChangesPerMinute,
-		Struggled: d.LastRating == "struggled", CleanInARow: d.CleanMinutesInARow,
+	tempo := *d.LastChangeTempoBPM
+	if count := d.LastChangesPerMinute; count != nil {
+		legacy := domain.LegacyChangeTake(tempo, *count, d.CleanMinutesInARow)
+		return &legacy
 	}
+	return &domain.ChangeTakeState{TempoBPM: tempo, Struggled: d.LastRating == "struggled", CleanInARow: d.CleanTakesInARow}
 }
 
 // MongoPracticeItemStateReader reads the `practice_item_state` collection
@@ -96,22 +101,21 @@ func (r *MongoPracticeItemStateReader) GetStates(ctx context.Context, studentID 
 			return nil, err
 		}
 		result[doc.ItemKey] = domain.PracticeItemState{
-			ItemKey:              doc.ItemKey,
-			RulesVersion:         doc.RulesVersion,
-			Level:                domain.KnowledgeLevel(doc.Level),
-			Counted:              doc.Counted,
-			Box:                  doc.Box,
-			DueAt:                utcTime(doc.DueAt),
-			LastAt:               utcTime(doc.LastAt),
-			Accuracy:             doc.Accuracy,
-			Fluency:              doc.Fluency,
-			BestCleanBPM:         doc.BestCleanBPM,
-			BestCleanNoteValue:   tempoNoteValue(doc.BestCleanNoteValue),
-			RightByResponse:      doc.RightByResponse,
-			BestChangesPerMinute: doc.BestChangesPerMinute,
-			LastChangeMinute:     doc.lastChangeMinute(),
-			KeyTour:              doc.keyTour(),
-			LastMusicKey:         doc.LastMusicKey,
+			ItemKey:            doc.ItemKey,
+			RulesVersion:       doc.RulesVersion,
+			Level:              domain.KnowledgeLevel(doc.Level),
+			Counted:            doc.Counted,
+			Box:                doc.Box,
+			DueAt:              utcTime(doc.DueAt),
+			LastAt:             utcTime(doc.LastAt),
+			Accuracy:           doc.Accuracy,
+			Fluency:            doc.Fluency,
+			BestCleanBPM:       doc.BestCleanBPM,
+			BestCleanNoteValue: tempoNoteValue(doc.BestCleanNoteValue),
+			RightByResponse:    doc.RightByResponse,
+			LastChangeTake:     doc.lastChangeTake(),
+			KeyTour:            doc.keyTour(),
+			LastMusicKey:       doc.LastMusicKey,
 		}
 	}
 	if err := cursor.Err(); err != nil {

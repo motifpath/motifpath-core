@@ -40,7 +40,7 @@ func (chordDrillCatalog) Catalog(context.Context) (domain.ChordDrillCatalog, err
 	for i, p := range catalogChordPairs {
 		catalog.Changes = append(catalog.Changes, domain.ChordChangePair{ID: fmt.Sprintf("pair-%d", i), FromChordDrillID: "drill-" + p[0], ToChordDrillID: "drill-" + p[1], Ordinal: i + 1})
 	}
-	catalog.Targets = []domain.ChangeTarget{{ID: "target-1", Version: 1, EffectiveFrom: fixedNow.AddDate(0, -1, 0), ChangesPerMinute: 60}}
+	catalog.Targets = []domain.ChangeTarget{{ID: "target-1", Version: 1, EffectiveFrom: fixedNow.AddDate(0, -1, 0), TempoBPM: 60}}
 	return catalog, nil
 }
 
@@ -61,9 +61,11 @@ func chordChangeKey(from, to string) string {
 }
 
 // chordDrillWorld is what the chord drill steps share in a scenario: the
-// change a step named, whose plan "its minute" reads.
+// change a step named, whose plan "its take" reads, and the windows a root
+// and fifth started at over many sessions.
 type chordDrillWorld struct {
-	changeKey string
+	changeKey     string
+	windowsPlayed map[int]bool
 }
 
 func (w *world) chordDrill() *chordDrillWorld {
@@ -84,14 +86,18 @@ func registerChordDrillSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^student "([^"]+)"'s only path skill is "play-open-chords", practised by single chords on guitar$`, w.onlySingleChordsOnPath)
 
 	sc.Step(`^"([^"]+)" has never played the chord change "([^"]+)" to "([^"]+)"$`, w.neverPlayedChange)
-	sc.Step(`^"([^"]+)"'s last minute of "([^"]+)" to "([^"]+)" was almost, (\d+) clean changes at (\d+) BPM$`, w.lastMinuteAlmost)
-	sc.Step(`^"([^"]+)"'s last minute of "([^"]+)" to "([^"]+)" was struggled at (\d+) BPM$`, w.lastMinuteStruggled)
-	sc.Step(`^"([^"]+)"'s last two minutes of "([^"]+)" to "([^"]+)" were clean, the last at (\d+) BPM$`, w.lastTwoMinutesClean)
-	sc.Step(`^"([^"]+)"'s minutes of "([^"]+)" to "([^"]+)" were struggled, then clean at (\d+) BPM$`, w.struggledThenClean)
-	sc.Step(`^"([^"]+)" counted (\d+), then (\d+), then (\d+) clean changes of "([^"]+)" to "([^"]+)", each minute clean$`, w.countedCleanMinutes)
+	sc.Step(`^"([^"]+)"'s last take of "([^"]+)" to "([^"]+)" was almost, 75 percent clean at (\d+) BPM$`, w.lastTakeAlmost)
+	sc.Step(`^"([^"]+)"'s last take of "([^"]+)" to "([^"]+)" was struggled at (\d+) BPM$`, w.lastTakeStruggled)
+	sc.Step(`^"([^"]+)"'s last two takes of "([^"]+)" to "([^"]+)" were clean, the last at (\d+) BPM$`, w.lastTwoTakesClean)
+	sc.Step(`^"([^"]+)"'s takes of "([^"]+)" to "([^"]+)" were struggled, then clean at (\d+) BPM$`, w.struggledThenClean)
+	sc.Step(`^"([^"]+)" played clean takes of "([^"]+)" to "([^"]+)" at (\d+), then (\d+), then (\d+) BPM$`, w.playedCleanTakes)
+	sc.Step(`^"([^"]+)"'s last change of "([^"]+)" to "([^"]+)" was a minute at (\d+) BPM with (\d+) clean changes$`, w.lastChangeWasAMinute)
+	sc.Step(`^"([^"]+)" has new root and fifth items on electric bass$`, w.hasNewRootFifths)
 
 	sc.Step(`^the single chord "([^"]+)" is picked for "([^"]+)"'s session with "guitar" in hand$`, w.composesChordSession("guitar"))
 	sc.Step(`^the root and fifth of "([^"]+)" is picked for "([^"]+)"'s session with "electric-bass" in hand$`, w.composesChordSession("electric-bass"))
+	sc.Step(`^the root and fifth of "([^"]+)" is picked for "([^"]+)"'s session with "electric-bass" in hand, in the window starting at fret (\d+)$`, w.rootFifthInWindow)
+	sc.Step(`^the root and fifth of "([^"]+)" is picked for (\d+) of "([^"]+)"'s sessions with "electric-bass" in hand$`, w.rootFifthOverSessions)
 	sc.Step(`^both are picked for "([^"]+)"'s session with "guitar" in hand$`, w.bothPicked)
 	sc.Step(`^the chord change is picked as a (?:new|due) item$`, w.chordChangePicked)
 
@@ -103,14 +109,18 @@ func registerChordDrillSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^every chord change in the session is estimated at (\d+) seconds$`, w.everyChordEstimatedAt(generated.PracticeItemKindChordChange))
 	sc.Step(`^it names the voicing diagram of "([^"]+)" and the chord "([^"]+)"$`, w.namesVoicingAndChord)
 	sc.Step(`^the session includes a chord change of "change-chords" at the play_in_time rung$`, w.sessionIncludesChange)
-	sc.Step(`^it names both chords' voicing diagrams and symbols, and a target of (\d+) clean changes a minute$`, w.changeNamesBothChords)
+	sc.Step(`^it names both chords' voicing diagrams and symbols, a take of (\d+) cycles and a target of (\d+) BPM$`, w.changeNamesBothChords)
 	sc.Step(`^its root is on string (\d+) at fret (\d+) and its fifth on string (\d+) at fret (\d+) of the "electric-bass" layout$`, w.rootAndFifthAt)
+	sc.Step(`^it marks no fifth below the root, since the open E string is outside frets (\d+) to (\d+)$`, w.noFifthBelow)
+	sc.Step(`^the fifth below its root is on string (\d+) at fret (\d+)$`, w.fifthBelowAt)
+	sc.Step(`^it starts at the catalog's root and fifth tempo$`, w.rootFifthStartsAtCatalogTempo)
+	sc.Step(`^its window starts on more than one fret between 0 and 9$`, w.rootFifthWindowsVary)
 	sc.Step(`^the session has at most (\d+) single chords and at most (\d+) chord changes$`, w.atMostChordsAndChanges)
 	sc.Step(`^the single chord "([^"]+)" comes before the chord change$`, w.singleChordBeforeChange)
-	sc.Step(`^its minute starts at (\d+) BPM, with no best clean count and no last count$`, w.minuteStartsFresh)
-	sc.Step(`^its minute starts at (\d+) BPM, and its last count is (\d+)$`, w.minuteStartsWithLastCount)
-	sc.Step(`^its minute starts at (\d+) BPM$`, w.minuteStartsAt)
-	sc.Step(`^its best clean count is (\d+) and its last count is (\d+)$`, w.bestAndLastCounts)
+	sc.Step(`^its take starts at (\d+) BPM, with no best clean tempo$`, w.takeStartsFresh)
+	sc.Step(`^its take starts at (\d+) BPM$`, w.takeStartsAt)
+	sc.Step(`^its take starts at (\d+) BPM, since 60 percent of the beats reads as a 50 percent share and a struggle$`, w.takeStartsAt)
+	sc.Step(`^its best clean tempo is (\d+) BPM$`, w.bestCleanTempoIs)
 	sc.Step(`^no item in the session is a single chord, a chord change, a root and fifth or a root change$`, w.noChordItems)
 	sc.Step(`^no single chord or chord change has the reason warm_up or application$`, w.noChordWarmUpOrEnding)
 	sc.Step(`^the session has at least one single chord with the reason new$`, w.atLeastOneNewSingleChord)
@@ -252,9 +262,9 @@ func (w *world) putChangeState(name, key string, s domain.PracticeItemState) {
 	w.practiceStates.put(w.ensureRegistered(name, domain.RoleStudent).String(), s)
 }
 
-func (w *world) lastMinute(name, from, to string, last domain.ChangeMinuteState, best *int) {
+func (w *world) lastTake(name, from, to string, last domain.ChangeTakeState, best *int) {
 	w.putChangeState(name, w.change(name, from, to), domain.PracticeItemState{
-		Level: domain.KnowledgeLevelLearning, Counted: 2, Box: 1, BestChangesPerMinute: best, LastChangeMinute: &last,
+		Level: domain.KnowledgeLevelLearning, Counted: 2, Box: 1, BestCleanBPM: best, LastChangeTake: &last,
 	})
 }
 
@@ -263,32 +273,77 @@ func (w *world) neverPlayedChange(name, from, to string) error {
 	return nil
 }
 
-func (w *world) lastMinuteAlmost(name, from, to string, count, bpm int) error {
-	w.lastMinute(name, from, to, domain.ChangeMinuteState{TempoBPM: bpm, ChangesPerMinute: count}, nil)
+func (w *world) lastTakeAlmost(name, from, to string, bpm int) error {
+	w.lastTake(name, from, to, domain.ChangeTakeState{TempoBPM: bpm}, nil)
 	return nil
 }
 
-func (w *world) lastMinuteStruggled(name, from, to string, bpm int) error {
-	w.lastMinute(name, from, to, domain.ChangeMinuteState{TempoBPM: bpm, ChangesPerMinute: bpm / 4, Struggled: true}, nil)
+func (w *world) lastTakeStruggled(name, from, to string, bpm int) error {
+	w.lastTake(name, from, to, domain.ChangeTakeState{TempoBPM: bpm, Struggled: true}, nil)
 	return nil
 }
 
-func (w *world) lastTwoMinutesClean(name, from, to string, bpm int) error {
-	w.lastMinute(name, from, to, domain.ChangeMinuteState{TempoBPM: bpm, ChangesPerMinute: bpm, CleanInARow: 2}, &bpm)
+func (w *world) lastTwoTakesClean(name, from, to string, bpm int) error {
+	w.lastTake(name, from, to, domain.ChangeTakeState{TempoBPM: bpm, CleanInARow: 2}, &bpm)
 	return nil
 }
 
 func (w *world) struggledThenClean(name, from, to string, bpm int) error {
-	w.lastMinute(name, from, to, domain.ChangeMinuteState{TempoBPM: bpm, ChangesPerMinute: bpm, CleanInARow: 1}, &bpm)
+	w.lastTake(name, from, to, domain.ChangeTakeState{TempoBPM: bpm, CleanInARow: 1}, &bpm)
 	return nil
 }
 
-// countedCleanMinutes plays three clean minutes, every beat changed cleanly,
-// so each count is its minute's tempo.
-func (w *world) countedCleanMinutes(name string, first, second, third int, from, to string) error {
+// playedCleanTakes plays three clean takes in a row, the best clean tempo
+// being the fastest of them.
+func (w *world) playedCleanTakes(name, from, to string, first, second, third int) error {
 	best := max(first, second, third)
-	w.lastMinute(name, from, to, domain.ChangeMinuteState{TempoBPM: third, ChangesPerMinute: third, CleanInARow: 3}, &best)
+	w.lastTake(name, from, to, domain.ChangeTakeState{TempoBPM: third, CleanInARow: 3}, &best)
 	return nil
+}
+
+// lastChangeWasAMinute keeps a change's last minute as the knowledge state
+// folded before takes left it, read the way a state reader reads it.
+func (w *world) lastChangeWasAMinute(name, from, to string, bpm, count int) error {
+	w.lastTake(name, from, to, domain.LegacyChangeTake(bpm, count, 0), nil)
+	return nil
+}
+
+func (w *world) hasNewRootFifths(name string) error {
+	return w.pathSkillHasRootFifths(name, "play-root-fifth-lines")
+}
+
+// rootFifthInWindow composes name's session with chord's root and fifth due,
+// its window picked to start at fret.
+func (w *world) rootFifthInWindow(chord, name string, fret int) error {
+	w.planPick = func(n int) int { return min(fret, n-1) }
+	return w.composesChordSession("electric-bass")(chord, name)
+}
+
+// rootFifthOverSessions composes sessions sessions of name's with chord's
+// root and fifth due, noting where each one's window starts.
+func (w *world) rootFifthOverSessions(chord string, sessions int, name string) error {
+	w.chordDrill().windowsPlayed = map[int]bool{}
+	for range sessions {
+		if err := w.composesChordSession("electric-bass")(chord, name); err != nil {
+			return err
+		}
+		r, err := w.plannedRootFifth(chord)
+		if err != nil {
+			return err
+		}
+		w.chordDrill().windowsPlayed[r.WindowStartFret] = true
+	}
+	return nil
+}
+
+func (w *world) rootFifthWindowsVary() error {
+	played := w.chordDrill().windowsPlayed
+	for fret := range played {
+		if fret < 0 || fret > 9 {
+			return fmt.Errorf("a window starts at fret %d", fret)
+		}
+	}
+	return expectChord(len(played) > 1, "every window started at the same fret: %v", played)
 }
 
 // composesChordSession composes name's session with the named chord due, so
@@ -397,7 +452,7 @@ func (w *world) sessionIncludesChange() error {
 	return expectChord(changes[0].Rung == generated.PlayInTime, "rung %s", changes[0].Rung)
 }
 
-func (w *world) changeNamesBothChords(target int) error {
+func (w *world) changeNamesBothChords(cycles, target int) error {
 	changes, err := w.planItemsOfKind(generated.PracticeItemKindChordChange)
 	if err != nil || len(changes) == 0 {
 		return fmt.Errorf("the session has no chord change: %v", err)
@@ -408,26 +463,60 @@ func (w *world) changeNamesBothChords(target int) error {
 			return fmt.Errorf("%s plans no chord change", item.ItemKey)
 		}
 		key := "chord_change:" + c.FromDiagramId.String() + ":" + c.ToDiagramId.String()
-		if key != item.ItemKey || c.FromChordSymbol == "" || c.ToChordSymbol == "" || c.Minute.TargetChangesPerMinute != target {
+		if key != item.ItemKey || c.FromChordSymbol == "" || c.ToChordSymbol == "" ||
+			int(c.Take.Cycles) != cycles || c.Take.TargetTempoBpm != target {
 			return fmt.Errorf("%s plans %+v", item.ItemKey, *c)
 		}
 	}
 	return nil
 }
 
-func (w *world) rootAndFifthAt(rootString, rootFret, fifthString, fifthFret int) error {
+// plannedRootFifth is the composed plan's root and fifth of chord.
+func (w *world) plannedRootFifth(chord string) (*generated.PlannedRootFifth, error) {
 	items, err := w.planItemsOfKind(generated.PracticeItemKindRootFifth)
+	if err != nil {
+		return nil, err
+	}
+	for _, item := range items {
+		if r := item.RootFifth; r != nil && r.ChordSymbol == chord {
+			return r, nil
+		}
+	}
+	return nil, fmt.Errorf("the session has no root and fifth of %s", chord)
+}
+
+func (w *world) rootAndFifthAt(rootString, rootFret, fifthString, fifthFret int) error {
+	r, err := w.plannedRootFifth("Am")
 	if err != nil {
 		return err
 	}
-	for _, item := range items {
-		r := item.RootFifth
-		if r != nil && r.ChordSymbol == "Am" {
-			return expectChord(r.Root == generated.FretPlace{String: rootString, Fret: rootFret} && r.Fifth == generated.FretPlace{String: fifthString, Fret: fifthFret},
-				"root %+v and fifth %+v", r.Root, r.Fifth)
-		}
+	return expectChord(r.Root == generated.FretPlace{String: rootString, Fret: rootFret} && r.Fifth == generated.FretPlace{String: fifthString, Fret: fifthFret},
+		"root %+v and fifth %+v", r.Root, r.Fifth)
+}
+
+func (w *world) noFifthBelow(from, to int) error {
+	r, err := w.plannedRootFifth("Am")
+	if err != nil {
+		return err
 	}
-	return fmt.Errorf("the session has no root and fifth of Am")
+	return expectChord(r.FifthBelow == nil && r.WindowStartFret == from && r.WindowStartFret+4 == to,
+		"window from fret %d, fifth below %+v", r.WindowStartFret, r.FifthBelow)
+}
+
+func (w *world) fifthBelowAt(str, fret int) error {
+	r, err := w.plannedRootFifth("Am")
+	if err != nil {
+		return err
+	}
+	return expectChord(r.FifthBelow != nil && *r.FifthBelow == generated.FretPlace{String: str, Fret: fret}, "fifth below %+v", r.FifthBelow)
+}
+
+func (w *world) rootFifthStartsAtCatalogTempo() error {
+	r, err := w.plannedRootFifth("Am")
+	if err != nil {
+		return err
+	}
+	return expectChord(r.StartTempoBpm == domain.RootFifthStartTempoBPM, "starts at %d BPM", r.StartTempoBpm)
 }
 
 func (w *world) atMostChordsAndChanges(chords, changes int) error {
@@ -456,51 +545,42 @@ func (w *world) singleChordBeforeChange(voicing string) error {
 	return expectChord(chord >= 0 && change >= 0 && chord < change, "single chord at %d, change at %d", chord, change)
 }
 
-// plannedMinute is the minute of the change a step named.
-func (w *world) plannedMinute() (generated.ChangeMinute, error) {
+// plannedTake is the take of the change a step named.
+func (w *world) plannedTake() (generated.ChangeTake, error) {
 	changes, err := w.planItemsOfKind(generated.PracticeItemKindChordChange)
 	if err != nil {
-		return generated.ChangeMinute{}, err
+		return generated.ChangeTake{}, err
 	}
 	for _, item := range changes {
 		if item.ItemKey == w.chordDrill().changeKey && item.ChordChange != nil {
-			return item.ChordChange.Minute, nil
+			return item.ChordChange.Take, nil
 		}
 	}
-	return generated.ChangeMinute{}, fmt.Errorf("the session has no chord change %s", w.chordDrill().changeKey)
+	return generated.ChangeTake{}, fmt.Errorf("the session has no chord change %s", w.chordDrill().changeKey)
 }
 
-func (w *world) minuteStartsAt(bpm int) error {
-	minute, err := w.plannedMinute()
+func (w *world) takeStartsAt(bpm int) error {
+	take, err := w.plannedTake()
 	if err != nil {
 		return err
 	}
-	return expectChord(minute.StartTempoBpm == bpm, "the minute starts at %d BPM, want %d", minute.StartTempoBpm, bpm)
+	return expectChord(take.StartTempoBpm == bpm, "the take starts at %d BPM, want %d", take.StartTempoBpm, bpm)
 }
 
-func (w *world) minuteStartsFresh(bpm int) error {
-	minute, err := w.plannedMinute()
+func (w *world) takeStartsFresh(bpm int) error {
+	take, err := w.plannedTake()
 	if err != nil {
 		return err
 	}
-	return expectChord(minute.StartTempoBpm == bpm && minute.BestCleanChangesPerMinute == nil && minute.LastChangesPerMinute == nil, "minute %+v", minute)
+	return expectChord(take.StartTempoBpm == bpm && take.BestCleanTempoBpm == nil, "take %+v", take)
 }
 
-func (w *world) minuteStartsWithLastCount(bpm, last int) error {
-	minute, err := w.plannedMinute()
+func (w *world) bestCleanTempoIs(bpm int) error {
+	take, err := w.plannedTake()
 	if err != nil {
 		return err
 	}
-	return expectChord(minute.StartTempoBpm == bpm && minute.LastChangesPerMinute != nil && *minute.LastChangesPerMinute == last, "minute %+v", minute)
-}
-
-func (w *world) bestAndLastCounts(best, last int) error {
-	minute, err := w.plannedMinute()
-	if err != nil {
-		return err
-	}
-	return expectChord(minute.BestCleanChangesPerMinute != nil && *minute.BestCleanChangesPerMinute == best &&
-		minute.LastChangesPerMinute != nil && *minute.LastChangesPerMinute == last, "minute %+v", minute)
+	return expectChord(take.BestCleanTempoBpm != nil && *take.BestCleanTempoBpm == bpm, "take %+v", take)
 }
 
 func (w *world) noChordItems() error {
