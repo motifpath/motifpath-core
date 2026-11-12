@@ -422,7 +422,8 @@ def render_shapes_sql(built):
 
 
 CHORD_DRILL_SETTINGS = ('max_voicings_per_session', 'max_changes_per_session', 'voicing_seconds', 'change_seconds',
-                        'change_first_tempo_bpm', 'change_tempo_step_bpm', 'change_min_tempo_bpm')
+                        'change_cycles', 'change_first_tempo_bpm', 'change_tempo_step_bpm', 'change_min_tempo_bpm',
+                        'root_fifth_tempo_bpm', 'bass_window_frets')
 
 
 @dataclass
@@ -446,6 +447,10 @@ class ChordChangePair:
         return stable_id(f'chord-change/{self.from_voicing}/{self.to_voicing}')
 
 
+def is_whole(value):
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
 @dataclass
 class ChordDrills:
     voicings: list
@@ -457,8 +462,10 @@ def build_chord_drills(raw, voicings):
     voicings by key, each with its diagram_id and chord symbol) and returns the chord drills
     and change pairs in catalog order. A chord drill names a voicing the chord catalog has,
     by the chord it is; a change pairs two different chord drills, listed once in either
-    order. The session settings are positive whole numbers, and the rating shares fall from
-    clean to almost."""
+    order. The session settings are positive whole numbers; the clean shares a take is
+    rated by rise, in percent, up to every change clean, and the rating shares are two of
+    them, falling from clean to almost; the bass window starts on a range of frets from the
+    nut up."""
     raw = raw or {}
     if raw.get('bass_layout') not in km.INSTRUMENTS:
         raise ValueError(f'chord drills name bass layout {raw.get("bass_layout")!r}, which is not a catalog instrument')
@@ -468,10 +475,18 @@ def build_chord_drills(raw, voicings):
             raise ValueError(f'chord drills need a positive whole number for {name}')
     if raw['change_first_tempo_bpm'] < raw['change_min_tempo_bpm']:
         raise ValueError('chord drills need change_first_tempo_bpm at or above change_min_tempo_bpm')
+    picked = raw.get('change_clean_shares')
+    if (not isinstance(picked, list) or not picked or not all(is_whole(v) for v in picked)
+            or picked != sorted(set(picked)) or picked[0] <= 0 or picked[-1] != 100):
+        raise ValueError('chord drills need change_clean_shares rising in percent from above 0 to 100')
     shares = raw.get('change_rating_from') or {}
     clean, almost = shares.get('clean'), shares.get('almost')
-    if not all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in (clean, almost)) or not 0 < almost < clean <= 1:
-        raise ValueError('chord drills need change_rating_from with 0 < almost < clean <= 1')
+    if clean not in picked or almost not in picked or not almost < clean:
+        raise ValueError('chord drills need change_rating_from with almost below clean, both among change_clean_shares')
+    window = raw.get('bass_window_start_frets') or {}
+    first, last = window.get('from'), window.get('to')
+    if not is_whole(first) or not is_whole(last) or not 0 <= first <= last:
+        raise ValueError('chord drills need bass_window_start_frets from fret 0 or above to a fret at or above it')
 
     drills = []
     for entry in raw.get('voicings') or []:
