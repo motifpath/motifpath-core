@@ -220,3 +220,20 @@ func TestTimedDrillTemplate(t *testing.T) {
 	assert.Equal(t, "diagram_shape:find_the_degree", TimedDrillTemplate(shape, PracticeResponse{Type: PracticeResponseFindTheDegree}, ref))
 	assert.Empty(t, TimedDrillTemplate(PracticeItemKey{Kind: PracticeItemKindPlayAlong}, PracticeResponse{Type: PracticeResponseSelfRating}, ref))
 }
+
+func TestPracticeSession_KeepsEachMomentOnce(t *testing.T) {
+	three := 3 * 60_000
+	five := 5 * 60_000
+	e := end("e-end", at(18, 10), false, 1)
+	e.VisibleMs = &five
+
+	s := tenMinuteSessionAt(at(18, 0)).Seen("a2", at(18, 5), nil).Seen("a1", at(18, 3), &three).
+		Seen("a1", at(18, 3), &three).Ended(e).Ended(e)
+
+	assert.Equal(t, []SessionMoment{
+		{EventID: "a2", At: at(18, 5)},
+		{EventID: "a1", At: at(18, 3), VisibleMs: &three},
+		{EventID: "e-end", At: at(18, 10), VisibleMs: &five},
+	}, s.Moments)
+	assert.Equal(t, at(18, 10), s.LastEventAt)
+}

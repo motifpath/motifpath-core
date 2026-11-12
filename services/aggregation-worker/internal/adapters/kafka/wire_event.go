@@ -31,6 +31,7 @@ type wireEvent struct {
 	PlannedItems  []plannedItemWire `json:"planned_items,omitempty"`
 	AnsweredCount int               `json:"answered_count,omitempty"`
 	LeftEarly     bool              `json:"left_early,omitempty"`
+	VisibleMs     *int              `json:"visible_ms,omitempty"`
 	FeltRatings   []feltRatingWire  `json:"felt_ratings,omitempty"`
 
 	MedianTapMs int `json:"median_tap_ms,omitempty"`

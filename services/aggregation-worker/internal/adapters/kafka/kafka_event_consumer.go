@@ -148,6 +148,7 @@ func toDomainEvent(w wireEvent) domain.TrackingEvent {
 		if w.Response != nil {
 			event.PracticeAnswer = toPracticeAnswer(w)
 		}
+		event.VisibleMs = w.VisibleMs
 	case domain.EventTypePracticeSessionStarted:
 		event.SessionStart = toSessionStart(w)
 	case domain.EventTypePracticeSessionEnded:
@@ -159,6 +160,7 @@ func toDomainEvent(w wireEvent) domain.TrackingEvent {
 			LeftEarly:         w.LeftEarly,
 			AnsweredCount:     w.AnsweredCount,
 			FeltRatings:       toFeltRatings(w.FeltRatings),
+			VisibleMs:         w.VisibleMs,
 		}
 	case domain.EventTypePracticeTapCheckCompleted:
 		event.TapCheck = &domain.TapCheck{

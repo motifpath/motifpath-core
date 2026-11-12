@@ -26,7 +26,17 @@ type practiceSessionDocument struct {
 	AnsweredEventIDs []string                    `bson:"answered_event_ids"`
 	LastEventAt      time.Time                   `bson:"last_event_at"`
 	End              *practiceSessionEndDocument `bson:"end"`
-	UpdatedAt        time.Time                   `bson:"updated_at"`
+	// Moments are the session's answers and end with how long it was visible
+	// before each, which core-domain counts minutes practised from; always
+	// written, so a session stored before they were kept is one without the field.
+	Moments   []sessionMomentDocument `bson:"moments"`
+	UpdatedAt time.Time               `bson:"updated_at"`
+}
+
+type sessionMomentDocument struct {
+	EventID   string    `bson:"event_id"`
+	At        time.Time `bson:"at"`
+	VisibleMs *int      `bson:"visible_ms,omitempty"`
 }
 
 type plannedItemDocument struct {
@@ -40,6 +50,7 @@ type practiceSessionEndDocument struct {
 	LeftEarly     bool                 `bson:"left_early"`
 	AnsweredCount int                  `bson:"answered_count"`
 	FeltRatings   []feltRatingDocument `bson:"felt_ratings"`
+	VisibleMs     *int                 `bson:"visible_ms,omitempty"`
 }
 
 type feltRatingDocument struct {
@@ -58,6 +69,10 @@ func toSessionDocument(s domain.PracticeSession) practiceSessionDocument {
 		FeltRatedTemplates: s.FeltRatedTemplates(),
 		AnsweredEventIDs:   s.AnsweredEventIDs,
 		LastEventAt:        s.LastEventAt,
+		Moments:            []sessionMomentDocument{},
+	}
+	for _, m := range s.Moments {
+		doc.Moments = append(doc.Moments, sessionMomentDocument{EventID: m.EventID, At: m.At, VisibleMs: m.VisibleMs})
 	}
 	for _, p := range s.PlannedItems {
 		doc.PlannedItems = append(doc.PlannedItems, plannedItemDocument{ItemKey: p.ItemKey, Reason: p.Reason})
@@ -68,6 +83,7 @@ func toSessionDocument(s domain.PracticeSession) practiceSessionDocument {
 			EndedAt:       s.End.OccurredAt,
 			LeftEarly:     s.End.LeftEarly,
 			AnsweredCount: s.End.AnsweredCount,
+			VisibleMs:     s.End.VisibleMs,
 		}
 		for _, r := range s.End.FeltRatings {
 			doc.End.FeltRatings = append(doc.End.FeltRatings, feltRatingDocument{DrillTemplateKey: r.DrillTemplateKey, Felt: string(r.Felt)})
@@ -87,6 +103,9 @@ func (d practiceSessionDocument) toDomain() domain.PracticeSession {
 		AnsweredEventIDs:   d.AnsweredEventIDs,
 		LastEventAt:        d.LastEventAt.UTC(),
 	}
+	for _, m := range d.Moments {
+		s.Moments = append(s.Moments, domain.SessionMoment{EventID: m.EventID, At: m.At.UTC(), VisibleMs: m.VisibleMs})
+	}
 	for _, p := range d.PlannedItems {
 		s.PlannedItems = append(s.PlannedItems, domain.PlannedPracticeItem{ItemKey: p.ItemKey, Reason: p.Reason})
 	}
@@ -98,6 +117,7 @@ func (d practiceSessionDocument) toDomain() domain.PracticeSession {
 			OccurredAt:        d.End.EndedAt.UTC(),
 			LeftEarly:         d.End.LeftEarly,
 			AnsweredCount:     d.End.AnsweredCount,
+			VisibleMs:         d.End.VisibleMs,
 		}
 		for _, r := range d.End.FeltRatings {
 			s.End.FeltRatings = append(s.End.FeltRatings, domain.FeltRating{DrillTemplateKey: r.DrillTemplateKey, Felt: domain.Felt(r.Felt)})

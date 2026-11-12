@@ -18,6 +18,7 @@ const (
 	studentA  = "a11ce000-0000-4000-8000-000000000001"
 	studentB  = "b0b00000-0000-4000-8000-000000000002"
 	studentC  = "c0c00000-0000-4000-8000-000000000003"
+	studentD  = "d0d00000-0000-4000-8000-000000000004"
 	diagram1  = "00000000-0000-4000-8000-0000000000f1"
 	diagram2  = "00000000-0000-4000-8000-0000000000f2"
 	shape1    = "928330d5-903e-572c-9d41-5fde99d51ed1"
@@ -402,6 +403,12 @@ func TestMongoPracticeEvidenceRepository(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, inserted)
 	}
+
+	t.Run("tells when each answer that left evidence was given", func(t *testing.T) {
+		got, err := repo.AnsweredAt(ctx, []string{later.EvidenceID, earlier.EvidenceID, "e0000000-0000-4000-8000-0000000000ff"})
+		require.NoError(t, err)
+		assert.Equal(t, map[string]time.Time{later.EvidenceID: later.OccurredAt, earlier.EvidenceID: earlier.OccurredAt}, got)
+	})
 
 	t.Run("a second insert of the same evidence is reported, not stored", func(t *testing.T) {
 		inserted, err := repo.Insert(ctx, later)

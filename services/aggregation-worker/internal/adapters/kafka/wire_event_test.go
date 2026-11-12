@@ -212,7 +212,7 @@ func TestToDomainEvent_PracticeSessionStarted(t *testing.T) {
 }
 
 func TestToDomainEvent_PracticeSessionEnded(t *testing.T) {
-	wire, err := decodeWireEvent([]byte(`{"event_id":"11111111-1111-4111-8111-111111111111","event_type":"practice.session_ended","student_id":"s","occurred_at":"2026-10-05T18:11:00Z","practice_session_id":"p","answered_count":6,"left_early":true,"felt_ratings":[]}`))
+	wire, err := decodeWireEvent([]byte(`{"event_id":"11111111-1111-4111-8111-111111111111","event_type":"practice.session_ended","student_id":"s","occurred_at":"2026-10-05T18:11:00Z","practice_session_id":"p","answered_count":6,"left_early":true,"felt_ratings":[],"visible_ms":42000}`))
 	require.NoError(t, err)
 
 	event := toDomainEvent(wire)
@@ -224,8 +224,16 @@ func TestToDomainEvent_PracticeSessionEnded(t *testing.T) {
 		OccurredAt:        time.Date(2026, 10, 5, 18, 11, 0, 0, time.UTC),
 		LeftEarly:         true,
 		AnsweredCount:     6,
+		VisibleMs:         intPtr(42000),
 	}, event.SessionEnd)
 	assert.Nil(t, event.SessionStart)
+}
+
+func TestToDomainEvent_AnAnswerCarriesTheSessionsVisibleTime(t *testing.T) {
+	wire, err := decodeWireEvent([]byte(`{"event_type":"practice.item_answered","student_id":"s","practice_session_id":"p","item_key":"exercise:e","response":{"response_type":"option_choice","option_ids":["a"],"latency_ms":9500},"visible_ms":95000}`))
+	require.NoError(t, err)
+
+	assert.Equal(t, intPtr(95000), toDomainEvent(wire).VisibleMs)
 }
 
 func TestToDomainEvent_AChallengeAnswerCarriesItsTriggerContextAndAudio(t *testing.T) {
