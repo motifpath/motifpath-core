@@ -41,6 +41,7 @@ type wireEvent struct {
 	FeltRatings       *[]feltRatingWire     `json:"felt_ratings,omitempty"`
 	MedianTapMs       *int                  `json:"median_tap_ms,omitempty"`
 	TapCount          *int                  `json:"tap_count,omitempty"`
+	VisibleMs         *int                  `json:"visible_ms,omitempty"`
 
 	// song_chart.* fields.
 	SongChartContext  *songChartContextWire `json:"song_chart_context,omitempty"`
@@ -75,6 +76,7 @@ type practiceResponseWire struct {
 	TempoBPM         *int     `json:"tempo_bpm,omitempty"`
 	NoteValue        *string  `json:"note_value,omitempty"`
 	ChangesPerMinute *int     `json:"changes_per_minute,omitempty"`
+	CleanSharePct    *int     `json:"clean_share_percent,omitempty"`
 	Choices          []string `json:"choices,omitempty"`
 	Reason           string   `json:"reason,omitempty"`
 	Way              string   `json:"way,omitempty"`
@@ -169,6 +171,7 @@ func toWireEvent(event domain.TrackingEvent) wireEvent {
 		w.ItemKey = e.ItemKey
 		w.Response = toPracticeResponseWire(e.Response)
 		w.TapMs = e.TapMs
+		w.VisibleMs = e.VisibleMs
 	case domain.PracticeSessionEndedEvent:
 		w.PracticeSessionID = e.PracticeSessionID
 		w.AnsweredCount = &e.AnsweredCount
@@ -178,6 +181,7 @@ func toWireEvent(event domain.TrackingEvent) wireEvent {
 			felt = append(felt, feltRatingWire{DrillTemplateKey: r.DrillTemplateKey, Felt: string(r.Felt)})
 		}
 		w.FeltRatings = &felt
+		w.VisibleMs = e.VisibleMs
 	case domain.PracticeTapCheckCompletedEvent:
 		w.MedianTapMs = &e.MedianTapMs
 		w.TapCount = &e.TapCount
@@ -203,6 +207,7 @@ func toPracticeResponseWire(r domain.PracticeResponse) *practiceResponseWire {
 		TempoBPM:         r.TempoBPM,
 		NoteValue:        noteValueString(r.NoteValue),
 		ChangesPerMinute: r.ChangesPerMinute,
+		CleanSharePct:    r.CleanSharePercent,
 		Choices:          r.Choices,
 		Reason:           string(r.Reason),
 		Way:              r.Way,
