@@ -142,11 +142,12 @@ branches** so other branches cannot read its secrets:
 | `staging` | `stage`, `main` | send only staging's deploy document; `ecr:DescribeImages` | variable `VM_INSTANCE_ID` |
 | `production` | `main` | send only production's deploy document; `ecr:DescribeImages`; add the `production-` and release tags (`ecr:BatchGetImage`, `ecr:PutImage`) | variable `VM_INSTANCE_ID`; no required reviewers: merging into `main` is the release decision |
 
-A release runs on its tag, not on a branch, so `production`'s rule is
-**Selected branches and tags** with `main` and the tag pattern `v*`. Protect
-the tags with a ruleset on `refs/tags/v*` that blocks updating and deleting
-them and lets only repository admins create them: a moved tag would make a
-release name point at different code, and creating one deploys production.
+A release is deployed from `main` (the tag only names it), so `production`'s
+rule is the branch `main` alone. Protect the tags with a ruleset on
+`refs/tags/v*` that blocks updating and deleting them: a moved tag would make a
+release name point at different code. Creating tags stays open, because the
+release workflow creates them with the built-in token, which a repository
+ruleset cannot exempt; a tag created by hand deploys nothing.
 
 A build refuses to push over an existing tag, so an image published early
 with a leaked push key fails the build instead of being deployed.
