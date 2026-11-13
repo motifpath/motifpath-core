@@ -1641,8 +1641,17 @@ func sameString(cell, last *domain.PlannedFretboardCell) bool {
 }
 
 // readyFor reports whether the student may meet item: true unless it waits on
-// a node the student hasn't reached the level of yet.
+// a node, or on items, the student hasn't reached the level of yet.
 func readyFor(knowledge KnowledgeMap, item domain.DrillItem) bool {
+	if waiting, ok := item.(domain.ItemWaitingItem); ok {
+		keys, level := waiting.WaitsOnItems()
+		for _, key := range keys {
+			state, found := knowledge.States[key]
+			if !found || state.Level.Rank() < level.Rank() {
+				return false
+			}
+		}
+	}
 	waiting, ok := item.(domain.WaitingItem)
 	if !ok {
 		return true

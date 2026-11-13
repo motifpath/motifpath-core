@@ -194,6 +194,26 @@ func TestHeardChordQualityItem_AsADrillItem(t *testing.T) {
 		}
 	})
 
+	t.Run("offers a diminished or augmented chord among all five qualities, from its first time", func(t *testing.T) {
+		for _, quality := range []string{"diminished", "augmented"} {
+			q, _ := plannedChoice(t, domain.HeardChordQualityItem{Quality: quality}, "chord_quality_by_ear", domain.DrillPlanning{Pick: picks(0), Voicing: boxOf, Level: domain.KnowledgeLevelNew})
+			assert.Equal(t, []string{"major", "minor", "dominant7", "diminished", "augmented"}, optionValues(q), quality)
+		}
+	})
+
+	t.Run("a diminished or augmented chord waits until the student is fluent on the first three", func(t *testing.T) {
+		first := []string{"heard_chord_quality:major", "heard_chord_quality:minor", "heard_chord_quality:dominant7"}
+		for _, quality := range []string{"diminished", "augmented"} {
+			keys, level := domain.HeardChordQualityItem{Quality: quality}.WaitsOnItems()
+			assert.Equal(t, first, keys, quality)
+			assert.Equal(t, domain.KnowledgeLevelFluent, level, quality)
+		}
+		for _, quality := range []string{"major", "minor", "dominant7"} {
+			keys, _ := domain.HeardChordQualityItem{Quality: quality}.WaitsOnItems()
+			assert.Empty(t, keys, quality)
+		}
+	})
+
 	t.Run("sounds each quality's chord", func(t *testing.T) {
 		for quality, chord := range map[string]string{"major": "C", "minor": "Cm", "dominant7": "C7", "diminished": "Cdim", "augmented": "Caug"} {
 			q, _ := plannedChoice(t, domain.HeardChordQualityItem{Quality: quality}, "chord_quality_by_ear", domain.DrillPlanning{Pick: picks(0), Voicing: boxOf, Level: domain.KnowledgeLevelFluent})

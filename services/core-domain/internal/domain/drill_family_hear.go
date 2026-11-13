@@ -200,8 +200,9 @@ func barNames(p Progression) LocalizedText {
 }
 
 // HeardChordQualities are the qualities a heard chord quality asks, in the
-// order its options show them; heardQualityOptions of them until the student
-// is fluent on the item.
+// order its options show them. The first heardQualityOptions of them are asked
+// first, among themselves until the student is fluent on the item; the others
+// wait until the student is fluent on those, and are always asked among all.
 var HeardChordQualities = []string{"major", "minor", "dominant7", "diminished", "augmented"}
 
 const heardQualityOptions = 3
@@ -239,16 +240,30 @@ func (HeardChordQualityItem) Seconds() int { return HearItemSeconds }
 // SuitsSession holds in the head only.
 func (HeardChordQualityItem) SuitsSession(inHand bool) bool { return !inHand }
 
+// WaitsOnItems holds a quality past the first heardQualityOptions back until
+// the student is fluent on each of those: before then, it could only be asked
+// among options that leave it out.
+func (i HeardChordQualityItem) WaitsOnItems() ([]string, KnowledgeLevel) {
+	if slices.Index(HeardChordQualities, i.Quality) < heardQualityOptions {
+		return nil, ""
+	}
+	keys := make([]string, heardQualityOptions)
+	for n, quality := range HeardChordQualities[:heardQualityOptions] {
+		keys[n] = HeardChordQualityItem{Quality: quality}.ItemKey()
+	}
+	return keys, KnowledgeLevelFluent
+}
+
 // Plan picks the root and plays the chord alone for one bar, nothing setting
-// a key; it offers the first qualities, or every one once the student is
-// fluent on the item, always in the same order, so where the answer sits
-// says nothing.
+// a key. It offers every quality, always in the same order so where the answer
+// sits says nothing; one of the first heardQualityOptions qualities is offered
+// among those only until the student is fluent on it.
 func (i HeardChordQualityItem) Plan(way string, planning DrillPlanning) PlannedDrill {
 	root := MusicKeys[planning.Pick(len(MusicKeys))]
 	q := &PlannedGeneratedChoice{AskedWay: way, Answer: i.Quality, itemKind: PracticeItemKindHeardChordQuality}
 	q.play([]PlaybackBar{{Chord: root + heardQualityChord[i.Quality].CanonicalSuffix()}}, planning)
 	qualities := HeardChordQualities
-	if !fluent(planning.Level) {
+	if !fluent(planning.Level) && slices.Index(qualities, i.Quality) < heardQualityOptions {
 		qualities = qualities[:heardQualityOptions]
 	}
 	q.Options = valueOptions(qualities)

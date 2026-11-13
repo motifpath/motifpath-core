@@ -78,6 +78,39 @@ func TestPracticeSessionService_ComposePlanHearDrills(t *testing.T) {
 		}
 	})
 
+	t.Run("a diminished or augmented chord is asked only once the student is fluent on major, minor and dominant 7", func(t *testing.T) {
+		harder := []string{domain.HeardChordQualityItem{Quality: "diminished"}.ItemKey(), domain.HeardChordQualityItem{Quality: "augmented"}.ItemKey()}
+		first := []string{
+			domain.HeardChordQualityItem{Quality: "major"}.ItemKey(),
+			domain.HeardChordQualityItem{Quality: "minor"}.ItemKey(),
+			domain.HeardChordQualityItem{Quality: "dominant7"}.ItemKey(),
+		}
+		asked := func(plan domain.PracticeSessionPlan) []string {
+			var keys []string
+			for _, item := range itemsOfKind(plan, domain.PracticeItemKindHeardChordQuality) {
+				if slices.Contains(harder, item.ItemKey) {
+					keys = append(keys, item.ItemKey)
+				}
+			}
+			return keys
+		}
+
+		f := hearFixture(t, practiceGuitar)
+		f.weak(first[:2]...)
+		f.known(5, first[2])
+		for range 10 {
+			assert.Empty(t, asked(f.composeInTheHead(t, 30)), "two of the first three are below fluent")
+		}
+
+		f = hearFixture(t, practiceGuitar)
+		f.known(5, first...)
+		var seen []string
+		for range 10 {
+			seen = append(seen, asked(f.composeInTheHead(t, 30))...)
+		}
+		assert.NotEmpty(t, seen, "fluent on all three")
+	})
+
 	t.Run("a session with the instrument in hand never asks a heard chord quality", func(t *testing.T) {
 		f := hearFixture(t, practiceGuitar)
 		instrumentID := practiceGuitar
