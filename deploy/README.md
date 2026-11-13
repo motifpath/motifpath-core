@@ -35,26 +35,22 @@ feat/…  →  dev  →  stage  →  main
    `motifpath/<service>:<commit-sha>`. The workflow then calls `Deploy` for
    **staging** with that SHA.
 2. **Check staging** at `https://staging.motifpath.com`.
-3. **Merge `stage` into `main`** with a merge commit.
-4. **Release:** tag that merge commit on `main` with the next version and push
-   the tag. Anything without a tag is an intermediate build: a release
-   candidate on `stage`, or a staging-only deploy.
-
-   ```bash
-   git fetch origin main && git tag -a v0.2.0 origin/main -m "v0.2.0" && git push origin v0.2.0
-   ```
-
-   The tag starts `Deploy` for **production**, which waits for the
-   `production` environment's approval if it has reviewers. The merge commit
-   has no images, so it deploys the newest commit in the tag that was built
-   in all three repositories: the `stage` commit staging ran. The images get
+3. **Open the `stage → main` PR** and give it exactly one release label:
+   `release:major`, `release:minor` or `release:patch`. The required
+   `Release label` check fails until it has one, and its summary names the
+   version the merge will release.
+4. **Merge it** with a merge commit. That is the release: `Build images` tags
+   the merge commit with the next version and calls `Deploy` for
+   **production**, with no approval. The merge commit has no images, so it
+   deploys the newest commit in the tag that was built in all three
+   repositories: the `stage` commit staging ran. The images get
    `production-<sha>` and the release tag in ECR (`production-` images are
    kept out of the expiry of older release candidates). Once production runs
-   it, a GitHub Release is published with notes since the previous tag. A tag
-   that is not on `main` is refused, here and on the VM.
-5. **Hotfix:** merging a `hotfix/…` PR into `main` builds that merge commit.
-   Once `Build images` has finished, tag it with the next patch version
-   (staging first if it changes the schema).
+   it, a GitHub Release is published with notes since the previous tag.
+   Nobody pushes `v*` tags by hand.
+5. **Hotfix:** a `hotfix/…` PR into `main` needs a release label too (usually
+   `release:patch`). Merging it builds the merge commit, then tags and deploys
+   it the same way (staging first if it changes the schema).
 6. **Rollback or redeploy:** run `Deploy` with `environment: production` and
    `release` set to an earlier tag. The VM records the last two SHAs in
    `/etc/motifpath/<environment>.deployed`. In an emergency `release` also
@@ -144,7 +140,7 @@ branches** so other branches cannot read its secrets:
 |---|---|---|---|
 | `images` | `stage`, `main` | push to the three `motifpath/*` repositories | — |
 | `staging` | `stage`, `main` | send only staging's deploy document; `ecr:DescribeImages` | variable `VM_INSTANCE_ID` |
-| `production` | `main`, and **tags** `v*` | send only production's deploy document; `ecr:DescribeImages`; add the `production-` and release tags (`ecr:BatchGetImage`, `ecr:PutImage`) | variable `VM_INSTANCE_ID`; required reviewers recommended |
+| `production` | `main` | send only production's deploy document; `ecr:DescribeImages`; add the `production-` and release tags (`ecr:BatchGetImage`, `ecr:PutImage`) | variable `VM_INSTANCE_ID`; no required reviewers: merging into `main` is the release decision |
 
 A release runs on its tag, not on a branch, so `production`'s rule is
 **Selected branches and tags** with `main` and the tag pattern `v*`. Protect

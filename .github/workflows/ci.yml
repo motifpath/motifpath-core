@@ -116,6 +116,18 @@ jobs:
       - name: Fail if a migration on main changed
         run: scripts/applied-migrations.sh origin/main
 
+  release-script:
+    name: Release version script
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Test the script
+        run: prove scripts/next-release.t
+
+      - name: ShellCheck the script
+        run: shellcheck scripts/next-release.sh
+
   test-catalogs:
     name: Catalog generator tests (Python)
     runs-on: ubuntu-latest
@@ -323,7 +335,7 @@ jobs:
   all-checks:
     name: All checks passed
     runs-on: ubuntu-latest
-    needs: [lint, test, test-bdd, test-catalogs, codegen, test-integration, changes, image-smoke, deploy-config]
+    needs: [lint, test, test-bdd, release-script, test-catalogs, codegen, test-integration, changes, image-smoke, deploy-config]
     if: always()
     steps:
       - name: Verify required jobs succeeded
@@ -334,6 +346,7 @@ jobs:
           [[ "${{ needs.lint.result }}"             == "success"             ]] || { echo "lint failed";             exit 1; }
           [[ "${{ needs.test.result }}"             == "success"             ]] || { echo "test failed";             exit 1; }
           [[ "${{ needs.test-bdd.result }}"         == "success"             ]] || { echo "test-bdd failed";         exit 1; }
+          [[ "${{ needs.release-script.result }}"   == "success"             ]] || { echo "release-script failed";   exit 1; }
           [[ "${{ needs.test-catalogs.result }}"    == "success"             ]] || { echo "test-catalogs failed";    exit 1; }
           [[ "${{ needs.codegen.result }}"          == "success"             ]] || { echo "codegen failed";          exit 1; }
           [[ "${{ needs.test-integration.result }}" == "success"             ]] || { echo "test-integration failed"; exit 1; }

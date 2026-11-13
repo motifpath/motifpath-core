@@ -6,19 +6,17 @@ name: Deploy
 #
 # - Staging deploys automatically after build-images.yml builds a `stage`
 #   commit.
-# - Production deploys a release: pushing a `vX.Y.Z` tag on `main` starts it
-#   (and waits for the `production` environment's approval, if it has
-#   reviewers). The tag usually sits on main's stage → main merge commit, which
-#   has no images, so the images are those of the newest built commit the tag
-#   contains: the `stage` commit staging ran, or a hotfix's own build. The
-#   images get the release as an extra ECR tag, and a GitHub Release is
-#   published with notes since the previous one.
+# - Production deploys a release: merging a PR into `main` tags the next
+#   `vX.Y.Z` and calls this workflow (see build-images.yml). The tag usually
+#   sits on main's stage → main merge commit, which has no images, so the
+#   images are those of the newest built commit the tag contains: the `stage`
+#   commit staging ran, or a hotfix's own build. The images get the release as
+#   an extra ECR tag, and a GitHub Release is published with notes since the
+#   previous one.
 # - Run by hand, `release` takes a tag (redeploy or roll back to it) or, in an
 #   emergency, a full commit SHA. Blank deploys staging's newest build;
 #   production always needs one.
 on:
-  push:
-    tags: ['v*']
   workflow_dispatch:
     inputs:
       environment:
@@ -49,11 +47,11 @@ concurrency:
 env:
   AWS_REGION: us-east-2
   DEPLOY_ENV: ${{ inputs.environment || 'production' }}
-  RELEASE: ${{ inputs.release || (github.ref_type == 'tag' && github.ref_name) || '' }}
+  RELEASE: ${{ inputs.release || '' }}
 
 jobs:
   deploy:
-    name: Deploy ${{ inputs.release || (github.ref_type == 'tag' && github.ref_name) || 'the newest build' }} to ${{ inputs.environment || 'production' }}
+    name: Deploy ${{ inputs.release || 'the newest build' }} to ${{ inputs.environment || 'production' }}
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment || 'production' }}
     outputs:
@@ -78,7 +76,7 @@ jobs:
           fetch-depth: 0
 
       - run: |
-          git fetch --quiet --tags origin
+          git fetch --quiet --tags --force origin
           git fetch --quiet origin main stage 2>/dev/null || git fetch --quiet origin main
 
       - uses: aws-actions/configure-aws-credentials@v4
@@ -111,7 +109,7 @@ jobs:
             commit=$(git rev-parse --verify --quiet "refs/tags/$tag^{commit}") \
               || { echo "::error::no tag $tag in this repository"; exit 1; }
             if [[ "$DEPLOY_ENV" == production ]] && ! git merge-base --is-ancestor "$commit" origin/main; then
-              echo "::error::$tag is not on main; tag the release on main after the stage → main merge"; exit 1
+              echo "::error::$tag is not on main; a release is tagged on main by the merge that makes it"; exit 1
             fi
             IMAGE_TAG=$(newest_built "$commit")
             [[ -n "$IMAGE_TAG" ]] || { echo "::error::no commit in $tag has its three images in ECR"; exit 1; }
