@@ -59,6 +59,16 @@ type WaitingItem interface {
 	WaitsOn() (nodeKey string, level KnowledgeLevel, waits bool)
 }
 
+// ItemWaitingItem is a drill item planned only once the student reaches a
+// level on other items, such as a diminished chord heard by ear waiting until
+// the student is fluent on the major, minor and dominant seventh ones.
+// WaitsOnItems names those items' keys and the level, none when it waits on
+// nothing; an item the student has no state on hasn't reached it.
+type ItemWaitingItem interface {
+	DrillItem
+	WaitsOnItems() (itemKeys []string, level KnowledgeLevel)
+}
+
 // DrillPlanning is what planning a drill item may draw on.
 type DrillPlanning struct {
 	// Pick picks one of n equally fitting choices.

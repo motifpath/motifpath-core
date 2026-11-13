@@ -43,6 +43,7 @@ type loggedEventJSON struct {
 	FeltRatings       *[]feltRatingJSON     `json:"felt_ratings,omitempty"`
 	MedianTapMs       *int                  `json:"median_tap_ms,omitempty"`
 	TapCount          *int                  `json:"tap_count,omitempty"`
+	VisibleMs         *int                  `json:"visible_ms,omitempty"`
 
 	// song_chart.* fields.
 	SongChartContext  *songChartContextJSON `json:"song_chart_context,omitempty"`
@@ -77,6 +78,7 @@ type practiceResponseJSON struct {
 	TempoBPM         *int     `json:"tempo_bpm,omitempty"`
 	NoteValue        *string  `json:"note_value,omitempty"`
 	ChangesPerMinute *int     `json:"changes_per_minute,omitempty"`
+	CleanSharePct    *int     `json:"clean_share_percent,omitempty"`
 	Choices          []string `json:"choices,omitempty"`
 	Reason           string   `json:"reason,omitempty"`
 	Way              string   `json:"way,omitempty"`
@@ -171,6 +173,7 @@ func toLoggedEventJSON(event domain.TrackingEvent) loggedEventJSON {
 		w.ItemKey = e.ItemKey
 		w.Response = toPracticeResponseJSON(e.Response)
 		w.TapMs = e.TapMs
+		w.VisibleMs = e.VisibleMs
 	case domain.PracticeSessionEndedEvent:
 		w.PracticeSessionID = e.PracticeSessionID
 		w.AnsweredCount = &e.AnsweredCount
@@ -180,6 +183,7 @@ func toLoggedEventJSON(event domain.TrackingEvent) loggedEventJSON {
 			felt = append(felt, feltRatingJSON{DrillTemplateKey: r.DrillTemplateKey, Felt: string(r.Felt)})
 		}
 		w.FeltRatings = &felt
+		w.VisibleMs = e.VisibleMs
 	case domain.PracticeTapCheckCompletedEvent:
 		w.MedianTapMs = &e.MedianTapMs
 		w.TapCount = &e.TapCount
@@ -205,6 +209,7 @@ func toPracticeResponseJSON(r domain.PracticeResponse) *practiceResponseJSON {
 		TempoBPM:         r.TempoBPM,
 		NoteValue:        noteValueString(r.NoteValue),
 		ChangesPerMinute: r.ChangesPerMinute,
+		CleanSharePct:    r.CleanSharePercent,
 		Choices:          r.Choices,
 		Reason:           string(r.Reason),
 		Way:              r.Way,

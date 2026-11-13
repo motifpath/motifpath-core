@@ -1,6 +1,7 @@
 package application_test
 
 import (
+	"context"
 	"slices"
 	"testing"
 
@@ -33,6 +34,7 @@ func hearFixture(t *testing.T, plays ...string) *practiceFixture {
 		{Key: cadence, ItemKind: domain.PracticeItemKindHeardChord, Rung: domain.PracticeRungHear, SecondWay: &seen, ComesBack: true, Timed: true},
 		{Key: seen, ItemKind: domain.PracticeItemKindHeardChord, Rung: domain.PracticeRungHear, SecondWay: &cadence, Timed: true},
 		{Key: "heard_progression:progression_by_number", ItemKind: domain.PracticeItemKindHeardProgression, Rung: domain.PracticeRungHear, ComesBack: true, Timed: true},
+		{Key: "heard_chord_quality:chord_quality_by_ear", ItemKind: domain.PracticeItemKindHeardChordQuality, Rung: domain.PracticeRungHear, ComesBack: true, Timed: true},
 	}
 	var items []domain.ClassifiedItem
 	for _, numeral := range domain.HarmonyItemNumerals {
@@ -40,6 +42,9 @@ func hearFixture(t *testing.T, plays ...string) *practiceFixture {
 	}
 	for _, p := range hearProgressions {
 		items = append(items, domain.ClassifiedItem{ItemKey: domain.HeardProgressionItemKey(p.Key), NodeIDs: []string{"skill-ear"}})
+	}
+	for _, quality := range domain.HeardChordQualities {
+		items = append(items, domain.ClassifiedItem{ItemKey: domain.HeardChordQualityItem{Quality: quality}.ItemKey(), NodeIDs: []string{"skill-ear"}})
 	}
 	for _, id := range []string{practiceGuitar, practiceBass} {
 		f.cells[id] = append(f.cells[id], items...)
@@ -56,6 +61,67 @@ func heardItems(plan domain.PracticeSessionPlan) []domain.PracticeSessionItem {
 }
 
 func TestPracticeSessionService_ComposePlanHearDrills(t *testing.T) {
+	t.Run("a session in the head asks heard chord qualities, one chord alone in no key", func(t *testing.T) {
+		f := hearFixture(t, practiceGuitar)
+
+		plan := f.composeInTheHead(t, 30)
+
+		items := itemsOfKind(plan, domain.PracticeItemKindHeardChordQuality)
+		require.NotEmpty(t, items)
+		for _, item := range items {
+			require.NotNil(t, item.GeneratedChoice, item.ItemKey)
+			assert.Equal(t, "heard_chord_quality:chord_quality_by_ear", item.DrillTemplateKey())
+			assert.Equal(t, domain.PracticeRungHear, item.Rung)
+			assert.Empty(t, item.GeneratedChoice.MusicKey)
+			require.NotNil(t, item.GeneratedChoice.Playback)
+			assert.Len(t, item.GeneratedChoice.Playback.Bars, 1)
+		}
+	})
+
+	t.Run("a diminished or augmented chord is asked only once the student is fluent on major, minor and dominant 7", func(t *testing.T) {
+		harder := []string{domain.HeardChordQualityItem{Quality: "diminished"}.ItemKey(), domain.HeardChordQualityItem{Quality: "augmented"}.ItemKey()}
+		first := []string{
+			domain.HeardChordQualityItem{Quality: "major"}.ItemKey(),
+			domain.HeardChordQualityItem{Quality: "minor"}.ItemKey(),
+			domain.HeardChordQualityItem{Quality: "dominant7"}.ItemKey(),
+		}
+		asked := func(plan domain.PracticeSessionPlan) []string {
+			var keys []string
+			for _, item := range itemsOfKind(plan, domain.PracticeItemKindHeardChordQuality) {
+				if slices.Contains(harder, item.ItemKey) {
+					keys = append(keys, item.ItemKey)
+				}
+			}
+			return keys
+		}
+
+		f := hearFixture(t, practiceGuitar)
+		f.weak(first[:2]...)
+		f.known(5, first[2])
+		for range 10 {
+			assert.Empty(t, asked(f.composeInTheHead(t, 30)), "two of the first three are below fluent")
+		}
+
+		f = hearFixture(t, practiceGuitar)
+		f.known(5, first...)
+		var seen []string
+		for range 10 {
+			seen = append(seen, asked(f.composeInTheHead(t, 30))...)
+		}
+		assert.NotEmpty(t, seen, "fluent on all three")
+	})
+
+	t.Run("a session with the instrument in hand never asks a heard chord quality", func(t *testing.T) {
+		f := hearFixture(t, practiceGuitar)
+		instrumentID := practiceGuitar
+
+		// The ear drills are this student's only items, so nothing is left
+		// to play.
+		_, err := f.svc.ComposePlan(context.Background(), studentCaller(), &instrumentID, nil, 30)
+
+		assert.ErrorIs(t, err, domain.ErrNotFound)
+	})
+
 	t.Run("a session in the head asks new heard chords by ear, with a playback, on the hear rung", func(t *testing.T) {
 		f := hearFixture(t, practiceGuitar)
 

@@ -69,18 +69,47 @@ func Previous7DaysStart(now time.Time, loc *time.Location) time.Time {
 }
 
 // MinutesPractised is the whole minutes practised in the sessions among
-// spans that started at or after from and before to: each counts from its
-// start to its latest event, and the total rounds down. A latest event
-// before the start, by a clock out of step, counts nothing.
+// spans that started at or after from and before to, each counting the time
+// it was practised (PracticeSessionSpan.Practised); the total rounds down.
 func MinutesPractised(spans []PracticeSessionSpan, from, to time.Time) int {
 	var total time.Duration
 	for _, s := range spans {
 		if s.StartedAt.Before(from) || !s.StartedAt.Before(to) {
 			continue
 		}
-		total += max(s.LastEventAt.Sub(s.StartedAt), 0)
+		total += s.Practised()
 	}
 	return int(total / time.Minute)
+}
+
+// maxUnmeasuredGap is the most an event that doesn't say how long its session
+// was visible counts for: the gap since the event before it, capped here, so a
+// session left open in the background never counts the time it sat there.
+const maxUnmeasuredGap = 2 * time.Minute
+
+// Practised is how long the session was visible to the student: each moment's
+// visible time, or for a moment that didn't measure it the gap since the moment
+// before it (or the start), never more than maxUnmeasuredGap; and never more,
+// in all, than its start to its latest event. A session whose moments weren't
+// kept yet counts its whole span. A latest event before the start, by a clock
+// out of step, counts nothing.
+func (s PracticeSessionSpan) Practised() time.Duration {
+	span := max(s.LastEventAt.Sub(s.StartedAt), 0)
+	if !s.MomentsKept {
+		return span
+	}
+	moments := slices.SortedFunc(slices.Values(s.Moments), func(a, b SessionMoment) int { return a.At.Compare(b.At) })
+	var total time.Duration
+	previous := s.StartedAt
+	for _, m := range moments {
+		if m.VisibleMs != nil {
+			total += time.Duration(*m.VisibleMs) * time.Millisecond
+		} else {
+			total += min(max(m.At.Sub(previous), 0), maxUnmeasuredGap)
+		}
+		previous = m.At
+	}
+	return min(total, span)
 }
 
 // DayStreaks counts runs of consecutive calendar days in loc on which at
@@ -144,6 +173,18 @@ type FinishedPracticeSession struct {
 type PracticeSessionSpan struct {
 	StartedAt   time.Time
 	LastEventAt time.Time
+	// Moments are the session's answers and end, in the order they arrived;
+	// MomentsKept is false for a session stored before they were kept.
+	Moments     []SessionMoment
+	MomentsKept bool
+}
+
+// SessionMoment is one answer or end of a session: when it happened, and how
+// long the session was visible since the event before it; VisibleMs is nil when
+// the student's app didn't measure it.
+type SessionMoment struct {
+	At        time.Time
+	VisibleMs *int
 }
 
 // PracticeItemSnapshot is a student's state on one practice item as it

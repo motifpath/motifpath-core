@@ -5,12 +5,14 @@ import (
 	"strings"
 )
 
-// The ear drills: a numeral heard after the key is set, and a progression
-// heard in a key. They are generated from the major keys and the
-// progression catalog, and recognised in the head on any instrument.
+// The ear drills: a numeral heard after the key is set, a progression heard
+// in a key, and a chord's quality heard alone. They are generated from the
+// major keys, the progression catalog and the qualities, and recognised in
+// the head on any instrument.
 const (
-	PracticeItemKindHeardChord       PracticeItemKind = "heard_chord"
-	PracticeItemKindHeardProgression PracticeItemKind = "heard_progression"
+	PracticeItemKindHeardChord        PracticeItemKind = "heard_chord"
+	PracticeItemKindHeardProgression  PracticeItemKind = "heard_progression"
+	PracticeItemKindHeardChordQuality PracticeItemKind = "heard_chord_quality"
 )
 
 // HeardProgressionBars is how many bars a heard progression has: a longer
@@ -168,7 +170,8 @@ func (i HeardProgressionItem) ConfusableWith() []string {
 }
 
 // Plan picks the key, plays the progression's bars with no numeral, and
-// offers it among its confusables.
+// offers it among its confusables, each named by every bar's numeral so the
+// numerals shown always match the chords heard.
 func (i HeardProgressionItem) Plan(way string, planning DrillPlanning) PlannedDrill {
 	keys := MusicKeysOf(ProgressionMode(i.Progression.Mode))
 	key := keys[planning.Pick(len(keys))]
@@ -179,10 +182,102 @@ func (i HeardProgressionItem) Plan(way string, planning DrillPlanning) PlannedDr
 	}
 	q.play(bars, planning)
 	for _, p := range confusableProgressions(i.Progression, i.Catalog, planning.Pick) {
-		q.Options = append(q.Options, GeneratedOption{Value: p.Key, Names: p.Names})
+		q.Options = append(q.Options, GeneratedOption{Value: p.Key, Names: barNames(p)})
 	}
 	q.Options = shuffled(q.Options, planning.Pick)
 	return q
+}
+
+// barNames names p by every bar's numeral in order, in each of its names'
+// languages and in English.
+func barNames(p Progression) LocalizedText {
+	name := strings.Join(p.Bars, "–")
+	names := LocalizedText{"en": name}
+	for language := range p.Names {
+		names[language] = name
+	}
+	return names
+}
+
+// HeardChordQualities are the qualities a heard chord quality asks, in the
+// order its options show them. The first heardQualityOptions of them are asked
+// first, among themselves until the student is fluent on the item; the others
+// wait until the student is fluent on those, and are always asked among all.
+var HeardChordQualities = []string{"major", "minor", "dominant7", "diminished", "augmented"}
+
+const heardQualityOptions = 3
+
+// heardQualityChord is the chord quality each heard quality sounds.
+var heardQualityChord = map[string]ChordQuality{
+	"major":      ChordQualityMajor,
+	"minor":      ChordQualityMinor,
+	"dominant7":  ChordQualityDominant7,
+	"diminished": ChordQualityDiminished,
+	"augmented":  ChordQualityAugmented,
+}
+
+// HeardChordQualityItem is a chord's quality heard alone, on a root picked
+// each time it is asked, in no key.
+type HeardChordQualityItem struct {
+	Quality string
+}
+
+// ItemKey is heard_chord_quality:<quality>.
+func (i HeardChordQualityItem) ItemKey() string {
+	return string(PracticeItemKindHeardChordQuality) + ":" + i.Quality
+}
+
+// Kind is a heard chord quality's.
+func (HeardChordQualityItem) Kind() PracticeItemKind { return PracticeItemKindHeardChordQuality }
+
+// Ways hears the chord: it has no second way, and comes back later in the
+// session instead.
+func (HeardChordQualityItem) Ways() []string { return []string{"chord_quality_by_ear"} }
+
+// Seconds is HearItemSeconds.
+func (HeardChordQualityItem) Seconds() int { return HearItemSeconds }
+
+// SuitsSession holds in the head only.
+func (HeardChordQualityItem) SuitsSession(inHand bool) bool { return !inHand }
+
+// WaitsOnItems holds a quality past the first heardQualityOptions back until
+// the student is fluent on each of those: before then, it could only be asked
+// among options that leave it out.
+func (i HeardChordQualityItem) WaitsOnItems() ([]string, KnowledgeLevel) {
+	if slices.Index(HeardChordQualities, i.Quality) < heardQualityOptions {
+		return nil, ""
+	}
+	keys := make([]string, heardQualityOptions)
+	for n, quality := range HeardChordQualities[:heardQualityOptions] {
+		keys[n] = HeardChordQualityItem{Quality: quality}.ItemKey()
+	}
+	return keys, KnowledgeLevelFluent
+}
+
+// Plan picks the root and plays the chord alone for one bar, nothing setting
+// a key. It offers every quality, always in the same order so where the answer
+// sits says nothing; one of the first heardQualityOptions qualities is offered
+// among those only until the student is fluent on it.
+func (i HeardChordQualityItem) Plan(way string, planning DrillPlanning) PlannedDrill {
+	root := MusicKeys[planning.Pick(len(MusicKeys))]
+	q := &PlannedGeneratedChoice{AskedWay: way, Answer: i.Quality, itemKind: PracticeItemKindHeardChordQuality}
+	q.play([]PlaybackBar{{Chord: root + heardQualityChord[i.Quality].CanonicalSuffix()}}, planning)
+	qualities := HeardChordQualities
+	if !fluent(planning.Level) && slices.Index(qualities, i.Quality) < heardQualityOptions {
+		qualities = qualities[:heardQualityOptions]
+	}
+	q.Options = valueOptions(qualities)
+	return q
+}
+
+// ParseHeardChordQualityItemKey reads a heard_chord_quality item key; false
+// for any other key, or one whose quality isn't a heard one.
+func ParseHeardChordQualityItemKey(itemKey string) (HeardChordQualityItem, bool) {
+	quality, found := strings.CutPrefix(itemKey, string(PracticeItemKindHeardChordQuality)+":")
+	if !found || !slices.Contains(HeardChordQualities, quality) {
+		return HeardChordQualityItem{}, false
+	}
+	return HeardChordQualityItem{Quality: quality}, true
 }
 
 // play sets the question's playback to bars, at the tempo of the student's

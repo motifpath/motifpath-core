@@ -43,6 +43,18 @@ type PracticeSessionEnd struct {
 	// FeltRatings are the student's answers to "How did it feel?", at most
 	// two, about timed drills the plan asked about.
 	FeltRatings []FeltRating
+	// VisibleMs is how long the session was visible since its previous event; nil
+	// from an app that doesn't measure it.
+	VisibleMs *int
+}
+
+// SessionMoment is one practice event of a session after its start: an answer
+// or its end, when it happened, and how long the session was visible since the
+// event before it; VisibleMs is nil when the app didn't measure it.
+type SessionMoment struct {
+	EventID   string
+	At        time.Time
+	VisibleMs *int
 }
 
 // Felt is the student's answer to "How did it feel?" about a timed drill.
@@ -94,6 +106,9 @@ type PracticeSession struct {
 	// LastEventAt is the latest practice event recorded for the session.
 	LastEventAt time.Time
 	End         *PracticeSessionEnd
+	// Moments are the session's answers and end, each once, in the order they
+	// arrived, which is not always the order they happened in.
+	Moments []SessionMoment
 }
 
 // Started records the session's start and its plan.
@@ -116,6 +131,17 @@ func (s PracticeSession) Answered(eventID string, at time.Time, template string)
 		s.PractisedTemplates = append(slices.Clone(s.PractisedTemplates), template)
 		slices.Sort(s.PractisedTemplates)
 	}
+	return s.touched(at)
+}
+
+// Seen records the practice event eventID at the given time and how long the
+// session was visible since the event before it. A redelivered event is
+// recorded once.
+func (s PracticeSession) Seen(eventID string, at time.Time, visibleMs *int) PracticeSession {
+	if slices.ContainsFunc(s.Moments, func(m SessionMoment) bool { return m.EventID == eventID }) {
+		return s.touched(at)
+	}
+	s.Moments = append(slices.Clone(s.Moments), SessionMoment{EventID: eventID, At: at, VisibleMs: visibleMs})
 	return s.touched(at)
 }
 
@@ -150,7 +176,7 @@ func (s PracticeSession) Ended(e PracticeSessionEnd) PracticeSession {
 		end := e
 		s.End = &end
 	}
-	return s.touched(e.OccurredAt)
+	return s.Seen(e.EventID, e.OccurredAt, e.VisibleMs)
 }
 
 func (s PracticeSession) touched(at time.Time) PracticeSession {

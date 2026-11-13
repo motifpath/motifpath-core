@@ -351,10 +351,14 @@ type world struct {
 	guideKey string
 }
 
-// chordWorld is the chord change and the single chord a scenario practises.
+// chordWorld is the chord change, the single chord and the root and fifth a
+// scenario practises, and a change's record as last read.
 type chordWorld struct {
-	changeKey  string
-	voicingKey string
+	changeKey      string
+	voicingKey     string
+	rootFifthKey   string
+	record         domain.ItemFold
+	recordEvidence []domain.PracticeEvidence
 }
 
 func newWorld() *world {
@@ -365,7 +369,7 @@ func newWorld() *world {
 			instruments: map[string]domain.InstrumentReference{},
 			songCharts:  map[string]domain.SongChartReference{},
 			fluentTimes: map[string][]domain.FluentTime{},
-			targets:     []domain.ChangeTarget{{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), ChangesPerMinute: 60}},
+			targets:     []domain.ChangeTarget{{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), TempoBPM: 60}},
 			progressions: map[string]domain.ProgressionReference{
 				"I-V-vi-IV": {Key: "I-V-vi-IV", Bars: []string{"I", "V", "vi", "IV"}},
 			},

@@ -233,68 +233,106 @@ func TestFoldEvidence_Levels(t *testing.T) {
 	})
 }
 
-// minute is a clean minute of chord changes at, with cleanChanges at tempo
-// cleanChanges BPM.
-func minute(at time.Time, cleanChanges int) PracticeEvidence {
+// changeTake is a take of chord changes at, at tempo BPM with share percent of
+// its changes clean, rated as the grader rates it.
+func changeTake(at time.Time, tempo, share int) PracticeEvidence {
 	return PracticeEvidence{
 		ItemKey: "chord_change:" + diagramA + ":" + diagramB, Source: EvidenceSourceSelfAssessed,
-		OccurredAt: at, GraderID: "self_rating.v1", Rating: SelfRatingClean, TempoBPM: ptr(cleanChanges), ChangesPerMinute: ptr(cleanChanges),
+		OccurredAt: at, GraderID: "self_rating.v2", Rating: ChangeShareRating(share), TempoBPM: ptr(tempo), CleanSharePercent: ptr(share),
 	}
 }
 
-func TestFoldEvidence_ChordChangesMeasureChangesPerMinute(t *testing.T) {
-	sixty := ItemGoal{ChangeTargets: []ChangeTarget{{Version: 1, EffectiveFrom: onDay(0), ChangesPerMinute: 60}}}
+// countedMinute is a minute of chord changes kept before changes became takes:
+// cleanChanges counted at tempo BPM, rated by the rules of its time.
+func countedMinute(at time.Time, tempo, cleanChanges int, rating SelfRating) PracticeEvidence {
+	return PracticeEvidence{
+		ItemKey: "chord_change:" + diagramA + ":" + diagramB, Source: EvidenceSourceSelfAssessed,
+		OccurredAt: at, GraderID: "self_rating.v1", Rating: rating, TempoBPM: ptr(tempo), ChangesPerMinute: ptr(cleanChanges),
+	}
+}
 
-	t.Run("a minute's fluency is its clean count over the target", func(t *testing.T) {
-		f := foldAll(t, sixty, minute(onDay(0), 30))
+func TestFoldEvidence_ChangeTakesMeasureTheirTempo(t *testing.T) {
+	sixty := ItemGoal{ChangeTargets: []ChangeTarget{{Version: 1, EffectiveFrom: onDay(0), TempoBPM: 60}}}
+
+	t.Run("a clean take's fluency is its tempo over the target", func(t *testing.T) {
+		f := foldAll(t, sixty, changeTake(onDay(0), 30, 100))
 		assert.InDelta(t, 0.5, f.Fluency, 1e-9)
-		assert.Equal(t, 30, *f.BestChangesPerMinute)
-		assert.Nil(t, f.BestCleanBPM)
+		assert.Equal(t, 30, *f.BestCleanBPM)
 	})
-	t.Run("each minute is judged by the target in force when it was played", func(t *testing.T) {
+	t.Run("each take is judged by the target in force when it was played", func(t *testing.T) {
 		goal := ItemGoal{ChangeTargets: []ChangeTarget{
-			{Version: 2, EffectiveFrom: onDay(1), ChangesPerMinute: 30},
-			{Version: 1, EffectiveFrom: onDay(0), ChangesPerMinute: 60},
+			{Version: 2, EffectiveFrom: onDay(1), TempoBPM: 30},
+			{Version: 1, EffectiveFrom: onDay(0), TempoBPM: 60},
 		}}
-		f := foldAll(t, goal, minute(onDay(1), 30))
-		assert.InDelta(t, 1.0, f.Fluency, 1e-9)
-		f = foldAll(t, goal, minute(onDay(0), 30))
-		assert.InDelta(t, 0.5, f.Fluency, 1e-9)
+		assert.InDelta(t, 1.0, foldAll(t, goal, changeTake(onDay(1), 30, 100)).Fluency, 1e-9)
+		assert.InDelta(t, 0.5, foldAll(t, goal, changeTake(onDay(0), 30, 100)).Fluency, 1e-9)
 	})
-	t.Run("keeps the last minute's tempo and count, and the clean minutes in a row", func(t *testing.T) {
-		struggled := minute(onDay(2), 20)
-		struggled.Rating, struggled.TempoBPM = SelfRatingStruggled, ptr(50)
-		f := foldAll(t, sixty, minute(onDay(0), 40), minute(onDay(1), 45))
+	t.Run("keeps the last take's tempo and rating, and the clean takes in a row", func(t *testing.T) {
+		f := foldAll(t, sixty, changeTake(onDay(0), 40, 100), changeTake(onDay(1), 45, 100))
 		assert.Equal(t, 45, *f.LastChangeTempoBPM)
-		assert.Equal(t, 45, *f.LastChangesPerMinute)
-		assert.Equal(t, 2, f.CleanMinutesInARow)
+		assert.Equal(t, 2, f.CleanTakesInARow)
 
-		f = foldAll(t, sixty, minute(onDay(0), 40), minute(onDay(1), 45), struggled)
-		assert.Equal(t, 50, *f.LastChangeTempoBPM)
-		assert.Equal(t, 20, *f.LastChangesPerMinute)
-		assert.Equal(t, 0, f.CleanMinutesInARow)
+		f = foldAll(t, sixty, changeTake(onDay(0), 40, 100), changeTake(onDay(1), 45, 100), changeTake(onDay(2), 40, 50))
+		assert.Equal(t, 40, *f.LastChangeTempoBPM)
+		assert.Equal(t, 0, f.CleanTakesInARow)
 		assert.Equal(t, SelfRatingStruggled, f.LastRating)
 	})
-	t.Run("a minute exploring above the best clean count is still the last minute", func(t *testing.T) {
-		exploring := minute(onDay(1), 45)
-		exploring.Rating, exploring.TempoBPM = SelfRatingStruggled, ptr(90)
-		f := foldAll(t, sixty, minute(onDay(0), 40), exploring)
+	t.Run("a struggled take above the best clean tempo explores, and is still the last take", func(t *testing.T) {
+		f := foldAll(t, sixty, changeTake(onDay(0), 40, 100), changeTake(onDay(1), 90, 50))
 		assert.Equal(t, 90, *f.LastChangeTempoBPM)
-		assert.Equal(t, 1, f.Counted, "the exploring minute doesn't count")
+		assert.Equal(t, 1, f.Counted, "the exploring take doesn't count")
 	})
-	t.Run("a play-along take keeps no change minute", func(t *testing.T) {
+	t.Run("a struggled take at the best clean tempo is a real miss", func(t *testing.T) {
+		f := foldAll(t, sixty, changeTake(onDay(0), 40, 100), changeTake(onDay(1), 40, 50))
+		assert.Equal(t, 2, f.Counted)
+		assert.Equal(t, 0, f.CleanTakesInARow)
+	})
+	t.Run("a play-along take keeps no change take", func(t *testing.T) {
 		f := foldAll(t, target100, take(onDay(0), SelfRatingClean, 80))
 		assert.Nil(t, f.LastChangeTempoBPM)
 	})
-	t.Run("five clean minutes near the target are fluent, far below it only accurate", func(t *testing.T) {
+	t.Run("five clean takes near the target are fluent, far below it only accurate", func(t *testing.T) {
 		near := make([]PracticeEvidence, 5)
 		far := make([]PracticeEvidence, 5)
 		for i := range near {
-			near[i], far[i] = minute(onDay(i), 54), minute(onDay(i), 30)
+			near[i], far[i] = changeTake(onDay(i), 54, 100), changeTake(onDay(i), 30, 100)
 		}
 		assert.Equal(t, KnowledgeLevelFluent, foldAll(t, sixty, near...).Level())
 		assert.Equal(t, KnowledgeLevelAccurate, foldAll(t, sixty, far...).Level())
 	})
+}
+
+func TestFoldEvidence_ACountedMinuteReadsAsAShare(t *testing.T) {
+	sixty := ItemGoal{ChangeTargets: []ChangeTarget{{Version: 1, EffectiveFrom: onDay(0), TempoBPM: 60}}}
+	tests := []struct {
+		name         string
+		cleanChanges int
+		wantRating   SelfRating
+		wantInARow   int
+	}{
+		{"every beat clean is a clean take", 60, SelfRatingClean, 1},
+		{"54 of 60 rounds down to 75 percent: almost", 54, SelfRatingAlmost, 0},
+		{"30 of 60 is 50 percent: struggled", 30, SelfRatingStruggled, 0},
+		{"below 25 percent reads as 25: struggled", 5, SelfRatingStruggled, 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Under the rules of its time, 54 of 60 was clean.
+			f := foldAll(t, sixty, countedMinute(onDay(0), 60, tt.cleanChanges, SelfRatingClean))
+			assert.Equal(t, tt.wantRating, f.LastRating)
+			assert.Equal(t, tt.wantInARow, f.CleanTakesInARow)
+			assert.Equal(t, 60, *f.LastChangeTempoBPM)
+		})
+	}
+}
+
+func TestLegacyCleanShare(t *testing.T) {
+	tests := []struct{ cleanChanges, tempo, want int }{
+		{60, 60, 100}, {54, 60, 75}, {45, 60, 75}, {44, 60, 50}, {30, 60, 50}, {15, 60, 25}, {0, 60, 25}, {70, 60, 100},
+	}
+	for _, tt := range tests {
+		assert.Equal(t, tt.want, LegacyCleanShare(tt.cleanChanges, tt.tempo), "%d of %d", tt.cleanChanges, tt.tempo)
+	}
 }
 
 // tourTake is a take of a progression key tour in key at bpm.

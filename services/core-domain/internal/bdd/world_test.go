@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/sha1" //nolint:gosec // used only for deterministic test UUIDs, not security
 	"fmt"
+	"math/rand/v2"
 	"strings"
 	"time"
 
@@ -57,8 +58,19 @@ type world struct {
 	harmonyDrills     *harmonyWorld
 	hearDrills        *hearWorld
 	chordDrills       *chordDrillWorld
+	// planPick is how the session picks among a drill item's equally fitting
+	// choices; nil picks at random.
+	planPick func(n int) int
 	// tourItemKey is the progression key tour a step named.
 	tourItemKey string
+	// tourLevel is the student's level on that tour, which it is picked at;
+	// empty picks it as learning.
+	tourLevel domain.KnowledgeLevel
+	// tourWindows are the windows the tour's keys started at over many
+	// sessions.
+	tourWindows map[int]bool
+	// tourChord is the chord of a tour key a step named.
+	tourChord *generated.BassChordTones
 	// guideToneKey is the guide tone a step named, and guideToneKeys the music
 	// keys it was planned in over repeated sessions.
 	guideToneKey  string
@@ -78,6 +90,8 @@ type world struct {
 	// lastShapeKey is the diagram shape a step set up, for a following step.
 	lastShapeKey     string
 	practiceActivity *fakePracticeActivity
+	// sessionStudent is the student whose session the latest "started a session" step seeded.
+	sessionStudent string
 	alpha            *alphaWorld
 	tapChecks        *fakeTapChecks
 	feltRatings      *fakeFeltRatings
@@ -385,7 +399,13 @@ func newWorld() *world {
 		WithProgressionKeyTours(w.instruments).
 		WithGuideTones(w.instruments).
 		WithSongs(w.songChartRepo, w.practiceActivity).
-		WithSessionEnds(w.practiceActivity)
+		WithSessionEnds(w.practiceActivity).
+		WithPick(func(n int) int {
+			if w.planPick != nil {
+				return w.planPick(n)
+			}
+			return rand.IntN(n)
+		})
 	w.summaryNow = fixedNow
 	summaryNow := func() time.Time { return w.summaryNow }
 	summaryRollup := application.NewKnowledgeRollupService(w.knowledge, w.knowledgeEdges, w.practiceItems, w.practiceStates, summaryNow)

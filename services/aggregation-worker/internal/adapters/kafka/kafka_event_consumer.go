@@ -148,6 +148,7 @@ func toDomainEvent(w wireEvent) domain.TrackingEvent {
 		if w.Response != nil {
 			event.PracticeAnswer = toPracticeAnswer(w)
 		}
+		event.VisibleMs = w.VisibleMs
 	case domain.EventTypePracticeSessionStarted:
 		event.SessionStart = toSessionStart(w)
 	case domain.EventTypePracticeSessionEnded:
@@ -159,6 +160,7 @@ func toDomainEvent(w wireEvent) domain.TrackingEvent {
 			LeftEarly:         w.LeftEarly,
 			AnsweredCount:     w.AnsweredCount,
 			FeltRatings:       toFeltRatings(w.FeltRatings),
+			VisibleMs:         w.VisibleMs,
 		}
 	case domain.EventTypePracticeTapCheckCompleted:
 		event.TapCheck = &domain.TapCheck{
@@ -206,26 +208,27 @@ func toPracticeAnswer(w wireEvent) *domain.PracticeAnswer {
 		trigger = &domain.TriggerContext{Source: tc.Source, ContentNodeID: tc.ContentNodeID, ChallengeID: tc.ChallengeID}
 	}
 	response := domain.PracticeResponse{
-		Type:             domain.PracticeResponseType(r.ResponseType),
-		NoteName:         r.NoteName,
-		Shape:            r.Shape,
-		Interval:         r.Interval,
-		String:           r.String,
-		Fret:             r.Fret,
-		OptionIDs:        r.OptionIDs,
-		LatencyMs:        r.LatencyMs,
-		AudioMs:          r.AudioMs,
-		Rating:           domain.SelfRating(r.Rating),
-		TempoBPM:         r.TempoBPM,
-		NoteValue:        noteValueOf(r.NoteValue),
-		ChangesPerMinute: r.ChangesPerMinute,
-		Choices:          r.Choices,
-		Reason:           domain.NotAnsweredReason(r.Reason),
-		Way:              r.Way,
-		MusicKey:         r.MusicKey,
-		Options:          r.Options,
-		Choice:           r.Choice,
-		Tone:             r.Tone,
+		Type:              domain.PracticeResponseType(r.ResponseType),
+		NoteName:          r.NoteName,
+		Shape:             r.Shape,
+		Interval:          r.Interval,
+		String:            r.String,
+		Fret:              r.Fret,
+		OptionIDs:         r.OptionIDs,
+		LatencyMs:         r.LatencyMs,
+		AudioMs:           r.AudioMs,
+		Rating:            domain.SelfRating(r.Rating),
+		TempoBPM:          r.TempoBPM,
+		NoteValue:         noteValueOf(r.NoteValue),
+		ChangesPerMinute:  r.ChangesPerMinute,
+		CleanSharePercent: r.CleanSharePct,
+		Choices:           r.Choices,
+		Reason:            domain.NotAnsweredReason(r.Reason),
+		Way:               r.Way,
+		MusicKey:          r.MusicKey,
+		Options:           r.Options,
+		Choice:            r.Choice,
+		Tone:              r.Tone,
 	}
 	if r.Taps != nil {
 		response.Taps = make([]domain.TimedTap, len(*r.Taps))

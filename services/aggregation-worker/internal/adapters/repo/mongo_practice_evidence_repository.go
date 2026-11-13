@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -63,4 +64,31 @@ func (r *MongoPracticeEvidenceRepository) ListForItem(ctx context.Context, stude
 		}
 	}
 	return evidence, nil
+}
+
+// AnsweredAt returns when each of eventIDs was given, read from the evidence it
+// left, which is identified by the answer's event id.
+func (r *MongoPracticeEvidenceRepository) AnsweredAt(ctx context.Context, eventIDs []string) (map[string]time.Time, error) {
+	found := map[string]time.Time{}
+	if len(eventIDs) == 0 {
+		return found, nil
+	}
+	cursor, err := r.collection.Find(ctx,
+		bson.D{{Key: "evidence_id", Value: bson.D{{Key: "$in", Value: eventIDs}}}},
+		options.Find().SetProjection(bson.D{{Key: "evidence_id", Value: 1}, {Key: "occurred_at", Value: 1}}),
+	)
+	if err != nil {
+		return nil, err
+	}
+	var docs []struct {
+		EvidenceID string    `bson:"evidence_id"`
+		OccurredAt time.Time `bson:"occurred_at"`
+	}
+	if err := cursor.All(ctx, &docs); err != nil {
+		return nil, err
+	}
+	for _, d := range docs {
+		found[d.EvidenceID] = d.OccurredAt.UTC()
+	}
+	return found, nil
 }

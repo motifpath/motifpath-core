@@ -35,6 +35,10 @@ func registerPracticeSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" submits a practice\.session_ended event with (\d+) items answered, left early, and no felt ratings$`, w.submitSessionEndedEarly)
 	sc.Step(`^"([^"]+)" submits a practice\.session_ended event with (\d+) felt ratings$`, w.submitSessionEndedWithFeltCount)
 	sc.Step(`^"([^"]+)" submits a practice\.tap_check_completed event with a median tap of (\d+) milliseconds over (\d+) taps$`, w.submitTapCheck)
+	sc.Step(`^"([^"]+)" submits a practice\.item_answered event naming the note "([^"]+)" for the guitar cell on string (\d+) at fret (\d+), with (-?\d+) milliseconds visible$`, w.submitNameTheNoteWithVisibleTime)
+	sc.Step(`^"([^"]+)" submits a practice\.item_answered event rating a take of the chord change "([^"]+)" to "([^"]+)" at (\d+) BPM with (\d+) percent of the changes clean$`, w.submitChordChangeTake)
+	sc.Step(`^"([^"]+)" submits a practice\.session_ended event with (\d+) items answered, left early, no felt ratings and (-?\d+) milliseconds visible$`, w.submitSessionEndedEarlyWithVisibleTime)
+	sc.Step(`^the stored and published practice\.item_answered event keeps (\d+) milliseconds visible$`, w.answerKeepsVisibleTime)
 
 	sc.Step(`^the stored and published practice\.item_answered event carries a tap time of (\d+) milliseconds$`, w.answerCarriesTap)
 	sc.Step(`^the stored and published practice\.item_answered event carries no tap time$`, w.answerCarriesNoTap)
@@ -72,6 +76,7 @@ type practiceEvent struct {
 	FeltRatings       *[]feltRating     `json:"felt_ratings,omitempty"`
 	MedianTapMs       int               `json:"median_tap_ms,omitempty"`
 	TapCount          int               `json:"tap_count,omitempty"`
+	VisibleMs         *int              `json:"visible_ms,omitempty"`
 }
 
 type plannedItem struct {
@@ -86,6 +91,7 @@ type practiceResponse struct {
 	Rating       string   `json:"rating,omitempty"`
 	TempoBPM     int      `json:"tempo_bpm,omitempty"`
 	NoteValue    string   `json:"note_value,omitempty"`
+	CleanShare   int      `json:"clean_share_percent,omitempty"`
 	OptionIDs    []string `json:"option_ids,omitempty"`
 	Choices      []string `json:"choices,omitempty"`
 	Reason       string   `json:"reason,omitempty"`
@@ -248,6 +254,26 @@ func (w *world) submitNameTheNote(name, note, stringNumber, fret string) error {
 	return w.submitPractice(w.answerEvent(name, guitarCellKey(stringNumber, fret), nameTheNote(note)))
 }
 
+func (w *world) submitNameTheNoteWithVisibleTime(name, note, stringNumber, fret string, visibleMs int) error {
+	e := w.answerEvent(name, guitarCellKey(stringNumber, fret), nameTheNote(note))
+	e.VisibleMs = &visibleMs
+	return w.submitPractice(e)
+}
+
+func (w *world) submitChordChangeTake(name, from, to string, tempo, share int) error {
+	itemKey := "chord_change:" + deterministicUUID("diagram", from).String() + ":" + deterministicUUID("diagram", to).String()
+	rating := "struggled"
+	switch {
+	case share >= 100:
+		rating = "clean"
+	case share >= 75:
+		rating = "almost"
+	}
+	return w.submitPractice(w.answerEvent(name, itemKey, &practiceResponse{
+		ResponseType: "self_rating", Rating: rating, TempoBPM: tempo, CleanShare: share,
+	}))
+}
+
 func (w *world) submitSelfRatedTake(name, rating, tempoStr string) error {
 	tempo, err := strconv.Atoi(tempoStr)
 	if err != nil {
@@ -361,6 +387,21 @@ func (w *world) submitSessionEndedEarly(name, answeredStr string) error {
 	return w.sessionEnded(name, answeredStr, true, []feltRating{})
 }
 
+func (w *world) submitSessionEndedEarlyWithVisibleTime(name, answeredStr string, visibleMs int) error {
+	answered, err := strconv.Atoi(answeredStr)
+	if err != nil {
+		return err
+	}
+	leftEarly := true
+	e := w.newPracticeEvent(name, "practice.session_ended")
+	e.PracticeSessionID = practiceSessionID(name)
+	e.AnsweredCount = &answered
+	e.LeftEarly = &leftEarly
+	e.FeltRatings = &[]feltRating{}
+	e.VisibleMs = &visibleMs
+	return w.submitPractice(e)
+}
+
 func (w *world) submitSessionEndedWithFeltCount(name, countStr string) error {
 	count, err := strconv.Atoi(countStr)
 	if err != nil {
@@ -435,6 +476,19 @@ func (w *world) answerCarriesTap(tapStr string) error {
 		}
 		if *got != want {
 			return fmt.Errorf("the %s answer carries a tap time of %d, want %d", label, *got, want)
+		}
+	}
+	return nil
+}
+
+func (w *world) answerKeepsVisibleTime(want int) error {
+	stored, published, err := w.storedAndPublishedAnswer()
+	if err != nil {
+		return err
+	}
+	for label, got := range map[string]*int{"stored": stored.VisibleMs, "published": published.VisibleMs} {
+		if got == nil || *got != want {
+			return fmt.Errorf("the %s answer keeps %v milliseconds visible, want %d", label, got, want)
 		}
 	}
 	return nil

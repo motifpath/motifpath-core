@@ -28,7 +28,7 @@ func chordCatalog() domain.ChordDrillCatalog {
 			})
 		}
 	}
-	catalog.Targets = []domain.ChangeTarget{{ID: "target-1", Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), ChangesPerMinute: 60}}
+	catalog.Targets = []domain.ChangeTarget{{ID: "target-1", Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), TempoBPM: 60}}
 	return catalog
 }
 
@@ -78,7 +78,7 @@ func TestPracticeSessionService_ComposePlanChordDrills(t *testing.T) {
 		}
 	})
 
-	t.Run("a chord change is planned with both chords and its minute, on the play_in_time rung", func(t *testing.T) {
+	t.Run("a chord change is planned with both chords and a take of ten cycles, on the play_in_time rung", func(t *testing.T) {
 		f := chordFixture(t, nil, [][2]string{{"Am", "C"}})
 
 		plan := f.compose(t, practiceGuitar, 10)
@@ -87,29 +87,27 @@ func TestPracticeSessionService_ComposePlanChordDrills(t *testing.T) {
 		require.Len(t, changes, 1)
 		assert.Equal(t, &domain.PlannedChordChange{
 			FromDiagramID: "voicing-Am", ToDiagramID: "voicing-C", FromChordSymbol: "Am", ToChordSymbol: "C",
-			Minute: domain.PlannedChangeMinute{StartTempoBPM: 40, TargetChangesPerMinute: 60},
+			Take: domain.PlannedChangeTake{Cycles: 10, StartTempoBPM: 40, TargetTempoBPM: 60},
 		}, changes[0].ChordChange)
 		assert.Equal(t, domain.PracticeRungPlayInTime, changes[0].Rung)
-		assert.Equal(t, 90, changes[0].EstimatedSeconds)
+		assert.Equal(t, 45, changes[0].EstimatedSeconds)
 	})
 
-	t.Run("a change starts from its last minute, up 5 after two clean minutes in a row", func(t *testing.T) {
+	t.Run("a change starts from its last take, up 5 after two clean takes in a row", func(t *testing.T) {
 		f := chordFixture(t, nil, [][2]string{{"Am", "C"}})
-		best := 38
+		best := 55
 		f.stateOf(changeKey("Am", "C"), domain.PracticeItemState{
-			Level: domain.KnowledgeLevelLearning, Counted: 2, Box: 1, DueAt: f.daysAgo(1), BestChangesPerMinute: &best,
-			LastChangeMinute: &domain.ChangeMinuteState{TempoBPM: 50, ChangesPerMinute: 48, CleanInARow: 2},
+			Level: domain.KnowledgeLevelLearning, Counted: 2, Box: 1, DueAt: f.daysAgo(1), BestCleanBPM: &best,
+			LastChangeTake: &domain.ChangeTakeState{TempoBPM: 50, CleanInARow: 2},
 		})
 
 		plan := f.compose(t, practiceGuitar, 10)
 
 		changes := itemsOfKind(plan, domain.PracticeItemKindChordChange)
 		require.Len(t, changes, 1)
-		minute := changes[0].ChordChange.Minute
-		assert.Equal(t, 55, minute.StartTempoBPM)
-		assert.Equal(t, &best, minute.BestCleanChangesPerMinute)
-		require.NotNil(t, minute.LastChangesPerMinute)
-		assert.Equal(t, 48, *minute.LastChangesPerMinute)
+		take := changes[0].ChordChange.Take
+		assert.Equal(t, 55, take.StartTempoBPM)
+		assert.Equal(t, &best, take.BestCleanTempoBPM)
 	})
 
 	t.Run("a session plays at most 4 single chords and 2 changes, and may end early", func(t *testing.T) {
@@ -157,28 +155,31 @@ func TestPracticeSessionService_ComposePlanChordDrills(t *testing.T) {
 		}
 	})
 
-	t.Run("an in-hand bass session plays a chord's root and fifth, both marked", func(t *testing.T) {
+	t.Run("an in-hand bass session plays a chord's root and fifth in the window it picks", func(t *testing.T) {
 		f := chordFixture(t, []string{"Am"}, nil)
+		f.svc.WithPick(func(int) int { return 5 })
 
 		plan := f.compose(t, practiceBass, 10)
 
 		items := itemsOfKind(plan, domain.PracticeItemKindRootFifth)
 		require.Len(t, items, 1)
 		assert.Equal(t, &domain.PlannedRootFifth{
-			LayoutInstrumentID: practiceBass, ChordSymbol: "Am",
-			Root: domain.Place{String: 3, Fret: 0}, Fifth: domain.Place{String: 4, Fret: 0},
+			LayoutInstrumentID: practiceBass, ChordSymbol: "Am", WindowStartFret: 5,
+			Root: domain.Place{String: 4, Fret: 5}, Fifth: domain.Place{String: 3, Fret: 7}, StartTempoBPM: 60,
 		}, items[0].RootFifth)
 	})
 
-	t.Run("an in-hand bass session plays root changes on their minute", func(t *testing.T) {
+	t.Run("an in-hand bass session plays root changes in the window it picks", func(t *testing.T) {
 		f := chordFixture(t, nil, [][2]string{{"Am", "C"}})
+		f.svc.WithPick(func(int) int { return 0 })
 
 		plan := f.compose(t, practiceBass, 10)
 
 		items := itemsOfKind(plan, domain.PracticeItemKindRootChange)
 		require.Len(t, items, 1)
+		assert.Equal(t, 0, items[0].RootChange.WindowStartFret)
 		assert.Equal(t, domain.Place{String: 3, Fret: 3}, items[0].RootChange.ToRoot)
-		assert.Equal(t, 60, items[0].RootChange.Minute.TargetChangesPerMinute)
+		assert.Equal(t, 60, items[0].RootChange.Take.TargetTempoBPM)
 	})
 
 	t.Run("a chord item is never the warm-up or the application ending", func(t *testing.T) {

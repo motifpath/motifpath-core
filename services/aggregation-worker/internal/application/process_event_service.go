@@ -110,5 +110,5 @@ func (s *ProcessEventService) handleAnswer(ctx context.Context, event domain.Tra
 	if event.PracticeSessionID == "" {
 		return nil
 	}
-	return s.activity.ItemAnswered(ctx, event.StudentID, event.PracticeSessionID, event.EventID, event.OccurredAt, template)
+	return s.activity.ItemAnswered(ctx, event.StudentID, event.PracticeSessionID, event.EventID, event.OccurredAt, template, event.VisibleMs)
 }

@@ -43,6 +43,7 @@ type eventDocument struct {
 	FeltRatings       *[]feltRatingDoc     `bson:"felt_ratings,omitempty"`
 	MedianTapMs       *int                 `bson:"median_tap_ms,omitempty"`
 	TapCount          *int                 `bson:"tap_count,omitempty"`
+	VisibleMs         *int                 `bson:"visible_ms,omitempty"`
 
 	// song_chart.* fields.
 	SongChartContext  *songChartContextDoc `bson:"song_chart_context,omitempty"`
@@ -77,6 +78,7 @@ type practiceResponseDoc struct {
 	TempoBPM         *int     `bson:"tempo_bpm,omitempty"`
 	NoteValue        *string  `bson:"note_value,omitempty"`
 	ChangesPerMinute *int     `bson:"changes_per_minute,omitempty"`
+	CleanSharePct    *int     `bson:"clean_share_percent,omitempty"`
 	Choices          []string `bson:"choices,omitempty"`
 	Reason           string   `bson:"reason,omitempty"`
 	Way              string   `bson:"way,omitempty"`
@@ -172,6 +174,7 @@ func toDocument(event domain.TrackingEvent, receivedAt time.Time) eventDocument 
 		doc.ItemKey = e.ItemKey
 		doc.Response = toPracticeResponseDoc(e.Response)
 		doc.TapMs = e.TapMs
+		doc.VisibleMs = e.VisibleMs
 	case domain.PracticeSessionEndedEvent:
 		doc.PracticeSessionID = e.PracticeSessionID
 		doc.AnsweredCount = &e.AnsweredCount
@@ -181,6 +184,7 @@ func toDocument(event domain.TrackingEvent, receivedAt time.Time) eventDocument 
 			felt = append(felt, feltRatingDoc{DrillTemplateKey: r.DrillTemplateKey, Felt: string(r.Felt)})
 		}
 		doc.FeltRatings = &felt
+		doc.VisibleMs = e.VisibleMs
 	case domain.PracticeTapCheckCompletedEvent:
 		doc.MedianTapMs = &e.MedianTapMs
 		doc.TapCount = &e.TapCount
@@ -324,6 +328,7 @@ func toPracticeResponseDoc(r domain.PracticeResponse) *practiceResponseDoc {
 		TempoBPM:         r.TempoBPM,
 		NoteValue:        noteValueString(r.NoteValue),
 		ChangesPerMinute: r.ChangesPerMinute,
+		CleanSharePct:    r.CleanSharePercent,
 		Choices:          r.Choices,
 		Reason:           string(r.Reason),
 		Way:              r.Way,
@@ -357,26 +362,27 @@ func fromPracticeResponseDoc(d *practiceResponseDoc) domain.PracticeResponse {
 		return domain.PracticeResponse{}
 	}
 	r := domain.PracticeResponse{
-		Type:             domain.PracticeResponseType(d.ResponseType),
-		NoteName:         d.NoteName,
-		Shape:            d.Shape,
-		Interval:         d.Interval,
-		String:           d.String,
-		Fret:             d.Fret,
-		OptionIDs:        d.OptionIDs,
-		LatencyMs:        d.LatencyMs,
-		AudioMs:          d.AudioMs,
-		Rating:           domain.SelfRating(d.Rating),
-		TempoBPM:         d.TempoBPM,
-		NoteValue:        domainNoteValue(d.NoteValue),
-		ChangesPerMinute: d.ChangesPerMinute,
-		Choices:          d.Choices,
-		Reason:           domain.NotAnsweredReason(d.Reason),
-		Way:              d.Way,
-		MusicKey:         d.MusicKey,
-		Options:          d.Options,
-		Choice:           d.Choice,
-		Tone:             d.Tone,
+		Type:              domain.PracticeResponseType(d.ResponseType),
+		NoteName:          d.NoteName,
+		Shape:             d.Shape,
+		Interval:          d.Interval,
+		String:            d.String,
+		Fret:              d.Fret,
+		OptionIDs:         d.OptionIDs,
+		LatencyMs:         d.LatencyMs,
+		AudioMs:           d.AudioMs,
+		Rating:            domain.SelfRating(d.Rating),
+		TempoBPM:          d.TempoBPM,
+		NoteValue:         domainNoteValue(d.NoteValue),
+		ChangesPerMinute:  d.ChangesPerMinute,
+		CleanSharePercent: d.CleanSharePct,
+		Choices:           d.Choices,
+		Reason:            domain.NotAnsweredReason(d.Reason),
+		Way:               d.Way,
+		MusicKey:          d.MusicKey,
+		Options:           d.Options,
+		Choice:            d.Choice,
+		Tone:              d.Tone,
 	}
 	if d.Taps != nil {
 		r.Taps = make([]domain.TimedTap, len(*d.Taps))
@@ -426,6 +432,7 @@ func fromPracticeItemAnsweredDoc(base domain.TrackingEventBase, doc eventDocumen
 		ItemKey:           doc.ItemKey,
 		Response:          fromPracticeResponseDoc(doc.Response),
 		TapMs:             doc.TapMs,
+		VisibleMs:         doc.VisibleMs,
 	}
 }
 
@@ -452,6 +459,7 @@ func fromPracticeSessionEndedDoc(base domain.TrackingEventBase, doc eventDocumen
 		AnsweredCount:     derefInt(doc.AnsweredCount),
 		LeftEarly:         doc.LeftEarly != nil && *doc.LeftEarly,
 		FeltRatings:       felt,
+		VisibleMs:         doc.VisibleMs,
 	}
 }
 

@@ -382,9 +382,11 @@ def chord_drills(voicings=('a-minor-open', 'c-open', 'g-open'), changes=(('a-min
         'voicings': [{'voicing': v, 'chord': VOICINGS[v]['chord'] if v in VOICINGS else 'X',
                       'id': pd.stable_id('chord-drill/' + v)} for v in voicings],
         'changes': [{'from': a, 'to': b, 'id': pd.stable_id(f'chord-change/{a}/{b}')} for a, b in changes],
-        'max_voicings_per_session': 4, 'max_changes_per_session': 2, 'voicing_seconds': 20, 'change_seconds': 90,
+        'max_voicings_per_session': 4, 'max_changes_per_session': 2, 'voicing_seconds': 20, 'change_seconds': 45,
+        'change_cycles': 10, 'change_clean_shares': [25, 50, 75, 100],
         'change_first_tempo_bpm': 40, 'change_tempo_step_bpm': 5, 'change_min_tempo_bpm': 20,
-        'change_rating_from': {'clean': 0.9, 'almost': 0.6},
+        'change_rating_from': {'clean': 100, 'almost': 75}, 'root_fifth_tempo_bpm': 60,
+        'bass_window_start_frets': {'from': 0, 'to': 9}, 'bass_window_frets': 5,
     }
     raw.update(settings)
     return raw
@@ -445,12 +447,28 @@ class ChordDrillTests(unittest.TestCase):
 
     def test_every_session_setting_must_be_a_positive_whole_number(self):
         self.assertRejected(chord_drills(change_min_tempo_bpm=0), 'change_min_tempo_bpm')
+        self.assertRejected(chord_drills(change_cycles=0), 'change_cycles')
+        self.assertRejected(chord_drills(root_fifth_tempo_bpm=None), 'root_fifth_tempo_bpm')
+        self.assertRejected(chord_drills(bass_window_frets=0), 'bass_window_frets')
+
+    def test_the_bass_window_starts_on_a_range_of_frets_from_the_nut_up(self):
+        self.assertRejected(chord_drills(bass_window_start_frets={'from': 3, 'to': 1}), 'bass_window_start_frets')
+        self.assertRejected(chord_drills(bass_window_start_frets={'from': -1, 'to': 9}), 'bass_window_start_frets')
 
     def test_the_first_tempo_may_not_be_below_the_floor(self):
         self.assertRejected(chord_drills(change_first_tempo_bpm=15), 'change_first_tempo_bpm')
 
     def test_the_rating_shares_must_fall_from_clean_to_almost(self):
-        self.assertRejected(chord_drills(change_rating_from={'clean': 0.6, 'almost': 0.9}), 'change_rating_from')
+        self.assertRejected(chord_drills(change_rating_from={'clean': 75, 'almost': 100}), 'change_rating_from')
+
+    def test_the_rating_shares_are_in_percent_and_among_the_shares_picked(self):
+        self.assertRejected(chord_drills(change_rating_from={'clean': 101, 'almost': 75}), 'change_rating_from')
+        self.assertRejected(chord_drills(change_rating_from={'clean': 100, 'almost': 70}), 'change_rating_from')
+
+    def test_the_clean_shares_rise_in_percent_up_to_every_change(self):
+        self.assertRejected(chord_drills(change_clean_shares=[50, 25, 100]), 'change_clean_shares')
+        self.assertRejected(chord_drills(change_clean_shares=[25, 50, 75]), 'change_clean_shares')
+        self.assertRejected(chord_drills(change_clean_shares=[0, 50, 100]), 'change_clean_shares')
 
     def test_the_sql_installs_every_chord_drill_and_change_with_fixed_ids(self):
         sql = pd.render_chord_drills_sql(pd.build_chord_drills(chord_drills(), VOICINGS), [])

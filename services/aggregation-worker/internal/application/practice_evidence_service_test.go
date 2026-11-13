@@ -215,14 +215,15 @@ func newPracticeFixture() *practiceFixture {
 				guitarLayout: {ID: guitarLayout, Tuning: []string{"E2", "A2", "D3", "G3", "B3", "E4"}},
 			},
 			fluentTimes: map[string][]domain.FluentTime{
-				"exercise:text_response":                  {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 6000}},
-				"fretboard_cell:name_the_note":            {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 3000}},
-				"fretboard_cell:find_the_note":            {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 4000}},
-				"diagram_shape:name_the_shape":            {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 4000}},
-				"diagram_shape:find_the_degree":           {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 2000}},
-				"heard_progression:progression_by_number": {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 4000}},
+				"exercise:text_response":                   {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 6000}},
+				"fretboard_cell:name_the_note":             {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 3000}},
+				"fretboard_cell:find_the_note":             {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 4000}},
+				"diagram_shape:name_the_shape":             {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 4000}},
+				"diagram_shape:find_the_degree":            {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 2000}},
+				"heard_progression:progression_by_number":  {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 4000}},
+				"heard_chord_quality:chord_quality_by_ear": {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 2500}},
 			},
-			targets:    []domain.ChangeTarget{{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), ChangesPerMinute: 60}},
+			targets:    []domain.ChangeTarget{{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), TempoBPM: 60}},
 			songCharts: map[string]domain.SongChartReference{amazingGraceChart: {ID: amazingGraceChart}},
 			progressions: map[string]domain.ProgressionReference{
 				"I-V-vi-IV": {Key: "I-V-vi-IV", Bars: []string{"I", "V", "vi", "IV"}},
@@ -286,7 +287,7 @@ func TestPracticeEvidenceService_GradesAndFoldsATake(t *testing.T) {
 	assert.Equal(t, domain.EvidenceSourceSelfAssessed, e.Source)
 	assert.Equal(t, monday, e.OccurredAt)
 	assert.Equal(t, answer.PracticeSessionID, e.PracticeSessionID)
-	assert.Equal(t, "self_rating.v1", e.GraderID)
+	assert.Equal(t, "self_rating.v2", e.GraderID)
 	assert.Equal(t, answer.Response, e.Response)
 	assert.Equal(t, domain.SelfRatingClean, e.Rating)
 	assert.Equal(t, 50, *e.TempoBPM)
@@ -298,24 +299,39 @@ func TestPracticeEvidenceService_GradesAndFoldsATake(t *testing.T) {
 	assert.InDelta(t, 0.5, fold.Fluency, 1e-9)
 }
 
-func TestPracticeEvidenceService_GradesAndFoldsAMinuteOfChordChanges(t *testing.T) {
+func TestPracticeEvidenceService_GradesAndFoldsATakeOfChordChanges(t *testing.T) {
 	f := newPracticeFixture()
 	key := "chord_change:" + aMinorChord + ":" + cMajorChord
-	tempo, count := 40, 30
+	tempo, share := 30, 75
 	answer := domain.PracticeAnswer{
 		EventID: "e0000000-0000-4000-8000-000000000031", StudentID: alice, OccurredAt: monday, ItemKey: key,
-		Response: domain.PracticeResponse{Type: domain.PracticeResponseSelfRating, Rating: domain.SelfRatingClean, TempoBPM: &tempo, ChangesPerMinute: &count},
+		Response: domain.PracticeResponse{Type: domain.PracticeResponseSelfRating, Rating: domain.SelfRatingClean, TempoBPM: &tempo, CleanSharePercent: &share},
 	}
 
 	require.NoError(t, f.service.Process(context.Background(), answer))
 
 	require.Len(t, f.evidence.stored, 1)
-	// 30 clean changes of 40 beats is 75%: almost, whatever was sent.
+	// Three changes in four clean is almost, whatever was sent.
 	assert.Equal(t, domain.SelfRatingAlmost, f.evidence.stored[0].Rating)
+	assert.Equal(t, &share, f.evidence.stored[0].CleanSharePercent)
 	fold, ok := f.fold(t, key)
 	require.True(t, ok)
-	// Fluency is measured against the change target in force: 30 of 60, halved for almost.
+	// Fluency is the tempo over the change target in force: 30 of 60, halved for almost.
 	assert.InDelta(t, 0.25, fold.Fluency, 1e-9)
+}
+
+func TestPracticeEvidenceService_RefusesAMinuteOfChordChangesCounted(t *testing.T) {
+	f := newPracticeFixture()
+	tempo, count := 40, 30
+	answer := domain.PracticeAnswer{
+		EventID: "e0000000-0000-4000-8000-000000000032", StudentID: alice, OccurredAt: monday,
+		ItemKey:  "chord_change:" + aMinorChord + ":" + cMajorChord,
+		Response: domain.PracticeResponse{Type: domain.PracticeResponseSelfRating, Rating: domain.SelfRatingClean, TempoBPM: &tempo, ChangesPerMinute: &count},
+	}
+
+	require.NoError(t, f.service.Process(context.Background(), answer))
+
+	assert.Empty(t, f.evidence.stored)
 }
 
 func TestPracticeEvidenceService_GradesAndFoldsAProgressionKeyTourTake(t *testing.T) {
@@ -629,6 +645,25 @@ func TestPracticeEvidenceService_GradesAndFoldsAGeneratedQuestion(t *testing.T) 
 	require.True(t, ok)
 	assert.InDelta(t, 1, fold.Fluency, 1e-9, "9000 ms less 5000 ms of sound is within the way's 4000 ms")
 	assert.Equal(t, map[string]int{"progression_by_number": 1}, fold.RightByResponse)
+}
+
+func TestPracticeEvidenceService_JudgesAHeardChordQualityByItsFluentTime(t *testing.T) {
+	f := newPracticeFixture()
+	latency, audio := 6000, 1000
+	answer := domain.PracticeAnswer{
+		EventID: "e0000000-0000-4000-8000-0000000000e2", StudentID: alice, OccurredAt: monday,
+		PracticeSessionID: "5e551000-0000-4000-8000-000000000001",
+		ItemKey:           "heard_chord_quality:minor",
+		Response: domain.PracticeResponse{Type: domain.PracticeResponseGeneratedChoice, Way: "chord_quality_by_ear",
+			Options: []string{"major", "minor", "dominant7"}, Choice: "minor", LatencyMs: &latency, AudioMs: &audio},
+	}
+
+	require.NoError(t, f.service.Process(context.Background(), answer))
+
+	require.Len(t, f.evidence.stored, 1)
+	fold, ok := f.fold(t, answer.ItemKey)
+	require.True(t, ok)
+	assert.InDelta(t, 0.5, fold.Fluency, 1e-9, "6000 ms less 1000 ms of sound is twice the way's 2500 ms")
 }
 
 func TestPracticeEvidenceService_AWrongExerciseAnswerIsAMiss(t *testing.T) {

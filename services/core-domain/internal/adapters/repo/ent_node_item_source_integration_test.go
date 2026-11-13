@@ -401,6 +401,17 @@ func TestEntNodeItemSource_HearItems(t *testing.T) {
 		}
 	})
 
+	t.Run("every instrument has a heard chord quality for each quality, under hear-chord-quality only", func(t *testing.T) {
+		for _, instrumentID := range []string{acousticGuitarID, electricBassID, ""} {
+			got, err := source.ClassifiedItems(ctx, instrumentID)
+			require.NoError(t, err)
+			items := heard(got, domain.PracticeItemKindHeardChordQuality)
+
+			assert.Len(t, items, 5, instrumentID)
+			assert.Equal(t, []string{catalogID("knowledge-node/hear-chord-quality")}, items["heard_chord_quality:diminished"], instrumentID)
+		}
+	})
+
 	t.Run("every 4-bar progression is a heard item under hear-progressions and its own nodes, and no 12-bar one", func(t *testing.T) {
 		got, err := source.ClassifiedItems(ctx, electricBassID)
 		require.NoError(t, err)

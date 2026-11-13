@@ -202,6 +202,7 @@ func (e GeneratedChoiceResponseResponseType) Valid() bool {
 const (
 	CadenceThenChord    GeneratedChoiceWay = "cadence_then_chord"
 	ChartToNumbers      GeneratedChoiceWay = "chart_to_numbers"
+	ChordQualityByEar   GeneratedChoiceWay = "chord_quality_by_ear"
 	ChordToFunction     GeneratedChoiceWay = "chord_to_function"
 	ChordToNumeral      GeneratedChoiceWay = "chord_to_numeral"
 	FunctionToChord     GeneratedChoiceWay = "function_to_chord"
@@ -217,6 +218,8 @@ func (e GeneratedChoiceWay) Valid() bool {
 	case CadenceThenChord:
 		return true
 	case ChartToNumbers:
+		return true
+	case ChordQualityByEar:
 		return true
 	case ChordToFunction:
 		return true
@@ -645,6 +648,30 @@ func (e PublishOutboxEntryStatus) Valid() bool {
 	case Published:
 		return true
 	case ResolvedManually:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SelfRatingResponseCleanSharePercent.
+const (
+	N100 SelfRatingResponseCleanSharePercent = 100
+	N25  SelfRatingResponseCleanSharePercent = 25
+	N50  SelfRatingResponseCleanSharePercent = 50
+	N75  SelfRatingResponseCleanSharePercent = 75
+)
+
+// Valid indicates whether the value is a known member of the SelfRatingResponseCleanSharePercent enum.
+func (e SelfRatingResponseCleanSharePercent) Valid() bool {
+	switch e {
+	case N100:
+		return true
+	case N25:
+		return true
+	case N50:
+		return true
+	case N75:
 		return true
 	default:
 		return false
@@ -1213,7 +1240,8 @@ type FretWindowFromFret int
 // the answer is rejected.
 type GeneratedChoiceResponse struct {
 	// AudioMs Milliseconds of sound the question plays once before it can be answered (the cadence,
-	// or the tonic chord alone, then the chord; or the progression), at the tempo and note
+	// or the tonic chord alone, then the chord; the progression; or the one chord whose
+	// quality is asked), at the tempo and note
 	// value it was played at. It is taken off the
 	// latency before the answer is judged against the drill's fluent time. Present for
 	// questions asked by ear only.
@@ -1232,7 +1260,7 @@ type GeneratedChoiceResponse struct {
 	// response, the key a question was asked in or a take was played in when
 	// its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
 	// tone or a progression key tour; absent in a response to any other item. A planned question
-	// always names its key.
+	// names its key, except a heard chord quality, asked in none.
 	MusicKey *MusicKey `json:"music_key,omitempty"`
 
 	// Options The options as shown, in the order shown. What an option is depends on the way: a
@@ -1242,7 +1270,8 @@ type GeneratedChoiceResponse struct {
 	// key for chart_to_numbers and progression_by_number (a drill progression's, or the key a
 	// wrong answer the server made up would have if an admin created it, such as
 	// major/I-ii-IV-V); a chart, the progression's chord
-	// symbols one per bar separated by single spaces (G D Em C), for numbers_to_chart. A
+	// symbols one per bar separated by single spaces (G D Em C), for numbers_to_chart; a
+	// quality (major, minor, dominant7, diminished, augmented) for chord_quality_by_ear. A
 	// chord's root may be spelled either way (F# or Gb).
 	Options []string `json:"options"`
 
@@ -1257,10 +1286,12 @@ type GeneratedChoiceResponse struct {
 	// numbers_to_chart = a progression and a key are named, pick its chart; cadence_then_chord =
 	// a cadence sets the key and a chord plays, pick its numeral; progression_by_number = a
 	// progression plays, pick it; see_then_name = a key is named and a chord is shown, pick its
-	// numeral. A diatonic chord is asked numeral_to_chord or
+	// numeral; chord_quality_by_ear = one chord plays alone, pick its quality. A diatonic chord is
+	// asked numeral_to_chord or
 	// chord_to_numeral; a chord function chord_to_function or function_to_chord; a chart
 	// progression chart_to_numbers or numbers_to_chart; a heard chord cadence_then_chord or
-	// see_then_name; a heard progression progression_by_number.
+	// see_then_name; a heard progression progression_by_number; a heard chord quality
+	// chord_quality_by_ear.
 	Way GeneratedChoiceWay `json:"way"`
 }
 
@@ -1275,10 +1306,12 @@ type GeneratedChoiceResponseResponseType string
 // numbers_to_chart = a progression and a key are named, pick its chart; cadence_then_chord =
 // a cadence sets the key and a chord plays, pick its numeral; progression_by_number = a
 // progression plays, pick it; see_then_name = a key is named and a chord is shown, pick its
-// numeral. A diatonic chord is asked numeral_to_chord or
+// numeral; chord_quality_by_ear = one chord plays alone, pick its quality. A diatonic chord is
+// asked numeral_to_chord or
 // chord_to_numeral; a chord function chord_to_function or function_to_chord; a chart
 // progression chart_to_numbers or numbers_to_chart; a heard chord cadence_then_chord or
-// see_then_name; a heard progression progression_by_number.
+// see_then_name; a heard progression progression_by_number; a heard chord quality
+// chord_quality_by_ear.
 type GeneratedChoiceWay string
 
 // HealthStatus Response body for liveness and readiness probes. Shared by every MotifPath
@@ -1481,7 +1514,7 @@ type MultiTapResponseResponseType string
 // response, the key a question was asked in or a take was played in when
 // its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
 // tone or a progression key tour; absent in a response to any other item. A planned question
-// always names its key.
+// names its key, except a heard chord quality, asked in none.
 type MusicKey string
 
 // NameTheNoteResponse Answer to a fretboard cell shown on the fretboard: the student names its note, picking it
@@ -1624,9 +1657,11 @@ type PlannedPracticeItem struct {
 	//   picked each time.
 	// - heard_progression:<progression key> — a drill progression of 2 to 4 bars recognised by
 	//   ear. The key is picked each time.
+	// - heard_chord_quality:<quality> — a chord's quality recognised by ear, one chord heard
+	//   alone: major, minor, dominant7, diminished or augmented. The root is picked each time.
 	// - chord_voicing:<diagram id> — playing one chord voicing cleanly, untimed.
 	// - root_fifth:<layout instrument id>:<chord> — playing a chord's root and fifth on a bass
-	//   layout, cleanly, untimed.
+	//   layout, cleanly, a half note each at a tempo.
 	// - root_change:<layout instrument id>:<from chord>:<to chord> — changing between two
 	//   chords' roots on a bass layout.
 	// - guide_tone:<layout instrument id>:<progression key> — tapping a chord tone of each chord
@@ -1698,9 +1733,11 @@ type PracticeItemAnsweredEvent struct {
 	//   picked each time.
 	// - heard_progression:<progression key> — a drill progression of 2 to 4 bars recognised by
 	//   ear. The key is picked each time.
+	// - heard_chord_quality:<quality> — a chord's quality recognised by ear, one chord heard
+	//   alone: major, minor, dominant7, diminished or augmented. The root is picked each time.
 	// - chord_voicing:<diagram id> — playing one chord voicing cleanly, untimed.
 	// - root_fifth:<layout instrument id>:<chord> — playing a chord's root and fifth on a bass
-	//   layout, cleanly, untimed.
+	//   layout, cleanly, a half note each at a tempo.
 	// - root_change:<layout instrument id>:<from chord>:<to chord> — changing between two
 	//   chords' roots on a bass layout.
 	// - guide_tone:<layout instrument id>:<progression key> — tapping a chord tone of each chord
@@ -1758,7 +1795,15 @@ type PracticeItemAnsweredEvent struct {
 	// session. Enables downstream analytics to distinguish spontaneous practice from
 	// assessment-driven and remediation-driven exercises.
 	TriggerContext *TriggerContext `json:"trigger_context,omitempty"`
-	union          json.RawMessage
+
+	// VisibleMs Milliseconds the session was visible to the student since its previous practice
+	// event (practice.item_answered or practice.session_ended), or since it started: the
+	// practice screen in the foreground, the app neither hidden nor in the background.
+	// Minutes practised are the sum of these. Sent by every current client; absent from
+	// events sent before it existed, where the gap since the previous event counts
+	// instead, never more than 2 minutes.
+	VisibleMs *int `json:"visible_ms,omitempty"`
+	union     json.RawMessage
 }
 
 // PracticeItemAnsweredEventEventType defines model for PracticeItemAnsweredEvent.EventType.
@@ -1806,10 +1851,13 @@ type PracticeItemAnsweredEvent1 = interface{}
 //   - heard_progression:<progression key> — a drill progression of 2 to 4 bars recognised by
 //     ear. The key is picked each time.
 //
+//   - heard_chord_quality:<quality> — a chord's quality recognised by ear, one chord heard
+//     alone: major, minor, dominant7, diminished or augmented. The root is picked each time.
+//
 //   - chord_voicing:<diagram id> — playing one chord voicing cleanly, untimed.
 //
 //   - root_fifth:<layout instrument id>:<chord> — playing a chord's root and fifth on a bass
-//     layout, cleanly, untimed.
+//     layout, cleanly, a half note each at a tempo.
 //
 //   - root_change:<layout instrument id>:<from chord>:<to chord> — changing between two
 //     chords' roots on a bass layout.
@@ -1894,6 +1942,14 @@ type PracticeSessionEndedEvent struct {
 	// partition key — guarantees ordered delivery of all events for a given student
 	// to the same partition and consumer.
 	StudentId openapi_types.UUID `json:"student_id"`
+
+	// VisibleMs Milliseconds the session was visible to the student since its previous practice
+	// event (practice.item_answered or practice.session_ended), or since it started: the
+	// practice screen in the foreground, the app neither hidden nor in the background.
+	// Minutes practised are the sum of these. Sent by every current client; absent from
+	// events sent before it existed, where the gap since the previous event counts
+	// instead, never more than 2 minutes.
+	VisibleMs *int `json:"visible_ms,omitempty"`
 }
 
 // PracticeSessionEndedEventEventType defines model for PracticeSessionEndedEvent.EventType.
@@ -2006,18 +2062,25 @@ type ResolvePublishOutboxEntryRequest struct {
 	Reason *string `json:"reason,omitempty"`
 }
 
-// SelfRatingResponse The student's own rating of a take they played: a play-along at a tempo, chord changes
-// counted over a minute, one chord played cleanly, a progression in one key of its tour, or a
-// whole song. A
-// play-along rating carries tempo_bpm and no changes_per_minute, and may carry the note_value
-// it was played at (quarters when absent); a progression key tour take carries the same and
-// the music_key it was played in; a chord-change or root-change take carries both tempo_bpm and changes_per_minute,
-// and its rating is derived from them (see rating); a single chord voicing, a chord's root
-// and fifth (play clean) or a song carries neither.
+// SelfRatingResponse The student's own rating of a take they played: a play-along at a tempo, ten cycles of
+// chord changes at a tempo, one chord played cleanly, a chord's root and fifth at a tempo, a
+// progression in one key of its tour, or a whole song. A play-along rating carries tempo_bpm,
+// and may carry the note_value it was played at (quarters when absent); a progression key
+// tour take carries the same and the music_key it was played in; a chord-change or
+// root-change take carries both tempo_bpm and clean_share_percent, and its rating is derived
+// from the share (see rating); a chord's root and fifth carries tempo_bpm only; a single
+// chord voicing or a song carries no measure.
 type SelfRatingResponse struct {
-	// ChangesPerMinute The number of chord changes in one minute that rang clean, counted by the student. Present
-	// for a chord change and a root change, and never more than tempo_bpm.
+	// ChangesPerMinute The clean changes counted over a minute, sent by apps released before a change became
+	// ten cycles rated by clean_share_percent. Kept so their evidence still reads; a current
+	// client never sends it, and the server rejects it on a new answer.
+	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	ChangesPerMinute *int `json:"changes_per_minute,omitempty"`
+
+	// CleanSharePercent The share of the take's changes that rang clean, picked by the student from four
+	// buttons once the take's ten cycles (20 changes) are over. Present for a chord change
+	// and a root change only.
+	CleanSharePercent *SelfRatingResponseCleanSharePercent `json:"clean_share_percent,omitempty"`
 
 	// MusicKey A major key, written as its tonic (C), or a minor key, written as its tonic chord (Am). Roots
 	// are spelled as the chord catalog spells them, in minor keys too (Dbm, not C#m). A minor
@@ -2025,7 +2088,7 @@ type SelfRatingResponse struct {
 	// response, the key a question was asked in or a take was played in when
 	// its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
 	// tone or a progression key tour; absent in a response to any other item. A planned question
-	// always names its key.
+	// names its key, except a heard chord quality, asked in none.
 	MusicKey *MusicKey `json:"music_key,omitempty"`
 
 	// NoteValue The note value a play-along take was played at: a speed factor on the music as written,
@@ -2038,28 +2101,30 @@ type SelfRatingResponse struct {
 
 	// Rating How the take went, in the student's judgement. struggled = fell apart or needed to
 	// stop; almost = got through with slips; clean = no slips at this measure. For a chord
-	// change or a root change the rating is not the student's: it follows from the share of
-	// the minute's beats that changed cleanly (changes_per_minute / tempo_bpm), clean from
-	// 0.9, almost from 0.6, struggled below. The server derives it whatever is sent, and a
-	// client sends the same.
+	// change or a root change the rating is not the student's: it follows from
+	// clean_share_percent, clean at 100, almost at 75, struggled at 50 or 25. The server
+	// derives it whatever is sent, and a client sends the same.
 	Rating SelfRatingResponseRating `json:"rating"`
 
 	// ResponseType Discriminator. The student rated a take of their own.
 	ResponseType SelfRatingResponseResponseType `json:"response_type"`
 
 	// TempoBpm The tempo of the take, in beats per minute, as played: the click's tempo. Present for a
-	// play-along and a progression key tour take, and for a chord change or a root change,
-	// where the student changes on every
-	// beat, so it is also the number of changes the minute asked for.
+	// play-along, a progression key tour take, a chord's root and fifth (a half note each),
+	// and a chord change or a root change, where the student changes on every beat.
 	TempoBpm *int `json:"tempo_bpm,omitempty"`
 }
 
+// SelfRatingResponseCleanSharePercent The share of the take's changes that rang clean, picked by the student from four
+// buttons once the take's ten cycles (20 changes) are over. Present for a chord change
+// and a root change only.
+type SelfRatingResponseCleanSharePercent int
+
 // SelfRatingResponseRating How the take went, in the student's judgement. struggled = fell apart or needed to
 // stop; almost = got through with slips; clean = no slips at this measure. For a chord
-// change or a root change the rating is not the student's: it follows from the share of
-// the minute's beats that changed cleanly (changes_per_minute / tempo_bpm), clean from
-// 0.9, almost from 0.6, struggled below. The server derives it whatever is sent, and a
-// client sends the same.
+// change or a root change the rating is not the student's: it follows from
+// clean_share_percent, clean at 100, almost at 75, struggled at 50 or 25. The server
+// derives it whatever is sent, and a client sends the same.
 type SelfRatingResponseRating string
 
 // SelfRatingResponseResponseType Discriminator. The student rated a take of their own.
@@ -2224,7 +2289,7 @@ type TimedTapsResponse struct {
 	// response, the key a question was asked in or a take was played in when
 	// its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
 	// tone or a progression key tour; absent in a response to any other item. A planned question
-	// always names its key.
+	// names its key, except a heard chord quality, asked in none.
 	MusicKey MusicKey `json:"music_key"`
 
 	// NoteValue The note value a play-along take was played at: a speed factor on the music as written,
@@ -2626,6 +2691,13 @@ func (t PracticeItemAnsweredEvent) MarshalJSON() ([]byte, error) {
 			return nil, fmt.Errorf("error marshaling 'trigger_context': %w", err)
 		}
 	}
+
+	if t.VisibleMs != nil {
+		object["visible_ms"], err = json.Marshal(t.VisibleMs)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'visible_ms': %w", err)
+		}
+	}
 	b, err = json.Marshal(object)
 	return b, err
 }
@@ -2708,6 +2780,13 @@ func (t *PracticeItemAnsweredEvent) UnmarshalJSON(b []byte) error {
 		err = json.Unmarshal(raw, &t.TriggerContext)
 		if err != nil {
 			return fmt.Errorf("error reading 'trigger_context': %w", err)
+		}
+	}
+
+	if raw, found := object["visible_ms"]; found {
+		err = json.Unmarshal(raw, &t.VisibleMs)
+		if err != nil {
+			return fmt.Errorf("error reading 'visible_ms': %w", err)
 		}
 	}
 

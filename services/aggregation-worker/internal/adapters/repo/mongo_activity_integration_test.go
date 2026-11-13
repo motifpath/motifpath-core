@@ -83,6 +83,55 @@ func TestMongoPracticeSessionRepository(t *testing.T) {
 		require.NoError(t, db.Collection("practice_sessions").FindOne(ctx, bson.D{{Key: "student_id", Value: studentC}}).Decode(&raw))
 		assert.Equal(t, []string{"fretboard_cell:name_the_note"}, raw.FeltRatedTemplates)
 	})
+	t.Run("its moments round-trip, by the names core-domain reads them by", func(t *testing.T) {
+		threeMinutes, fiveMinutes := 3*60_000, 5*60_000
+		seen := domain.PracticeSession{}.Started(domain.PracticeSessionStart{
+			EventID: "e5", StudentID: studentD, PracticeSessionID: session1, OccurredAt: start, Minutes: 10,
+		}).Seen("answer-1", start.Add(3*time.Minute), &threeMinutes).Seen("answer-2", start.Add(40*time.Minute), nil).
+			Ended(domain.PracticeSessionEnd{EventID: "e6", StudentID: studentD, PracticeSessionID: session1,
+				OccurredAt: start.Add(50 * time.Minute), VisibleMs: &fiveMinutes})
+		require.NoError(t, repo.Put(ctx, seen))
+
+		got, found, err := repo.Get(ctx, studentD, session1)
+		require.NoError(t, err)
+		require.True(t, found)
+		assert.Equal(t, seen, got)
+
+		var raw struct {
+			Moments []struct {
+				At        time.Time `bson:"at"`
+				VisibleMs *int64    `bson:"visible_ms"`
+			} `bson:"moments"`
+		}
+		require.NoError(t, db.Collection("practice_sessions").FindOne(ctx, bson.D{{Key: "student_id", Value: studentD}}).Decode(&raw))
+		require.Len(t, raw.Moments, 3)
+		assert.Equal(t, start.Add(3*time.Minute), raw.Moments[0].At.UTC())
+		assert.EqualValues(t, threeMinutes, *raw.Moments[0].VisibleMs)
+		assert.Nil(t, raw.Moments[1].VisibleMs, "an answer that didn't measure it keeps none")
+	})
+}
+
+func TestMongoPracticeSessionRepository_ListsTheSessionsStoredWithoutMoments(t *testing.T) {
+	ctx := context.Background()
+	db := mongoDatabase(t)
+	repo := NewMongoPracticeSessionRepository(db)
+	start := time.Date(2026, 10, 5, 18, 0, 0, 0, time.UTC)
+	_, err := db.Collection("practice_sessions").InsertOne(ctx, bson.D{
+		{Key: "student_id", Value: studentA}, {Key: "practice_session_id", Value: session1},
+		{Key: "started_at", Value: start}, {Key: "minutes", Value: 10},
+		{Key: "answered_event_ids", Value: bson.A{"answer-1"}}, {Key: "last_event_at", Value: start.Add(3 * time.Minute)},
+	})
+	require.NoError(t, err)
+	require.NoError(t, repo.Put(ctx, domain.PracticeSession{}.Started(domain.PracticeSessionStart{
+		StudentID: studentB, PracticeSessionID: session1, OccurredAt: start, Minutes: 10,
+	})))
+
+	older, err := repo.ListWithoutMoments(ctx)
+
+	require.NoError(t, err)
+	require.Len(t, older, 1)
+	assert.Equal(t, studentA, older[0].StudentID)
+	assert.Equal(t, []string{"answer-1"}, older[0].AnsweredEventIDs)
 }
 
 func TestMongoLearningActivityRepository(t *testing.T) {

@@ -113,6 +113,30 @@ func (e AuditEntryOutcome) Valid() bool {
 	}
 }
 
+// Defines values for BassPattern.
+const (
+	BassPatternRoot                  BassPattern = "root"
+	BassPatternRootFifth             BassPattern = "root_fifth"
+	BassPatternRootThirdFifthSeventh BassPattern = "root_third_fifth_seventh"
+	BassPatternRootThirdFifthThird   BassPattern = "root_third_fifth_third"
+)
+
+// Valid indicates whether the value is a known member of the BassPattern enum.
+func (e BassPattern) Valid() bool {
+	switch e {
+	case BassPatternRoot:
+		return true
+	case BassPatternRootFifth:
+		return true
+	case BassPatternRootThirdFifthSeventh:
+		return true
+	case BassPatternRootThirdFifthThird:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ChangeSaleSaleState.
 const (
 	ChangeSaleSaleStateFree      ChangeSaleSaleState = "free"
@@ -128,6 +152,21 @@ func (e ChangeSaleSaleState) Valid() bool {
 	case ChangeSaleSaleStatePaid:
 		return true
 	case ChangeSaleSaleStateWithdrawn:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ChangeTakeCycles.
+const (
+	N10 ChangeTakeCycles = 10
+)
+
+// Valid indicates whether the value is a known member of the ChangeTakeCycles enum.
+func (e ChangeTakeCycles) Valid() bool {
+	switch e {
+	case N10:
 		return true
 	default:
 		return false
@@ -1797,6 +1836,7 @@ func (e FretboardDrill) Valid() bool {
 const (
 	CadenceThenChord    GeneratedChoiceWay = "cadence_then_chord"
 	ChartToNumbers      GeneratedChoiceWay = "chart_to_numbers"
+	ChordQualityByEar   GeneratedChoiceWay = "chord_quality_by_ear"
 	ChordToFunction     GeneratedChoiceWay = "chord_to_function"
 	ChordToNumeral      GeneratedChoiceWay = "chord_to_numeral"
 	FunctionToChord     GeneratedChoiceWay = "function_to_chord"
@@ -1812,6 +1852,8 @@ func (e GeneratedChoiceWay) Valid() bool {
 	case CadenceThenChord:
 		return true
 	case ChartToNumbers:
+		return true
+	case ChordQualityByEar:
 		return true
 	case ChordToFunction:
 		return true
@@ -2446,22 +2488,23 @@ func (e PracticeFocusSource) Valid() bool {
 
 // Defines values for PracticeItemKind.
 const (
-	PracticeItemKindChartProgression PracticeItemKind = "chart_progression"
-	PracticeItemKindChordChange      PracticeItemKind = "chord_change"
-	PracticeItemKindChordFunction    PracticeItemKind = "chord_function"
-	PracticeItemKindChordVoicing     PracticeItemKind = "chord_voicing"
-	PracticeItemKindDiagramShape     PracticeItemKind = "diagram_shape"
-	PracticeItemKindDiatonicChord    PracticeItemKind = "diatonic_chord"
-	PracticeItemKindExercise         PracticeItemKind = "exercise"
-	PracticeItemKindFretboardCell    PracticeItemKind = "fretboard_cell"
-	PracticeItemKindGuideTone        PracticeItemKind = "guide_tone"
-	PracticeItemKindHeardChord       PracticeItemKind = "heard_chord"
-	PracticeItemKindHeardProgression PracticeItemKind = "heard_progression"
-	PracticeItemKindPlayAlong        PracticeItemKind = "play_along"
-	PracticeItemKindProgressionKeys  PracticeItemKind = "progression_keys"
-	PracticeItemKindRootChange       PracticeItemKind = "root_change"
-	PracticeItemKindRootFifth        PracticeItemKind = "root_fifth"
-	PracticeItemKindSong             PracticeItemKind = "song"
+	PracticeItemKindChartProgression  PracticeItemKind = "chart_progression"
+	PracticeItemKindChordChange       PracticeItemKind = "chord_change"
+	PracticeItemKindChordFunction     PracticeItemKind = "chord_function"
+	PracticeItemKindChordVoicing      PracticeItemKind = "chord_voicing"
+	PracticeItemKindDiagramShape      PracticeItemKind = "diagram_shape"
+	PracticeItemKindDiatonicChord     PracticeItemKind = "diatonic_chord"
+	PracticeItemKindExercise          PracticeItemKind = "exercise"
+	PracticeItemKindFretboardCell     PracticeItemKind = "fretboard_cell"
+	PracticeItemKindGuideTone         PracticeItemKind = "guide_tone"
+	PracticeItemKindHeardChord        PracticeItemKind = "heard_chord"
+	PracticeItemKindHeardChordQuality PracticeItemKind = "heard_chord_quality"
+	PracticeItemKindHeardProgression  PracticeItemKind = "heard_progression"
+	PracticeItemKindPlayAlong         PracticeItemKind = "play_along"
+	PracticeItemKindProgressionKeys   PracticeItemKind = "progression_keys"
+	PracticeItemKindRootChange        PracticeItemKind = "root_change"
+	PracticeItemKindRootFifth         PracticeItemKind = "root_fifth"
+	PracticeItemKindSong              PracticeItemKind = "song"
 )
 
 // Valid indicates whether the value is a known member of the PracticeItemKind enum.
@@ -2486,6 +2529,8 @@ func (e PracticeItemKind) Valid() bool {
 	case PracticeItemKindGuideTone:
 		return true
 	case PracticeItemKindHeardChord:
+		return true
+	case PracticeItemKindHeardChordQuality:
 		return true
 	case PracticeItemKindHeardProgression:
 		return true
@@ -4893,6 +4938,41 @@ type BalanceList struct {
 	Items []Balance `json:"items"`
 }
 
+// BassChordTones Where a chord's tones are on a bass layout, inside a five-fret window, for the board that
+// shows them: the root, and the third and fifth both above and below it, so the student sees
+// each interval up and down. A place is null when no string reaches it inside the window.
+// The seventh is the chord's own (the minor seventh on a dominant seventh, the major seventh
+// on a major seventh, the key's seventh on a triad) and is null unless the pattern plays it.
+type BassChordTones struct {
+	// Chord The chord symbol, as it appears in the chart.
+	Chord string `json:"chord"`
+
+	// FifthAbove The fifth above the root.
+	FifthAbove *FretPlace `json:"fifth_above"`
+
+	// FifthBelow The fifth an octave lower, below the root.
+	FifthBelow *FretPlace `json:"fifth_below"`
+
+	// Root One place on a fretboard layout.
+	Root FretPlace `json:"root"`
+
+	// Seventh The seventh above the root, for the root_third_fifth_seventh pattern only.
+	Seventh *FretPlace `json:"seventh"`
+
+	// ThirdAbove The third above the root.
+	ThirdAbove *FretPlace `json:"third_above"`
+
+	// ThirdBelow The third an octave lower, below the root.
+	ThirdBelow *FretPlace `json:"third_below"`
+}
+
+// BassPattern What a bass key tour plays on every bar of 4/4, chosen by the student's level on the tour:
+// root = the root, a whole note (new, learning); root_fifth = the root then the fifth above,
+// a half note each (accurate); root_third_fifth_third = root, third, fifth, third, quarters
+// (fluent); root_third_fifth_seventh = root, third, fifth, seventh, quarters (retained). The
+// take sounds exactly these notes in the bass's voice, and no chords.
+type BassPattern string
+
 // CancelSubscriptionRequest Cancel only the caller's next renewal; no refund or progress deletion is requested.
 type CancelSubscriptionRequest struct {
 	// ExpectedRevision Subscription revision observed by the caller before requesting cancellation.
@@ -4941,27 +5021,6 @@ type Challenge struct {
 	TimeThresholdMs *int `json:"time_threshold_ms,omitempty"`
 }
 
-// ChangeMinute The tempo ladder and the student's record for a minute of changes between two chords (or
-// two roots), one change on every beat, so a tempo is also the number of changes the minute
-// asks for. The take sends the tempo played and the clean changes counted.
-type ChangeMinute struct {
-	// BestCleanChangesPerMinute The most clean changes the student counted in a clean minute since their latest teacher
-	// review. Null when they have no clean minute yet.
-	BestCleanChangesPerMinute *int `json:"best_clean_changes_per_minute"`
-
-	// LastChangesPerMinute The clean changes counted in the item's last minute, where the count starts. Null when
-	// the item was never played.
-	LastChangesPerMinute *int `json:"last_changes_per_minute"`
-
-	// StartTempoBpm The tempo to start the minute at, from the ladder: the tempo of the item's last minute,
-	// 5 higher after two clean minutes in a row and 5 lower after a struggled one, never below
-	// 20; 40 when the item was never played. The student may set another before starting.
-	StartTempoBpm int `json:"start_tempo_bpm"`
-
-	// TargetChangesPerMinute The clean changes a minute that count as fully fluent, the same for every pair.
-	TargetChangesPerMinute int `json:"target_changes_per_minute"`
-}
-
 // ChangeSale Owner proposes a commercial change; core enforces rights, prices and rollout.
 type ChangeSale struct {
 	// ExpectedRevision Observed commercial revision.
@@ -4976,6 +5035,31 @@ type ChangeSale struct {
 
 // ChangeSaleSaleState Target state; withdrawal affects only new acquisition.
 type ChangeSaleSaleState string
+
+// ChangeTake The tempo ladder and the student's record for a take of changes between two chords (or two
+// roots): ten cycles, one cycle being from, to and back, one change on every beat, so 20
+// changes after a bar of count-in. When it ends the student picks the share of changes that
+// rang clean (25, 50, 75 or 100 %); the take sends the tempo played and that share.
+type ChangeTake struct {
+	// BestCleanTempoBpm The fastest tempo the student played a clean take at since their latest teacher review.
+	// Null when they have no clean take yet.
+	BestCleanTempoBpm *int `json:"best_clean_tempo_bpm"`
+
+	// Cycles The cycles one take plays, from the catalog.
+	Cycles ChangeTakeCycles `json:"cycles"`
+
+	// StartTempoBpm The tempo to start the take at, from the ladder: the tempo of the item's last take,
+	// 5 higher after two clean takes in a row and 5 lower after a struggled one, never below
+	// 20; 40 when the item was never played. The student may set another before starting.
+	StartTempoBpm int `json:"start_tempo_bpm"`
+
+	// TargetTempoBpm The tempo a clean take counts as fully fluent at, every change clean, the same for every
+	// pair.
+	TargetTempoBpm int `json:"target_tempo_bpm"`
+}
+
+// ChangeTakeCycles The cycles one take plays, from the catalog.
+type ChangeTakeCycles int
 
 // Checkout One-time acquisition, not proof of access; server-managed Stripe session.
 type Checkout struct {
@@ -7553,9 +7637,11 @@ type FretboardMapCell struct {
 	//   picked each time.
 	// - heard_progression:<progression key> — a drill progression of 2 to 4 bars recognised by
 	//   ear. The key is picked each time.
+	// - heard_chord_quality:<quality> — a chord's quality recognised by ear, one chord heard
+	//   alone: major, minor, dominant7, diminished or augmented. The root is picked each time.
 	// - chord_voicing:<diagram id> — playing one chord voicing cleanly, untimed.
 	// - root_fifth:<layout instrument id>:<chord> — playing a chord's root and fifth on a bass
-	//   layout, cleanly, untimed.
+	//   layout, cleanly, a half note each at a tempo.
 	// - root_change:<layout instrument id>:<from chord>:<to chord> — changing between two
 	//   chords' roots on a bass layout.
 	// - guide_tone:<layout instrument id>:<progression key> — tapping a chord tone of each chord
@@ -7589,14 +7675,15 @@ type FretboardMapCell struct {
 }
 
 // GeneratedChoicePlayback The sound of a question asked by ear: bars in 4/4, one chord a bar, played in the voicings
-// the question lists. The student may change the tempo and the note value before or between
+// the question lists. A chord quality plays one bar: its chord alone. The student may change the tempo and the note value before or between
 // plays; the answer is never graded on either. A note value is a speed factor: eighths play
 // two chords a bar, at twice the speed.
 type GeneratedChoicePlayback struct {
 	// Bars The bars in the order they play. cadence_then_chord: the cadence I IV V I with their
 	// numerals, or only I with its numeral once the student is accurate on the item, then the
 	// asked chord with no numeral. progression_by_number: the progression's bars, 2 to 4, none
-	// with a numeral.
+	// with a numeral. chord_quality_by_ear: one bar, the chord whose quality is asked, with no
+	// numeral.
 	Bars []struct {
 		// Chord The bar's chord symbol, spelled as the chord catalog spells roots. It is sounded,
 		// never shown.
@@ -7630,8 +7717,9 @@ type GeneratedChoicePlayback struct {
 // parts the way needs are present; the others are null or empty. Nothing in it marks the
 // answer, and the prompt never names it: the client shows the options as given and sends
 // back the way, the options as shown and the pick, with music_key when the item is a chart
-// progression, a heard chord or a heard progression. A question asked by ear also carries
-// the playback the client sounds before the options can be picked.
+// progression, a heard chord or a heard progression (never for a heard chord quality, which is
+// asked in no key; its music_key is null). A question asked by ear also carries the playback
+// the client sounds before the options can be picked.
 type GeneratedChoiceQuestion struct {
 	// Chart The chart the question shows, one chord symbol per bar (2 to 16), for
 	// chart_to_numbers. Empty for every other way.
@@ -7654,14 +7742,8 @@ type GeneratedChoiceQuestion struct {
 	// Function The function asked for, for function_to_chord. Null for every other way.
 	Function *ChordFunction `json:"function"`
 
-	// MusicKey A major key, written as its tonic (C), or a minor key, written as its tonic chord (Am). Roots
-	// are spelled as the chord catalog spells them, in minor keys too (Dbm, not C#m). A minor
-	// progression is asked and played only in minor keys, a major one only in major keys. In a
-	// response, the key a question was asked in or a take was played in when
-	// its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
-	// tone or a progression key tour; absent in a response to any other item. A planned question
-	// always names its key.
-	MusicKey MusicKey `json:"music_key"`
+	// MusicKey The key the question is asked in; null for a heard chord quality only.
+	MusicKey *MusicKey `json:"music_key"`
 
 	// Numeral The numeral asked about, for numeral_to_chord. Null for every other way.
 	Numeral *ChordNumeral `json:"numeral"`
@@ -7674,25 +7756,31 @@ type GeneratedChoiceQuestion struct {
 	// progression's wrong answers are drill progressions of its length and mode, then, when
 	// those are too few, progressions the server makes up by changing one of its bars. A
 	// made-up one is offered as the progression it would be if an admin created it: its key,
-	// its name (its numerals joined by –) and its chart.
+	// its name (its numerals joined by –) and its chart. A heard chord quality offers major,
+	// minor and dominant7 until the student is fluent on the item, then diminished and
+	// augmented too, in that order rather than shuffled.
 	Options []struct {
 		// Chart For numbers_to_chart, the option's chart, one chord symbol per bar, drawn as
 		// drawn_as says. Empty for every other way.
 		Chart []string `json:"chart"`
 
 		// Name The option's name in the student's language where its value is a key: a function
-		// ("Dominant — pulls home") or a progression ("I – V – vi – IV"). Null for a chord, a
-		// numeral or a chart, which are shown as they are.
+		// ("Dominant — pulls home"), a progression, or a chord quality ("Menor"). A
+		// progression is named by its catalog name, except for progression_by_number,
+		// where it is named by every bar's numeral in order, joined by – ("IV–V–I–I"), so
+		// the numerals shown always match the bars heard. Null for a chord, a numeral or a
+		// chart, which are shown as they are.
 		Name *string `json:"name"`
 
 		// Value The option as the response sends it back: a chord symbol, a numeral, a function, a
-		// progression key, or a chart (its chord symbols one per bar, separated by single
-		// spaces), by way.
+		// progression key, a chart (its chord symbols one per bar, separated by single
+		// spaces), or a chord quality (major, minor, dominant7, diminished, augmented), by
+		// way.
 		Value string `json:"value"`
 	} `json:"options"`
 
-	// Playback What the client plays before the options can be picked, for cadence_then_chord and
-	// progression_by_number. Null for every other way.
+	// Playback What the client plays before the options can be picked, for cadence_then_chord,
+	// progression_by_number and chord_quality_by_ear. Null for every other way.
 	Playback *GeneratedChoicePlayback `json:"playback,omitempty"`
 
 	// Progression The progression asked for, for numbers_to_chart. Null for every other way.
@@ -7725,10 +7813,12 @@ type GeneratedChoiceQuestion struct {
 	// numbers_to_chart = a progression and a key are named, pick its chart; cadence_then_chord =
 	// a cadence sets the key and a chord plays, pick its numeral; progression_by_number = a
 	// progression plays, pick it; see_then_name = a key is named and a chord is shown, pick its
-	// numeral. A diatonic chord is asked numeral_to_chord or
+	// numeral; chord_quality_by_ear = one chord plays alone, pick its quality. A diatonic chord is
+	// asked numeral_to_chord or
 	// chord_to_numeral; a chord function chord_to_function or function_to_chord; a chart
 	// progression chart_to_numbers or numbers_to_chart; a heard chord cadence_then_chord or
-	// see_then_name; a heard progression progression_by_number.
+	// see_then_name; a heard progression progression_by_number; a heard chord quality
+	// chord_quality_by_ear.
 	Way GeneratedChoiceWay `json:"way"`
 }
 
@@ -7740,10 +7830,12 @@ type GeneratedChoiceQuestion struct {
 // numbers_to_chart = a progression and a key are named, pick its chart; cadence_then_chord =
 // a cadence sets the key and a chord plays, pick its numeral; progression_by_number = a
 // progression plays, pick it; see_then_name = a key is named and a chord is shown, pick its
-// numeral. A diatonic chord is asked numeral_to_chord or
+// numeral; chord_quality_by_ear = one chord plays alone, pick its quality. A diatonic chord is
+// asked numeral_to_chord or
 // chord_to_numeral; a chord function chord_to_function or function_to_chord; a chart
 // progression chart_to_numbers or numbers_to_chart; a heard chord cadence_then_chord or
-// see_then_name; a heard progression progression_by_number.
+// see_then_name; a heard progression progression_by_number; a heard chord quality
+// chord_quality_by_ear.
 type GeneratedChoiceWay string
 
 // GeneratedChordDrawing How the question draws its chords, in the stimulus and in the options. chord_boxes = a
@@ -8218,7 +8310,7 @@ type Money struct {
 // response, the key a question was asked in or a take was played in when
 // its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
 // tone or a progression key tour; absent in a response to any other item. A planned question
-// always names its key.
+// names its key, except a heard chord quality, asked in none.
 type MusicKey string
 
 // NotFoundError Returned when the requested resource does not exist.
@@ -8799,8 +8891,8 @@ type PayoutOnboardingLink struct {
 // where C4 is middle C (e.g. "E2", "F#3", "Bb4").
 type Pitch = string
 
-// PlannedChordChange A minute of changes between two chords, back and forth (kind chord_change). Both chords are
-// named and drawn as their chord boxes.
+// PlannedChordChange Changes between two chords, back and forth, ten cycles at a tempo (kind chord_change). Both
+// chords are named and drawn as their chord boxes.
 type PlannedChordChange struct {
 	// FromChordSymbol The first chord's symbol.
 	FromChordSymbol string `json:"from_chord_symbol"`
@@ -8808,10 +8900,11 @@ type PlannedChordChange struct {
 	// FromDiagramId The first chord's voicing diagram, the first of the item key.
 	FromDiagramId openapi_types.UUID `json:"from_diagram_id"`
 
-	// Minute The tempo ladder and the student's record for a minute of changes between two chords (or
-	// two roots), one change on every beat, so a tempo is also the number of changes the minute
-	// asks for. The take sends the tempo played and the clean changes counted.
-	Minute ChangeMinute `json:"minute"`
+	// Take The tempo ladder and the student's record for a take of changes between two chords (or two
+	// roots): ten cycles, one cycle being from, to and back, one change on every beat, so 20
+	// changes after a bar of count-in. When it ends the student picks the share of changes that
+	// rang clean (25, 50, 75 or 100 %); the take sends the tempo played and that share.
+	Take ChangeTake `json:"take"`
 
 	// ToChordSymbol The second chord's symbol.
 	ToChordSymbol string `json:"to_chord_symbol"`
@@ -8865,7 +8958,7 @@ type PlannedGuideTone struct {
 	// response, the key a question was asked in or a take was played in when
 	// its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
 	// tone or a progression key tour; absent in a response to any other item. A planned question
-	// always names its key.
+	// names its key, except a heard chord quality, asked in none.
 	MusicKey MusicKey `json:"music_key"`
 
 	// Progression The progression played.
@@ -8930,6 +9023,10 @@ type PlannedGuideToneTone string
 // choose any tempo for a take; a clean take slower than the tour tempo doesn't make its key
 // clean.
 type PlannedProgressionKeys struct {
+	// BassPattern On bass, what every bar of a take plays, by the student's level on the tour. Null on
+	// guitar.
+	BassPattern *BassPattern `json:"bass_pattern"`
+
 	// Keys The tour's 12 keys in its order, the cycle of fourths from C: C F Bb Eb Ab Db F# B E A D
 	// G, each with whether it is clean and the progression drawn in it.
 	Keys []struct {
@@ -8937,22 +9034,9 @@ type PlannedProgressionKeys struct {
 		// catalog spells roots.
 		Chart []string `json:"chart"`
 
-		// ChordTones On a bass layout, the places of each distinct chord's root, third and fifth, each
-		// at its lowest fret, then its lowest string, inside frets 0–5. A dominant seventh
-		// keeps its root, third and fifth. Empty on guitar.
-		ChordTones []struct {
-			// Chord The chord symbol, as it appears in chart.
-			Chord string `json:"chord"`
-
-			// Fifth One place on a fretboard layout.
-			Fifth FretPlace `json:"fifth"`
-
-			// Root One place on a fretboard layout.
-			Root FretPlace `json:"root"`
-
-			// Third One place on a fretboard layout.
-			Third FretPlace `json:"third"`
-		} `json:"chord_tones"`
+		// ChordTones On a bass layout, the tones of each distinct chord of chart inside the key's
+		// window, the root on the lowest string that holds it there. Empty on guitar.
+		ChordTones []BassChordTones `json:"chord_tones"`
 
 		// Clean Whether the key is clean at the tour tempo.
 		Clean bool `json:"clean"`
@@ -8963,7 +9047,7 @@ type PlannedProgressionKeys struct {
 		// response, the key a question was asked in or a take was played in when
 		// its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
 		// tone or a progression key tour; absent in a response to any other item. A planned question
-		// always names its key.
+		// names its key, except a heard chord quality, asked in none.
 		MusicKey MusicKey `json:"music_key"`
 
 		// Voicings One voicing per distinct chord of chart.
@@ -8971,16 +9055,22 @@ type PlannedProgressionKeys struct {
 			// Chord The chord symbol, as it appears in chart.
 			Chord string `json:"chord"`
 
-			// DiagramId The chord catalog voicing the backing sounds, and the box shown on demand on
-			// guitar: the chord's open voicing if the catalog has one, else its
-			// lowest-difficulty voicing.
+			// DiagramId The chord catalog voicing the backing sounds on guitar, and the box shown
+			// on demand: the chord's open voicing if the catalog has one, else its
+			// lowest-difficulty voicing. Never sounded on bass.
 			DiagramId openapi_types.UUID `json:"diagram_id"`
 		} `json:"voicings"`
+
+		// WindowStartFret On bass, the lowest fret of the five-fret window this key's tones are in, picked
+		// from 0 to 9 when the tour is planned, so a tour doesn't always start at the open
+		// strings. Null on guitar.
+		WindowStartFret *int `json:"window_start_fret"`
 	} `json:"keys"`
 
 	// LayoutInstrumentId The instrument whose fretboard layout the tour is played on: guitar (chord symbols, chord
-	// boxes on demand) or electric bass (chord symbols and each chord's root, third and fifth
-	// on the board).
+	// boxes on demand, the backing strumming each chord) or electric bass (chord symbols, each
+	// chord's tones on the board, and a backing that sounds only bass_pattern's notes in the
+	// bass's voice, never a chord).
 	LayoutInstrumentId openapi_types.UUID `json:"layout_instrument_id"`
 
 	// MinTempoBpm The slowest tempo a struggle lowers the tour to, 60% of the target.
@@ -9001,7 +9091,7 @@ type PlannedProgressionKeys struct {
 	// response, the key a question was asked in or a take was played in when
 	// its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
 	// tone or a progression key tour; absent in a response to any other item. A planned question
-	// always names its key.
+	// names its key, except a heard chord quality, asked in none.
 	StartMusicKey MusicKey `json:"start_music_key"`
 
 	// StartNoteValue The note value a play-along take was played at: a speed factor on the music as written,
@@ -9029,8 +9119,9 @@ type PlannedProgressionKeys struct {
 	TourTempoBpm int `json:"tour_tempo_bpm"`
 }
 
-// PlannedRootChange A minute of changes between two chords' roots on a bass layout (kind root_change). Both
-// roots are marked.
+// PlannedRootChange Changes between two chords' roots on a bass layout, ten cycles at a tempo (kind
+// root_change). Both roots are marked, inside one five-fret window, and the take sounds each
+// root in the bass's voice on its beat, with the metronome; no chord sounds.
 type PlannedRootChange struct {
 	// FromChordSymbol The first chord's symbol, the first of the item key.
 	FromChordSymbol string `json:"from_chord_symbol"`
@@ -9041,32 +9132,53 @@ type PlannedRootChange struct {
 	// LayoutInstrumentId The instrument whose fretboard layout and tuning the places belong to.
 	LayoutInstrumentId openapi_types.UUID `json:"layout_instrument_id"`
 
-	// Minute The tempo ladder and the student's record for a minute of changes between two chords (or
-	// two roots), one change on every beat, so a tempo is also the number of changes the minute
-	// asks for. The take sends the tempo played and the clean changes counted.
-	Minute ChangeMinute `json:"minute"`
+	// Take The tempo ladder and the student's record for a take of changes between two chords (or two
+	// roots): ten cycles, one cycle being from, to and back, one change on every beat, so 20
+	// changes after a bar of count-in. When it ends the student picks the share of changes that
+	// rang clean (25, 50, 75 or 100 %); the take sends the tempo played and that share.
+	Take ChangeTake `json:"take"`
 
 	// ToChordSymbol The second chord's symbol.
 	ToChordSymbol string `json:"to_chord_symbol"`
 
 	// ToRoot One place on a fretboard layout.
 	ToRoot FretPlace `json:"to_root"`
+
+	// WindowStartFret The lowest fret of the five-fret window both roots are in, picked from 0 to 9 each time.
+	WindowStartFret int `json:"window_start_fret"`
 }
 
-// PlannedRootFifth A chord's root and fifth to play on a bass layout and rate (kind root_fifth). Both places
-// are marked: playing them is the skill. The take is rated by the student and has no measure.
+// PlannedRootFifth A chord's root and fifth to play on a bass layout and rate (kind root_fifth). The root and
+// both fifths, above and below it, are marked: playing them is the skill. The take plays the
+// root then the fifth above it, a half note each, in the bass's voice under the metronome,
+// over and over until the student stops it; the student rates it, and the take sends the
+// tempo it was played at.
 type PlannedRootFifth struct {
 	// ChordSymbol The chord's symbol, such as Am.
 	ChordSymbol string `json:"chord_symbol"`
 
-	// Fifth One place on a fretboard layout.
+	// Fifth The fifth above the root, the one played.
 	Fifth FretPlace `json:"fifth"`
+
+	// FifthBelow The fifth below the root, marked and not played, inside window_start_fret's window;
+	// null when no string reaches it there.
+	FifthBelow *FretPlace `json:"fifth_below"`
 
 	// LayoutInstrumentId The instrument whose fretboard layout and tuning the places belong to.
 	LayoutInstrumentId openapi_types.UUID `json:"layout_instrument_id"`
 
 	// Root One place on a fretboard layout.
 	Root FretPlace `json:"root"`
+
+	// StartTempoBpm The tempo the take starts at, in quarters, from the catalog: the student may set another
+	// before starting.
+	StartTempoBpm int `json:"start_tempo_bpm"`
+
+	// WindowStartFret The lowest fret of the five-fret window every place is in (frets window_start_fret to
+	// window_start_fret + 4, open strings counting as fret 0): the plan picks it from 0 to 9
+	// each time, so the root is not always at the bottom of the neck. The root is on the
+	// lowest string that holds it in the window with the fifth above it there too.
+	WindowStartFret int `json:"window_start_fret"`
 }
 
 // PlannedSong A published song chart to play whole on the instrument in hand, then rate (kind song). It is
@@ -9209,10 +9321,13 @@ type PracticeInstrumentCard struct {
 //   - heard_progression:<progression key> — a drill progression of 2 to 4 bars recognised by
 //     ear. The key is picked each time.
 //
+//   - heard_chord_quality:<quality> — a chord's quality recognised by ear, one chord heard
+//     alone: major, minor, dominant7, diminished or augmented. The root is picked each time.
+//
 //   - chord_voicing:<diagram id> — playing one chord voicing cleanly, untimed.
 //
 //   - root_fifth:<layout instrument id>:<chord> — playing a chord's root and fifth on a bass
-//     layout, cleanly, untimed.
+//     layout, cleanly, a half note each at a tempo.
 //
 //   - root_change:<layout instrument id>:<from chord>:<to chord> — changing between two
 //     chords' roots on a bass layout.
@@ -9363,9 +9478,12 @@ type PracticeOverview struct {
 	LearningDaysLast7 int `json:"learning_days_last_7"`
 
 	// MinutesPractisedLast7 Whole minutes practised in sessions that started on the last 7 calendar days,
-	// today included, in the given time zone, on any instrument or without one. Each
-	// session counts from its start to its last practice event, including a session
-	// left early or abandoned. The sum is rounded down to whole minutes.
+	// today included, in the given time zone, on any instrument or without one,
+	// including a session left early or abandoned. A session counts only the time it was
+	// visible to the student: the sum of its practice events' visible_ms, where an event
+	// without one counts the gap since the session's previous event (or its start),
+	// never more than 2 minutes; and never more than its start to its last practice
+	// event. The sum is rounded down to whole minutes.
 	MinutesPractisedLast7 int `json:"minutes_practised_last_7"`
 
 	// MinutesPractisedPrevious7 The same measure as minutes_practised_last_7, for the 7 calendar days before
@@ -9441,10 +9559,10 @@ type PracticeRungLevel struct {
 // chord_voicing, chord_change, root_fifth, root_change, progression_keys, guide_tone and
 // song is present, matching kind:
 // generated_choice for a diatonic chord, a chord function, a chart progression, a heard
-// chord or a heard progression.
+// chord, a heard progression or a heard chord quality.
 type PracticeSessionItem struct {
-	// ChordChange A minute of changes between two chords, back and forth (kind chord_change). Both chords are
-	// named and drawn as their chord boxes.
+	// ChordChange Changes between two chords, back and forth, ten cycles at a tempo (kind chord_change). Both
+	// chords are named and drawn as their chord boxes.
 	ChordChange *PlannedChordChange `json:"chord_change,omitempty"`
 
 	// ChordVoicing A single chord to fret, strum once and rate (kind chord_voicing). The chord is named:
@@ -9545,8 +9663,9 @@ type PracticeSessionItem struct {
 	// parts the way needs are present; the others are null or empty. Nothing in it marks the
 	// answer, and the prompt never names it: the client shows the options as given and sends
 	// back the way, the options as shown and the pick, with music_key when the item is a chart
-	// progression, a heard chord or a heard progression. A question asked by ear also carries
-	// the playback the client sounds before the options can be picked.
+	// progression, a heard chord or a heard progression (never for a heard chord quality, which is
+	// asked in no key; its music_key is null). A question asked by ear also carries the playback
+	// the client sounds before the options can be picked.
 	GeneratedChoice *GeneratedChoiceQuestion `json:"generated_choice,omitempty"`
 
 	// GuideTone A progression played once in a key, one chord a bar after a bar of count-in, while the
@@ -9584,9 +9703,11 @@ type PracticeSessionItem struct {
 	//   picked each time.
 	// - heard_progression:<progression key> — a drill progression of 2 to 4 bars recognised by
 	//   ear. The key is picked each time.
+	// - heard_chord_quality:<quality> — a chord's quality recognised by ear, one chord heard
+	//   alone: major, minor, dominant7, diminished or augmented. The root is picked each time.
 	// - chord_voicing:<diagram id> — playing one chord voicing cleanly, untimed.
 	// - root_fifth:<layout instrument id>:<chord> — playing a chord's root and fifth on a bass
-	//   layout, cleanly, untimed.
+	//   layout, cleanly, a half note each at a tempo.
 	// - root_change:<layout instrument id>:<from chord>:<to chord> — changing between two
 	//   chords' roots on a bass layout.
 	// - guide_tone:<layout instrument id>:<progression key> — tapping a chord tone of each chord
@@ -9679,12 +9800,16 @@ type PracticeSessionItem struct {
 	// or past the new share.
 	Reason PracticePickReason `json:"reason"`
 
-	// RootChange A minute of changes between two chords' roots on a bass layout (kind root_change). Both
-	// roots are marked.
+	// RootChange Changes between two chords' roots on a bass layout, ten cycles at a tempo (kind
+	// root_change). Both roots are marked, inside one five-fret window, and the take sounds each
+	// root in the bass's voice on its beat, with the metronome; no chord sounds.
 	RootChange *PlannedRootChange `json:"root_change,omitempty"`
 
-	// RootFifth A chord's root and fifth to play on a bass layout and rate (kind root_fifth). Both places
-	// are marked: playing them is the skill. The take is rated by the student and has no measure.
+	// RootFifth A chord's root and fifth to play on a bass layout and rate (kind root_fifth). The root and
+	// both fifths, above and below it, are marked: playing them is the skill. The take plays the
+	// root then the fifth above it, a half note each, in the bass's voice under the metronome,
+	// over and over until the student stops it; the student rates it, and the take sends the
+	// tempo it was played at.
 	RootFifth *PlannedRootFifth `json:"root_fifth,omitempty"`
 
 	// Rung The rung of the practice ladder an item trains, lowest first. know = recall a fact (a

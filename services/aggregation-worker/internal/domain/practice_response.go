@@ -93,8 +93,13 @@ type PracticeResponse struct {
 	TempoBPM *int
 	// NoteValue (self_rating) is the note value a play-along take was played at, as
 	// given; nil when the client sent none.
-	NoteValue        *NoteValue
+	NoteValue *NoteValue
+	// ChangesPerMinute (self_rating) is a minute of changes counted by an app
+	// released before changes became ten-cycle takes; a current grader rejects it.
 	ChangesPerMinute *int
+	// CleanSharePercent (self_rating) is the share of a change take's changes that
+	// rang clean, in percent: 25, 50, 75 or 100.
+	CleanSharePercent *int
 }
 
 // TriggerContext is where an exercise answered outside a practice session was

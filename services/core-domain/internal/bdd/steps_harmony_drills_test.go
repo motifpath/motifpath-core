@@ -403,6 +403,9 @@ func (w *world) harmonyClassified() []domain.ClassifiedItem {
 	for _, numeral := range domain.HarmonyItemNumerals {
 		items = append(items, domain.ClassifiedItem{ItemKey: domain.HeardChordItem{Numeral: numeral}.ItemKey(), NodeIDs: nodes(domain.PracticeItemKindHeardChord)})
 	}
+	for _, quality := range domain.HeardChordQualities {
+		items = append(items, domain.ClassifiedItem{ItemKey: domain.HeardChordQualityItem{Quality: quality}.ItemKey(), NodeIDs: nodes(domain.PracticeItemKindHeardChordQuality)})
+	}
 	progressions, err := catalogProgressions{}.List(context.Background())
 	if err == nil {
 		for _, p := range progressions {
@@ -549,8 +552,8 @@ func (w *world) askedInOneOf(list string) error {
 		return err
 	}
 	keys := strings.FieldsFunc(strings.ReplaceAll(list, " and ", ","), func(r rune) bool { return r == ',' || r == ' ' })
-	if !slices.Contains(keys, string(item.GeneratedChoice.MusicKey)) {
-		return fmt.Errorf("it is asked in %s, want one of %v", item.GeneratedChoice.MusicKey, keys)
+	if key := item.GeneratedChoice.MusicKey; key == nil || !slices.Contains(keys, string(*key)) {
+		return fmt.Errorf("it is asked in %v, want one of %v", key, keys)
 	}
 	return nil
 }

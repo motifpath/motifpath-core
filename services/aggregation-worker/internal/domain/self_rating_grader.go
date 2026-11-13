@@ -7,7 +7,7 @@ import "slices"
 // over a minute, a chord voicing or a chord's root and fifth played cleanly,
 // untimed, or a whole song, rated once with no measure. It checks the take fits the item and keeps the
 // rating and its measure as given, except a minute of changes, whose rating follows
-// from its count (golden/practice-graders/self_rating.v1.json).
+// from its count.
 type selfRatingV1 struct{}
 
 func (selfRatingV1) ID() string { return "self_rating.v1" }
@@ -93,6 +93,9 @@ func checkMeasure(measure selfRatedMeasure, r PracticeResponse) GradeRejection {
 			return GradeRejectionResponseDoesNotFitItem
 		}
 		return ""
+	case measureChangeTake:
+		// Takes came after this version; it never grades one.
+		return GradeRejectionResponseDoesNotFitItem
 	}
 	if own == nil {
 		return GradeRejectionMeasureMissing

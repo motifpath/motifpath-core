@@ -78,6 +78,9 @@ func (src harmonySource) item(ctx context.Context, itemKey string, catalog *[]do
 	if item, ok := domain.ParseHeardChordItemKey(itemKey); ok {
 		return item, true, nil
 	}
+	if item, ok := domain.ParseHeardChordQualityItemKey(itemKey); ok {
+		return item, true, nil
+	}
 	if key, ok := strings.CutPrefix(itemKey, string(domain.PracticeItemKindChartProgression)+":"); ok {
 		p, found, err := src.progression(ctx, key, catalog)
 		if !found || err != nil {
