@@ -223,6 +223,51 @@ func TestOnBassTheSeventhPatternPicksOnlyWindowsThatHoldEverySeventh(t *testing.
 	}
 }
 
+func TestOnBassTheSeventhPatternGivesATriadItsKeysSeventh(t *testing.T) {
+	cases := []struct {
+		name        string
+		progression domain.Progression
+		key         string
+		// sevenths are each chord's seventh, as a pitch class.
+		sevenths map[string]int
+	}{
+		{
+			name:        "in major, the major seventh on I and IV and the minor seventh elsewhere",
+			progression: popProgression, key: "G",
+			sevenths: map[string]int{"G": 6, "D": 0, "Em": 2, "C": 11},
+		},
+		{
+			name:        "in minor, natural minor's seventh",
+			progression: domain.Progression{Key: "minor/i-bVI-bIII-bVII", Mode: "minor", Bars: []string{"i", "bVI", "bIII", "bVII"}},
+			key:         "Am",
+			sevenths:    map[string]int{"Am": 7, "F": 4, "C": 11, "G": 5},
+		},
+		{
+			name:        "in minor, harmonic minor's on V and vii°, and ø7 on ii°",
+			progression: domain.Progression{Key: "minor/iio-V-i-viio", Mode: "minor", Bars: []string{"iio", "V", "i", "viio"}},
+			key:         "Am",
+			sevenths:    map[string]int{"Bdim": 9, "E": 2, "Am": 7, "Abdim": 5},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			item := domain.ProgressionKeysItem{Layout: standardBass, Bass: true, Progression: tc.progression}
+			tour := bassTour(t, item, domain.KnowledgeLevelRetained, func(int) int { return 0 })
+			for _, k := range tour.Keys {
+				for _, c := range k.ChordTones {
+					assert.NotNil(t, c.Seventh, "%s in %s", c.Chord, k.MusicKey)
+				}
+			}
+			tones := tonesOf(tourKey(t, tour, tc.key))
+			require.Len(t, tones, len(tc.sevenths))
+			for chord, want := range tc.sevenths {
+				require.NotNil(t, tones[chord].Seventh, chord)
+				assert.Equal(t, want, pitchClassAt(standardBass, *tones[chord].Seventh), "%s's seventh", chord)
+			}
+		})
+	}
+}
+
 // pitchClassAt is the pitch class played at p on layout.
 func pitchClassAt(layout domain.Instrument, p domain.Place) int {
 	open, _ := domain.ParsePitch(layout.Tuning[len(layout.Tuning)-p.String])

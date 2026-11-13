@@ -213,14 +213,15 @@ func (i ProgressionKeysItem) planKey(key string, clean bool, pattern BassPattern
 	if !i.Bass {
 		return k
 	}
-	board, ok := tourBassBoard(i.Layout, chords, pattern, planning.Pick)
+	sevenths := tourSevenths(i.Progression.Bars, k.Chart, ProgressionMode(i.Progression.Mode))
+	board, ok := tourBassBoard(i.Layout, chords, pattern, sevenths, planning.Pick)
 	if !ok {
 		return k
 	}
 	start := board.window.start
 	k.WindowStartFret = &start
 	for _, chord := range chords {
-		if tones, ok := board.chordTones(chord, pattern); ok {
+		if tones, ok := board.chordTones(chord, pattern, sevenths); ok {
 			k.ChordTones = append(k.ChordTones, tones)
 		}
 	}
@@ -230,7 +231,7 @@ func (i ProgressionKeysItem) planKey(key string, clean bool, pattern BassPattern
 // tourBassBoard is the layout in a window the session picks for a key: among
 // the windows where every chord's pattern tones are held above its root, or
 // among all of them when none is.
-func tourBassBoard(layout Instrument, chords []string, pattern BassPattern, pick func(n int) int) (bassBoard, bool) {
+func tourBassBoard(layout Instrument, chords []string, pattern BassPattern, sevenths map[string]int, pick func(n int) int) (bassBoard, bool) {
 	var fitting, all []bassBoard
 	for start := range bassWindowStarts {
 		board, err := newBassBoard(layout, bassWindow{start: start})
@@ -238,7 +239,7 @@ func tourBassBoard(layout Instrument, chords []string, pattern BassPattern, pick
 			return bassBoard{}, false
 		}
 		all = append(all, board)
-		if board.holdsPatterns(chords, pattern) {
+		if board.holdsPatterns(chords, pattern, sevenths) {
 			fitting = append(fitting, board)
 		}
 	}
@@ -253,7 +254,7 @@ func tourBassBoard(layout Instrument, chords []string, pattern BassPattern, pick
 
 // holdsPatterns reports whether every chord's pattern tones are held above
 // its root in b's window.
-func (b bassBoard) holdsPatterns(chords []string, pattern BassPattern) bool {
+func (b bassBoard) holdsPatterns(chords []string, pattern BassPattern, sevenths map[string]int) bool {
 	for _, chord := range chords {
 		root, err := chordRootPitchClass(chord)
 		if err != nil {
@@ -263,7 +264,7 @@ func (b bassBoard) holdsPatterns(chords []string, pattern BassPattern) bool {
 		if !ok {
 			return false
 		}
-		for _, interval := range patternIntervals(chord, pattern) {
+		for _, interval := range patternIntervals(chord, pattern, sevenths) {
 			if !b.holds(pitch + interval) {
 				return false
 			}
@@ -273,7 +274,7 @@ func (b bassBoard) holdsPatterns(chords []string, pattern BassPattern) bool {
 }
 
 // patternIntervals are the semitones above chord's root that pattern plays.
-func patternIntervals(chord string, pattern BassPattern) []int {
+func patternIntervals(chord string, pattern BassPattern, sevenths map[string]int) []int {
 	third, fifth := chordThirdAndFifth(chord)
 	switch pattern {
 	case BassPatternRootFifth:
@@ -281,7 +282,7 @@ func patternIntervals(chord string, pattern BassPattern) []int {
 	case BassPatternRootThirdFifthThird:
 		return []int{third, fifth}
 	case BassPatternRootThirdFifthSeventh:
-		if seventh, ok := chordSeventh(chord); ok {
+		if seventh, ok := sevenths[chord]; ok {
 			return []int{third, fifth, seventh}
 		}
 		return []int{third, fifth}
@@ -292,7 +293,7 @@ func patternIntervals(chord string, pattern BassPattern) []int {
 
 // chordTones places chord's tones in b's window: false when its root can't
 // be read or isn't there.
-func (b bassBoard) chordTones(chord string, pattern BassPattern) (BassChordTones, bool) {
+func (b bassBoard) chordTones(chord string, pattern BassPattern, sevenths map[string]int) (BassChordTones, bool) {
 	rootClass, err := chordRootPitchClass(chord)
 	if err != nil {
 		return BassChordTones{}, false
@@ -307,7 +308,7 @@ func (b bassBoard) chordTones(chord string, pattern BassPattern) (BassChordTones
 		ThirdAbove: b.optionalPlace(root + third), FifthAbove: b.optionalPlace(root + fifth),
 		ThirdBelow: b.optionalPlace(root + third - 12), FifthBelow: b.optionalPlace(root + fifth - 12),
 	}
-	if seventh, ok := chordSeventh(chord); ok && pattern == BassPatternRootThirdFifthSeventh {
+	if seventh, ok := sevenths[chord]; ok && pattern == BassPatternRootThirdFifthSeventh {
 		tones.Seventh = b.optionalPlace(root + seventh)
 	}
 	return tones, true
@@ -376,6 +377,69 @@ func chordSeventh(chord string) (int, bool) {
 		ChordQualitySus2, ChordQualitySus4, ChordQualityMajor6, ChordQualityMinor6, ChordQualityAdd9, ChordQualityMinorAdd9:
 	}
 	return 0, false
+}
+
+// tourSevenths is how far above its root each chord of chart has its seventh,
+// read from the first bar of bars it sounds on: its written seventh, or for a
+// triad its key's (barSeventh). A chord with neither is left out.
+func tourSevenths(bars, chart []string, mode ProgressionMode) map[string]int {
+	sevenths := map[string]int{}
+	for i, chord := range chart {
+		if _, found := sevenths[chord]; found || i >= len(bars) {
+			continue
+		}
+		if seventh, ok := barSeventh(chord, bars[i], mode); ok {
+			sevenths[chord] = seventh
+		}
+	}
+	return sevenths
+}
+
+// minorTriadSevenths is how far above its root a minor key's triad has its
+// seventh, by numeral: natural minor's, with harmonic minor's on V and vii°.
+var minorTriadSevenths = map[string]int{
+	"i": 10, "ii°": 10, "♭III": 11, "iv": 10, "v": 10, "♭VI": 11, "♭VII": 10,
+	"V": 10, "vii°": 9,
+}
+
+// barSeventh is how far above its root chord, on numeral in mode, has its
+// seventh. A written seventh decides. A major, minor or diminished triad takes
+// its key's: in major, the major seventh on I and IV and the minor seventh on
+// any other numeral; in minor, minorTriadSevenths, or on any other numeral the
+// major seventh on a major triad and the minor seventh on the others. Any other
+// chord has none.
+func barSeventh(chord, numeral string, mode ProgressionMode) (int, bool) {
+	if seventh, ok := chordSeventh(chord); ok {
+		return seventh, true
+	}
+	reading := ParseChordSymbol(chord)
+	if reading.Parsed == nil {
+		return 0, false
+	}
+	quality := reading.Parsed.Quality
+	if quality != ChordQualityMajor && quality != ChordQualityMinor && quality != ChordQualityDiminished {
+		return 0, false
+	}
+	if mode != ProgressionModeMinor {
+		mode = ProgressionModeMajor
+	}
+	read, ok := ParseProgressionNumeral(numeral, mode)
+	if !ok {
+		return 0, false
+	}
+	if mode == ProgressionModeMinor {
+		if seventh, found := minorTriadSevenths[read.Numeral]; found {
+			return seventh, true
+		}
+		if quality == ChordQualityMajor {
+			return 11, true
+		}
+		return 10, true
+	}
+	if read.Numeral == "I" || read.Numeral == "IV" {
+		return 11, true
+	}
+	return 10, true
 }
 
 // distinct is chords, each once, in the order they first appear.
