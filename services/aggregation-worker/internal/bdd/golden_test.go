@@ -76,6 +76,7 @@ type goldenEvidence struct {
 	TempoBPM         *int    `json:"tempo_bpm"`
 	NoteValue        *string `json:"note_value"`
 	ChangesPerMinute *int    `json:"changes_per_minute"`
+	CleanSharePct    *int    `json:"clean_share_percent"`
 	MusicKey         string  `json:"music_key"`
 	AnswerKey        *struct {
 		String   *int   `json:"string"`
@@ -193,6 +194,7 @@ func assertGoldenEvidence(t *testing.T, want goldenEvidence, got domain.GradedEv
 	assert.Equal(t, want.TempoBPM, got.TempoBPM)
 	assert.Equal(t, noteValueOf(want.NoteValue), got.NoteValue)
 	assert.Equal(t, want.ChangesPerMinute, got.ChangesPerMinute)
+	assert.Equal(t, want.CleanSharePct, got.CleanSharePercent)
 	assert.Equal(t, want.MusicKey, got.MusicKey)
 	if want.AnswerKey == nil {
 		assert.Nil(t, got.AnswerKey)
@@ -248,6 +250,7 @@ func decodeGoldenResponse(raw json.RawMessage) (domain.PracticeResponse, error) 
 		TempoBPM         *int     `json:"tempo_bpm"`
 		NoteValue        *string  `json:"note_value"`
 		ChangesPerMinute *int     `json:"changes_per_minute"`
+		CleanSharePct    *int     `json:"clean_share_percent"`
 		Choices          []string `json:"choices"`
 		Reason           string   `json:"reason"`
 		Way              string   `json:"way"`
@@ -272,26 +275,27 @@ func decodeGoldenResponse(raw json.RawMessage) (domain.PracticeResponse, error) 
 		return domain.PracticeResponse{}, err
 	}
 	r := domain.PracticeResponse{
-		Type:             domain.PracticeResponseType(w.ResponseType),
-		NoteName:         w.NoteName,
-		Shape:            w.Shape,
-		Interval:         w.Interval,
-		String:           w.String,
-		Fret:             w.Fret,
-		OptionIDs:        w.OptionIDs,
-		LatencyMs:        w.LatencyMs,
-		AudioMs:          w.AudioMs,
-		Rating:           domain.SelfRating(w.Rating),
-		TempoBPM:         w.TempoBPM,
-		NoteValue:        noteValueOf(w.NoteValue),
-		ChangesPerMinute: w.ChangesPerMinute,
-		Choices:          w.Choices,
-		Reason:           domain.NotAnsweredReason(w.Reason),
-		Way:              w.Way,
-		MusicKey:         w.MusicKey,
-		Options:          w.Options,
-		Choice:           w.Choice,
-		Tone:             w.Tone,
+		Type:              domain.PracticeResponseType(w.ResponseType),
+		NoteName:          w.NoteName,
+		Shape:             w.Shape,
+		Interval:          w.Interval,
+		String:            w.String,
+		Fret:              w.Fret,
+		OptionIDs:         w.OptionIDs,
+		LatencyMs:         w.LatencyMs,
+		AudioMs:           w.AudioMs,
+		Rating:            domain.SelfRating(w.Rating),
+		TempoBPM:          w.TempoBPM,
+		NoteValue:         noteValueOf(w.NoteValue),
+		ChangesPerMinute:  w.ChangesPerMinute,
+		CleanSharePercent: w.CleanSharePct,
+		Choices:           w.Choices,
+		Reason:            domain.NotAnsweredReason(w.Reason),
+		Way:               w.Way,
+		MusicKey:          w.MusicKey,
+		Options:           w.Options,
+		Choice:            w.Choice,
+		Tone:              w.Tone,
 	}
 	for _, t := range w.Taps {
 		r.Taps = append(r.Taps, domain.TimedTap{AtMs: t.AtMs, String: t.String, Fret: t.Fret})

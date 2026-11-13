@@ -120,8 +120,9 @@ type drillThresholdDocument struct {
 }
 
 // changeTargetDocument is a `practice_reference` document of kind
-// "change_target": one version of the clean changes a minute that count as
-// fully fluent on a chord or root change.
+// "change_target": one version of the tempo a clean take of changes counts
+// as fully fluent at, kept under the field name it had when it counted clean
+// changes a minute.
 type changeTargetDocument struct {
 	Kind             string    `bson:"kind"`
 	ID               string    `bson:"id"`
@@ -360,7 +361,7 @@ func (w *MongoPracticeReferenceWriter) PutChangeTargets(ctx context.Context, tar
 			ID:               t.ID,
 			Version:          t.Version,
 			EffectiveFrom:    t.EffectiveFrom,
-			ChangesPerMinute: t.ChangesPerMinute,
+			ChangesPerMinute: t.TempoBPM,
 			Source:           string(t.Source),
 			UpdatedAt:        at,
 			SnapshotVersion:  practiceReferenceSnapshotVersion,

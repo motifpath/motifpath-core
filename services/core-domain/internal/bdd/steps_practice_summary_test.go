@@ -40,6 +40,9 @@ type fakePracticeSession struct {
 	itemKeys  []string
 	endedAt   *time.Time
 	leftEarly bool
+	// moments are its answers and end with their visible times; nil for a
+	// session stored before the worker kept them.
+	moments *[]domain.SessionMoment
 }
 
 // fakeItemSnapshot is an item's state at the end of the UTC day starting
@@ -124,7 +127,11 @@ func (f *fakePracticeActivity) SessionSpans(_ context.Context, studentID string,
 	var out []domain.PracticeSessionSpan
 	for _, s := range f.sessions[studentID] {
 		if s.startedAt != nil && !s.startedAt.Before(since) {
-			out = append(out, domain.PracticeSessionSpan{StartedAt: *s.startedAt, LastEventAt: s.lastEventAt})
+			span := domain.PracticeSessionSpan{StartedAt: *s.startedAt, LastEventAt: s.lastEventAt}
+			if s.moments != nil {
+				span.Moments, span.MomentsKept = *s.moments, true
+			}
+			out = append(out, span)
 		}
 	}
 	return out, nil
@@ -166,6 +173,27 @@ func (f *fakePracticeActivity) addSession(studentID string, s fakePracticeSessio
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.sessions[studentID] = append(f.sessions[studentID], s)
+}
+
+// addMoment records an answer or the end of the student's latest session at,
+// with the visible time its event carried.
+func (f *fakePracticeActivity) addMoment(studentID string, at time.Time, visibleMs *int, ends bool) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	sessions := f.sessions[studentID]
+	if len(sessions) == 0 {
+		return fmt.Errorf("no session to add a moment to")
+	}
+	s := &sessions[len(sessions)-1]
+	moments := append(*s.moments, domain.SessionMoment{At: at, VisibleMs: visibleMs})
+	s.moments = &moments
+	if at.After(s.lastEventAt) {
+		s.lastEventAt = at
+	}
+	if ends {
+		s.endedAt = &at
+	}
+	return nil
 }
 
 func (f *fakePracticeActivity) addCompletion(studentID string, at time.Time) {

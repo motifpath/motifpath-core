@@ -185,8 +185,8 @@ func (w *world) hasSelfAssessedEvidence(student, diagram, r string, bpm int) err
 		return fmt.Errorf("evidence is %s rated %q at %v BPM, want self_assessed rated %q at %d BPM",
 			e.Source, e.Rating, e.TempoBPM, r, bpm)
 	}
-	if e.GraderID != "self_rating.v1" {
-		return fmt.Errorf("evidence was graded by %q, want self_rating.v1", e.GraderID)
+	if g, _ := domain.GraderFor(domain.PracticeItemKindPlayAlong, domain.PracticeResponseSelfRating); e.GraderID != g.ID() {
+		return fmt.Errorf("evidence was graded by %q, want %s", e.GraderID, g.ID())
 	}
 	return nil
 }

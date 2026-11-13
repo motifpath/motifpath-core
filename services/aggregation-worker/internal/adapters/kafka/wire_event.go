@@ -31,6 +31,7 @@ type wireEvent struct {
 	PlannedItems  []plannedItemWire `json:"planned_items,omitempty"`
 	AnsweredCount int               `json:"answered_count,omitempty"`
 	LeftEarly     bool              `json:"left_early,omitempty"`
+	VisibleMs     *int              `json:"visible_ms,omitempty"`
 	FeltRatings   []feltRatingWire  `json:"felt_ratings,omitempty"`
 
 	MedianTapMs int `json:"median_tap_ms,omitempty"`
@@ -74,6 +75,7 @@ type practiceResponseWire struct {
 	TempoBPM         *int     `json:"tempo_bpm,omitempty"`
 	NoteValue        *string  `json:"note_value,omitempty"`
 	ChangesPerMinute *int     `json:"changes_per_minute,omitempty"`
+	CleanSharePct    *int     `json:"clean_share_percent,omitempty"`
 	Choices          []string `json:"choices,omitempty"`
 	Reason           string   `json:"reason,omitempty"`
 	Way              string   `json:"way,omitempty"`

@@ -7,25 +7,20 @@ import (
 	"github.com/motifpath/core-domain/internal/domain"
 )
 
-// The generated tour key, voicing and chord tone types are anonymous; these
-// aliases name them.
+// The generated tour key and voicing types are anonymous; these aliases name
+// them.
 type (
 	generatedTourKey = struct {
-		Chart      []string               `json:"chart"`
-		ChordTones []generatedChordTones  `json:"chord_tones"`
-		Clean      bool                   `json:"clean"`
-		MusicKey   generated.MusicKey     `json:"music_key"`
-		Voicings   []generatedTourVoicing `json:"voicings"`
+		Chart           []string                   `json:"chart"`
+		ChordTones      []generated.BassChordTones `json:"chord_tones"`
+		Clean           bool                       `json:"clean"`
+		MusicKey        generated.MusicKey         `json:"music_key"`
+		Voicings        []generatedTourVoicing     `json:"voicings"`
+		WindowStartFret *int                       `json:"window_start_fret"`
 	}
 	generatedTourVoicing = struct {
 		Chord     string             `json:"chord"`
 		DiagramId openapi_types.UUID `json:"diagram_id"`
-	}
-	generatedChordTones = struct {
-		Chord string              `json:"chord"`
-		Fifth generated.FretPlace `json:"fifth"`
-		Root  generated.FretPlace `json:"root"`
-		Third generated.FretPlace `json:"third"`
 	}
 )
 
@@ -43,20 +38,28 @@ func toGeneratedProgressionKeys(tour domain.PlannedProgressionKeys, locale strin
 		MinTempoBpm:        tour.MinTempoBPM,
 		Keys:               make([]generatedTourKey, len(tour.Keys)),
 	}
+	if tour.BassPattern != "" {
+		pattern := generated.BassPattern(tour.BassPattern)
+		out.BassPattern = &pattern
+	}
 	out.Progression.Key = tour.ProgressionKey
 	out.Progression.Name = tour.ProgressionNames.Resolve(locale)
 	for i, k := range tour.Keys {
 		key := generatedTourKey{
 			Chart: k.Chart, Clean: k.Clean, MusicKey: generated.MusicKey(k.MusicKey),
-			Voicings:   make([]generatedTourVoicing, len(k.Voicings)),
-			ChordTones: make([]generatedChordTones, len(k.ChordTones)),
+			Voicings:        make([]generatedTourVoicing, len(k.Voicings)),
+			ChordTones:      make([]generated.BassChordTones, len(k.ChordTones)),
+			WindowStartFret: k.WindowStartFret,
 		}
 		for j, v := range k.Voicings {
 			key.Voicings[j] = generatedTourVoicing{Chord: v.Chord, DiagramId: mustUUID(v.DiagramID)}
 		}
 		for j, c := range k.ChordTones {
-			key.ChordTones[j] = generatedChordTones{
-				Chord: c.Chord, Root: toGeneratedFretPlace(c.Root), Third: toGeneratedFretPlace(c.Third), Fifth: toGeneratedFretPlace(c.Fifth),
+			key.ChordTones[j] = generated.BassChordTones{
+				Chord: c.Chord, Root: toGeneratedFretPlace(c.Root),
+				ThirdAbove: toGeneratedOptionalFretPlace(c.ThirdAbove), FifthAbove: toGeneratedOptionalFretPlace(c.FifthAbove),
+				ThirdBelow: toGeneratedOptionalFretPlace(c.ThirdBelow), FifthBelow: toGeneratedOptionalFretPlace(c.FifthBelow),
+				Seventh: toGeneratedOptionalFretPlace(c.Seventh),
 			}
 		}
 		out.Keys[i] = key

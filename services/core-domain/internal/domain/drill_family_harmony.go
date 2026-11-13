@@ -500,9 +500,10 @@ func boolRank(b bool) int {
 // items roll up to; a chart or heard progression also rolls up to its
 // progression's nodes.
 var HarmonyNodeKeys = map[PracticeItemKind][]string{
-	PracticeItemKindDiatonicChord:    {"diatonic-chords", "roman-numerals"},
-	PracticeItemKindChordFunction:    {"chord-function"},
-	PracticeItemKindChartProgression: {"read-chord-charts"},
-	PracticeItemKindHeardChord:       {"hear-chord-quality", "hear-progressions"},
-	PracticeItemKindHeardProgression: {"hear-progressions", "common-progressions"},
+	PracticeItemKindDiatonicChord:     {"diatonic-chords", "roman-numerals"},
+	PracticeItemKindChordFunction:     {"chord-function"},
+	PracticeItemKindChartProgression:  {"read-chord-charts"},
+	PracticeItemKindHeardChord:        {"hear-chord-quality", "hear-progressions"},
+	PracticeItemKindHeardProgression:  {"hear-progressions", "common-progressions"},
+	PracticeItemKindHeardChordQuality: {"hear-chord-quality"},
 }

@@ -109,6 +109,29 @@ func TestMongoPracticeActivityReader_ReadsAggregationWorkerShape(t *testing.T) {
 		}, got)
 	})
 
+	t.Run("a session span carries the moments the worker kept, with their visible times", func(t *testing.T) {
+		start := at(4, 18)
+		_, err := db.Collection("practice_sessions").InsertOne(ctx, bson.D{
+			{Key: "student_id", Value: "frank"}, {Key: "practice_session_id", Value: "seen"},
+			{Key: "started_at", Value: start}, {Key: "minutes", Value: 10}, {Key: "planned_items", Value: bson.A{}},
+			{Key: "last_event_at", Value: start.Add(10 * time.Minute)}, {Key: "end", Value: nil},
+			{Key: "moments", Value: bson.A{
+				bson.D{{Key: "event_id", Value: "a1"}, {Key: "at", Value: start.Add(3 * time.Minute)}, {Key: "visible_ms", Value: 180000}},
+				bson.D{{Key: "event_id", Value: "a2"}, {Key: "at", Value: start.Add(10 * time.Minute)}},
+			}},
+		})
+		require.NoError(t, err)
+
+		got, err := reader.SessionSpans(ctx, "frank", at(2, 0))
+
+		require.NoError(t, err)
+		visible := 180000
+		assert.Equal(t, []domain.PracticeSessionSpan{{
+			StartedAt: start, LastEventAt: start.Add(10 * time.Minute), MomentsKept: true,
+			Moments: []domain.SessionMoment{{At: start.Add(3 * time.Minute), VisibleMs: &visible}, {At: start.Add(10 * time.Minute)}},
+		}}, got)
+	})
+
 	t.Run("sessions started in the head are those with a start and no instrument", func(t *testing.T) {
 		session := func(id string, instrumentID *string, started *time.Time) bson.D {
 			doc := bson.D{

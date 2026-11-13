@@ -12,6 +12,7 @@ import (
 
 func TestToGeneratedPracticeSessionItem_ProgressionKeyTour(t *testing.T) {
 	bass, boxC := "7b1b7c43-6d9f-5b6d-9b57-0c1e3c9f4a11", "c787d144-1cdc-5119-9e04-efb0a0792b89"
+	windowStart := 2
 
 	got := toGeneratedPracticeSessionItem(domain.PracticeSessionItem{
 		ItemKey: "progression_keys:" + bass + ":I-V-vi-IV", Kind: domain.PracticeItemKindProgressionKeys, Rung: domain.PracticeRungMove,
@@ -19,12 +20,17 @@ func TestToGeneratedPracticeSessionItem_ProgressionKeyTour(t *testing.T) {
 			LayoutInstrumentID: bass, ProgressionKey: "I-V-vi-IV",
 			ProgressionNames: domain.LocalizedText{"en": "I–V–vi–IV (pop)", "pt-BR": "I–V–vi–IV (pop)"},
 			TimesThrough:     4, Takes: 3, StartMusicKey: "F", TourTempoBPM: 35, StartNoteValue: domain.TempoNoteValueEighths,
-			TargetTempoBPM: 100, MinTempoBPM: 60,
+			TargetTempoBPM: 100, MinTempoBPM: 60, BassPattern: domain.BassPatternRootThirdFifthSeventh,
 			Keys: []domain.PlannedTourKey{
 				{
 					MusicKey: "C", Clean: true, Chart: []string{"C", "G", "Am", "F"},
-					Voicings: []domain.ChordBox{{Chord: "C", DiagramID: boxC}},
-					ChordTones: []domain.ChordTonePlaces{{Chord: "C", Root: domain.Place{String: 3, Fret: 3}, Third: domain.Place{String: 2, Fret: 2}, Fifth: domain.Place{String: 1, Fret: 0}}},
+					Voicings:        []domain.ChordBox{{Chord: "C", DiagramID: boxC}},
+					WindowStartFret: &windowStart,
+					ChordTones: []domain.BassChordTones{{
+						Chord: "C", Root: domain.Place{String: 3, Fret: 3}, ThirdAbove: &domain.Place{String: 2, Fret: 2},
+						FifthAbove: &domain.Place{String: 1, Fret: 0}, FifthBelow: &domain.Place{String: 4, Fret: 3},
+						Seventh: &domain.Place{String: 1, Fret: 4},
+					}},
 				},
 				{MusicKey: "F", Chart: []string{"F", "C", "Dm", "Bb"}},
 			},
@@ -44,6 +50,8 @@ func TestToGeneratedPracticeSessionItem_ProgressionKeyTour(t *testing.T) {
 	assert.Equal(t, generated.NoteValue2("eighths"), tour.StartNoteValue)
 	assert.Equal(t, 100, tour.TargetTempoBpm)
 	assert.Equal(t, 60, tour.MinTempoBpm)
+	require.NotNil(t, tour.BassPattern)
+	assert.Equal(t, generated.BassPatternRootThirdFifthSeventh, *tour.BassPattern)
 	require.Len(t, tour.Keys, 2)
 	c := tour.Keys[0]
 	assert.Equal(t, generated.MusicKey("C"), c.MusicKey)
@@ -52,10 +60,29 @@ func TestToGeneratedPracticeSessionItem_ProgressionKeyTour(t *testing.T) {
 	require.Len(t, c.Voicings, 1)
 	assert.Equal(t, "C", c.Voicings[0].Chord)
 	assert.Equal(t, mustUUID(boxC), c.Voicings[0].DiagramId)
+	require.NotNil(t, c.WindowStartFret)
+	assert.Equal(t, 2, *c.WindowStartFret)
 	require.Len(t, c.ChordTones, 1)
-	assert.Equal(t, generated.FretPlace{String: 2, Fret: 2}, c.ChordTones[0].Third)
+	assert.Equal(t, generated.BassChordTones{
+		Chord: "C", Root: generated.FretPlace{String: 3, Fret: 3}, ThirdAbove: &generated.FretPlace{String: 2, Fret: 2},
+		FifthAbove: &generated.FretPlace{String: 1, Fret: 0}, FifthBelow: &generated.FretPlace{String: 4, Fret: 3},
+		Seventh: &generated.FretPlace{String: 1, Fret: 4},
+	}, c.ChordTones[0])
 	f := tour.Keys[1]
+	assert.Nil(t, f.WindowStartFret)
 	assert.False(t, f.Clean)
 	assert.NotNil(t, f.Voicings, "an empty list, never null")
 	assert.NotNil(t, f.ChordTones, "an empty list on guitar, never null")
+}
+
+func TestToGeneratedPracticeSessionItem_AGuitarTourHasNoBassPattern(t *testing.T) {
+	got := toGeneratedPracticeSessionItem(domain.PracticeSessionItem{
+		ItemKey: "progression_keys:guitar:I-V-vi-IV", Kind: domain.PracticeItemKindProgressionKeys,
+		ProgressionKeys: &domain.PlannedProgressionKeys{
+			LayoutInstrumentID: "c787d144-1cdc-5119-9e04-efb0a0792b89", ProgressionKey: "I-V-vi-IV", StartNoteValue: domain.TempoNoteValueQuarters,
+		},
+	}, nil, "en")
+
+	require.NotNil(t, got.ProgressionKeys)
+	assert.Nil(t, got.ProgressionKeys.BassPattern)
 }

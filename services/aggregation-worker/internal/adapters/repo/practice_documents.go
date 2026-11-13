@@ -24,6 +24,7 @@ type practiceResponseDocument struct {
 	TempoBPM         *int     `bson:"tempo_bpm,omitempty"`
 	NoteValue        *string  `bson:"note_value,omitempty"`
 	ChangesPerMinute *int     `bson:"changes_per_minute,omitempty"`
+	CleanSharePct    *int     `bson:"clean_share_percent,omitempty"`
 	Choices          []string `bson:"choices,omitempty"`
 	Reason           string   `bson:"reason,omitempty"`
 	Way              string   `bson:"way,omitempty"`
@@ -148,6 +149,7 @@ type practiceEvidenceDocument struct {
 	TempoBPM          *int                     `bson:"tempo_bpm,omitempty"`
 	NoteValue         *string                  `bson:"note_value,omitempty"`
 	ChangesPerMinute  *int                     `bson:"changes_per_minute,omitempty"`
+	CleanSharePercent *int                     `bson:"clean_share_percent,omitempty"`
 	MusicKey          string                   `bson:"music_key,omitempty"`
 	AnswerKey         *answerKeyDocument       `bson:"answer_key,omitempty"`
 }
@@ -279,6 +281,7 @@ func toEvidenceDocument(e domain.PracticeEvidence) (practiceEvidenceDocument, er
 			TempoBPM:         r.TempoBPM,
 			NoteValue:        noteValueString(r.NoteValue),
 			ChangesPerMinute: r.ChangesPerMinute,
+			CleanSharePct:    r.CleanSharePercent,
 			Choices:          r.Choices,
 			Reason:           string(r.Reason),
 			Way:              r.Way,
@@ -290,16 +293,17 @@ func toEvidenceDocument(e domain.PracticeEvidence) (practiceEvidenceDocument, er
 			FretWindow:       toFretWindowDocument(r.FretWindowFrom),
 			Cells:            toKeptCellDocuments(r.Cells),
 		},
-		Correct:          e.Correct,
-		LatencyMs:        e.LatencyMs,
-		AudioMs:          e.AudioMs,
-		TapMs:            e.TapMs,
-		Rating:           string(e.Rating),
-		TempoBPM:         e.TempoBPM,
-		NoteValue:        noteValueString(e.NoteValue),
-		ChangesPerMinute: e.ChangesPerMinute,
-		MusicKey:         e.MusicKey,
-		AnswerKey:        answerKey,
+		Correct:           e.Correct,
+		LatencyMs:         e.LatencyMs,
+		AudioMs:           e.AudioMs,
+		TapMs:             e.TapMs,
+		Rating:            string(e.Rating),
+		TempoBPM:          e.TempoBPM,
+		NoteValue:         noteValueString(e.NoteValue),
+		ChangesPerMinute:  e.ChangesPerMinute,
+		CleanSharePercent: e.CleanSharePercent,
+		MusicKey:          e.MusicKey,
+		AnswerKey:         answerKey,
 	}, nil
 }
 
@@ -319,40 +323,42 @@ func (d practiceEvidenceDocument) toDomain() (domain.PracticeEvidence, error) {
 		TriggerContext:    d.TriggerContext.toDomain(),
 		GraderID:          d.GraderID,
 		Response: domain.PracticeResponse{
-			Type:             domain.PracticeResponseType(r.ResponseType),
-			NoteName:         r.NoteName,
-			Shape:            r.Shape,
-			Interval:         r.Interval,
-			String:           r.String,
-			Fret:             r.Fret,
-			OptionIDs:        r.OptionIDs,
-			LatencyMs:        r.LatencyMs,
-			AudioMs:          r.AudioMs,
-			Rating:           domain.SelfRating(r.Rating),
-			TempoBPM:         r.TempoBPM,
-			NoteValue:        domainNoteValue(r.NoteValue),
-			ChangesPerMinute: r.ChangesPerMinute,
-			Choices:          r.Choices,
-			Reason:           domain.NotAnsweredReason(r.Reason),
-			Way:              r.Way,
-			MusicKey:         r.MusicKey,
-			Options:          r.Options,
-			Choice:           r.Choice,
-			Tone:             r.Tone,
-			Taps:             toDomainTaps(r.Taps),
-			FretWindowFrom:   r.FretWindow.toDomain(),
-			Cells:            toKeptDomainCells(r.Cells),
+			Type:              domain.PracticeResponseType(r.ResponseType),
+			NoteName:          r.NoteName,
+			Shape:             r.Shape,
+			Interval:          r.Interval,
+			String:            r.String,
+			Fret:              r.Fret,
+			OptionIDs:         r.OptionIDs,
+			LatencyMs:         r.LatencyMs,
+			AudioMs:           r.AudioMs,
+			Rating:            domain.SelfRating(r.Rating),
+			TempoBPM:          r.TempoBPM,
+			NoteValue:         domainNoteValue(r.NoteValue),
+			ChangesPerMinute:  r.ChangesPerMinute,
+			CleanSharePercent: r.CleanSharePct,
+			Choices:           r.Choices,
+			Reason:            domain.NotAnsweredReason(r.Reason),
+			Way:               r.Way,
+			MusicKey:          r.MusicKey,
+			Options:           r.Options,
+			Choice:            r.Choice,
+			Tone:              r.Tone,
+			Taps:              toDomainTaps(r.Taps),
+			FretWindowFrom:    r.FretWindow.toDomain(),
+			Cells:             toKeptDomainCells(r.Cells),
 		},
-		Correct:          d.Correct,
-		LatencyMs:        d.LatencyMs,
-		AudioMs:          d.AudioMs,
-		TapMs:            d.TapMs,
-		Rating:           domain.SelfRating(d.Rating),
-		TempoBPM:         d.TempoBPM,
-		NoteValue:        domainNoteValue(d.NoteValue),
-		ChangesPerMinute: d.ChangesPerMinute,
-		MusicKey:         d.MusicKey,
-		AnswerKey:        answerKey,
+		Correct:           d.Correct,
+		LatencyMs:         d.LatencyMs,
+		AudioMs:           d.AudioMs,
+		TapMs:             d.TapMs,
+		Rating:            domain.SelfRating(d.Rating),
+		TempoBPM:          d.TempoBPM,
+		NoteValue:         domainNoteValue(d.NoteValue),
+		ChangesPerMinute:  d.ChangesPerMinute,
+		CleanSharePercent: d.CleanSharePercent,
+		MusicKey:          d.MusicKey,
+		AnswerKey:         answerKey,
 	}, nil
 }
 
@@ -361,25 +367,24 @@ func (d practiceEvidenceDocument) toDomain() (domain.PracticeEvidence, error) {
 // compose sessions; level is the earned level, before the reader applies any lapse
 // for an overdue review.
 type practiceItemStateDocument struct {
-	StudentID            string     `bson:"student_id"`
-	ItemKey              string     `bson:"item_key"`
-	RulesVersion         int        `bson:"rules_version"`
-	Level                string     `bson:"level"`
-	Attempts             int        `bson:"attempts"`
-	Counted              int        `bson:"counted"`
-	Accuracy             float64    `bson:"accuracy"`
-	Fluency              float64    `bson:"fluency"`
-	Box                  int        `bson:"box"`
-	DueAt                *time.Time `bson:"due_at"`
-	LastAt               *time.Time `bson:"last_at"`
-	BestCleanBPM         *int       `bson:"best_clean_bpm"`
-	BestCleanNoteValue   *string    `bson:"best_clean_note_value"`
-	BestChangesPerMinute *int       `bson:"best_changes_per_minute"`
-	// A chord or root change's last minute, which the next one starts from.
-	LastChangeTempoBPM   *int   `bson:"last_change_tempo_bpm,omitempty"`
-	LastChangesPerMinute *int   `bson:"last_changes_per_minute,omitempty"`
-	LastRating           string `bson:"last_rating,omitempty"`
-	CleanMinutesInARow   int    `bson:"clean_minutes_in_a_row,omitempty"`
+	StudentID          string     `bson:"student_id"`
+	ItemKey            string     `bson:"item_key"`
+	RulesVersion       int        `bson:"rules_version"`
+	Level              string     `bson:"level"`
+	Attempts           int        `bson:"attempts"`
+	Counted            int        `bson:"counted"`
+	Accuracy           float64    `bson:"accuracy"`
+	Fluency            float64    `bson:"fluency"`
+	Box                int        `bson:"box"`
+	DueAt              *time.Time `bson:"due_at"`
+	LastAt             *time.Time `bson:"last_at"`
+	BestCleanBPM       *int       `bson:"best_clean_bpm"`
+	BestCleanNoteValue *string    `bson:"best_clean_note_value"`
+	// A chord or root change's last take, which the next one starts from, and its
+	// clean takes in a row.
+	LastChangeTempoBPM *int   `bson:"last_change_tempo_bpm,omitempty"`
+	LastRating         string `bson:"last_rating,omitempty"`
+	CleanTakesInARow   int    `bson:"clean_takes_in_a_row,omitempty"`
 	// A progression key tour's tempo at effective speed, its keys clean at that
 	// tempo, and the note value of its last clean take, which its next take starts from.
 	TourTempoBPM  *int     `bson:"tour_tempo_bpm,omitempty"`
@@ -394,25 +399,23 @@ type practiceItemStateDocument struct {
 
 func (d practiceItemStateDocument) toDomain() domain.ItemFold {
 	return domain.ItemFold{
-		Attempts:             d.Attempts,
-		Counted:              d.Counted,
-		Accuracy:             d.Accuracy,
-		Fluency:              d.Fluency,
-		Box:                  d.Box,
-		DueAt:                utc(d.DueAt),
-		LastAt:               utc(d.LastAt),
-		BestCleanBPM:         d.BestCleanBPM,
-		BestCleanNoteValue:   domainNoteValue(d.BestCleanNoteValue),
-		BestChangesPerMinute: d.BestChangesPerMinute,
-		LastChangeTempoBPM:   d.LastChangeTempoBPM,
-		LastChangesPerMinute: d.LastChangesPerMinute,
-		LastRating:           domain.SelfRating(d.LastRating),
-		CleanMinutesInARow:   d.CleanMinutesInARow,
-		TourTempoBPM:         d.TourTempoBPM,
-		TourCleanKeys:        d.TourCleanKeys,
-		TourNoteValue:        domainNoteValue(d.TourNoteValue),
-		LastMusicKey:         d.LastMusicKey,
-		RightByResponse:      d.RightByResponse,
+		Attempts:           d.Attempts,
+		Counted:            d.Counted,
+		Accuracy:           d.Accuracy,
+		Fluency:            d.Fluency,
+		Box:                d.Box,
+		DueAt:              utc(d.DueAt),
+		LastAt:             utc(d.LastAt),
+		BestCleanBPM:       d.BestCleanBPM,
+		BestCleanNoteValue: domainNoteValue(d.BestCleanNoteValue),
+		LastChangeTempoBPM: d.LastChangeTempoBPM,
+		LastRating:         domain.SelfRating(d.LastRating),
+		CleanTakesInARow:   d.CleanTakesInARow,
+		TourTempoBPM:       d.TourTempoBPM,
+		TourCleanKeys:      d.TourCleanKeys,
+		TourNoteValue:      domainNoteValue(d.TourNoteValue),
+		LastMusicKey:       d.LastMusicKey,
+		RightByResponse:    d.RightByResponse,
 	}
 }
 

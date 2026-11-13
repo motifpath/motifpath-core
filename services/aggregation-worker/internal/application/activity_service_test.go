@@ -616,6 +616,24 @@ func TestActivityService_KeepsEachStudentsLastActivity(t *testing.T) {
 	}
 }
 
+func TestActivityService_KeepsEachSessionsMomentsAndVisibleTimes(t *testing.T) {
+	visible := func(ms int) *int { return &ms }
+	answered := answeredEvent("e0000000-0000-4000-8000-000000000001", clock(18, 3), sessionOne)
+	answered.VisibleMs = visible(3 * 60_000)
+	unmeasured := answeredEvent("e0000000-0000-4000-8000-000000000002", clock(19, 0), sessionOne)
+	ended := sessionEndEvent("e0000000-0000-4000-8000-0000000000e1", clock(19, 10), false, 2)
+	ended.SessionEnd.VisibleMs = visible(5 * 60_000)
+	f := newActivityFixture()
+
+	f.handle(t, sessionStartEvent(clock(18, 0)), answered, unmeasured, ended)
+
+	assert.Equal(t, []domain.SessionMoment{
+		{EventID: answered.EventID, At: clock(18, 3), VisibleMs: answered.VisibleMs},
+		{EventID: unmeasured.EventID, At: clock(19, 0)},
+		{EventID: ended.EventID, At: clock(19, 10), VisibleMs: ended.SessionEnd.VisibleMs},
+	}, f.session(t).Moments)
+}
+
 func TestActivityService_CountsEachSessionsAnswersOnce(t *testing.T) {
 	cases := []struct {
 		name   string

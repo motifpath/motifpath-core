@@ -35,6 +35,8 @@ type GradedEvidence struct {
 	TempoBPM         *int
 	NoteValue        *NoteValue
 	ChangesPerMinute *int
+	// CleanSharePercent is a change take's share of clean changes, in percent.
+	CleanSharePercent *int
 	// MusicKey is the key a progression key tour take was played in; empty for
 	// every other kind.
 	MusicKey string
@@ -212,7 +214,7 @@ func TimedDrillTemplate(key PracticeItemKey, response PracticeResponse, ref Prac
 	switch key.Kind {
 	case PracticeItemKindFretboardCell, PracticeItemKindDiagramShape, PracticeItemKindDiatonicChord,
 		PracticeItemKindChordFunction, PracticeItemKindChartProgression, PracticeItemKindHeardChord,
-		PracticeItemKindHeardProgression, PracticeItemKindGuideTone:
+		PracticeItemKindHeardProgression, PracticeItemKindHeardChordQuality, PracticeItemKindGuideTone:
 		return string(key.Kind) + ":" + WayAsked(key.Kind, response)
 	case PracticeItemKindExercise:
 		if e, ok := ref.Exercises[key.ExerciseID()]; ok {
@@ -259,22 +261,23 @@ type Grader interface {
 
 // graderByKind is the registry: the grader for an item comes from its key's kind.
 var graderByKind = map[PracticeItemKind]Grader{
-	PracticeItemKindPlayAlong:        selfRatingV1{},
-	PracticeItemKindChordChange:      selfRatingV1{},
-	PracticeItemKindChordVoicing:     selfRatingV1{},
-	PracticeItemKindRootFifth:        selfRatingV1{},
-	PracticeItemKindRootChange:       selfRatingV1{},
-	PracticeItemKindProgressionKeys:  selfRatingV1{},
-	PracticeItemKindSong:             selfRatingV1{},
-	PracticeItemKindExercise:         exerciseOptionV1{},
-	PracticeItemKindFretboardCell:    fretboardCellV2{},
-	PracticeItemKindDiagramShape:     diagramShapeV1{},
-	PracticeItemKindDiatonicChord:    generatedChoiceV2{},
-	PracticeItemKindChordFunction:    generatedChoiceV2{},
-	PracticeItemKindChartProgression: generatedChoiceV2{},
-	PracticeItemKindHeardChord:       generatedChoiceV2{},
-	PracticeItemKindHeardProgression: generatedChoiceV2{},
-	PracticeItemKindGuideTone:        timedTapsV2{},
+	PracticeItemKindPlayAlong:         selfRatingV2{},
+	PracticeItemKindChordChange:       selfRatingV2{},
+	PracticeItemKindChordVoicing:      selfRatingV2{},
+	PracticeItemKindRootFifth:         selfRatingV2{},
+	PracticeItemKindRootChange:        selfRatingV2{},
+	PracticeItemKindProgressionKeys:   selfRatingV2{},
+	PracticeItemKindSong:              selfRatingV2{},
+	PracticeItemKindExercise:          exerciseOptionV1{},
+	PracticeItemKindFretboardCell:     fretboardCellV2{},
+	PracticeItemKindDiagramShape:      diagramShapeV1{},
+	PracticeItemKindDiatonicChord:     generatedChoiceV2{},
+	PracticeItemKindChordFunction:     generatedChoiceV2{},
+	PracticeItemKindChartProgression:  generatedChoiceV2{},
+	PracticeItemKindHeardChord:        generatedChoiceV2{},
+	PracticeItemKindHeardProgression:  generatedChoiceV2{},
+	PracticeItemKindHeardChordQuality: generatedChoiceV2{},
+	PracticeItemKindGuideTone:         timedTapsV2{},
 }
 
 // GraderFor returns the grader for an item kind and the way it was answered, and
@@ -291,6 +294,6 @@ func GraderFor(kind PracticeItemKind, response PracticeResponseType) (Grader, bo
 // Graders lists each grader once: every registered one, and the earlier versions
 // whose evidence is still kept.
 func Graders() []Grader {
-	return []Grader{selfRatingV1{}, exerciseOptionV1{}, fretboardCellV1{}, fretboardCellV2{}, diagramShapeV1{},
+	return []Grader{selfRatingV1{}, selfRatingV2{}, exerciseOptionV1{}, fretboardCellV1{}, fretboardCellV2{}, diagramShapeV1{},
 		generatedChoiceV1{}, generatedChoiceV2{}, timedTapsV1{}, timedTapsV2{}, multiTapV2{}}
 }

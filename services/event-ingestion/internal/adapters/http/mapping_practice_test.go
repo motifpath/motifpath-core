@@ -232,6 +232,19 @@ func TestToDomainEvent_PracticeItemAnsweredResponses(t *testing.T) {
 			response: `{"response_type":"self_rating","rating":"almost","changes_per_minute":42}`,
 			want:     domain.PracticeResponse{Type: domain.PracticeResponseSelfRating, Rating: domain.SelfRatingAlmost, ChangesPerMinute: intPtr(42)},
 		},
+		{
+			name:     "self rating of a take of chord changes",
+			itemKey:  "chord_change:" + testDiagramID + ":" + testOptionID,
+			response: `{"response_type":"self_rating","rating":"almost","tempo_bpm":60,"clean_share_percent":75}`,
+			want:     domain.PracticeResponse{Type: domain.PracticeResponseSelfRating, Rating: domain.SelfRatingAlmost, TempoBPM: intPtr(60), CleanSharePercent: intPtr(75)},
+		},
+		{
+			name:     "a heard chord quality",
+			itemKey:  "heard_chord_quality:dominant7",
+			response: `{"response_type":"generated_choice","way":"chord_quality_by_ear","options":["major","minor","dominant7"],"choice":"major","latency_ms":2100,"audio_ms":1700}`,
+			want: domain.PracticeResponse{Type: domain.PracticeResponseGeneratedChoice, Way: "chord_quality_by_ear",
+				Options: []string{"major", "minor", "dominant7"}, Choice: "major", LatencyMs: intPtr(2100), AudioMs: intPtr(1700)},
+		},
 	}
 
 	for _, tc := range cases {
@@ -274,6 +287,23 @@ func TestToDomainEvent_PracticeItemAnsweredIgnoresClientTapTime(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Nil(t, event.(domain.PracticeItemAnsweredEvent).TapMs, "tap_ms is server-set; a client value must be dropped")
+}
+
+func TestToDomainEvent_PracticeEventsKeepTheirVisibleTime(t *testing.T) {
+	answered, err := toDomainEvent(practiceBody(t, "practice.item_answered",
+		answeredFields(testCellKey, `{"response_type":"name_the_note","note_name":"C","latency_ms":1800}`)+`,"visible_ms":95000`))
+	require.NoError(t, err)
+	assert.Equal(t, intPtr(95000), answered.(domain.PracticeItemAnsweredEvent).VisibleMs)
+
+	ended, err := toDomainEvent(practiceBody(t, "practice.session_ended", fmt.Sprintf(
+		`,"practice_session_id":%q,"answered_count":2,"left_early":true,"felt_ratings":[],"visible_ms":0`, testPracticeSessionID)))
+	require.NoError(t, err)
+	assert.Equal(t, intPtr(0), ended.(domain.PracticeSessionEndedEvent).VisibleMs)
+
+	older, err := toDomainEvent(practiceBody(t, "practice.session_ended", fmt.Sprintf(
+		`,"practice_session_id":%q,"answered_count":2,"left_early":true,"felt_ratings":[]`, testPracticeSessionID)))
+	require.NoError(t, err)
+	assert.Nil(t, older.(domain.PracticeSessionEndedEvent).VisibleMs, "an older app sends none")
 }
 
 func TestToDomainEvent_PracticeSessionEnded(t *testing.T) {
@@ -354,6 +384,11 @@ func TestToDomainEvent_PracticeValidationFailures(t *testing.T) {
 			answeredFields("exercise:"+testDiagramID, fmt.Sprintf(`{"response_type":"option_choice","option_ids":[%q],"latency_ms":900,"audio_ms":-1}`, testOptionID)), domain.ErrInvalidField, "response"},
 		{"answered naming a note with an audio length", "practice.item_answered",
 			answeredFields(testCellKey, `{"response_type":"name_the_note","note_name":"C","latency_ms":1800,"audio_ms":500}`), domain.ErrInvalidField, "response"},
+		{"answered with a negative visible time", "practice.item_answered",
+			answeredFields(testCellKey, nameTheNote) + `,"visible_ms":-1`, domain.ErrInvalidField, "visible_ms"},
+		{"answered a take of chord changes with a share that isn't one of the four", "practice.item_answered",
+			answeredFields("chord_change:"+testDiagramID+":"+testOptionID, `{"response_type":"self_rating","rating":"almost","tempo_bpm":60,"clean_share_percent":90}`),
+			domain.ErrInvalidField, "response"},
 		{"answered with an item key of no kind", "practice.item_answered",
 			answeredFields("fretboard:"+testInstrumentID+":5:3", nameTheNote), domain.ErrInvalidField, "item_key"},
 		{"answered with a cell key on string 0", "practice.item_answered",
@@ -452,6 +487,9 @@ func TestToDomainEvent_PracticeValidationFailures(t *testing.T) {
 			answeredFields("play_along:"+testDiagramID, `{"response_type":"self_rating","rating":"clean","tempo_bpm":90,"latency_ms":10}`), domain.ErrInvalidField, "response"},
 
 		// practice.session_ended
+		{"ended with a negative visible time", "practice.session_ended",
+			fmt.Sprintf(`,"practice_session_id":%q,"answered_count":2,"left_early":true,"felt_ratings":[],"visible_ms":-1`, testPracticeSessionID),
+			domain.ErrInvalidField, "visible_ms"},
 		{"ended without a practice session id", "practice.session_ended",
 			`,"answered_count":2,"left_early":true,"felt_ratings":[]`, domain.ErrMissingRequiredField, "practice_session_id"},
 		{"ended with a negative answered count", "practice.session_ended",

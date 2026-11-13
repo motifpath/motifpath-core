@@ -16,6 +16,7 @@ var practiceItemKeyPattern = regexp.MustCompile(`^(` +
 	`|chart_progression:` + progressionKeyPattern +
 	`|heard_chord:` + numeralPattern +
 	`|heard_progression:` + progressionKeyPattern +
+	`|heard_chord_quality:(major|minor|dominant7|diminished|augmented)` +
 	`|chord_voicing:` + uuidPattern +
 	`|root_fifth:` + uuidPattern + `:` + chordPattern +
 	`|root_change:` + uuidPattern + `:` + chordPattern + `:` + chordPattern +
@@ -175,14 +176,17 @@ type PracticeResponse struct {
 	// before answering; nil for an exercise without audio. Replays aren't counted.
 	AudioMs *int
 
-	// Rating (self_rating) is always set; TempoBPM for a play-along take (and on
-	// timed_taps), ChangesPerMinute for a chord-change or root-change minute. NoteValue
-	// is the note value a play-along or guide-tone take was played at, kept as given;
-	// nil when the client sent none.
-	Rating           SelfRating
-	TempoBPM         *int
-	NoteValue        *NoteValue
-	ChangesPerMinute *int
+	// Rating (self_rating) is always set; TempoBPM for a take at a tempo (and on
+	// timed_taps), CleanSharePercent for a take of chord or root changes: the share
+	// of its changes that rang clean, 25, 50, 75 or 100. ChangesPerMinute is a minute
+	// counted by an app released before takes, kept as sent for the grader to refuse.
+	// NoteValue is the note value a play-along or guide-tone take was played at, kept
+	// as given; nil when the client sent none.
+	Rating            SelfRating
+	TempoBPM          *int
+	NoteValue         *NoteValue
+	ChangesPerMinute  *int
+	CleanSharePercent *int
 }
 
 // IsTimed reports whether the answer was timed, which is when the server stamps the
@@ -256,6 +260,10 @@ type PracticeItemAnsweredEvent struct {
 	// TapMs is the student's tap time from their latest tap check before the answer.
 	// Server-set on timed answers only; a client-sent value is never carried over.
 	TapMs *int
+
+	// VisibleMs is the time the session was visible to the student since its
+	// previous practice event, or its start; nil from an app that doesn't measure it.
+	VisibleMs *int
 }
 
 func (e PracticeItemAnsweredEvent) Base() TrackingEventBase { return e.TrackingEventBase }
@@ -267,6 +275,9 @@ type PracticeSessionEndedEvent struct {
 	AnsweredCount     int
 	LeftEarly         bool
 	FeltRatings       []FeltRating
+	// VisibleMs is the time the session was visible to the student since its
+	// previous practice event, or its start; nil from an app that doesn't measure it.
+	VisibleMs *int
 }
 
 func (e PracticeSessionEndedEvent) Base() TrackingEventBase { return e.TrackingEventBase }

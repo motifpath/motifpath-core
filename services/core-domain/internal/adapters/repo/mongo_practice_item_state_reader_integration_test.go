@@ -51,11 +51,27 @@ func TestMongoPracticeItemStateReader_ReadsAggregationWorkerShape(t *testing.T) 
 			{Key: "due_at", Value: dueAt}, {Key: "last_at", Value: lastAt},
 			{Key: "right_by_response", Value: bson.D{{Key: "name_the_note", Value: 4}, {Key: "find_the_note", Value: 1}}},
 		}),
+		// A change folded before ten-cycle takes: its last minute, 30 clean
+		// changes at 50 BPM, reads as a 50 percent share, a struggle.
 		stateDoc("alice", "chord_change:c1:c2", bson.D{
 			{Key: "level", Value: "learning"}, {Key: "counted", Value: 2}, {Key: "box", Value: 1},
 			{Key: "due_at", Value: dueAt}, {Key: "last_at", Value: lastAt},
-			{Key: "best_changes_per_minute", Value: 38}, {Key: "last_change_tempo_bpm", Value: 45},
-			{Key: "last_changes_per_minute", Value: 20}, {Key: "last_rating", Value: "struggled"},
+			{Key: "best_changes_per_minute", Value: 38}, {Key: "last_change_tempo_bpm", Value: 50},
+			{Key: "last_changes_per_minute", Value: 30}, {Key: "last_rating", Value: "almost"},
+		}),
+		// 48 clean changes at 50 BPM read as 75 percent, almost; the clean
+		// minutes in a row it ended still count.
+		stateDoc("alice", "chord_change:c2:c3", bson.D{
+			{Key: "level", Value: "learning"}, {Key: "counted", Value: 3}, {Key: "box", Value: 1},
+			{Key: "due_at", Value: dueAt}, {Key: "last_at", Value: lastAt},
+			{Key: "last_change_tempo_bpm", Value: 50}, {Key: "last_changes_per_minute", Value: 48},
+			{Key: "last_rating", Value: "clean"}, {Key: "clean_minutes_in_a_row", Value: 2},
+		}),
+		// A change folded from takes.
+		stateDoc("alice", "root_change:b:Am:C", bson.D{
+			{Key: "level", Value: "learning"}, {Key: "counted", Value: 3}, {Key: "box", Value: 1},
+			{Key: "due_at", Value: dueAt}, {Key: "last_at", Value: lastAt}, {Key: "best_clean_bpm", Value: 55},
+			{Key: "last_change_tempo_bpm", Value: 55}, {Key: "last_rating", Value: "clean"}, {Key: "clean_takes_in_a_row", Value: 2},
 		}),
 		stateDoc("alice", "progression_keys:g:I-V-vi-IV", bson.D{
 			{Key: "level", Value: "learning"}, {Key: "counted", Value: 2}, {Key: "box", Value: 1},
@@ -76,7 +92,7 @@ func TestMongoPracticeItemStateReader_ReadsAggregationWorkerShape(t *testing.T) 
 
 	reader := NewMongoPracticeItemStateReader(db)
 
-	states, err := reader.GetStates(ctx, "alice", []string{"play_along:d1", "play_along:d2", "play_along:d3", "fretboard_cell:g:6:3", "chord_change:c1:c2", "progression_keys:g:I-V-vi-IV", "guide_tone:g:ii-V-I"})
+	states, err := reader.GetStates(ctx, "alice", []string{"play_along:d1", "play_along:d2", "play_along:d3", "fretboard_cell:g:6:3", "chord_change:c1:c2", "chord_change:c2:c3", "root_change:b:Am:C", "progression_keys:g:I-V-vi-IV", "guide_tone:g:ii-V-I"})
 	require.NoError(t, err)
 	bpm, eighths := 90, domain.TempoNoteValueEighths
 	assert.Equal(t, map[string]domain.PracticeItemState{
@@ -91,8 +107,17 @@ func TestMongoPracticeItemStateReader_ReadsAggregationWorkerShape(t *testing.T) 
 		"chord_change:c1:c2": {
 			ItemKey: "chord_change:c1:c2", RulesVersion: 1, Level: domain.KnowledgeLevelLearning, Counted: 2, Box: 1,
 			DueAt: &dueAt, LastAt: &lastAt, Accuracy: 0.7, Fluency: 0.5,
-			BestChangesPerMinute: intPtr(38),
-			LastChangeMinute:     &domain.ChangeMinuteState{TempoBPM: 45, ChangesPerMinute: 20, Struggled: true},
+			LastChangeTake: &domain.ChangeTakeState{TempoBPM: 50, Struggled: true},
+		},
+		"chord_change:c2:c3": {
+			ItemKey: "chord_change:c2:c3", RulesVersion: 1, Level: domain.KnowledgeLevelLearning, Counted: 3, Box: 1,
+			DueAt: &dueAt, LastAt: &lastAt, Accuracy: 0.7, Fluency: 0.5,
+			LastChangeTake: &domain.ChangeTakeState{TempoBPM: 50, CleanInARow: 2},
+		},
+		"root_change:b:Am:C": {
+			ItemKey: "root_change:b:Am:C", RulesVersion: 1, Level: domain.KnowledgeLevelLearning, Counted: 3, Box: 1,
+			DueAt: &dueAt, LastAt: &lastAt, Accuracy: 0.7, Fluency: 0.5, BestCleanBPM: intPtr(55),
+			LastChangeTake: &domain.ChangeTakeState{TempoBPM: 55, CleanInARow: 2},
 		},
 		"progression_keys:g:I-V-vi-IV": {
 			ItemKey: "progression_keys:g:I-V-vi-IV", RulesVersion: 1, Level: domain.KnowledgeLevelLearning, Counted: 2, Box: 1,

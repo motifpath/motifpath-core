@@ -199,7 +199,7 @@ func TestMongoPracticeReferenceWriter_ChangeTargetShape(t *testing.T) {
 	from := time.Date(2026, 10, 18, 0, 0, 0, 0, time.UTC)
 
 	require.NoError(t, writer.PutChangeTargets(ctx, []domain.ChangeTarget{
-		{ID: "ct-1", Version: 1, EffectiveFrom: from, ChangesPerMinute: 60, Source: domain.DrillThresholdSourceDefault},
+		{ID: "ct-1", Version: 1, EffectiveFrom: from, TempoBPM: 60, Source: domain.DrillThresholdSourceDefault},
 	}))
 
 	var doc bson.M

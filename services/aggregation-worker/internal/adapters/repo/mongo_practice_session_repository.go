@@ -60,3 +60,21 @@ func (r *MongoPracticeSessionRepository) Put(ctx context.Context, s domain.Pract
 func sessionFilter(studentID, sessionID string) bson.D {
 	return bson.D{{Key: "student_id", Value: studentID}, {Key: "practice_session_id", Value: sessionID}}
 }
+
+// ListWithoutMoments returns every session stored before sessions kept their
+// moments: those without the field, which every write now sets.
+func (r *MongoPracticeSessionRepository) ListWithoutMoments(ctx context.Context) ([]domain.PracticeSession, error) {
+	cursor, err := r.collection.Find(ctx, bson.D{{Key: "moments", Value: bson.D{{Key: "$exists", Value: false}}}})
+	if err != nil {
+		return nil, err
+	}
+	var docs []practiceSessionDocument
+	if err := cursor.All(ctx, &docs); err != nil {
+		return nil, err
+	}
+	sessions := make([]domain.PracticeSession, len(docs))
+	for i, d := range docs {
+		sessions[i] = d.toDomain()
+	}
+	return sessions, nil
+}

@@ -63,17 +63,22 @@ func TestPracticeSessionService_ComposePlanProgressionKeyTours(t *testing.T) {
 		assert.Empty(t, a.ChordTones)
 	})
 
-	t.Run("on bass, the tour marks each chord's root, third and fifth", func(t *testing.T) {
+	t.Run("on bass, the tour marks each chord's tones in the window it picks, and the root pattern when new", func(t *testing.T) {
 		f := tourFixture(t, "I-V-vi-IV")
+		f.svc.WithPick(func(int) int { return 3 })
 
 		plan := f.compose(t, practiceBass, 20)
 
 		tours := itemsOfKind(plan, domain.PracticeItemKindProgressionKeys)
 		require.Len(t, tours, 1)
+		assert.Equal(t, domain.BassPatternRoot, tours[0].ProgressionKeys.BassPattern)
 		g := tours[0].ProgressionKeys.Keys[11]
 		assert.Equal(t, "G", g.MusicKey)
+		require.NotNil(t, g.WindowStartFret)
+		assert.Equal(t, 3, *g.WindowStartFret)
 		require.Len(t, g.ChordTones, 4)
-		assert.Equal(t, domain.ChordTonePlaces{Chord: "G", Root: domain.Place{String: 1, Fret: 0}, Third: domain.Place{String: 3, Fret: 2}, Fifth: domain.Place{String: 2, Fret: 0}}, g.ChordTones[0])
+		third, fifth := domain.Place{String: 4, Fret: 7}, domain.Place{String: 3, Fret: 5}
+		assert.Equal(t, domain.BassChordTones{Chord: "G", Root: domain.Place{String: 4, Fret: 3}, ThirdAbove: &third, FifthAbove: &fifth}, g.ChordTones[0])
 		assert.NotEmpty(t, g.Voicings, "the backing sounds the chords")
 	})
 

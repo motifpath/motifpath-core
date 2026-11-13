@@ -48,7 +48,8 @@ var (
 var generatedChoiceWays = map[string]bool{
 	"numeral_to_chord": true, "chord_to_numeral": true, "chord_to_function": true, "function_to_chord": true,
 	"chart_to_numbers": true, "numbers_to_chart": true, "cadence_then_chord": true, "progression_by_number": true,
-	"see_then_name": true,
+	"chord_quality_by_ear": true,
+	"see_then_name":        true,
 }
 
 // musicKeys are the keys a drill is asked in: the major keys, spelled as the chord
@@ -146,13 +147,25 @@ func toPracticeItemAnsweredEvent(eventType domain.EventType, body *generated.Tra
 	if err != nil {
 		return nil, err
 	}
+	if err := checkVisibleMs(v.VisibleMs); err != nil {
+		return nil, err
+	}
 	return domain.PracticeItemAnsweredEvent{
 		TrackingEventBase: base,
 		PracticeSessionID: practiceSessionID,
 		TriggerContext:    trigger,
 		ItemKey:           v.ItemKey,
 		Response:          response,
+		VisibleMs:         v.VisibleMs,
 	}, nil
+}
+
+// checkVisibleMs refuses a negative visible time; an absent one is an older app's.
+func checkVisibleMs(visibleMs *int) error {
+	if visibleMs != nil && *visibleMs < 0 {
+		return fmt.Errorf("%w: visible_ms", domain.ErrInvalidField)
+	}
+	return nil
 }
 
 // toAnswerContext reads the one context an answer belongs to: its practice session, or
@@ -194,6 +207,9 @@ func toPracticeSessionEndedEvent(eventType domain.EventType, body *generated.Tra
 	if v.AnsweredCount < 0 {
 		return nil, fmt.Errorf("%w: answered_count", domain.ErrInvalidField)
 	}
+	if err := checkVisibleMs(v.VisibleMs); err != nil {
+		return nil, err
+	}
 	if len(v.FeltRatings) > maxFeltRatings {
 		return nil, fmt.Errorf("%w: felt_ratings holds at most %d ratings", domain.ErrInvalidField, maxFeltRatings)
 	}
@@ -216,6 +232,7 @@ func toPracticeSessionEndedEvent(eventType domain.EventType, body *generated.Tra
 		AnsweredCount:     v.AnsweredCount,
 		LeftEarly:         v.LeftEarly,
 		FeltRatings:       felt,
+		VisibleMs:         v.VisibleMs,
 	}, nil
 }
 
@@ -292,6 +309,7 @@ type rawPracticeResponse struct {
 	TempoBPM         *int     `json:"tempo_bpm"`
 	NoteValue        *string  `json:"note_value"`
 	ChangesPerMinute *int     `json:"changes_per_minute"`
+	CleanSharePct    *int     `json:"clean_share_percent"`
 	Choices          []string `json:"choices"`
 	Reason           *string  `json:"reason"`
 	Way              *string  `json:"way"`
@@ -329,7 +347,7 @@ func (r rawPracticeResponse) strayProperty(shape ...string) string {
 		{"string", r.String != nil}, {"fret", r.Fret != nil}, {"option_ids", r.OptionIDs != nil},
 		{"latency_ms", r.LatencyMs != nil}, {"audio_ms", r.AudioMs != nil}, {"rating", r.Rating != nil},
 		{"tempo_bpm", r.TempoBPM != nil}, {"note_value", r.NoteValue != nil},
-		{"changes_per_minute", r.ChangesPerMinute != nil},
+		{"changes_per_minute", r.ChangesPerMinute != nil}, {"clean_share_percent", r.CleanSharePct != nil},
 		{"choices", r.Choices != nil}, {"reason", r.Reason != nil}, {"way", r.Way != nil},
 		{"music_key", r.MusicKey != nil}, {"options", r.Options != nil}, {"choice", r.Choice != nil},
 		{"tone", r.Tone != nil}, {"taps", r.Taps != nil}, {"fret_window", r.FretWindow != nil},
@@ -639,7 +657,7 @@ func toOptionChoiceResponse(r rawPracticeResponse) (domain.PracticeResponse, err
 }
 
 func toSelfRatingResponse(r rawPracticeResponse) (domain.PracticeResponse, error) {
-	if property := r.strayProperty("rating", "tempo_bpm", "note_value", "changes_per_minute", "music_key"); property != "" {
+	if property := r.strayProperty("rating", "tempo_bpm", "note_value", "changes_per_minute", "clean_share_percent", "music_key"); property != "" {
 		return invalidResponse(property + " is not a property of self_rating")
 	}
 	if r.Rating == nil {
@@ -657,6 +675,9 @@ func toSelfRatingResponse(r rawPracticeResponse) (domain.PracticeResponse, error
 	if r.ChangesPerMinute != nil && (*r.ChangesPerMinute < 0 || *r.ChangesPerMinute > maxChangesPerMin) {
 		return invalidResponse(fmt.Sprintf("changes_per_minute must be between 0 and %d", maxChangesPerMin))
 	}
+	if r.CleanSharePct != nil && !slices.Contains(cleanShares, *r.CleanSharePct) {
+		return invalidResponse("clean_share_percent must be 25, 50, 75 or 100")
+	}
 	noteValue, ok := toNoteValue(r.NoteValue)
 	if !ok {
 		return invalidResponse(noteValueRule)
@@ -670,5 +691,9 @@ func toSelfRatingResponse(r rawPracticeResponse) (domain.PracticeResponse, error
 		musicKey = *r.MusicKey
 	}
 	return domain.PracticeResponse{Type: domain.PracticeResponseSelfRating, Rating: rating, TempoBPM: r.TempoBPM, NoteValue: noteValue,
-		ChangesPerMinute: r.ChangesPerMinute, MusicKey: musicKey}, nil
+		ChangesPerMinute: r.ChangesPerMinute, CleanSharePercent: r.CleanSharePct, MusicKey: musicKey}, nil
 }
+
+// cleanShares are the shares of clean changes a take of chord or root changes is
+// rated with, in percent.
+var cleanShares = []int{25, 50, 75, 100}

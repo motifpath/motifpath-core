@@ -65,6 +65,13 @@ func TestMongoEventRepository_FindByEventID_RoundTripsPracticeEvents(t *testing.
 			TapMs:             intRef(350),
 		},
 		domain.PracticeItemAnsweredEvent{
+			TrackingEventBase: practiceBase("a1000000-0000-4000-8000-000000000031", domain.EventTypePracticeItemAnswered, practiceStudentID, practiceAt),
+			PracticeSessionID: practiceSessionID,
+			ItemKey:           "chord_change:" + practiceSessionID + ":" + practiceStudentID,
+			Response:          domain.PracticeResponse{Type: domain.PracticeResponseSelfRating, Rating: domain.SelfRatingAlmost, TempoBPM: intRef(60), CleanSharePercent: intRef(75)},
+			VisibleMs:         intRef(95000),
+		},
+		domain.PracticeItemAnsweredEvent{
 			TrackingEventBase: practiceBase("a1000000-0000-4000-8000-000000000004", domain.EventTypePracticeItemAnswered, practiceStudentID, practiceAt),
 			PracticeSessionID: practiceSessionID,
 			ItemKey:           cellItemKey,
@@ -160,6 +167,7 @@ func TestMongoEventRepository_FindByEventID_RoundTripsPracticeEvents(t *testing.
 			AnsweredCount:     0,
 			LeftEarly:         true,
 			FeltRatings:       []domain.FeltRating{},
+			VisibleMs:         intRef(42000),
 		},
 		domain.PracticeTapCheckCompletedEvent{
 			TrackingEventBase: practiceBase("a1000000-0000-4000-8000-000000000009", domain.EventTypePracticeTapCheckCompleted, practiceStudentID, practiceAt),

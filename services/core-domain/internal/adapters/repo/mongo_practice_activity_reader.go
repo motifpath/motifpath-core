@@ -40,6 +40,15 @@ type practiceSessionEndDocument struct {
 type practiceSessionSpanDocument struct {
 	StartedAt   time.Time `bson:"started_at"`
 	LastEventAt time.Time `bson:"last_event_at"`
+	// Moments is nil for a session the worker stored before it kept them.
+	Moments *[]sessionMomentDocument `bson:"moments"`
+}
+
+// sessionMomentDocument is one of a session's answers or its end, with the
+// visible time its event carried.
+type sessionMomentDocument struct {
+	At        time.Time `bson:"at"`
+	VisibleMs *int      `bson:"visible_ms"`
 }
 
 // learningActivityDocument holds the fields this service reads from a
@@ -241,7 +250,7 @@ func (r *MongoPracticeActivityReader) SessionSpans(ctx context.Context, studentI
 	cursor, err := r.sessions.Find(ctx, bson.D{
 		{Key: "student_id", Value: studentID},
 		{Key: "started_at", Value: bson.D{{Key: "$gte", Value: since}}},
-	}, options.Find().SetProjection(bson.D{{Key: "started_at", Value: 1}, {Key: "last_event_at", Value: 1}}))
+	}, options.Find().SetProjection(bson.D{{Key: "started_at", Value: 1}, {Key: "last_event_at", Value: 1}, {Key: "moments", Value: 1}}))
 	if err != nil {
 		return nil, err
 	}
@@ -253,7 +262,15 @@ func (r *MongoPracticeActivityReader) SessionSpans(ctx context.Context, studentI
 		if err := cursor.Decode(&doc); err != nil {
 			return nil, err
 		}
-		spans = append(spans, domain.PracticeSessionSpan{StartedAt: doc.StartedAt.UTC(), LastEventAt: doc.LastEventAt.UTC()})
+		span := domain.PracticeSessionSpan{StartedAt: doc.StartedAt.UTC(), LastEventAt: doc.LastEventAt.UTC()}
+		if doc.Moments != nil {
+			span.MomentsKept = true
+			span.Moments = make([]domain.SessionMoment, len(*doc.Moments))
+			for i, m := range *doc.Moments {
+				span.Moments[i] = domain.SessionMoment{At: m.At.UTC(), VisibleMs: m.VisibleMs}
+			}
+		}
+		spans = append(spans, span)
 	}
 	return spans, cursor.Err()
 }

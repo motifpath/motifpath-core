@@ -12,7 +12,7 @@ import (
 // it. A state folded under another version is rebuilt from its evidence, which is
 // never modified, the next time its item is answered; until then its stored
 // version tells readers it is stale.
-const PracticeRulesVersion = 1
+const PracticeRulesVersion = 2
 
 // ErrUnsupportedEvidenceSource is returned for evidence whose source the fold has no
 // rules for yet: teacher reviews need teacher notes. Failing loudly keeps such
@@ -39,7 +39,11 @@ type PracticeEvidence struct {
 	Rating            SelfRating
 	TempoBPM          *int
 	NoteValue         *NoteValue
-	ChangesPerMinute  *int
+	// ChangesPerMinute is a minute of changes counted before changes became
+	// ten-cycle takes; it reads as a share of clean changes (LegacyCleanShare).
+	ChangesPerMinute *int
+	// CleanSharePercent is a change take's share of changes that rang clean.
+	CleanSharePercent *int
 	// MusicKey is the key a progression key tour take was played in.
 	MusicKey string
 	// AnswerKey is what a right answer was, for auto-graded evidence.
@@ -47,13 +51,13 @@ type PracticeEvidence struct {
 }
 
 // ItemGoal is what fluency is measured against: the tempo a play-along is played
-// at in the music, a chord or root change's target rate, or a timed item's fluent
+// at in the music, a chord or root change's target tempo, or a timed item's fluent
 // times. A missing target counts any clean take as fully fluent.
 type ItemGoal struct {
 	TargetTempoBPM *int
-	// ChangeTargets are every version of the clean changes a minute that count
-	// as fully fluent on a chord or root change; a minute is judged by the
-	// version in force when it was played.
+	// ChangeTargets are every version of the tempo a clean take of chord or root
+	// changes counts as fully fluent at; a take is judged by the version in force
+	// when it was played.
 	ChangeTargets []ChangeTarget
 	// FluentTimes are every version of the item's drill template fluent time.
 	FluentTimes []FluentTime
@@ -72,16 +76,16 @@ type FluentTime struct {
 	FluentNetMs   int
 }
 
-// ChangeTarget is one version of the clean changes a minute that count as fully
-// fluent on a chord or root change, in force from EffectiveFrom until a later
-// version starts.
+// ChangeTarget is one version of the tempo a clean take of chord or root changes
+// counts as fully fluent at, every change clean, in force from EffectiveFrom until
+// a later version starts.
 type ChangeTarget struct {
-	Version          int
-	EffectiveFrom    time.Time
-	ChangesPerMinute int
+	Version       int
+	EffectiveFrom time.Time
+	TempoBPM      int
 }
 
-// changeTargetAt is the target rate in force at t, nil before the first version.
+// changeTargetAt is the target tempo in force at t, nil before the first version.
 func (g ItemGoal) changeTargetAt(t time.Time) *int {
 	var inForce *ChangeTarget
 	for i, v := range g.ChangeTargets {
@@ -92,8 +96,8 @@ func (g ItemGoal) changeTargetAt(t time.Time) *int {
 	if inForce == nil {
 		return nil
 	}
-	rate := inForce.ChangesPerMinute
-	return &rate
+	tempo := inForce.TempoBPM
+	return &tempo
 }
 
 // FluentTimeAt is the version in force at t, and false when t is before the first.
@@ -193,22 +197,20 @@ type ItemFold struct {
 	// LastAt is the latest evidence folded: anything earlier arrives late and
 	// rebuilds the item.
 	LastAt *time.Time
-	// BestCleanBPM and BestChangesPerMinute are the best clean measures since the
-	// last teacher review: the edge above which a take that isn't clean explores.
-	// The best clean tempo is the fastest at effective speed, kept as played: its
-	// BPM and BestCleanNoteValue, which is nil only in a fold from before note values.
-	BestCleanBPM         *int
-	BestCleanNoteValue   *NoteValue
-	BestChangesPerMinute *int
-	// LastChangeTempoBPM, LastChangesPerMinute and LastRating are a chord or
-	// root change's last minute, explored or not: the tempo the next minute
-	// starts from and the count it starts at. CleanMinutesInARow counts the
-	// clean minutes since the last one that wasn't, which raises the next
-	// minute's tempo. All are unset for any other item.
-	LastChangeTempoBPM   *int
-	LastChangesPerMinute *int
-	LastRating           SelfRating
-	CleanMinutesInARow   int
+	// BestCleanBPM is the best clean tempo since the last teacher review: the edge
+	// above which a take that isn't clean explores. It is the fastest at effective
+	// speed, kept as played: its BPM and BestCleanNoteValue, which is nil only in a
+	// fold from before note values. A change is played in quarters, one change on
+	// every beat.
+	BestCleanBPM       *int
+	BestCleanNoteValue *NoteValue
+	// LastChangeTempoBPM and LastRating are a chord or root change's last take,
+	// explored or not: the tempo the next take starts from. CleanTakesInARow counts
+	// the clean takes since the last one that wasn't, which raises the next take's
+	// tempo. All are unset for any other item.
+	LastChangeTempoBPM *int
+	LastRating         SelfRating
+	CleanTakesInARow   int
 	// TourTempoBPM, TourCleanKeys and TourNoteValue are a progression key tour's
 	// state: its tempo at effective speed, its keys clean at that tempo in the
 	// tour's order, and the note value of its last clean take. All are unset for
@@ -325,9 +327,10 @@ func foldTake(f ItemFold, e PracticeEvidence, goal ItemGoal) ItemFold {
 	}
 
 	measure, best, target := effectiveTempo(e.TempoBPM, e.NoteValue), effectiveTempo(f.BestCleanBPM, f.BestCleanNoteValue), goal.TargetTempoBPM
-	if e.ChangesPerMinute != nil {
-		measure, best, target = asSpeed(e.ChangesPerMinute), asSpeed(f.BestChangesPerMinute), goal.changeTargetAt(e.OccurredAt)
-		f.keepLastMinute(e)
+	if isChange(kindOf(e.ItemKey)) {
+		e.Rating = changeRating(e)
+		target = goal.changeTargetAt(e.OccurredAt)
+		f.keepLastTake(e)
 	}
 	if exploresAboveTheEdge(e.Rating, measure, best) {
 		return f
@@ -342,14 +345,37 @@ func foldTake(f ItemFold, e PracticeEvidence, goal ItemGoal) ItemFold {
 	return f
 }
 
-// keepLastMinute makes e the change's last minute, whether or not it counts.
-func (f *ItemFold) keepLastMinute(e PracticeEvidence) {
-	f.LastChangeTempoBPM, f.LastChangesPerMinute = copyOf(e.TempoBPM), copyOf(e.ChangesPerMinute)
+// isChange reports a kind played as changes between two chords or two roots.
+func isChange(kind PracticeItemKind) bool {
+	return kind == PracticeItemKindChordChange || kind == PracticeItemKindRootChange
+}
+
+// changeRating is a change take's rating: a minute counted before ten-cycle takes
+// is rated again from its count read as a share, so old and new evidence follow
+// one rule.
+func changeRating(e PracticeEvidence) SelfRating {
+	if e.ChangesPerMinute != nil && e.TempoBPM != nil && *e.TempoBPM > 0 {
+		return ChangeShareRating(LegacyCleanShare(*e.ChangesPerMinute, *e.TempoBPM))
+	}
+	return e.Rating
+}
+
+// LegacyCleanShare reads a minute's count of clean changes at tempoBPM, one change
+// on every beat, as the share a student would have picked: rounded down to 25, 50,
+// 75 or 100 percent, never below 25.
+func LegacyCleanShare(cleanChanges, tempoBPM int) int {
+	percent := min(100, cleanChanges*100/tempoBPM)
+	return max(CleanShares[0], percent/25*25)
+}
+
+// keepLastTake makes e the change's last take, whether or not it counts.
+func (f *ItemFold) keepLastTake(e PracticeEvidence) {
+	f.LastChangeTempoBPM = copyOf(e.TempoBPM)
 	f.LastRating = e.Rating
 	if e.Rating == SelfRatingClean {
-		f.CleanMinutesInARow++
+		f.CleanTakesInARow++
 	} else {
-		f.CleanMinutesInARow = 0
+		f.CleanTakesInARow = 0
 	}
 }
 
@@ -363,11 +389,6 @@ func copyOf(v *int) *int {
 
 // keepBestClean makes the clean take e the best one, kept as played.
 func (f *ItemFold) keepBestClean(e PracticeEvidence) {
-	if e.ChangesPerMinute != nil {
-		v := *e.ChangesPerMinute
-		f.BestChangesPerMinute = &v
-		return
-	}
 	bpm, noteValue := *e.TempoBPM, NoteValueQuarters
 	if e.NoteValue != nil {
 		noteValue = *e.NoteValue
@@ -381,14 +402,6 @@ func effectiveTempo(bpm *int, v *NoteValue) *float64 {
 		return nil
 	}
 	speed := EffectiveSpeed(*bpm, v)
-	return &speed
-}
-
-func asSpeed(measure *int) *float64 {
-	if measure == nil {
-		return nil
-	}
-	speed := float64(*measure)
 	return &speed
 }
 

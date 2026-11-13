@@ -50,3 +50,20 @@ type LastActivityRepository interface {
 	// already kept.
 	Touch(ctx context.Context, studentID string, at time.Time) error
 }
+
+// UnmomentedSessionRepository finds the sessions stored before each session kept
+// its moments, so they can be given them once.
+type UnmomentedSessionRepository interface {
+	// ListWithoutMoments returns every session stored without its moments.
+	ListWithoutMoments(ctx context.Context) ([]domain.PracticeSession, error)
+
+	// Put replaces the stored session.
+	Put(ctx context.Context, session domain.PracticeSession) error
+}
+
+// AnswerTimeReader tells when answers were given, from the evidence they left.
+type AnswerTimeReader interface {
+	// AnsweredAt returns when each of eventIDs was given; an answer that left no
+	// evidence is missing from the result.
+	AnsweredAt(ctx context.Context, eventIDs []string) (map[string]time.Time, error)
+}
