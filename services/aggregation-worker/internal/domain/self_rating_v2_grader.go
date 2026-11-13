@@ -6,8 +6,7 @@ import "slices"
 // chord's root and fifth: a change is ten cycles at a tempo, one change on every
 // beat, rated by the share of its changes that rang clean, picked from four
 // buttons; a root and fifth is played under the metronome and keeps its tempo. A
-// count of changes over a minute is no longer a measure any kind takes
-// (golden/practice-graders/self_rating.v2.json).
+// count of changes over a minute is no longer a measure any kind takes.
 type selfRatingV2 struct{}
 
 func (selfRatingV2) ID() string { return "self_rating.v2" }
