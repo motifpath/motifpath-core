@@ -244,7 +244,8 @@ func (r *MongoPracticeReferenceReader) FluentTimes(ctx context.Context, template
 }
 
 // changeTargetDocument is a `practice_reference` document of kind
-// "change_target", as core writes it.
+// "change_target", as core writes it. Its stored number, named for the minutes of
+// changes it was first set for, is read as the tempo of a fully fluent clean take.
 type changeTargetDocument struct {
 	Version          int       `bson:"version"`
 	EffectiveFrom    time.Time `bson:"effective_from"`
@@ -262,7 +263,7 @@ func (r *MongoPracticeReferenceReader) ChangeTargets(ctx context.Context) ([]dom
 	}
 	targets := make([]domain.ChangeTarget, len(docs))
 	for i, d := range docs {
-		targets[i] = domain.ChangeTarget{Version: d.Version, EffectiveFrom: d.EffectiveFrom.UTC(), ChangesPerMinute: d.ChangesPerMinute}
+		targets[i] = domain.ChangeTarget{Version: d.Version, EffectiveFrom: d.EffectiveFrom.UTC(), TempoBPM: d.ChangesPerMinute}
 	}
 	slices.SortFunc(targets, func(a, b domain.ChangeTarget) int { return a.Version - b.Version })
 	return targets, nil

@@ -309,7 +309,7 @@ func TestPracticeReferenceService_SyncDrillThresholds(t *testing.T) {
 func TestPracticeReferenceService_SyncChangeTargets(t *testing.T) {
 	ctx := context.Background()
 	installed := domain.ChordDrillCatalog{Targets: []domain.ChangeTarget{
-		{ID: "ct-1", Version: 1, EffectiveFrom: time.Date(2026, 10, 18, 0, 0, 0, 0, time.UTC), ChangesPerMinute: 60, Source: domain.DrillThresholdSourceDefault},
+		{ID: "ct-1", Version: 1, EffectiveFrom: time.Date(2026, 10, 18, 0, 0, 0, 0, time.UTC), TempoBPM: 60, Source: domain.DrillThresholdSourceDefault},
 	}}
 
 	t.Run("writes every installed version in one write", func(t *testing.T) {

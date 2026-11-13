@@ -51,8 +51,8 @@ func TestEntChordDrillRepository_Catalog(t *testing.T) {
 		}, got.Drills)
 		assert.Equal(t, []domain.ChordChangePair{{ID: pair.String(), FromChordDrillID: am.String(), ToChordDrillID: c.String(), Ordinal: 1}}, got.Changes)
 		assert.Equal(t, []domain.ChangeTarget{
-			{ID: v1.String(), Version: 1, EffectiveFrom: from, ChangesPerMinute: 60, Source: domain.DrillThresholdSourceDefault},
-			{ID: v2.String(), Version: 2, EffectiveFrom: from.AddDate(0, 1, 0), ChangesPerMinute: 70, Source: domain.DrillThresholdSourceBenchmark},
+			{ID: v1.String(), Version: 1, EffectiveFrom: from, TempoBPM: 60, Source: domain.DrillThresholdSourceDefault},
+			{ID: v2.String(), Version: 2, EffectiveFrom: from.AddDate(0, 1, 0), TempoBPM: 70, Source: domain.DrillThresholdSourceBenchmark},
 		}, got.Targets)
 	})
 }

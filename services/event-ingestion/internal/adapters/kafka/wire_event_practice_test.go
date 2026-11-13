@@ -32,6 +32,7 @@ func wireJSON(t *testing.T, event domain.TrackingEvent) string {
 
 func TestToWireEvent_PracticeEvents(t *testing.T) {
 	latency, tap, tempo, str, fret, audio := 1800, 350, 90, 6, 0, 5000
+	share := 75
 	eighths := domain.NoteValueEighths
 
 	cases := []struct {
@@ -199,6 +200,28 @@ func TestToWireEvent_PracticeEvents(t *testing.T) {
 				FeltRatings:       []domain.FeltRating{},
 			},
 			want: `{` + wireBaseJSON + `,"event_type":"practice.session_ended","practice_session_id":"44444444-4444-4444-8444-444444444444","answered_count":0,"left_early":true,"felt_ratings":[]}`,
+		},
+		{
+			name: "session end with its visible time",
+			event: domain.PracticeSessionEndedEvent{
+				TrackingEventBase: practiceWireBase(domain.EventTypePracticeSessionEnded),
+				PracticeSessionID: "44444444-4444-4444-8444-444444444444",
+				LeftEarly:         true,
+				FeltRatings:       []domain.FeltRating{},
+				VisibleMs:         &tap,
+			},
+			want: `{` + wireBaseJSON + `,"event_type":"practice.session_ended","practice_session_id":"44444444-4444-4444-8444-444444444444","answered_count":0,"left_early":true,"felt_ratings":[],"visible_ms":350}`,
+		},
+		{
+			name: "take of chord changes with its share, visible for a while",
+			event: domain.PracticeItemAnsweredEvent{
+				TrackingEventBase: practiceWireBase(domain.EventTypePracticeItemAnswered),
+				PracticeSessionID: "44444444-4444-4444-8444-444444444444",
+				ItemKey:           "chord_change:55555555-5555-4555-8555-555555555555:66666666-6666-4666-8666-666666666666",
+				Response:          domain.PracticeResponse{Type: domain.PracticeResponseSelfRating, Rating: domain.SelfRatingAlmost, TempoBPM: &tap, CleanSharePercent: &share},
+				VisibleMs:         &latency,
+			},
+			want: `{` + wireBaseJSON + `,"event_type":"practice.item_answered","practice_session_id":"44444444-4444-4444-8444-444444444444","item_key":"chord_change:55555555-5555-4555-8555-555555555555:66666666-6666-4666-8666-666666666666","response":{"response_type":"self_rating","rating":"almost","tempo_bpm":350,"clean_share_percent":75},"visible_ms":1800}`,
 		},
 		{
 			name: "tap check",

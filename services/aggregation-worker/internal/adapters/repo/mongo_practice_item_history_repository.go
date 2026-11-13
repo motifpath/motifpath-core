@@ -44,19 +44,18 @@ func (r *MongoPracticeItemHistoryRepository) Put(ctx context.Context, studentID,
 		models[i] = mongo.NewReplaceOneModel().
 			SetFilter(bson.D{{Key: "student_id", Value: studentID}, {Key: "item_key", Value: itemKey}, {Key: "day", Value: s.Day}}).
 			SetReplacement(practiceItemSnapshotDocument{
-				StudentID:            studentID,
-				ItemKey:              itemKey,
-				Day:                  s.Day,
-				RulesVersion:         domain.PracticeRulesVersion,
-				Level:                string(f.Level()),
-				Counted:              f.Counted,
-				Accuracy:             f.Accuracy,
-				Fluency:              f.Fluency,
-				Box:                  f.Box,
-				BestCleanBPM:         f.BestCleanBPM,
-				BestCleanNoteValue:   noteValueString(f.BestCleanNoteValue),
-				BestChangesPerMinute: f.BestChangesPerMinute,
-				UpdatedAt:            updatedAt,
+				StudentID:          studentID,
+				ItemKey:            itemKey,
+				Day:                s.Day,
+				RulesVersion:       domain.PracticeRulesVersion,
+				Level:              string(f.Level()),
+				Counted:            f.Counted,
+				Accuracy:           f.Accuracy,
+				Fluency:            f.Fluency,
+				Box:                f.Box,
+				BestCleanBPM:       f.BestCleanBPM,
+				BestCleanNoteValue: noteValueString(f.BestCleanNoteValue),
+				UpdatedAt:          updatedAt,
 			}).
 			SetUpsert(true)
 	}

@@ -55,7 +55,7 @@ func TestChordDrills(t *testing.T) {
 	t.Run("installs a first change target of 60 clean changes a minute", func(t *testing.T) {
 		assert.Equal(t, []domain.ChangeTarget{{
 			ID: catalogID("change-target/v1"), Version: 1, EffectiveFrom: time.Date(2026, 10, 18, 0, 0, 0, 0, time.UTC),
-			ChangesPerMinute: 60, Source: domain.DrillThresholdSourceDefault,
+			TempoBPM: 60, Source: domain.DrillThresholdSourceDefault,
 		}}, catalog.Targets)
 	})
 

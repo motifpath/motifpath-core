@@ -17,11 +17,13 @@ import (
 
 // hearWorld is what the ear drill steps share in a scenario: the heard item
 // a step named, the student's level on it and the key it is heard in, for
-// "it is planned for".
+// "it is planned for", and the roots it was played on.
 type hearWorld struct {
 	item  domain.DrillItem
 	level domain.KnowledgeLevel
 	key   string
+	// roots are the chords a heard chord quality played over many plans.
+	roots map[string]bool
 }
 
 func (w *world) hear() *hearWorld {
@@ -71,6 +73,143 @@ func registerHearDrillSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^the second time it is asked by ear, as (\w+)$`, w.secondTimeAskedAs)
 	sc.Step(`^"([^"]+)" has new heard progressions "([^"]+)" and "([^"]+)", and other new heard progressions$`, w.hasNewHeardProgressions)
 	sc.Step(`^"([^"]+)" and "([^"]+)" are asked with no other heard progression between them$`, w.heardProgressionsTogether)
+
+	sc.Step(`^its own option is named "([^"]+)"$`, w.ownOptionNamed)
+	sc.Step(`^every option's name has four numerals$`, w.everyOptionNamedByFourNumerals)
+
+	sc.Step(`^"([^"]+)" is (learning|fluent) the heard chord quality "([^"]+)"$`, w.levelOnHeardChordQuality)
+	sc.Step(`^"([^"]+)" is (learning|fluent) on the heard chord quality "([^"]+)"$`, w.levelOnHeardChordQuality)
+	sc.Step(`^its playback has one bar, an? (\w+) triad, with no numeral$`, w.playbackIsOneTriad)
+	sc.Step(`^it is asked in no key$`, w.askedInNoKey)
+	sc.Step(`^it offers ((?:\w+, )*\w+) and (\w+), in that order$`, w.offersInOrder)
+	sc.Step(`^the heard chord quality "([^"]+)" is planned (\d+) times$`, w.heardChordQualityPlannedTimes)
+	sc.Step(`^its chord is played on more than one root$`, w.chordPlayedOnSeveralRoots)
+	sc.Step(`^"([^"]+)" has the heard chord quality "([^"]+)" due$`, w.heardChordQualityDue)
+	sc.Step(`^"([^"]+)" composes a session with "([^"]+)" in hand$`, w.composesSessionInHand)
+	sc.Step(`^no heard chord quality is in the session$`, w.noHeardChordQuality)
+}
+
+func (w *world) ownOptionNamed(name string) error {
+	q, err := w.plannedQuestion()
+	if err != nil {
+		return err
+	}
+	for _, o := range q.Options {
+		if o.Value == q.Answer {
+			return expectChord(o.Names["en"] == name, "its own option is named %q", o.Names["en"])
+		}
+	}
+	return fmt.Errorf("its own option %q is not offered", q.Answer)
+}
+
+func (w *world) everyOptionNamedByFourNumerals() error {
+	q, err := w.plannedQuestion()
+	if err != nil {
+		return err
+	}
+	for _, o := range q.Options {
+		if numerals := strings.Split(o.Names["en"], "–"); len(numerals) != 4 {
+			return fmt.Errorf("option %s is named %q", o.Value, o.Names["en"])
+		}
+	}
+	return nil
+}
+
+func (w *world) levelOnHeardChordQuality(name, level, quality string) error {
+	w.learnsHearing(name)
+	h := w.hear()
+	h.item, h.level, h.key = domain.HeardChordQualityItem{Quality: quality}, domain.KnowledgeLevel(level), ""
+	return nil
+}
+
+// triadQualities are the chord quality each triad named in a step is.
+var triadQualities = map[string]domain.ChordQuality{
+	"major": domain.ChordQualityMajor, "minor": domain.ChordQualityMinor,
+	"diminished": domain.ChordQualityDiminished, "augmented": domain.ChordQualityAugmented,
+}
+
+func (w *world) playbackIsOneTriad(quality string) error {
+	p, err := w.playback()
+	if err != nil {
+		return err
+	}
+	if len(p.Bars) != 1 || p.Bars[0].Numeral != "" {
+		return fmt.Errorf("it plays %+v", p.Bars)
+	}
+	reading := domain.ParseChordSymbol(p.Bars[0].Chord)
+	return expectChord(reading.Parsed != nil && reading.Parsed.Quality == triadQualities[quality], "it plays %s", p.Bars[0].Chord)
+}
+
+func (w *world) askedInNoKey() error {
+	q, err := w.plannedQuestion()
+	if err != nil {
+		return err
+	}
+	return expectChord(q.MusicKey == "", "it is asked in %s", q.MusicKey)
+}
+
+func (w *world) offersInOrder(first, last string) error {
+	q, err := w.plannedQuestion()
+	if err != nil {
+		return err
+	}
+	want := append(strings.Split(first, ", "), last)
+	got := make([]string, len(q.Options))
+	for i, o := range q.Options {
+		got[i] = o.Value
+	}
+	return expectChord(slices.Equal(got, want), "it offers %v", got)
+}
+
+func (w *world) heardChordQualityPlannedTimes(quality string, times int) error {
+	h := w.hear()
+	h.item, h.level, h.key = domain.HeardChordQualityItem{Quality: quality}, domain.KnowledgeLevelLearning, ""
+	h.roots = map[string]bool{}
+	for range times {
+		if err := w.planHeard(); err != nil {
+			return err
+		}
+		p, err := w.playback()
+		if err != nil {
+			return err
+		}
+		h.roots[p.Bars[0].Chord] = true
+	}
+	return nil
+}
+
+func (w *world) chordPlayedOnSeveralRoots() error {
+	roots := w.hear().roots
+	return expectChord(len(roots) > 1, "every time it plays %v", roots)
+}
+
+func (w *world) heardChordQualityDue(name, quality string) error {
+	w.learnsHearing(name)
+	w.dueItems(name, domain.HeardChordQualityItem{Quality: quality}.ItemKey())
+	return nil
+}
+
+func (w *world) composesSessionInHand(name, instrument string) error {
+	w.authenticateAs(name, domain.RoleStudent)
+	return w.composesSession(name, 15, instrument)
+}
+
+// noHeardChordQuality holds when the session plans no heard chord quality,
+// or, its student having nothing else, finds nothing to play.
+func (w *world) noHeardChordQuality() error {
+	if _, nothing := w.lastResp.(generated.CreatePracticeSessionPlan404JSONResponse); nothing && w.lastErr == nil {
+		return nil
+	}
+	plan, err := w.composedPlan()
+	if err != nil {
+		return err
+	}
+	for _, item := range plan.Items {
+		if item.Kind == generated.PracticeItemKindHeardChordQuality {
+			return fmt.Errorf("the session asks %s", item.ItemKey)
+		}
+	}
+	return nil
 }
 
 // learnsHearing puts name on a path teaching the ear drills' nodes, and
@@ -493,8 +632,16 @@ func (w *world) hasNewHeardChords(name, _ string) error {
 	return nil
 }
 
+// hasNewHeardProgressions leaves name's heard progressions new; the heard
+// chord qualities, which only the prerequisite skill practises, are known
+// and not due, so the new items the session teaches are progressions.
 func (w *world) hasNewHeardProgressions(name, _, _ string) error {
 	w.learnsHearing(name)
+	keys := make([]string, len(domain.HeardChordQualities))
+	for i, quality := range domain.HeardChordQualities {
+		keys[i] = domain.HeardChordQualityItem{Quality: quality}.ItemKey()
+	}
+	w.knownItems(name, 10, keys...)
 	return nil
 }
 

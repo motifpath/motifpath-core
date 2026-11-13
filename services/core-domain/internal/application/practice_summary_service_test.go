@@ -408,6 +408,19 @@ func TestPracticeSummaryService_OverviewMinutesPractised(t *testing.T) {
 	span := func(from, to time.Time) domain.PracticeSessionSpan {
 		return domain.PracticeSessionSpan{StartedAt: from, LastEventAt: to}
 	}
+	minutes := func(m int) *int { ms := m * 60_000; return &ms }
+	// seen is a session from start, kept with its moments: each event's time and
+	// the visible time it carried, nil when its app didn't measure it.
+	seen := func(start time.Time, moments ...domain.SessionMoment) domain.PracticeSessionSpan {
+		s := domain.PracticeSessionSpan{StartedAt: start, LastEventAt: start, Moments: []domain.SessionMoment{}, MomentsKept: true}
+		for _, m := range moments {
+			s.Moments = append(s.Moments, m)
+			if m.At.After(s.LastEventAt) {
+				s.LastEventAt = m.At
+			}
+		}
+		return s
+	}
 	cases := []struct {
 		name         string
 		spans        []domain.PracticeSessionSpan
@@ -452,6 +465,35 @@ func TestPracticeSummaryService_OverviewMinutesPractised(t *testing.T) {
 		{
 			name:  "a session started after today, by a clock running ahead, counts nothing",
 			spans: []domain.PracticeSessionSpan{span(at(6, 9, 0, 0), at(6, 9, 30, 0))},
+		},
+		{
+			name: "time with the session in the background doesn't count",
+			spans: []domain.PracticeSessionSpan{seen(at(4, 18, 0, 0),
+				domain.SessionMoment{At: at(4, 18, 3, 0), VisibleMs: minutes(3)}, domain.SessionMoment{At: at(4, 20, 0, 0), VisibleMs: minutes(1)})},
+			wantLast7: 4,
+		},
+		{
+			name: "the end of a session counts its visible time too",
+			spans: []domain.PracticeSessionSpan{seen(at(4, 18, 0, 0),
+				domain.SessionMoment{At: at(4, 18, 2, 0), VisibleMs: minutes(2)}, domain.SessionMoment{At: at(4, 18, 10, 0), VisibleMs: minutes(5)})},
+			wantLast7: 7,
+		},
+		{
+			name: "an event without visible time counts its gap, at most 2 minutes",
+			spans: []domain.PracticeSessionSpan{seen(at(4, 18, 0, 0),
+				domain.SessionMoment{At: at(4, 18, 1, 0)}, domain.SessionMoment{At: at(4, 18, 45, 0)})},
+			wantLast7: 3,
+		},
+		{
+			name:      "visible time never counts more than the session lasted",
+			spans:     []domain.PracticeSessionSpan{seen(at(4, 18, 0, 0), domain.SessionMoment{At: at(4, 18, 5, 0), VisibleMs: minutes(20)})},
+			wantLast7: 5,
+		},
+		{
+			name: "gaps count in the order the events happened, not the order they arrived",
+			spans: []domain.PracticeSessionSpan{seen(at(4, 18, 0, 0),
+				domain.SessionMoment{At: at(4, 18, 30, 0)}, domain.SessionMoment{At: at(4, 18, 1, 0)}, domain.SessionMoment{At: at(4, 18, 2, 0)})},
+			wantLast7: 4,
 		},
 		{
 			name: "a student who has never practised starts at zero",

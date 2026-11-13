@@ -21,6 +21,19 @@ func registerGeneratedChoiceSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]*)" has no evidence for that question$`, w.hasNoEvidenceForThatQuestion)
 	sc.Step(`^"([^"]*)" answers the chart progression "([^"]*)" in (\S+), asked (\w+), by picking "([^"]*)" among ((?:"[^"]*"(?:, | and )?)+)$`, w.answersTheChartProgression)
 	sc.Step(`^"([^"]*)" has auto-graded evidence for that question that is (right|wrong)$`, w.hasEvidenceForThatQuestion)
+	sc.Step(`^"([^"]*)" answers the heard chord quality "([^"]*)", asked (\w+), by picking "([^"]*)" among "([^"]*)", "([^"]*)" and "([^"]*)"$`, w.answersTheHeardChordQuality)
+	sc.Step(`^"([^"]*)" answers the heard chord quality "([^"]*)" in (\S+), asked (\w+), by picking "([^"]*)" among "([^"]*)", "([^"]*)" and "([^"]*)"$`, w.answersTheHeardChordQualityInAKey)
+}
+
+// answersTheHeardChordQuality answers a chord's quality heard alone, in no key.
+func (w *world) answersTheHeardChordQuality(student, quality, way, choice, o1, o2, o3 string) error {
+	return w.answer(student, "heard_chord_quality:"+quality, generatedChoice(way, "", choice, o1, o2, o3))
+}
+
+// answersTheHeardChordQualityInAKey answers a chord quality with a key, which a
+// chord heard alone never has.
+func (w *world) answersTheHeardChordQualityInAKey(student, quality, key, way, choice, o1, o2, o3 string) error {
+	return w.answer(student, "heard_chord_quality:"+quality, generatedChoice(way, key, choice, o1, o2, o3))
 }
 
 // answersTheChartProgression answers a chart progression, asked in any key,

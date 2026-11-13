@@ -186,6 +186,17 @@ func newEventService(ctx context.Context, db *mongo.Database, logger *slog.Logge
 		return nil, nil, fmt.Errorf("ensure last activity indexes: %w", err)
 	}
 
+	// Before consuming: a session stored before sessions kept their moments gets
+	// them once, so its minutes practised count its gaps, capped, not its span.
+	// The consumer isn't running yet, so nothing else writes sessions meanwhile.
+	backfilled, err := application.NewSessionMomentsBackfill(sessionRepo, evidenceRepo).Run(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("backfill session moments: %w", err)
+	}
+	if backfilled > 0 {
+		logger.Info("backfilled the moments of older practice sessions", "sessions", backfilled)
+	}
+
 	service := application.NewProcessEventService(completionRepo, practice,
 		application.NewActivityService(sessionRepo, learningRepo, tapCheckRepo, songChartRepo, lastActivityRepo, time.Now))
 	return completionRepo, service, nil

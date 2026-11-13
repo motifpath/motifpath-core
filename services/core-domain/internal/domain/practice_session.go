@@ -73,12 +73,10 @@ type PracticeItemState struct {
 	// RightByResponse counts the right answers by the way the item was
 	// asked, such as name_the_note; nil before any.
 	RightByResponse map[string]int
-	// BestChangesPerMinute is a chord or root change's best clean count since
-	// the latest teacher review; nil with no clean minute.
-	BestChangesPerMinute *int
-	// LastChangeMinute is a chord or root change's last minute, which the next
-	// one starts from; nil for an item never played that way.
-	LastChangeMinute *ChangeMinuteState
+	// LastChangeTake is a chord or root change's last take, which the next
+	// one starts from; nil for an item never played that way. Its best clean
+	// tempo is BestCleanBPM.
+	LastChangeTake *ChangeTakeState
 	// KeyTour is a progression key tour as the student left it; nil for an
 	// item never played that way.
 	KeyTour *KeyTourState
@@ -87,14 +85,12 @@ type PracticeItemState struct {
 	LastMusicKey string
 }
 
-// ChangeMinuteState is a chord or root change's last minute: the tempo it was
-// played at, the clean changes counted, whether it was struggled, and the
-// clean minutes in a row it ended.
-type ChangeMinuteState struct {
-	TempoBPM         int
-	ChangesPerMinute int
-	Struggled        bool
-	CleanInARow      int
+// ChangeTakeState is a chord or root change's last take: the tempo it was
+// played at, whether it was struggled, and the clean takes in a row it ended.
+type ChangeTakeState struct {
+	TempoBPM    int
+	Struggled   bool
+	CleanInARow int
 }
 
 // BestCleanTempo is the best clean take's tempo as played, nil with no clean

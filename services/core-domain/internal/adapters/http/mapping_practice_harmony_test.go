@@ -29,7 +29,8 @@ func TestToGeneratedPracticeSessionItem_GeneratedChoice(t *testing.T) {
 		q := got.GeneratedChoice
 		require.NotNil(t, q)
 		assert.Equal(t, generated.NumeralToChord, q.Way)
-		assert.Equal(t, generated.MusicKey("G"), q.MusicKey)
+		require.NotNil(t, q.MusicKey)
+		assert.Equal(t, generated.MusicKey("G"), *q.MusicKey)
 		require.NotNil(t, q.Numeral)
 		assert.Equal(t, generated.ChordNumeral("vi"), *q.Numeral)
 		assert.Nil(t, q.Chord)
@@ -86,7 +87,8 @@ func TestToGeneratedPracticeSessionItem_GeneratedChoice(t *testing.T) {
 		q := got.GeneratedChoice
 		require.NotNil(t, q)
 		assert.Equal(t, generated.CadenceThenChord, q.Way)
-		assert.Equal(t, generated.MusicKey("C"), q.MusicKey)
+		require.NotNil(t, q.MusicKey)
+		assert.Equal(t, generated.MusicKey("C"), *q.MusicKey)
 		assert.Nil(t, q.Chord)
 		require.NotNil(t, q.Playback)
 		assert.Equal(t, 70, q.Playback.TempoBpm)
@@ -116,5 +118,22 @@ func TestToGeneratedPracticeSessionItem_GeneratedChoice(t *testing.T) {
 		require.NotNil(t, q.Chord)
 		assert.Equal(t, "Am", *q.Chord)
 		assert.Nil(t, q.Playback)
+	})
+
+	t.Run("a heard chord quality is asked in no key", func(t *testing.T) {
+		got := toGeneratedPracticeSessionItem(plan(domain.HeardChordQualityItem{Quality: "minor"}, "chord_quality_by_ear", domain.DrillPlanning{Pick: first}), nil, "en")
+
+		assert.Equal(t, generated.PracticeItemKindHeardChordQuality, got.Kind)
+		q := got.GeneratedChoice
+		require.NotNil(t, q)
+		assert.Equal(t, generated.ChordQualityByEar, q.Way)
+		assert.Nil(t, q.MusicKey)
+		require.NotNil(t, q.Playback)
+		require.Len(t, q.Playback.Bars, 1)
+		assert.Equal(t, "Cm", q.Playback.Bars[0].Chord)
+
+		body, err := json.Marshal(q)
+		require.NoError(t, err)
+		assert.Contains(t, string(body), `"music_key":null`)
 	})
 }

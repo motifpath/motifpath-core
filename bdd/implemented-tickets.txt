@@ -4,3 +4,4 @@
 # implements its scenarios: that switches them on, with no motifpath-specs change.
 # One ticket per line; '#' starts a comment.
 MOT-195
+MOT-197

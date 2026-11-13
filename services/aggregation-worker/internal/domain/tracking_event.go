@@ -32,6 +32,9 @@ type TrackingEvent struct {
 	PracticeSessionID string
 	// PracticeAnswer is set on a practice.item_answered event.
 	PracticeAnswer *PracticeAnswer
+	// VisibleMs is, on a practice.item_answered event, how long its session was
+	// visible since its previous event; nil when the app didn't measure it.
+	VisibleMs *int
 	// SessionStart is set on a practice.session_started event.
 	SessionStart *PracticeSessionStart
 	// SessionEnd is set on a practice.session_ended event.

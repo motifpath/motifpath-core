@@ -93,7 +93,7 @@ var chordItemReaders = map[domain.PracticeItemKind]chordItemReader{
 		from, fromFound := chordDrillOf(catalog, parts[0])
 		to, toFound := chordDrillOf(catalog, parts[1])
 		target, inForce := src.targetInForce(catalog)
-		return domain.ChordChangeItem{From: from, To: to, TargetChangesPerMinute: target}, fromFound && toFound && inForce, nil
+		return domain.ChordChangeItem{From: from, To: to, TargetTempoBPM: target}, fromFound && toFound && inForce, nil
 	}},
 	domain.PracticeItemKindRootFifth: {parts: 2, read: func(ctx context.Context, src chordSource, _ domain.ChordDrillCatalog, parts []string) (domain.DrillItem, bool, error) {
 		layout, found, err := src.layout(ctx, parts[0])
@@ -139,7 +139,7 @@ func (src chordSource) targetInForce(catalog domain.ChordDrillCatalog) (int, boo
 	if inForce == nil {
 		return 0, false
 	}
-	return inForce.ChangesPerMinute, true
+	return inForce.TempoBPM, true
 }
 
 // layout reads the bass layout instrument id names; false when there is none.
