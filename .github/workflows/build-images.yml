@@ -6,6 +6,10 @@ name: Build images
 # runs the image staging already ran (see deploy.yml). Feature merges to
 # `dev` never build.
 #
+# A push to main is also a release: once any build has finished, the merged
+# PR's release label sets the next vX.Y.Z tag, the merge commit is tagged and
+# that release is deployed to production.
+#
 # Pushing needs the ECR key in the GitHub environment `images`, which is
 # limited to the `stage` and `main` branches; no other branch can publish an
 # image.
@@ -121,4 +125,62 @@ jobs:
     with:
       environment: staging
       release: ${{ github.sha }}
+    secrets: inherit
+
+  # The tag is created with the built-in token, so pushing it starts no other
+  # workflow; the deploy is called from here. A merge without exactly one
+  # release label stops here and deploys nothing.
+  release:
+    name: Tag the release
+    needs: [decide, build]
+    if: >-
+      always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+      && needs.decide.result == 'success'
+      && (needs.build.result == 'success' || needs.build.result == 'skipped')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Tag the merge commit with the next version
+        id: tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git fetch --quiet --tags --force origin
+          existing=$(git tag --points-at "$GITHUB_SHA" --list 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1 || true)
+          if [[ -n "$existing" ]]; then
+            echo "$GITHUB_SHA is already release $existing (a rerun)."
+            echo "tag=$existing" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          pr=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" --jq '.[0].number // empty')
+          [[ -n "$pr" ]] || { echo "::error::$GITHUB_SHA did not come from a PR, so it has no release label; nothing is released"; exit 1; }
+          mapfile -t labels < <(gh api "repos/$GITHUB_REPOSITORY/issues/$pr/labels" --jq '.[].name')
+          if ! tag=$(scripts/next-release.sh "${labels[@]}" 2>&1); then
+            echo "::error::PR #$pr: $tag; nothing is released"
+            exit 1
+          fi
+          git tag "$tag" "$GITHUB_SHA"
+          git push origin "refs/tags/$tag"
+          echo "PR #$pr releases $tag."
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+  deploy-production:
+    name: Deploy to production
+    needs: release
+    uses: ./.github/workflows/deploy.yml
+    # deploy.yml's GitHub Release job needs contents: write; see deploy-staging.
+    permissions:
+      contents: write
+    with:
+      environment: production
+      release: ${{ needs.release.outputs.tag }}
     secrets: inherit

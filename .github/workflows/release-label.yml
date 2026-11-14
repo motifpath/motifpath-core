@@ -1,0 +1,36 @@
+name: Release label
+
+# Every PR into main is a release: merging it tags the next version and
+# deploys it to production (see build-images.yml). The PR's one release label
+# sets the bump, so this check fails until it has exactly one of
+# release:major, release:minor or release:patch. It is required on main.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+jobs:
+  release-label:
+    name: Release label
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Work out the release this PR makes
+        env:
+          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+        run: |
+          set -euo pipefail
+          git fetch --quiet --tags --force origin
+          mapfile -t labels < <(jq -r '.[]' <<<"$LABELS")
+          if ! tag=$(scripts/next-release.sh "${labels[@]}" 2>&1); then
+            echo "::error::$tag"
+            exit 1
+          fi
+          echo "Merging this PR releases $tag to production."
+          echo "### Merging this PR releases \`$tag\` to production" >> "$GITHUB_STEP_SUMMARY"
