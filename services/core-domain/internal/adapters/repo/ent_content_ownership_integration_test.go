@@ -121,6 +121,44 @@ func TestEntCommercialStore_Ownership(t *testing.T) {
 		assert.Equal(t, 2, count)
 	})
 
+	t.Run("a deleted item is not found although its ownership history is kept", func(t *testing.T) {
+		paths := NewEntLearningPathRepository(client)
+		path := seedLearningPath(t, ctx, paths, node)
+		require.NoError(t, paths.Delete(ctx, path.ID))
+		deleted := domain.ContentRef{Kind: domain.ContentPath, ID: path.ID}
+
+		_, readErr := store.CurrentOwnership(ctx, deleted)
+		lockErr := store.InTx(ctx, func(ctx context.Context, tx ports.CommercialTx) error {
+			_, err := tx.Ownership().LockCurrent(ctx, deleted)
+			return err
+		})
+
+		assert.ErrorIs(t, readErr, domain.ErrNotFound)
+		assert.ErrorIs(t, lockErr, domain.ErrNotFound)
+		kept, err := client.ContentOwnership.Query().Where(contentownership.ContentID(uuid.MustParse(path.ID))).Count(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, 1, kept)
+	})
+
+	t.Run("reads a core user's current role; an unknown user is not found", func(t *testing.T) {
+		studentID := createCommercialUser(t, store, "user_ownership_role")
+		var role domain.Role
+		var unknownErr error
+		err := store.InTx(ctx, func(ctx context.Context, tx ports.CommercialTx) error {
+			var err error
+			role, err = tx.Ownership().UserRole(ctx, studentID)
+			if err != nil {
+				return err
+			}
+			_, unknownErr = tx.Ownership().UserRole(ctx, uuid.NewString())
+			return nil
+		})
+
+		require.NoError(t, err)
+		assert.Equal(t, domain.RoleStudent, role)
+		assert.ErrorIs(t, unknownErr, domain.ErrNotFound)
+	})
+
 	t.Run("appending a revision already recorded is a conflict", func(t *testing.T) {
 		err := store.InTx(ctx, func(ctx context.Context, tx ports.CommercialTx) error {
 			current, err := tx.Ownership().LockCurrent(ctx, ref)

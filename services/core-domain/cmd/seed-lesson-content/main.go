@@ -184,6 +184,7 @@ func run(completed int, current string) error {
 		return err
 	}
 	contentService := application.NewContentService(
+		ownership,
 		repo.NewEntContentNodeRepository(conns.ent),
 		repo.NewEntExpandedContentRepository(conns.ent),
 		repo.NewEntKnowledgeNodeRepository(conns.ent),
@@ -194,7 +195,7 @@ func run(completed int, current string) error {
 		repo.NewEntSongChartRepository(conns.ent),
 		repo.NewEntUserRepository(conns.ent),
 		newID, now,
-	).WithOwnershipRecorder(ownership)
+	)
 
 	defaults, err := loadDefaults(ctx, conns.ent, repo.NewEntKnowledgeNodeRepository(conns.ent))
 	if err != nil {

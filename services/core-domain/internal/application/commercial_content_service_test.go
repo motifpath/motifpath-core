@@ -18,6 +18,8 @@ const (
 	contentAdminID   = "0c1a0000-0000-4000-8000-0000000000a1"
 	contentBeaID     = "0c1a0000-0000-4000-8000-0000000000b1"
 	contentDanID     = "0c1a0000-0000-4000-8000-0000000000d1"
+	contentEveID     = "0c1a0000-0000-4000-8000-0000000000a2"
+	contentCarlID    = "0c1a0000-0000-4000-8000-0000000000e1"
 	contentPathID    = "0c1a0000-0000-4000-8000-0000000000c1"
 	contentUnknownID = "0c1a0000-0000-4000-8000-0000000000ff"
 )
@@ -26,7 +28,7 @@ var (
 	contentAdmin   = domain.User{ID: contentAdminID, Role: domain.RoleAdmin}
 	contentBea     = domain.User{ID: contentBeaID, Role: domain.RoleTeacher}
 	contentDan     = domain.User{ID: contentDanID, Role: domain.RoleTeacher}
-	contentStudent = domain.User{ID: "0c1a0000-0000-4000-8000-0000000000e1", Role: domain.RoleStudent}
+	contentStudent = domain.User{ID: contentCarlID, Role: domain.RoleStudent}
 )
 
 type commercialContentFixture struct {
@@ -37,9 +39,10 @@ type commercialContentFixture struct {
 func newCommercialContentFixture(t *testing.T) commercialContentFixture {
 	t.Helper()
 	store := newFakeCommercialStore()
-	store.state.users[contentAdminID] = true
-	store.state.users[contentBeaID] = true
-	store.state.users[contentDanID] = true
+	for _, user := range []domain.User{contentAdmin, contentBea, contentDan, contentStudent, {ID: contentEveID, Role: domain.RoleAdmin}} {
+		store.state.users[user.ID] = true
+		store.roles[user.ID] = user.Role
+	}
 	commands := newTestCommercialCommands(store)
 	environment := commercialTestEnvironment(t)
 	now := func() time.Time { return commercialNow }
@@ -168,6 +171,16 @@ func TestCommercialContentService_Get(t *testing.T) {
 		assert.ErrorIs(t, err, domain.ErrNotFound)
 	})
 
+	t.Run("deleted content is not found although its ownership history is kept", func(t *testing.T) {
+		f := newCommercialContentFixture(t)
+		f.own(t, domain.ContentPath, contentPathID, contentBea)
+		f.store.deleted[domain.ContentRef{Kind: domain.ContentPath, ID: contentPathID}] = true
+
+		_, err := f.service.Get(ctx, contentAdmin, "path", contentPathID)
+
+		assert.ErrorIs(t, err, domain.ErrNotFound)
+	})
+
 	t.Run("an unknown content kind is invalid", func(t *testing.T) {
 		f := newCommercialContentFixture(t)
 
@@ -212,6 +225,20 @@ func TestCommercialContentService_CorrectOwnership(t *testing.T) {
 		assert.EqualValues(t, 2, after["revision"])
 	})
 
+	t.Run("an admin can be named as the rights holder", func(t *testing.T) {
+		f := newCommercialContentFixture(t)
+		f.switchOwnershipCorrections(true)
+		f.own(t, domain.ContentPath, contentPathID, contentBea)
+		toEve := application.OwnershipCorrectionRequest{ExpectedRevision: 1, OwnerKind: "teacher", OwnerID: contentEveID, Reason: "Eve bought the rights"}
+
+		_, err := f.service.CorrectOwnership(ctx, contentAdmin, "path", contentPathID, uuid.NewString(), toEve)
+
+		require.NoError(t, err)
+		got := f.current(t, contentPathID)
+		assert.Equal(t, contentEveID, *got.OwnerID)
+		assert.Equal(t, 2, got.Revision)
+	})
+
 	t.Run("replaying the same correction returns its original result", func(t *testing.T) {
 		f := newCommercialContentFixture(t)
 		f.switchOwnershipCorrections(true)
@@ -249,6 +276,10 @@ func TestCommercialContentService_CorrectOwnership(t *testing.T) {
 			caller: contentAdmin, flagOn: true, want: domain.ErrValidation,
 			request: application.OwnershipCorrectionRequest{ExpectedRevision: 1, OwnerKind: "teacher", OwnerID: contentUnknownID, Reason: "unknown"},
 		},
+		"a student named as the rights holder": {
+			caller: contentAdmin, flagOn: true, want: domain.ErrValidation,
+			request: application.OwnershipCorrectionRequest{ExpectedRevision: 1, OwnerKind: "teacher", OwnerID: contentCarlID, Reason: "student"},
+		},
 		"no reason": {
 			caller: contentAdmin, flagOn: true, want: domain.ErrValidation,
 			request: application.OwnershipCorrectionRequest{ExpectedRevision: 1, OwnerKind: "platform", OwnerID: domain.CatalogProfileID},
@@ -268,6 +299,18 @@ func TestCommercialContentService_CorrectOwnership(t *testing.T) {
 			assert.Equal(t, 1, got.Revision)
 		})
 	}
+
+	t.Run("correcting deleted content is not found and appends nothing", func(t *testing.T) {
+		f := newCommercialContentFixture(t)
+		f.switchOwnershipCorrections(true)
+		f.own(t, domain.ContentPath, contentPathID, contentAdmin)
+		f.store.deleted[domain.ContentRef{Kind: domain.ContentPath, ID: contentPathID}] = true
+
+		_, err := f.service.CorrectOwnership(ctx, contentAdmin, "path", contentPathID, uuid.NewString(), toBea)
+
+		assert.ErrorIs(t, err, domain.ErrNotFound)
+		assert.Equal(t, 1, f.current(t, contentPathID).Revision)
+	})
 
 	t.Run("correcting content that has no ownership record is not found", func(t *testing.T) {
 		f := newCommercialContentFixture(t)

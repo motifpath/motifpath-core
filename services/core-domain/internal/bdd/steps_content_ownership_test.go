@@ -67,6 +67,7 @@ func registerContentOwnershipSteps(sc *godog.ScenarioContext, w *world) {
 	// Changes that must not move ownership
 	sc.Step(`^(\w+) renames "([^"]+)" to "([^"]+)" and replaces its items$`, w.renameAndReplacePath)
 	sc.Step(`^(\w+) is promoted to admin$`, w.promoteToAdmin)
+	sc.Step(`^(\w+) deleted the path "([^"]+)"$`, w.deleteOwnedPath)
 
 	// Reads
 	sc.Step(`^(\w+) reads the commercial content of "([^"]+)"$`, w.readCommercialContent)
@@ -347,6 +348,18 @@ func (w *world) renameAndReplacePath(name, title, renamed string) error {
 		return fmt.Errorf("replace %q: %d %s", title, status, raw)
 	}
 	w.ownership.content[renamed] = ref
+	return nil
+}
+
+func (w *world) deleteOwnedPath(name, title string) error {
+	ref := w.ownership.content[title]
+	status, raw, err := w.send(name, http.MethodDelete, "/learning-paths/"+ref.ID, nil)
+	if err != nil {
+		return err
+	}
+	if status != http.StatusNoContent {
+		return fmt.Errorf("delete %q: %d %s", title, status, raw)
+	}
 	return nil
 }
 

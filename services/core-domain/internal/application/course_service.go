@@ -27,8 +27,8 @@ type CourseService struct {
 	now         func() time.Time
 }
 
-func NewCourseService(paths ports.LearningPathRepository, courses ports.CourseRepository, versions ports.CourseVersionRepository, users ports.UserRepository, languages ports.LanguageRepository, instruments ports.InstrumentRepository, knowledge ports.KnowledgeNodeRepository, newID func() string, now func() time.Time) *CourseService {
-	return &CourseService{ownership: NewOwnershipRecorder(domain.Environment{}, newID), paths: paths, courses: courses, versions: versions, users: users, languages: languages, instruments: instruments, knowledge: knowledge, newID: newID, now: now}
+func NewCourseService(ownership *OwnershipRecorder, paths ports.LearningPathRepository, courses ports.CourseRepository, versions ports.CourseVersionRepository, users ports.UserRepository, languages ports.LanguageRepository, instruments ports.InstrumentRepository, knowledge ports.KnowledgeNodeRepository, newID func() string, now func() time.Time) *CourseService {
+	return &CourseService{ownership: ownership, paths: paths, courses: courses, versions: versions, users: users, languages: languages, instruments: instruments, knowledge: knowledge, newID: newID, now: now}
 }
 
 // CheckpointInput is one checkpoint the caller wants in a new or replaced
@@ -517,12 +517,4 @@ func (s *CourseService) resolveCheckpoints(ctx context.Context, author domain.Us
 		resolved = append(resolved, domain.NewCourseCheckpoint{Path: path, Title: checkpoint.Title})
 	}
 	return resolved, nil
-}
-
-// WithOwnershipRecorder sets the recorder that attributes created content to
-// its rights holder. Production wires the deployment's environment; without
-// it, ownership evidence names no environment and cannot be stored.
-func (s *CourseService) WithOwnershipRecorder(recorder *OwnershipRecorder) *CourseService {
-	s.ownership = recorder
-	return s
 }

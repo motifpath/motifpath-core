@@ -35,8 +35,8 @@ func (s *ContentService) diagramRefRepos() diagramRefRepos {
 	return diagramRefRepos{diagrams: s.diagrams, instruments: s.instruments, voices: s.voices}
 }
 
-func NewContentService(nodes ports.ContentNodeRepository, expanded ports.ExpandedContentRepository, knowledge ports.KnowledgeNodeRepository, versions ports.ContentNodeVersionRepository, diagrams ports.DiagramRepository, instruments ports.InstrumentRepository, voices ports.VoiceRepository, songCharts ports.SongChartRepository, users ports.UserRepository, newID func() string, now func() time.Time) *ContentService {
-	return &ContentService{ownership: NewOwnershipRecorder(domain.Environment{}, newID), nodes: nodes, expanded: expanded, knowledge: knowledge, versions: versions, diagrams: diagrams, newID: newID, now: now, instruments: instruments, voices: voices, songCharts: songCharts, users: users}
+func NewContentService(ownership *OwnershipRecorder, nodes ports.ContentNodeRepository, expanded ports.ExpandedContentRepository, knowledge ports.KnowledgeNodeRepository, versions ports.ContentNodeVersionRepository, diagrams ports.DiagramRepository, instruments ports.InstrumentRepository, voices ports.VoiceRepository, songCharts ports.SongChartRepository, users ports.UserRepository, newID func() string, now func() time.Time) *ContentService {
+	return &ContentService{ownership: ownership, nodes: nodes, expanded: expanded, knowledge: knowledge, versions: versions, diagrams: diagrams, newID: newID, now: now, instruments: instruments, voices: voices, songCharts: songCharts, users: users}
 }
 
 // checkEmbeddedSongCharts refuses lesson content that embeds a song chart
@@ -482,12 +482,4 @@ func requireOwner(caller domain.User, teacherID string) error {
 		return nil
 	}
 	return domain.ErrForbidden
-}
-
-// WithOwnershipRecorder sets the recorder that attributes created content to
-// its rights holder. Production wires the deployment's environment; without
-// it, ownership evidence names no environment and cannot be stored.
-func (s *ContentService) WithOwnershipRecorder(recorder *OwnershipRecorder) *ContentService {
-	s.ownership = recorder
-	return s
 }

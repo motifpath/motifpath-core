@@ -51,26 +51,52 @@ func insertOwnership(ctx context.Context, tx *ent.Tx, ownership domain.ContentOw
 		Exec(ctx)
 }
 
-// latestOwnershipQuery locks an item's current ownership revision.
-const latestOwnershipQuery = `SELECT id FROM content_ownerships
-WHERE content_kind = $1 AND content_id = $2
-ORDER BY revision DESC LIMIT 1 FOR UPDATE`
+// latestOwnershipQuery finds an item's current ownership revision while the
+// item itself still exists: a deleted item keeps its ownership rows as
+// evidence but has no current owner.
+const latestOwnershipQuery = `SELECT o.id FROM content_ownerships o
+WHERE o.content_kind = $1 AND o.content_id = $2
+AND CASE $1::text
+	WHEN 'course' THEN EXISTS (SELECT 1 FROM courses WHERE id = $2)
+	WHEN 'path' THEN EXISTS (SELECT 1 FROM learning_paths WHERE id = $2)
+	WHEN 'content_node' THEN EXISTS (SELECT 1 FROM content_nodes WHERE id = $2)
+	WHEN 'exercise' THEN EXISTS (SELECT 1 FROM exercises WHERE id = $2)
+	ELSE false
+END
+ORDER BY o.revision DESC LIMIT 1`
+
+// lockedLatestOwnershipQuery also holds that revision until the transaction
+// ends, so concurrent corrections are serialized.
+const lockedLatestOwnershipQuery = latestOwnershipQuery + ` FOR UPDATE OF o`
 
 func (s *EntCommercialStore) CurrentOwnership(ctx context.Context, content domain.ContentRef) (domain.ContentOwnership, error) {
+	tx, err := s.client.Tx(ctx)
+	if err != nil {
+		return domain.ContentOwnership{}, err
+	}
+	current, err := latestOwnership(ctx, tx, latestOwnershipQuery, content)
+	if err != nil {
+		return domain.ContentOwnership{}, rollback(tx, err)
+	}
+	return current, tx.Commit()
+}
+
+// latestOwnership reads an item's current ownership revision with query, or
+// domain.ErrNotFound when it has none or the item was deleted.
+func latestOwnership(ctx context.Context, tx *ent.Tx, query string, content domain.ContentRef) (domain.ContentOwnership, error) {
 	contentID, err := uuid.Parse(content.ID)
 	if err != nil {
 		return domain.ContentOwnership{}, domain.ErrNotFound
 	}
-	row, err := s.client.ContentOwnership.Query().
-		Where(
-			contentownership.ContentKindEQ(contentownership.ContentKind(content.Kind)),
-			contentownership.ContentID(contentID),
-		).
-		Order(ent.Desc(contentownership.FieldRevision)).
-		First(ctx)
-	if ent.IsNotFound(err) {
-		return domain.ContentOwnership{}, domain.ErrNotFound
+	rows, err := tx.QueryContext(ctx, query, string(content.Kind), contentID)
+	if err != nil {
+		return domain.ContentOwnership{}, err
 	}
+	id, err := scanSingleUUID(rows)
+	if err != nil {
+		return domain.ContentOwnership{}, err
+	}
+	row, err := tx.ContentOwnership.Get(ctx, id)
 	if err != nil {
 		return domain.ContentOwnership{}, err
 	}
@@ -86,23 +112,7 @@ func (t entCommercialTx) Ownership() ports.ContentOwnershipTx {
 }
 
 func (o entContentOwnershipTx) LockCurrent(ctx context.Context, content domain.ContentRef) (domain.ContentOwnership, error) {
-	contentID, err := uuid.Parse(content.ID)
-	if err != nil {
-		return domain.ContentOwnership{}, domain.ErrNotFound
-	}
-	rows, err := o.tx.QueryContext(ctx, latestOwnershipQuery, string(content.Kind), contentID)
-	if err != nil {
-		return domain.ContentOwnership{}, err
-	}
-	id, err := scanSingleUUID(rows)
-	if err != nil {
-		return domain.ContentOwnership{}, err
-	}
-	row, err := o.tx.ContentOwnership.Get(ctx, id)
-	if err != nil {
-		return domain.ContentOwnership{}, err
-	}
-	return ownershipFromRow(row), nil
+	return latestOwnership(ctx, o.tx, lockedLatestOwnershipQuery, content)
 }
 
 func (o entContentOwnershipTx) Append(ctx context.Context, ownership domain.ContentOwnership) error {
@@ -111,6 +121,21 @@ func (o entContentOwnershipTx) Append(ctx context.Context, ownership domain.Cont
 		return fmt.Errorf("%w: ownership revision %d is already recorded", domain.ErrConflict, ownership.Revision)
 	}
 	return err
+}
+
+func (o entContentOwnershipTx) UserRole(ctx context.Context, userID string) (domain.Role, error) {
+	id, err := uuid.Parse(userID)
+	if err != nil {
+		return "", domain.ErrNotFound
+	}
+	found, err := o.tx.User.Get(ctx, id)
+	if ent.IsNotFound(err) {
+		return "", domain.ErrNotFound
+	}
+	if err != nil {
+		return "", err
+	}
+	return domain.Role(found.Role), nil
 }
 
 // scanSingleUUID reads the one id a query returns, or domain.ErrNotFound.

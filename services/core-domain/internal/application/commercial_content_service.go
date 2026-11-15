@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -192,7 +193,7 @@ func (s *CommercialContentService) correctionEffect(caller domain.User, content 
 		if err != nil {
 			return CommercialEffectResult{}, err
 		}
-		if err := checkTeacherExists(ctx, tx, correction); err != nil {
+		if err := checkRightsHolder(ctx, tx, correction); err != nil {
 			return CommercialEffectResult{}, err
 		}
 		if err := tx.Ownership().Append(ctx, next); err != nil {
@@ -211,16 +212,22 @@ func (s *CommercialContentService) correctionEffect(caller domain.User, content 
 	}
 }
 
-func checkTeacherExists(ctx context.Context, tx ports.CommercialTx, correction domain.OwnershipCorrection) error {
+// checkRightsHolder refuses a correction to a teacher-kind owner unless that
+// owner is a core user whose role is teacher or admin now: a student, or an id
+// core does not know, cannot hold rights.
+func checkRightsHolder(ctx context.Context, tx ports.CommercialTx, correction domain.OwnershipCorrection) error {
 	if correction.OwnerKind != domain.OwnerTeacher {
 		return nil
 	}
-	missing, err := tx.Groups().MissingUsers(ctx, []string{correction.OwnerID})
+	role, err := tx.Ownership().UserRole(ctx, correction.OwnerID)
+	if errors.Is(err, domain.ErrNotFound) {
+		return domain.NewValidationError("owner_id", "the rights holder is not a core user")
+	}
 	if err != nil {
 		return err
 	}
-	if len(missing) > 0 {
-		return domain.NewValidationError("owner_id", "the owning teacher is not a core user")
+	if role != domain.RoleTeacher && role != domain.RoleAdmin {
+		return domain.NewValidationError("owner_id", "a rights holder is a teacher or an administrator")
 	}
 	return nil
 }

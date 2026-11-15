@@ -26,7 +26,7 @@ type fakeCommercialState struct {
 	audit      []ports.AuditRecord
 	// ownership is every item's ownership revisions, oldest first.
 	ownership map[domain.ContentRef][]domain.ContentOwnership
-	users      map[string]bool
+	users     map[string]bool
 }
 
 type fakeFlagMeta struct {
@@ -72,10 +72,14 @@ type fakeCommercialStore struct {
 	// onInsert runs before an operation insert, to simulate a concurrent
 	// submission committing the same key first.
 	onInsert func(state *fakeCommercialState)
+	// roles is each core user's current role, for users a test names.
+	roles map[string]domain.Role
+	// deleted marks content whose row is gone; its ownership history stays.
+	deleted map[domain.ContentRef]bool
 }
 
 func newFakeCommercialStore() *fakeCommercialStore {
-	return &fakeCommercialStore{state: fakeCommercialState{
+	return &fakeCommercialStore{roles: map[string]domain.Role{}, deleted: map[domain.ContentRef]bool{}, state: fakeCommercialState{
 		flags: map[domain.FlagName]domain.FlagSetting{}, flagMeta: map[domain.FlagName]fakeFlagMeta{},
 		groups: map[string]domain.CommercialGroup{}, users: map[string]bool{}, ownership: map[domain.ContentRef][]domain.ContentOwnership{},
 	}}
@@ -308,8 +312,14 @@ func (s *fakeCommercialStore) CurrentOwnership(_ context.Context, content domain
 	if s.storageFails {
 		return domain.ContentOwnership{}, errFakeStorage
 	}
-	history := s.state.ownership[content]
-	if len(history) == 0 {
+	return currentOwnership(s, s.state, content)
+}
+
+// currentOwnership is an item's latest ownership revision, or
+// domain.ErrNotFound when it has none or the item was deleted.
+func currentOwnership(s *fakeCommercialStore, state fakeCommercialState, content domain.ContentRef) (domain.ContentOwnership, error) {
+	history := state.ownership[content]
+	if len(history) == 0 || s.deleted[content] {
 		return domain.ContentOwnership{}, domain.ErrNotFound
 	}
 	return history[len(history)-1], nil
@@ -318,11 +328,15 @@ func (s *fakeCommercialStore) CurrentOwnership(_ context.Context, content domain
 type fakeOwnershipTx fakeCommercialTx
 
 func (o fakeOwnershipTx) LockCurrent(_ context.Context, content domain.ContentRef) (domain.ContentOwnership, error) {
-	history := o.state.ownership[content]
-	if len(history) == 0 {
-		return domain.ContentOwnership{}, domain.ErrNotFound
+	return currentOwnership(o.store, *o.state, content)
+}
+
+func (o fakeOwnershipTx) UserRole(_ context.Context, userID string) (domain.Role, error) {
+	role, ok := o.store.roles[userID]
+	if !ok || !o.state.users[userID] {
+		return "", domain.ErrNotFound
 	}
-	return history[len(history)-1], nil
+	return role, nil
 }
 
 func (o fakeOwnershipTx) Append(_ context.Context, ownership domain.ContentOwnership) error {

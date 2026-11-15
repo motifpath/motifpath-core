@@ -3,6 +3,7 @@ package application_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
@@ -72,7 +73,7 @@ func TestContentCreationRecordsOwnership(t *testing.T) {
 			nodes := newFakeContentNodeRepository()
 			nodes.put(domain.ContentNode{ID: "node-01", Title: "One", ContentType: domain.ContentTypeVideo})
 			paths := newFakeLearningPathRepository()
-			svc := newLearningPathService(nodes, paths).WithOwnershipRecorder(testOwnershipRecorder(t))
+			svc := newLearningPathService(nodes, paths)
 
 			path, err := svc.CreateLearningPath(context.Background(), tc.author, application.LearningPathInput{
 				Level: domain.DifficultyLevelBeginner, Title: "Jazz foundations", Items: pathItems("node-01"),
@@ -84,7 +85,7 @@ func TestContentCreationRecordsOwnership(t *testing.T) {
 
 		t.Run("content node: "+name, func(t *testing.T) {
 			nodes := newFakeContentNodeRepository()
-			svc := newContentService(nodes, newFakeExpandedContentRepository()).WithOwnershipRecorder(testOwnershipRecorder(t))
+			svc := newContentService(nodes, newFakeExpandedContentRepository())
 
 			node, err := svc.CreateContentNode(context.Background(), tc.author, application.ContentNodeInput{
 				Title: "Shell voicings", ContentType: domain.ContentTypeVideo, SkillIDs: []string{"skill-1"}, ConceptIDs: []string{"concept-1"},
@@ -97,7 +98,7 @@ func TestContentCreationRecordsOwnership(t *testing.T) {
 
 		t.Run("exercise: "+name, func(t *testing.T) {
 			exercises := newFakeExerciseRepository()
-			svc := newExerciseService(newFakeChallengeRepository(), exercises).WithOwnershipRecorder(testOwnershipRecorder(t))
+			svc := newExerciseService(newFakeChallengeRepository(), exercises)
 			imageURL := "https://cdn.example.com/fretboard/c-major-triad.png"
 
 			exercise, err := svc.CreateExercise(context.Background(), tc.author,
@@ -114,8 +115,7 @@ func TestContentCreationRecordsOwnership(t *testing.T) {
 			courses := newFakeCourseRepository()
 			users := newFakeUserRepository()
 			users.put(tc.author)
-			svc := application.NewCourseService(paths, courses, newFakeCourseVersionRepository(), users, newFakeLanguageRepository(), seededInstrumentRepository(), seededKnowledgeNodeRepository(), idSequence(), func() time.Time { return fixedCreatedAt }).
-				WithOwnershipRecorder(testOwnershipRecorder(t))
+			svc := application.NewCourseService(testOwnershipRecorder(t), paths, courses, newFakeCourseVersionRepository(), users, newFakeLanguageRepository(), seededInstrumentRepository(), seededKnowledgeNodeRepository(), idSequence(), func() time.Time { return fixedCreatedAt })
 
 			course, err := svc.CreateCourse(context.Background(), tc.author, application.CourseInput{
 				Language: "en", Title: "Journey", Summary: "Summary", Level: domain.DifficultyLevelBeginner, Checkpoints: checkpointInputs("own-path"),
@@ -125,4 +125,14 @@ func TestContentCreationRecordsOwnership(t *testing.T) {
 			assertNativeOwnership(t, courses.ownership[course.ID], domain.ContentRef{Kind: domain.ContentCourse, ID: course.ID}, tc.author, tc.wantOwnerKind, tc.wantOwnerID)
 		})
 	}
+}
+
+// ownershipRecorderForTests records ownership evidence in the test
+// environment, for services built outside a single test.
+func ownershipRecorderForTests() *application.OwnershipRecorder {
+	environment, err := domain.ParseEnvironment("test")
+	if err != nil {
+		panic(fmt.Sprintf("the test environment is invalid: %v", err))
+	}
+	return application.NewOwnershipRecorder(environment, idSequence())
 }

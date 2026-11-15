@@ -105,11 +105,11 @@ func run() error {
 		return err
 	}
 
-	contentService := application.NewContentService(nodeRepo, expandedRepo, knowledgeRepo, contentNodeVersionRepo, diagramRepo, instrumentRepo, voiceRepo, repo.NewEntSongChartRepository(entClient), userRepo, newID, now).WithOwnershipRecorder(ownership)
-	pathService := application.NewLearningPathService(nodeRepo, pathRepo, courseVersionRepo, contentNodeVersionRepo, repo.NewEntLanguageRepository(entClient), userRepo, instrumentRepo, knowledgeRepo, newID, now).WithOwnershipRecorder(ownership)
+	contentService := application.NewContentService(ownership, nodeRepo, expandedRepo, knowledgeRepo, contentNodeVersionRepo, diagramRepo, instrumentRepo, voiceRepo, repo.NewEntSongChartRepository(entClient), userRepo, newID, now)
+	pathService := application.NewLearningPathService(ownership, nodeRepo, pathRepo, courseVersionRepo, contentNodeVersionRepo, repo.NewEntLanguageRepository(entClient), userRepo, instrumentRepo, knowledgeRepo, newID, now)
 	studentPathService := application.NewStudentPathService(userRepo, pathRepo, studentPathRepo, contentNodeVersionRepo, studentLearningStateRepo, courseEnrollmentRepo, courseVersionRepo, nodeRepo, exerciseRepo, nil, newID, now)
 	challengeService := application.NewChallengeService(nodeRepo, challengeRepo, exerciseRepo, newID, now)
-	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, knowledgeRepo, diagramRepo, instrumentRepo, voiceRepo, userRepo, repo.NewMongoPracticeReferenceWriter(mongoClient.Database(mongoDatabase), now), newID, now, rand.Shuffle).WithOwnershipRecorder(ownership)
+	exerciseService := application.NewExerciseService(ownership, challengeRepo, exerciseRepo, nodeRepo, knowledgeRepo, diagramRepo, instrumentRepo, voiceRepo, userRepo, repo.NewMongoPracticeReferenceWriter(mongoClient.Database(mongoDatabase), now), newID, now, rand.Shuffle)
 
 	student, err := findFirstStudent(ctx, entClient)
 	if err != nil {

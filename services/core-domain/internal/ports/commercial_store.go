@@ -21,7 +21,8 @@ type CommercialStore interface {
 	// Audit reads evidence outside any command.
 	Audit() CommercialAuditReader
 	// CurrentOwnership reads an item's current ownership revision outside any
-	// command, or domain.ErrNotFound when it has none.
+	// command, or domain.ErrNotFound when it has none or the item was
+	// deleted; a deleted item's history is kept as evidence.
 	CurrentOwnership(ctx context.Context, content domain.ContentRef) (domain.ContentOwnership, error)
 }
 
@@ -39,10 +40,14 @@ type CommercialTx interface {
 type ContentOwnershipTx interface {
 	// LockCurrent returns an item's current revision and holds it until the
 	// transaction ends, so concurrent corrections are serialized. An item
-	// with no ownership record is domain.ErrNotFound.
+	// with no ownership record, or one that was deleted, is
+	// domain.ErrNotFound.
 	LockCurrent(ctx context.Context, content domain.ContentRef) (domain.ContentOwnership, error)
 	// Append records the item's next revision.
 	Append(ctx context.Context, ownership domain.ContentOwnership) error
+	// UserRole is a core user's current role, or domain.ErrNotFound when
+	// no such user exists.
+	UserRole(ctx context.Context, userID string) (domain.Role, error)
 }
 
 // CommercialActivationTx guards the environment-wide activation revision.

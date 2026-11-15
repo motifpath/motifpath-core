@@ -80,7 +80,7 @@ func TestAuthoringLists_SubtreeMatching(t *testing.T) {
 		exercises.put(domain.Exercise{ID: "overview", Title: "a", Skills: skills("picking")})
 		exercises.put(domain.Exercise{ID: "sweep", Title: "b", Skills: skills("sweep-picking")})
 		exercises.put(domain.Exercise{ID: "outside", Title: "c", Skills: skills("outside-picking")})
-		svc := application.NewExerciseService(newFakeChallengeRepository(), exercises, newFakeContentNodeRepository(), pickingTree(), newFakeDiagramRepository(), exerciseInstruments(), newFakeVoiceRepository(), exerciseUsers(), newFakePracticeReferenceWriter(), idSequence(), func() time.Time { return fixedCreatedAt }, noShuffle)
+		svc := application.NewExerciseService(ownershipRecorderForTests(), newFakeChallengeRepository(), exercises, newFakeContentNodeRepository(), pickingTree(), newFakeDiagramRepository(), exerciseInstruments(), newFakeVoiceRepository(), exerciseUsers(), newFakePracticeReferenceWriter(), idSequence(), func() time.Time { return fixedCreatedAt }, noShuffle)
 
 		got, err := svc.ListExercises(ctx, teacherCaller(), domain.ExerciseFilter{SkillIDs: []string{"alternate-picking"}}, page)
 
@@ -105,7 +105,7 @@ func TestAuthoringLists_SubtreeMatching(t *testing.T) {
 
 	t.Run("learning paths: the repository is asked for the whole area", func(t *testing.T) {
 		paths := newFakeLearningPathRepository()
-		svc := application.NewLearningPathService(newFakeContentNodeRepository(), paths, newFakeCourseVersionRepository(), newFakeContentNodeVersionRepository(), newFakeLanguageRepository(), newFakeUserRepository(), seededInstrumentRepository(), pickingTree(), idSequence(), func() time.Time { return fixedCreatedAt })
+		svc := application.NewLearningPathService(ownershipRecorderForTests(), newFakeContentNodeRepository(), paths, newFakeCourseVersionRepository(), newFakeContentNodeVersionRepository(), newFakeLanguageRepository(), newFakeUserRepository(), seededInstrumentRepository(), pickingTree(), idSequence(), func() time.Time { return fixedCreatedAt })
 
 		_, err := svc.ListLearningPaths(ctx, adminCaller(), domain.LearningPathFilter{SkillIDs: []string{"picking"}, ConceptIDs: []string{"chords"}}, page)
 
@@ -126,7 +126,7 @@ func TestAuthoringLists_SubtreeMatching(t *testing.T) {
 
 	t.Run("courses and the course catalog: the repository is asked for the whole area", func(t *testing.T) {
 		courses := newFakeCourseRepository()
-		svc := application.NewCourseService(newFakeLearningPathRepository(), courses, newFakeCourseVersionRepository(), courseAuthors(), newFakeLanguageRepository(), seededInstrumentRepository(), pickingTree(), idSequence(), func() time.Time { return fixedCreatedAt })
+		svc := application.NewCourseService(ownershipRecorderForTests(), newFakeLearningPathRepository(), courses, newFakeCourseVersionRepository(), courseAuthors(), newFakeLanguageRepository(), seededInstrumentRepository(), pickingTree(), idSequence(), func() time.Time { return fixedCreatedAt })
 
 		_, err := svc.ListCourses(ctx, adminCaller(), domain.CourseListFilter{SkillIDs: []string{"picking"}}, page)
 		require.NoError(t, err)
@@ -366,7 +366,7 @@ func TestAuthoringLists_CreatorCounts(t *testing.T) {
 		} {
 			nodes.put(n)
 		}
-		svc := application.NewContentService(nodes, newFakeExpandedContentRepository(), seededKnowledgeNodeRepository(), newFakeContentNodeVersionRepository(), newFakeDiagramRepository(), seededInstrumentRepository(), newFakeVoiceRepository(), newFakeSongChartRepository(), exerciseUsers(), idSequence(), func() time.Time { return fixedCreatedAt })
+		svc := application.NewContentService(ownershipRecorderForTests(), nodes, newFakeExpandedContentRepository(), seededKnowledgeNodeRepository(), newFakeContentNodeVersionRepository(), newFakeDiagramRepository(), seededInstrumentRepository(), newFakeVoiceRepository(), newFakeSongChartRepository(), exerciseUsers(), idSequence(), func() time.Time { return fixedCreatedAt })
 
 		got, err := svc.ListContentNodeCreators(ctx, teacherCaller(), "")
 
@@ -378,7 +378,7 @@ func TestAuthoringLists_CreatorCounts(t *testing.T) {
 	})
 
 	t.Run("a student cannot list lesson creators", func(t *testing.T) {
-		svc := application.NewContentService(newFakeContentNodeRepository(), newFakeExpandedContentRepository(), seededKnowledgeNodeRepository(), newFakeContentNodeVersionRepository(), newFakeDiagramRepository(), seededInstrumentRepository(), newFakeVoiceRepository(), newFakeSongChartRepository(), exerciseUsers(), idSequence(), func() time.Time { return fixedCreatedAt })
+		svc := application.NewContentService(ownershipRecorderForTests(), newFakeContentNodeRepository(), newFakeExpandedContentRepository(), seededKnowledgeNodeRepository(), newFakeContentNodeVersionRepository(), newFakeDiagramRepository(), seededInstrumentRepository(), newFakeVoiceRepository(), newFakeSongChartRepository(), exerciseUsers(), idSequence(), func() time.Time { return fixedCreatedAt })
 
 		_, err := svc.ListContentNodeCreators(ctx, studentCaller(), "")
 

@@ -40,6 +40,7 @@ type ExerciseService struct {
 }
 
 func NewExerciseService(
+	ownership *OwnershipRecorder,
 	challenges ports.ChallengeRepository,
 	exercises ports.ExerciseRepository,
 	nodes ports.ContentNodeRepository,
@@ -53,7 +54,7 @@ func NewExerciseService(
 	now func() time.Time,
 	shuffle func(n int, swap func(i, j int)),
 ) *ExerciseService {
-	return &ExerciseService{ownership: NewOwnershipRecorder(domain.Environment{}, newID), challenges: challenges, exercises: exercises, nodes: nodes, knowledge: knowledge, diagrams: diagrams, instruments: instruments, voices: voices, users: users, references: references, newID: newID, now: now, shuffle: shuffle}
+	return &ExerciseService{ownership: ownership, challenges: challenges, exercises: exercises, nodes: nodes, knowledge: knowledge, diagrams: diagrams, instruments: instruments, voices: voices, users: users, references: references, newID: newID, now: now, shuffle: shuffle}
 }
 
 // diagramRefRepos are the repositories a diagram reference is checked
@@ -710,12 +711,4 @@ func (s *ExerciseService) ListPathExercisesForContentNode(ctx context.Context, c
 
 func (s *ExerciseService) shuffleOptions(options []domain.Option) {
 	s.shuffle(len(options), func(i, j int) { options[i], options[j] = options[j], options[i] })
-}
-
-// WithOwnershipRecorder sets the recorder that attributes created content to
-// its rights holder. Production wires the deployment's environment; without
-// it, ownership evidence names no environment and cannot be stored.
-func (s *ExerciseService) WithOwnershipRecorder(recorder *OwnershipRecorder) *ExerciseService {
-	s.ownership = recorder
-	return s
 }

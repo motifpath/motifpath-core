@@ -374,16 +374,19 @@ func newWorld() *world {
 	now := func() time.Time { return fixedNow }
 
 	identity := application.NewIdentityService(w.users, newFakeLanguageRepo(), newID, now)
-	content := application.NewContentService(w.nodes, w.expanded, w.knowledge, w.versions, w.diagrams, w.instruments, w.voices, w.songChartRepo, w.users, newID, now)
+	// Content is stored with its ownership and evidence in one transaction,
+	// as Postgres does, so every created item has an owner to read.
+	recorder := application.NewOwnershipRecorder(bddEnvironment(), newID)
+	content := application.NewContentService(recorder, w.nodes, w.expanded, w.knowledge, w.versions, w.diagrams, w.instruments, w.voices, w.songChartRepo, w.users, newID, now)
 	challenge := application.NewChallengeService(w.nodes, w.challenges, w.exercises, newID, now)
-	exercise := application.NewExerciseService(w.challenges, w.exercises, w.nodes, w.knowledge, w.diagrams, w.instruments, w.voices, w.users, discardPracticeReferences{}, newID, now, noShuffle)
+	exercise := application.NewExerciseService(recorder, w.challenges, w.exercises, w.nodes, w.knowledge, w.diagrams, w.instruments, w.voices, w.users, discardPracticeReferences{}, newID, now, noShuffle)
 	knowledgeNode := application.NewKnowledgeNodeService(w.knowledge, w.instruments, newFakeLanguageRepo(), newID)
 	knowledgeEdge := application.NewKnowledgeEdgeService(w.knowledgeEdges, w.knowledge, newID)
 	w.mediaStorage = &fakeMediaStorage{}
 	media := application.NewMediaService(w.exercises, w.mediaStorage, newID)
-	path := application.NewLearningPathService(w.nodes, w.paths, w.courseVersions, w.versions, newFakeLanguageRepo(), w.users, w.instruments, w.knowledge, newID, now)
+	path := application.NewLearningPathService(recorder, w.nodes, w.paths, w.courseVersions, w.versions, newFakeLanguageRepo(), w.users, w.instruments, w.knowledge, newID, now)
 	studentPath := application.NewStudentPathService(w.users, w.paths, w.studentPaths, w.versions, w.learningState, w.courseEnrollments, w.courseVersions, w.nodes, w.exercises, w.completion, newID, now)
-	course := application.NewCourseService(w.paths, w.courses, w.courseVersions, w.users, newFakeLanguageRepo(), w.instruments, w.knowledge, newID, now)
+	course := application.NewCourseService(recorder, w.paths, w.courses, w.courseVersions, w.users, newFakeLanguageRepo(), w.instruments, w.knowledge, newID, now)
 	courseEnrollment := application.NewCourseEnrollmentService(w.courses, w.courseVersions, w.paths, w.studentPaths, w.courseEnrollments, studentPath, w.learningState, w.completion, newID, now)
 
 	instrument := application.NewInstrumentService(w.instruments, w.voices, newFakeLanguageRepo(), discardPracticeReferences{}, newID)
@@ -428,13 +431,6 @@ func newWorld() *world {
 	w.commercial = newCommercialWorld(w, newID)
 	w.ownership = newOwnershipWorld()
 	w.handler = w.handler.WithCommercial(w.commercial.rollout, w.commercial.audit).WithCommercialContent(w.commercial.content)
-	// Content is stored with its ownership and evidence in one transaction,
-	// as Postgres does, so every created item has an owner to read.
-	recorder := application.NewOwnershipRecorder(bddEnvironment(), newID)
-	content.WithOwnershipRecorder(recorder)
-	exercise.WithOwnershipRecorder(recorder)
-	path.WithOwnershipRecorder(recorder)
-	course.WithOwnershipRecorder(recorder)
 	w.nodes.recordOwnership = w.commercial.store.recordOwnership
 	w.exercises.recordOwnership = w.commercial.store.recordOwnership
 	w.paths.recordOwnership = w.commercial.store.recordOwnership
@@ -707,4 +703,24 @@ func seedOwnership(kind domain.ContentKind, id string) ports.OwnershipRecord {
 	catalog := domain.User{ID: domain.CatalogProfileID, Role: domain.RoleAdmin}
 	recorder := application.NewOwnershipRecorder(bddEnvironment(), uuid.NewString)
 	return recorder.Native(domain.ContentRef{Kind: kind, ID: id}, catalog, fixedNow)
+}
+
+// contentExists answers whether an item is still stored in the world's
+// content repositories.
+func (w *world) contentExists(content domain.ContentRef) bool {
+	ctx := context.Background()
+	var err error
+	switch content.Kind {
+	case domain.ContentCourse:
+		_, err = w.courses.GetByID(ctx, content.ID)
+	case domain.ContentPath:
+		_, err = w.paths.GetByID(ctx, content.ID)
+	case domain.ContentContentNode:
+		_, err = w.nodes.GetByID(ctx, content.ID)
+	case domain.ContentExercise:
+		_, err = w.exercises.GetByID(ctx, content.ID)
+	default:
+		return false
+	}
+	return err == nil
 }
