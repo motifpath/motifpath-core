@@ -88,7 +88,7 @@ func (s *CommercialContentService) Get(ctx context.Context, caller domain.User, 
 	if !canReadCommercialContent(caller, ownership) {
 		return CommercialContent{}, domain.ErrNotFound
 	}
-	blockers, err := s.saleBlockers(ctx, ownership)
+	blockers, err := s.saleBlockers(ctx, caller, ownership)
 	if err != nil {
 		return CommercialContent{}, err
 	}
@@ -102,17 +102,16 @@ func canReadCommercialContent(caller domain.User, ownership domain.ContentOwners
 	return ownership.OwnerKind == domain.OwnerTeacher && ownership.OwnerID != nil && *ownership.OwnerID == caller.ID
 }
 
-// saleBlockers lists what would block a sale today: no reviewed rights
-// holder, no selling configuration (none exists yet), and new sales paused
-// by the rollout flag that governs the owner's sales.
-func (s *CommercialContentService) saleBlockers(ctx context.Context, ownership domain.ContentOwnership) ([]SaleBlocker, error) {
+// saleBlockers lists what would block a sale today, for the caller: no
+// reviewed rights holder, no selling configuration (none exists yet), and new
+// sales paused by the rollout flag that governs the owner's kind of sale.
+func (s *CommercialContentService) saleBlockers(ctx context.Context, caller domain.User, ownership domain.ContentOwnership) ([]SaleBlocker, error) {
 	blockers := []SaleBlocker{}
 	if ownership.OwnerKind == domain.OwnerUnresolved {
 		return append(blockers, SaleBlocker{Code: BlockerUnresolvedOwnership}, SaleBlocker{Code: BlockerConfigurationMissing}), nil
 	}
 	blockers = append(blockers, SaleBlocker{Code: BlockerConfigurationMissing})
-	flag, subject := salesRollout(ownership)
-	allowed, err := s.rollout.Allowed(ctx, flag, subject)
+	allowed, err := s.rollout.Allowed(ctx, salesFlag(ownership), domain.RolloutSubject{Kind: domain.RolloutSubjectUser, ID: caller.ID})
 	if err != nil {
 		return nil, err
 	}
@@ -122,13 +121,13 @@ func (s *CommercialContentService) saleBlockers(ctx context.Context, ownership d
 	return blockers, nil
 }
 
-// salesRollout is the flag that governs new sales of an item and the subject
-// it is evaluated for: a teacher's own sales, or the platform's.
-func salesRollout(ownership domain.ContentOwnership) (domain.FlagName, domain.RolloutSubject) {
+// salesFlag is the rollout flag that governs new sales of an item: a
+// teacher's own paid content, or the platform's.
+func salesFlag(ownership domain.ContentOwnership) domain.FlagName {
 	if ownership.OwnerKind == domain.OwnerTeacher {
-		return domain.FlagName("teacher_paid_paths"), domain.RolloutSubject{Kind: domain.RolloutSubjectUser, ID: *ownership.OwnerID}
+		return domain.FlagName("teacher_paid_paths")
 	}
-	return domain.FlagName("motifpath_purchase"), domain.RolloutSubject{Kind: domain.RolloutSubjectService, ID: "motifpath-catalog"}
+	return domain.FlagName("motifpath_purchase")
 }
 
 // CorrectOwnership appends an administrator's correction of an item's rights

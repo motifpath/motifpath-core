@@ -13,6 +13,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialauditentry"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentownership"
 	"github.com/motifpath/core-domain/internal/domain"
+	"github.com/motifpath/core-domain/internal/ports"
 )
 
 func TestEntContentCreation_RecordsOwnershipWithTheContent(t *testing.T) {
@@ -73,5 +74,63 @@ func TestEntContentCreation_RecordsOwnershipWithTheContent(t *testing.T) {
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "append-only")
+	})
+}
+
+func TestEntCommercialStore_Ownership(t *testing.T) {
+	client, _ := setupMigratedPostgres(t)
+	ctx := context.Background()
+	store := NewEntCommercialStore(client)
+	node := seedContentNode(t, ctx, NewEntContentNodeRepository(client))
+	ref := domain.ContentRef{Kind: domain.ContentContentNode, ID: node.ID}
+
+	t.Run("reads the current revision of recorded content", func(t *testing.T) {
+		current, err := store.CurrentOwnership(ctx, ref)
+
+		require.NoError(t, err)
+		assert.Equal(t, 1, current.Revision)
+		assert.Equal(t, domain.OwnerTeacher, current.OwnerKind)
+	})
+
+	t.Run("content without an ownership record is not found", func(t *testing.T) {
+		_, err := store.CurrentOwnership(ctx, domain.ContentRef{Kind: domain.ContentPath, ID: uuid.NewString()})
+
+		assert.ErrorIs(t, err, domain.ErrNotFound)
+	})
+
+	t.Run("a correction appends the next revision and keeps the first", func(t *testing.T) {
+		err := store.InTx(ctx, func(ctx context.Context, tx ports.CommercialTx) error {
+			current, err := tx.Ownership().LockCurrent(ctx, ref)
+			if err != nil {
+				return err
+			}
+			next, err := current.Corrected(domain.OwnershipCorrection{ExpectedRevision: 1, OwnerKind: domain.OwnerPlatform, OwnerID: domain.CatalogProfileID}, uuid.NewString())
+			if err != nil {
+				return err
+			}
+			return tx.Ownership().Append(ctx, next)
+		})
+		require.NoError(t, err)
+
+		current, err := store.CurrentOwnership(ctx, ref)
+		require.NoError(t, err)
+		assert.Equal(t, 2, current.Revision)
+		assert.Equal(t, domain.OwnerPlatform, current.OwnerKind)
+		count, err := client.ContentOwnership.Query().Where(contentownership.ContentID(uuid.MustParse(node.ID))).Count(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, 2, count)
+	})
+
+	t.Run("appending a revision already recorded is a conflict", func(t *testing.T) {
+		err := store.InTx(ctx, func(ctx context.Context, tx ports.CommercialTx) error {
+			current, err := tx.Ownership().LockCurrent(ctx, ref)
+			if err != nil {
+				return err
+			}
+			current.EvidenceEntryID = uuid.NewString()
+			return tx.Ownership().Append(ctx, current)
+		})
+
+		assert.ErrorIs(t, err, domain.ErrConflict)
 	})
 }

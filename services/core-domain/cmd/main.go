@@ -391,17 +391,20 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 	alphaObservationService := application.NewAlphaObservationService(userRepo, studentPathRepo, nodeRepo, completionReader,
 		repo.NewMongoAlphaActivityReader(mongoClient.Database(cfg.mongoDatabase)), now)
 
+	rollout, audit, commercialContent := newCommercialServices(cfg, entClient, newID, now)
 	return appHTTP.NewHandler(identityService, contentService, challengeService, exerciseService, knowledgeNodeService, knowledgeEdgeService, mediaService, pathService, application.NewPathCatalogService(pathRepo, userRepo, knowledgeNodeRepo), studentPathService,
-		courseService, courseEnrollmentService, instrumentService, voiceService, diagramService, practiceSessionService, practiceSummaryService, chordCatalogService, application.NewProgressionCatalogService(repo.NewEntProgressionRepository(entClient), songChartRepo, languageRepo, knowledgeNodeRepo, practiceReferences, newID, now), songChartService, appConfigService, startingPointsService, alphaObservationService, application.NewEmailPreferencesService(userRepo, []byte(cfg.emailUnsubscribeSecret)), learningGraphPinger, completionReader).WithCommercial(newCommercialServices(cfg, entClient, newID, now)), practiceSessionService, nil
+		courseService, courseEnrollmentService, instrumentService, voiceService, diagramService, practiceSessionService, practiceSummaryService, chordCatalogService, application.NewProgressionCatalogService(repo.NewEntProgressionRepository(entClient), songChartRepo, languageRepo, knowledgeNodeRepo, practiceReferences, newID, now), songChartService, appConfigService, startingPointsService, alphaObservationService, application.NewEmailPreferencesService(userRepo, []byte(cfg.emailUnsubscribeSecret)), learningGraphPinger, completionReader).WithCommercial(rollout, audit).WithCommercialContent(commercialContent), practiceSessionService, nil
 }
 
-// newCommercialServices builds commercial rollout and audit over one store,
+// newCommercialServices builds commercial rollout, audit and content over one store,
 // so every commercial change commits with its evidence.
-func newCommercialServices(cfg config, entClient *ent.Client, newID func() string, now func() time.Time) (*application.CommercialRolloutService, *application.CommercialAuditService) {
+func newCommercialServices(cfg config, entClient *ent.Client, newID func() string, now func() time.Time) (*application.CommercialRolloutService, *application.CommercialAuditService, *application.CommercialContentService) {
 	store := repo.NewEntCommercialStore(entClient)
 	commands := application.NewCommercialCommands(store, now, newID)
-	return application.NewCommercialRolloutService(store, commands, cfg.environment, now),
-		application.NewCommercialAuditService(store, cfg.environment, cfg.commercialCursorSecret, now, newID)
+	rollout := application.NewCommercialRolloutService(store, commands, cfg.environment, now)
+	return rollout,
+		application.NewCommercialAuditService(store, cfg.environment, cfg.commercialCursorSecret, now, newID),
+		application.NewCommercialContentService(store, commands, rollout, cfg.environment)
 }
 
 // newS3Client builds the client MediaService's presigned uploads go

@@ -39,15 +39,7 @@ func (h *Handler) CreateSubscriptionOfferRevision(_ context.Context, _ generated
 	return nil, errOperationNotBuilt
 }
 
-func (h *Handler) GetCommercialContent(_ context.Context, _ generated.GetCommercialContentRequestObject) (generated.GetCommercialContentResponseObject, error) {
-	return nil, errOperationNotBuilt
-}
-
 func (h *Handler) CreateCommercialOffer(_ context.Context, _ generated.CreateCommercialOfferRequestObject) (generated.CreateCommercialOfferResponseObject, error) {
-	return nil, errOperationNotBuilt
-}
-
-func (h *Handler) CorrectCommercialOwnership(_ context.Context, _ generated.CorrectCommercialOwnershipRequestObject) (generated.CorrectCommercialOwnershipResponseObject, error) {
 	return nil, errOperationNotBuilt
 }
 

@@ -314,3 +314,14 @@ func (o fakeOwnershipTx) Append(_ context.Context, ownership domain.ContentOwner
 	o.state.ownership[ownership.Content] = append(history, ownership)
 	return nil
 }
+
+// recordOwnership stores a created item's ownership and its evidence in one
+// transaction, as the Postgres repositories do with the item itself.
+func (s *fakeCommercialStore) recordOwnership(record ports.OwnershipRecord) error {
+	return s.InTx(context.Background(), func(ctx context.Context, tx ports.CommercialTx) error {
+		if err := tx.Audit().Append(ctx, record.Evidence); err != nil {
+			return err
+		}
+		return tx.Ownership().Append(ctx, record.Ownership)
+	})
+}

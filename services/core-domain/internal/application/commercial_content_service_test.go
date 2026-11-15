@@ -109,6 +109,22 @@ func TestCommercialContentService_Get(t *testing.T) {
 		assert.Equal(t, contentBeaID, *content.Ownership.OwnerID)
 	})
 
+	t.Run("platform content is paused for new sales until the platform's sales are rolled out", func(t *testing.T) {
+		f := newCommercialContentFixture(t)
+		f.own(t, domain.ContentPath, contentPathID, contentAdmin)
+
+		paused, err := f.service.Get(ctx, contentAdmin, "path", contentPathID)
+		require.NoError(t, err)
+		for _, flag := range domain.CommercialFlags() {
+			f.store.state.flags[flag] = domain.FlagSetting{Enabled: true, Audience: domain.RolloutAudience{AllUsers: true}}
+		}
+		open, err := f.service.Get(ctx, contentAdmin, "path", contentPathID)
+		require.NoError(t, err)
+
+		assert.ElementsMatch(t, []string{"configuration_missing", "new_sales_paused"}, blockerCodes(paused))
+		assert.Equal(t, []string{"configuration_missing"}, blockerCodes(open))
+	})
+
 	t.Run("unresolved content lists unresolved ownership as a blocker", func(t *testing.T) {
 		f := newCommercialContentFixture(t)
 		f.ownUnresolved(t, domain.ContentExercise, contentPathID)

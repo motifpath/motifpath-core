@@ -16,6 +16,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/http/generated"
 	"github.com/motifpath/core-domain/internal/application"
 	"github.com/motifpath/core-domain/internal/domain"
+	"github.com/motifpath/core-domain/internal/ports"
 )
 
 var fixedNow = time.Date(2026, 8, 26, 12, 0, 0, 0, time.UTC)
@@ -30,13 +31,13 @@ func noShuffle(int, func(i, j int)) {}
 // by InitializeScenario for every scenario godog runs, giving each scenario
 // full isolation without an explicit teardown step.
 type world struct {
-	mediaStorage      *fakeMediaStorage
-	users             *fakeUserRepo
-	chords            *fakeChordCatalog
-	songChartRepo     *fakeSongChartRepo
-	progressions      *fakeProgressionRepo
+	mediaStorage  *fakeMediaStorage
+	users         *fakeUserRepo
+	chords        *fakeChordCatalog
+	songChartRepo *fakeSongChartRepo
+	progressions  *fakeProgressionRepo
 	// authoredKey is the progression the scenario last created or removed.
-	authoredKey string
+	authoredKey       string
 	appConfig         *fakeAppConfigRepo
 	sp                *startingPointsWorld
 	nodes             *fakeContentNodeRepo
@@ -92,9 +93,9 @@ type world struct {
 	practiceActivity *fakePracticeActivity
 	// sessionStudent is the student whose session the latest "started a session" step seeded.
 	sessionStudent string
-	alpha            *alphaWorld
-	tapChecks        *fakeTapChecks
-	feltRatings      *fakeFeltRatings
+	alpha          *alphaWorld
+	tapChecks      *fakeTapChecks
+	feltRatings    *fakeFeltRatings
 	// tapCheckSkill is the skill of the tap-check scenarios' path.
 	tapCheckSkill string
 	// summaryNow is the practice summary's clock, which a scenario may
@@ -299,6 +300,7 @@ type world struct {
 
 	// commercial holds the commercial activation and audit state.
 	commercial *commercialWorld
+	ownership  *ownershipWorld
 
 	// lastRouterStatus is the status of the last request sent through the
 	// generated router rather than straight to the handler — only for a
@@ -424,7 +426,19 @@ func newWorld() *world {
 		w.emailPreferences,
 		w.pgPinger, w.mongoPinger)
 	w.commercial = newCommercialWorld(w, newID)
-	w.handler = w.handler.WithCommercial(w.commercial.rollout, w.commercial.audit)
+	w.ownership = newOwnershipWorld()
+	w.handler = w.handler.WithCommercial(w.commercial.rollout, w.commercial.audit).WithCommercialContent(w.commercial.content)
+	// Content is stored with its ownership and evidence in one transaction,
+	// as Postgres does, so every created item has an owner to read.
+	recorder := application.NewOwnershipRecorder(bddEnvironment(), newID)
+	content.WithOwnershipRecorder(recorder)
+	exercise.WithOwnershipRecorder(recorder)
+	path.WithOwnershipRecorder(recorder)
+	course.WithOwnershipRecorder(recorder)
+	w.nodes.recordOwnership = w.commercial.store.recordOwnership
+	w.exercises.recordOwnership = w.commercial.store.recordOwnership
+	w.paths.recordOwnership = w.commercial.store.recordOwnership
+	w.courses.recordOwnership = w.commercial.store.recordOwnership
 	return w
 }
 
@@ -676,4 +690,21 @@ func (w *world) createSeededCourse(creatorName string, body *generated.CreateCou
 		w.courses.put(course)
 	}
 	return resp, nil
+}
+
+// bddEnvironment is the environment every scenario's evidence is recorded in.
+func bddEnvironment() domain.Environment {
+	env, err := domain.ParseEnvironment("test")
+	if err != nil {
+		panic(err)
+	}
+	return env
+}
+
+// seedOwnership is the ownership record of content a scenario seeds straight
+// into a repository: the MotifPath Catalog's, as reference content is.
+func seedOwnership(kind domain.ContentKind, id string) ports.OwnershipRecord {
+	catalog := domain.User{ID: domain.CatalogProfileID, Role: domain.RoleAdmin}
+	recorder := application.NewOwnershipRecorder(bddEnvironment(), uuid.NewString)
+	return recorder.Native(domain.ContentRef{Kind: kind, ID: id}, catalog, fixedNow)
 }

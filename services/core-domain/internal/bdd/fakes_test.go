@@ -182,7 +182,7 @@ func (f *fakeLanguageRepo) GetByCode(_ context.Context, code string) (domain.Lan
 type fakeContentNodeRepo struct {
 	// recordOwnership receives the ownership record each created item is
 	// stored with, as Postgres stores both in one transaction.
-	recordOwnership func(ports.OwnershipRecord)
+	recordOwnership func(ports.OwnershipRecord) error
 	mu              sync.Mutex
 	byID            map[string]domain.ContentNode
 	knowledge       *fakeKnowledgeNodeRepo
@@ -237,7 +237,9 @@ func (f *fakeContentNodeRepo) Create(_ context.Context, n domain.ContentNode, ow
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.recordOwnership != nil {
-		f.recordOwnership(ownership)
+		if err := f.recordOwnership(ownership); err != nil {
+			return err
+		}
 	}
 	f.byID[n.ID] = f.resolveClassification(n)
 	return nil
@@ -428,7 +430,7 @@ func (f *fakeChallengeRepo) Update(_ context.Context, c domain.Challenge) error 
 type fakeExerciseRepo struct {
 	// recordOwnership receives the ownership record each created item is
 	// stored with, as Postgres stores both in one transaction.
-	recordOwnership  func(ports.OwnershipRecord)
+	recordOwnership  func(ports.OwnershipRecord) error
 	mu               sync.Mutex
 	byID             map[string]domain.Exercise
 	byChallengeOrder map[string][]string
@@ -457,7 +459,9 @@ func (f *fakeExerciseRepo) Create(_ context.Context, e domain.Exercise, ownershi
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.recordOwnership != nil {
-		f.recordOwnership(ownership)
+		if err := f.recordOwnership(ownership); err != nil {
+			return err
+		}
 	}
 	f.byID[e.ID] = f.resolveClassification(e)
 	return nil
@@ -784,7 +788,7 @@ func sortExpandedContent(items []domain.ExpandedContent) {
 type fakeLearningPathRepo struct {
 	// recordOwnership receives the ownership record each created item is
 	// stored with, as Postgres stores both in one transaction.
-	recordOwnership func(ports.OwnershipRecord)
+	recordOwnership func(ports.OwnershipRecord) error
 	mu              sync.Mutex
 	byID            map[string]domain.LearningPath
 	// nodes resolves items' classifications for the skill and concept
@@ -800,7 +804,9 @@ func (f *fakeLearningPathRepo) Create(_ context.Context, p domain.LearningPath, 
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.recordOwnership != nil {
-		f.recordOwnership(ownership)
+		if err := f.recordOwnership(ownership); err != nil {
+			return err
+		}
 	}
 	f.byID[p.ID] = p
 	return nil
@@ -949,7 +955,7 @@ func (f *fakeLearningPathRepo) Delete(_ context.Context, id string) error {
 type fakeCourseRepo struct {
 	// recordOwnership receives the ownership record each created item is
 	// stored with, as Postgres stores both in one transaction.
-	recordOwnership func(ports.OwnershipRecord)
+	recordOwnership func(ports.OwnershipRecord) error
 	mu              sync.Mutex
 	byID            map[string]domain.Course
 
@@ -969,7 +975,9 @@ func (f *fakeCourseRepo) Create(_ context.Context, c domain.Course, ownership po
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.recordOwnership != nil {
-		f.recordOwnership(ownership)
+		if err := f.recordOwnership(ownership); err != nil {
+			return err
+		}
 	}
 	f.byID[c.ID] = c
 	return nil
@@ -2318,4 +2326,48 @@ func (f *fakeExerciseRepo) ListSoundUses(_ context.Context, diagramID string) ([
 		uses = append(uses, e.SoundUses(diagramID)...)
 	}
 	return uses, nil
+}
+
+// all returns every stored item, for the ownership backfill to look through.
+func (f *fakeCourseRepo) all() []domain.Course {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	items := make([]domain.Course, 0, len(f.byID))
+	for _, item := range f.byID {
+		items = append(items, item)
+	}
+	return items
+}
+
+// all returns every stored item, for the ownership backfill to look through.
+func (f *fakeLearningPathRepo) all() []domain.LearningPath {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	items := make([]domain.LearningPath, 0, len(f.byID))
+	for _, item := range f.byID {
+		items = append(items, item)
+	}
+	return items
+}
+
+// all returns every stored item, for the ownership backfill to look through.
+func (f *fakeContentNodeRepo) all() []domain.ContentNode {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	items := make([]domain.ContentNode, 0, len(f.byID))
+	for _, item := range f.byID {
+		items = append(items, item)
+	}
+	return items
+}
+
+// all returns every stored item, for the ownership backfill to look through.
+func (f *fakeExerciseRepo) all() []domain.Exercise {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	items := make([]domain.Exercise, 0, len(f.byID))
+	for _, item := range f.byID {
+		items = append(items, item)
+	}
+	return items
 }
