@@ -42,6 +42,10 @@ const (
 	// diagrams — about 20 round trips for the ~2,000-diagram catalog — so
 	// this leaves a remote cluster ample room.
 	practiceReferenceSyncTimeout = 10 * time.Second
+	// ownershipBackfillTimeout bounds the start-up backfill of content
+	// ownership. Each unowned item is one short transaction, and after the
+	// first run nothing is left to record.
+	ownershipBackfillTimeout = 60 * time.Second
 	migrationsDir                = "file://internal/adapters/repo/ent/migrate/migrations"
 )
 
@@ -165,6 +169,7 @@ func run(logger *slog.Logger) error {
 	defer closeStores()
 
 	syncPracticeReference(ctx, logger, entClient, mongoClient.Database(cfg.mongoDatabase), practiceReferenceSyncTimeout)
+	backfillContentOwnership(ctx, logger, entClient, cfg.environment, ownershipBackfillTimeout)
 
 	// JWKS fetching, in-memory caching, and refresh are handled internally
 	// by the SDK from this point on — see ADR-007/ADR-009.
@@ -216,6 +221,23 @@ func run(logger *slog.Logger) error {
 
 	logger.Info("core domain service stopped cleanly")
 	return nil
+}
+
+// backfillContentOwnership attributes content stored before ownership was
+// recorded. It records only unowned items, so every start can run it. A
+// failure is logged, not fatal: what it recorded stays, and the next start
+// continues with the rest.
+func backfillContentOwnership(ctx context.Context, logger *slog.Logger, entClient *ent.Client, environment domain.Environment, timeout time.Duration) {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	backfill := application.NewOwnershipBackfill(repo.NewEntOwnershipBackfillStore(entClient), environment,
+		func() time.Time { return time.Now().UTC() }, uuid.NewString)
+	recorded, err := backfill.Run(ctx)
+	if err != nil {
+		logger.Error("backfill content ownership", "recorded", recorded, "error", err)
+		return
+	}
+	logger.Info("content ownership backfilled", "recorded", recorded)
 }
 
 // syncPracticeReference rebuilds the practice reference snapshot the
@@ -342,15 +364,16 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 	practiceReferences := application.CatalogInvalidatingReferences(repo.NewMongoPracticeReferenceWriter(mongoClient.Database(cfg.mongoDatabase), now), practiceSessionService)
 
 	identityService := application.NewIdentityService(userRepo, languageRepo, newID, now)
-	contentService := application.NewContentService(nodeRepo, expandedRepo, knowledgeNodeRepo, contentNodeVersionRepo, diagramRepo, instrumentRepo, voiceRepo, songChartRepo, userRepo, newID, now)
+	ownership := application.NewOwnershipRecorder(cfg.environment, newID)
+	contentService := application.NewContentService(nodeRepo, expandedRepo, knowledgeNodeRepo, contentNodeVersionRepo, diagramRepo, instrumentRepo, voiceRepo, songChartRepo, userRepo, newID, now).WithOwnershipRecorder(ownership)
 	challengeService := application.NewChallengeService(nodeRepo, challengeRepo, exerciseRepo, newID, now)
-	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, knowledgeNodeRepo, diagramRepo, instrumentRepo, voiceRepo, userRepo, practiceReferences, newID, now, mathrand.Shuffle)
+	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, knowledgeNodeRepo, diagramRepo, instrumentRepo, voiceRepo, userRepo, practiceReferences, newID, now, mathrand.Shuffle).WithOwnershipRecorder(ownership)
 	knowledgeNodeService := application.NewKnowledgeNodeService(knowledgeNodeRepo, instrumentRepo, languageRepo, newID)
 	knowledgeEdgeService := application.NewKnowledgeEdgeService(knowledgeEdgeRepo, knowledgeNodeRepo, newID)
 	mediaService := application.NewMediaService(exerciseRepo, mediaStorage, newID)
-	pathService := application.NewLearningPathService(nodeRepo, pathRepo, courseVersionRepo, contentNodeVersionRepo, languageRepo, userRepo, instrumentRepo, knowledgeNodeRepo, newID, now)
+	pathService := application.NewLearningPathService(nodeRepo, pathRepo, courseVersionRepo, contentNodeVersionRepo, languageRepo, userRepo, instrumentRepo, knowledgeNodeRepo, newID, now).WithOwnershipRecorder(ownership)
 	studentPathService := application.NewStudentPathService(userRepo, pathRepo, studentPathRepo, contentNodeVersionRepo, studentLearningStateRepo, courseEnrollmentRepo, courseVersionRepo, nodeRepo, exerciseRepo, completionReader, newID, now)
-	courseService := application.NewCourseService(pathRepo, courseRepo, courseVersionRepo, userRepo, languageRepo, instrumentRepo, knowledgeNodeRepo, newID, now)
+	courseService := application.NewCourseService(pathRepo, courseRepo, courseVersionRepo, userRepo, languageRepo, instrumentRepo, knowledgeNodeRepo, newID, now).WithOwnershipRecorder(ownership)
 	courseEnrollmentService := application.NewCourseEnrollmentService(courseRepo, courseVersionRepo, pathRepo, studentPathRepo, courseEnrollmentRepo, studentPathService, studentLearningStateRepo, completionReader, newID, now)
 	instrumentService := application.NewInstrumentService(instrumentRepo, voiceRepo, languageRepo, practiceReferences, newID)
 	// Voice samples are served from the same public media address as

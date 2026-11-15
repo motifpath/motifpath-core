@@ -14,6 +14,8 @@ import (
 // live, currently-being-authored draft; snapshotting a draft into an
 // immutable published CourseVersion is a separate, later capability.
 type CourseService struct {
+	// ownership records who owns each item this service creates.
+	ownership   *OwnershipRecorder
 	paths       ports.LearningPathRepository
 	courses     ports.CourseRepository
 	versions    ports.CourseVersionRepository
@@ -26,7 +28,7 @@ type CourseService struct {
 }
 
 func NewCourseService(paths ports.LearningPathRepository, courses ports.CourseRepository, versions ports.CourseVersionRepository, users ports.UserRepository, languages ports.LanguageRepository, instruments ports.InstrumentRepository, knowledge ports.KnowledgeNodeRepository, newID func() string, now func() time.Time) *CourseService {
-	return &CourseService{paths: paths, courses: courses, versions: versions, users: users, languages: languages, instruments: instruments, knowledge: knowledge, newID: newID, now: now}
+	return &CourseService{ownership: NewOwnershipRecorder(domain.Environment{}, newID), paths: paths, courses: courses, versions: versions, users: users, languages: languages, instruments: instruments, knowledge: knowledge, newID: newID, now: now}
 }
 
 // CheckpointInput is one checkpoint the caller wants in a new or replaced
@@ -83,7 +85,7 @@ func (s *CourseService) CreateCourse(ctx context.Context, caller domain.User, in
 	if err := checkInstrumentsExist(ctx, s.instruments, input.InstrumentIDs); err != nil {
 		return domain.Course{}, err
 	}
-	if err := s.courses.Create(ctx, course); err != nil {
+	if err := s.courses.Create(ctx, course, s.ownership.Native(domain.ContentRef{Kind: domain.ContentCourse, ID: course.ID}, caller, course.CreatedAt)); err != nil {
 		return domain.Course{}, err
 	}
 	return course, nil
@@ -515,4 +517,12 @@ func (s *CourseService) resolveCheckpoints(ctx context.Context, author domain.Us
 		resolved = append(resolved, domain.NewCourseCheckpoint{Path: path, Title: checkpoint.Title})
 	}
 	return resolved, nil
+}
+
+// WithOwnershipRecorder sets the recorder that attributes created content to
+// its rights holder. Production wires the deployment's environment; without
+// it, ownership evidence names no environment and cannot be stored.
+func (s *CourseService) WithOwnershipRecorder(recorder *OwnershipRecorder) *CourseService {
+	s.ownership = recorder
+	return s
 }

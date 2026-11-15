@@ -24,6 +24,8 @@ type fakeCommercialState struct {
 	operations []domain.CommercialOperation
 	attempts   []domain.OperationAttempt
 	audit      []ports.AuditRecord
+	// ownership is every item's ownership revisions, oldest first.
+	ownership map[domain.ContentRef][]domain.ContentOwnership
 	users      map[string]bool
 }
 
@@ -50,6 +52,10 @@ func (s fakeCommercialState) clone() fakeCommercialState {
 	c.operations = append([]domain.CommercialOperation{}, s.operations...)
 	c.attempts = append([]domain.OperationAttempt{}, s.attempts...)
 	c.audit = append([]ports.AuditRecord{}, s.audit...)
+	c.ownership = make(map[domain.ContentRef][]domain.ContentOwnership, len(s.ownership))
+	for k, v := range s.ownership {
+		c.ownership[k] = append([]domain.ContentOwnership{}, v...)
+	}
 	c.users = make(map[string]bool, len(s.users))
 	for k, v := range s.users {
 		c.users[k] = v
@@ -71,7 +77,7 @@ type fakeCommercialStore struct {
 func newFakeCommercialStore() *fakeCommercialStore {
 	return &fakeCommercialStore{state: fakeCommercialState{
 		flags: map[domain.FlagName]domain.FlagSetting{}, flagMeta: map[domain.FlagName]fakeFlagMeta{},
-		groups: map[string]domain.CommercialGroup{}, users: map[string]bool{},
+		groups: map[string]domain.CommercialGroup{}, users: map[string]bool{}, ownership: map[domain.ContentRef][]domain.ContentOwnership{},
 	}}
 }
 
@@ -115,6 +121,7 @@ func (t *fakeCommercialTx) Activation() ports.CommercialActivationTx { return fa
 func (t *fakeCommercialTx) Groups() ports.CommercialGroupsTx         { return fakeGroupsTx(*t) }
 func (t *fakeCommercialTx) Operations() ports.CommercialOperationsTx { return fakeOperationsTx(*t) }
 func (t *fakeCommercialTx) Audit() ports.CommercialAuditWriter       { return fakeAuditWriter(*t) }
+func (t *fakeCommercialTx) Ownership() ports.ContentOwnershipTx      { return fakeOwnershipTx(*t) }
 
 type fakeActivationTx fakeCommercialTx
 
@@ -295,4 +302,34 @@ func (s *fakeCommercialStore) attemptOutcomes() []domain.AuditOutcome {
 		outcomes[i] = attempt.Outcome
 	}
 	return outcomes
+}
+
+func (s *fakeCommercialStore) CurrentOwnership(_ context.Context, content domain.ContentRef) (domain.ContentOwnership, error) {
+	if s.storageFails {
+		return domain.ContentOwnership{}, errFakeStorage
+	}
+	history := s.state.ownership[content]
+	if len(history) == 0 {
+		return domain.ContentOwnership{}, domain.ErrNotFound
+	}
+	return history[len(history)-1], nil
+}
+
+type fakeOwnershipTx fakeCommercialTx
+
+func (o fakeOwnershipTx) LockCurrent(_ context.Context, content domain.ContentRef) (domain.ContentOwnership, error) {
+	history := o.state.ownership[content]
+	if len(history) == 0 {
+		return domain.ContentOwnership{}, domain.ErrNotFound
+	}
+	return history[len(history)-1], nil
+}
+
+func (o fakeOwnershipTx) Append(_ context.Context, ownership domain.ContentOwnership) error {
+	history := o.state.ownership[ownership.Content]
+	if len(history) > 0 && history[len(history)-1].Revision >= ownership.Revision {
+		return domain.ErrConflict
+	}
+	o.state.ownership[ownership.Content] = append(history, ownership)
+	return nil
 }

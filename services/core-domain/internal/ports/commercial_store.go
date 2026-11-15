@@ -20,6 +20,9 @@ type CommercialStore interface {
 	ReadActivation(ctx context.Context) (domain.CommercialActivation, error)
 	// Audit reads evidence outside any command.
 	Audit() CommercialAuditReader
+	// CurrentOwnership reads an item's current ownership revision outside any
+	// command, or domain.ErrNotFound when it has none.
+	CurrentOwnership(ctx context.Context, content domain.ContentRef) (domain.ContentOwnership, error)
 }
 
 // CommercialTx is what a command may read and change inside its transaction.
@@ -28,6 +31,18 @@ type CommercialTx interface {
 	Groups() CommercialGroupsTx
 	Operations() CommercialOperationsTx
 	Audit() CommercialAuditWriter
+	Ownership() ContentOwnershipTx
+}
+
+// ContentOwnershipTx reads and appends ownership revisions. Revisions are
+// never changed: a correction appends the next one.
+type ContentOwnershipTx interface {
+	// LockCurrent returns an item's current revision and holds it until the
+	// transaction ends, so concurrent corrections are serialized. An item
+	// with no ownership record is domain.ErrNotFound.
+	LockCurrent(ctx context.Context, content domain.ContentRef) (domain.ContentOwnership, error)
+	// Append records the item's next revision.
+	Append(ctx context.Context, ownership domain.ContentOwnership) error
 }
 
 // CommercialActivationTx guards the environment-wide activation revision.

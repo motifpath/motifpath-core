@@ -75,7 +75,7 @@ func TestEntContentNodeRepository_AuthoringFilters(t *testing.T) {
 			Languages:      langs, CreatedAt: fixedAt, UpdatedAt: updatedAt,
 			LatestPublishedVersion: version, HasUnpublishedChanges: changed,
 		}
-		require.NoError(t, repo.Create(ctx, n))
+		require.NoError(t, repo.Create(ctx, n, testOwnership(t, domain.ContentContentNode, n.ID)))
 		return n
 	}
 	draft := node("Draft lesson", bob, skillA, []string{"en"}, laterAt, nil, true)
@@ -174,7 +174,7 @@ func TestEntExerciseRepository_AuthoringSortAndCounts(t *testing.T) {
 			ChallengeIDs: []string{}, ContentNodeIDs: []string{}, Languages: []domain.Language{{Code: "any"}},
 			CreatedBy: creator, CreatedAt: fixedAt, UpdatedAt: updatedAt,
 		}
-		require.NoError(t, repo.Create(ctx, ex))
+		require.NoError(t, repo.Create(ctx, ex, testOwnership(t, domain.ContentExercise, ex.ID)))
 		return ex
 	}
 	sweep := exercise("Arpeggio sweep", bob, earlierAt)

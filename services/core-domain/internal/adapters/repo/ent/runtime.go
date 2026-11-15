@@ -28,6 +28,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodelanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeversion"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentownership"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/course"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/coursecheckpoint"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseenrollment"
@@ -463,6 +464,20 @@ func init() {
 	contentnodeversionDescID := contentnodeversionFields[0].Descriptor()
 	// contentnodeversion.DefaultID holds the default value on creation for the id field.
 	contentnodeversion.DefaultID = contentnodeversionDescID.Default.(func() uuid.UUID)
+	contentownershipFields := schema.ContentOwnership{}.Fields()
+	_ = contentownershipFields
+	// contentownershipDescRevision is the schema descriptor for revision field.
+	contentownershipDescRevision := contentownershipFields[3].Descriptor()
+	// contentownership.RevisionValidator is a validator for the "revision" field. It is called by the builders before save.
+	contentownership.RevisionValidator = contentownershipDescRevision.Validators[0].(func(int) error)
+	// contentownershipDescRecordedAt is the schema descriptor for recorded_at field.
+	contentownershipDescRecordedAt := contentownershipFields[10].Descriptor()
+	// contentownership.DefaultRecordedAt holds the default value on creation for the recorded_at field.
+	contentownership.DefaultRecordedAt = contentownershipDescRecordedAt.Default.(func() time.Time)
+	// contentownershipDescID is the schema descriptor for id field.
+	contentownershipDescID := contentownershipFields[0].Descriptor()
+	// contentownership.DefaultID holds the default value on creation for the id field.
+	contentownership.DefaultID = contentownershipDescID.Default.(func() uuid.UUID)
 	courseFields := schema.Course{}.Fields()
 	_ = courseFields
 	// courseDescLanguage is the schema descriptor for language field.

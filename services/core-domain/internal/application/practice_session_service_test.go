@@ -14,6 +14,7 @@ import (
 
 	"github.com/motifpath/core-domain/internal/application"
 	"github.com/motifpath/core-domain/internal/domain"
+	"github.com/motifpath/core-domain/internal/ports"
 )
 
 // fakePracticeItemStateReader is an in-memory ports.PracticeItemStateReader
@@ -247,7 +248,7 @@ func (f *practiceFixture) exercise(id, skillID string, seconds int, instrumentID
 		EstimatedDurationSeconds: &seconds,
 		InstrumentIDs:            instrumentIDs,
 		Languages:                anyLanguage(),
-	}))
+	}, ports.OwnershipRecord{}))
 }
 
 // exerciseBatch puts count exercises of seconds each under skillID for every

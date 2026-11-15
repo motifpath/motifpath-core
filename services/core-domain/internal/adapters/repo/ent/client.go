@@ -38,6 +38,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodelanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeversion"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentownership"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/course"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/coursecheckpoint"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseenrollment"
@@ -134,6 +135,8 @@ type Client struct {
 	ContentNodeSkill *ContentNodeSkillClient
 	// ContentNodeVersion is the client for interacting with the ContentNodeVersion builders.
 	ContentNodeVersion *ContentNodeVersionClient
+	// ContentOwnership is the client for interacting with the ContentOwnership builders.
+	ContentOwnership *ContentOwnershipClient
 	// Course is the client for interacting with the Course builders.
 	Course *CourseClient
 	// CourseCheckpoint is the client for interacting with the CourseCheckpoint builders.
@@ -253,6 +256,7 @@ func (c *Client) init() {
 	c.ContentNodeLanguage = NewContentNodeLanguageClient(c.config)
 	c.ContentNodeSkill = NewContentNodeSkillClient(c.config)
 	c.ContentNodeVersion = NewContentNodeVersionClient(c.config)
+	c.ContentOwnership = NewContentOwnershipClient(c.config)
 	c.Course = NewCourseClient(c.config)
 	c.CourseCheckpoint = NewCourseCheckpointClient(c.config)
 	c.CourseEnrollment = NewCourseEnrollmentClient(c.config)
@@ -410,6 +414,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		ContentNodeLanguage:        NewContentNodeLanguageClient(cfg),
 		ContentNodeSkill:           NewContentNodeSkillClient(cfg),
 		ContentNodeVersion:         NewContentNodeVersionClient(cfg),
+		ContentOwnership:           NewContentOwnershipClient(cfg),
 		Course:                     NewCourseClient(cfg),
 		CourseCheckpoint:           NewCourseCheckpointClient(cfg),
 		CourseEnrollment:           NewCourseEnrollmentClient(cfg),
@@ -494,6 +499,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		ContentNodeLanguage:        NewContentNodeLanguageClient(cfg),
 		ContentNodeSkill:           NewContentNodeSkillClient(cfg),
 		ContentNodeVersion:         NewContentNodeVersionClient(cfg),
+		ContentOwnership:           NewContentOwnershipClient(cfg),
 		Course:                     NewCourseClient(cfg),
 		CourseCheckpoint:           NewCourseCheckpointClient(cfg),
 		CourseEnrollment:           NewCourseEnrollmentClient(cfg),
@@ -572,8 +578,8 @@ func (c *Client) Use(hooks ...Hook) {
 		c.CommercialGroup, c.CommercialGroupMember, c.CommercialOperation,
 		c.CommercialOperationAttempt, c.ContentNode, c.ContentNodeConcept,
 		c.ContentNodeExercise, c.ContentNodeInstrument, c.ContentNodeLanguage,
-		c.ContentNodeSkill, c.ContentNodeVersion, c.Course, c.CourseCheckpoint,
-		c.CourseEnrollment, c.CourseInstrument, c.CourseVersion,
+		c.ContentNodeSkill, c.ContentNodeVersion, c.ContentOwnership, c.Course,
+		c.CourseCheckpoint, c.CourseEnrollment, c.CourseInstrument, c.CourseVersion,
 		c.CourseVersionCheckpoint, c.Diagram, c.DiagramConcept, c.DiagramInstrument,
 		c.DiagramRegion, c.DiagramShape, c.DiagramShapeFamily, c.DiagramSkill,
 		c.DrillTemplate, c.DrillThreshold, c.EmailSend, c.Exercise, c.ExerciseConcept,
@@ -599,8 +605,8 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 		c.CommercialGroup, c.CommercialGroupMember, c.CommercialOperation,
 		c.CommercialOperationAttempt, c.ContentNode, c.ContentNodeConcept,
 		c.ContentNodeExercise, c.ContentNodeInstrument, c.ContentNodeLanguage,
-		c.ContentNodeSkill, c.ContentNodeVersion, c.Course, c.CourseCheckpoint,
-		c.CourseEnrollment, c.CourseInstrument, c.CourseVersion,
+		c.ContentNodeSkill, c.ContentNodeVersion, c.ContentOwnership, c.Course,
+		c.CourseCheckpoint, c.CourseEnrollment, c.CourseInstrument, c.CourseVersion,
 		c.CourseVersionCheckpoint, c.Diagram, c.DiagramConcept, c.DiagramInstrument,
 		c.DiagramRegion, c.DiagramShape, c.DiagramShapeFamily, c.DiagramSkill,
 		c.DrillTemplate, c.DrillThreshold, c.EmailSend, c.Exercise, c.ExerciseConcept,
@@ -663,6 +669,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.ContentNodeSkill.mutate(ctx, m)
 	case *ContentNodeVersionMutation:
 		return c.ContentNodeVersion.mutate(ctx, m)
+	case *ContentOwnershipMutation:
+		return c.ContentOwnership.mutate(ctx, m)
 	case *CourseMutation:
 		return c.Course.mutate(ctx, m)
 	case *CourseCheckpointMutation:
@@ -4173,6 +4181,139 @@ func (c *ContentNodeVersionClient) mutate(ctx context.Context, m *ContentNodeVer
 		return (&ContentNodeVersionDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown ContentNodeVersion mutation op: %q", m.Op())
+	}
+}
+
+// ContentOwnershipClient is a client for the ContentOwnership schema.
+type ContentOwnershipClient struct {
+	config
+}
+
+// NewContentOwnershipClient returns a client for the ContentOwnership from the given config.
+func NewContentOwnershipClient(c config) *ContentOwnershipClient {
+	return &ContentOwnershipClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `contentownership.Hooks(f(g(h())))`.
+func (c *ContentOwnershipClient) Use(hooks ...Hook) {
+	c.hooks.ContentOwnership = append(c.hooks.ContentOwnership, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `contentownership.Intercept(f(g(h())))`.
+func (c *ContentOwnershipClient) Intercept(interceptors ...Interceptor) {
+	c.inters.ContentOwnership = append(c.inters.ContentOwnership, interceptors...)
+}
+
+// Create returns a builder for creating a ContentOwnership entity.
+func (c *ContentOwnershipClient) Create() *ContentOwnershipCreate {
+	mutation := newContentOwnershipMutation(c.config, OpCreate)
+	return &ContentOwnershipCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of ContentOwnership entities.
+func (c *ContentOwnershipClient) CreateBulk(builders ...*ContentOwnershipCreate) *ContentOwnershipCreateBulk {
+	return &ContentOwnershipCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *ContentOwnershipClient) MapCreateBulk(slice any, setFunc func(*ContentOwnershipCreate, int)) *ContentOwnershipCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &ContentOwnershipCreateBulk{err: fmt.Errorf("calling to ContentOwnershipClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*ContentOwnershipCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &ContentOwnershipCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for ContentOwnership.
+func (c *ContentOwnershipClient) Update() *ContentOwnershipUpdate {
+	mutation := newContentOwnershipMutation(c.config, OpUpdate)
+	return &ContentOwnershipUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ContentOwnershipClient) UpdateOne(_m *ContentOwnership) *ContentOwnershipUpdateOne {
+	mutation := newContentOwnershipMutation(c.config, OpUpdateOne, withContentOwnership(_m))
+	return &ContentOwnershipUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ContentOwnershipClient) UpdateOneID(id uuid.UUID) *ContentOwnershipUpdateOne {
+	mutation := newContentOwnershipMutation(c.config, OpUpdateOne, withContentOwnershipID(id))
+	return &ContentOwnershipUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for ContentOwnership.
+func (c *ContentOwnershipClient) Delete() *ContentOwnershipDelete {
+	mutation := newContentOwnershipMutation(c.config, OpDelete)
+	return &ContentOwnershipDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ContentOwnershipClient) DeleteOne(_m *ContentOwnership) *ContentOwnershipDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ContentOwnershipClient) DeleteOneID(id uuid.UUID) *ContentOwnershipDeleteOne {
+	builder := c.Delete().Where(contentownership.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ContentOwnershipDeleteOne{builder}
+}
+
+// Query returns a query builder for ContentOwnership.
+func (c *ContentOwnershipClient) Query() *ContentOwnershipQuery {
+	return &ContentOwnershipQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeContentOwnership},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a ContentOwnership entity by its id.
+func (c *ContentOwnershipClient) Get(ctx context.Context, id uuid.UUID) (*ContentOwnership, error) {
+	return c.Query().Where(contentownership.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ContentOwnershipClient) GetX(ctx context.Context, id uuid.UUID) *ContentOwnership {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *ContentOwnershipClient) Hooks() []Hook {
+	return c.hooks.ContentOwnership
+}
+
+// Interceptors returns the client interceptors.
+func (c *ContentOwnershipClient) Interceptors() []Interceptor {
+	return c.inters.ContentOwnership
+}
+
+func (c *ContentOwnershipClient) mutate(ctx context.Context, m *ContentOwnershipMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ContentOwnershipCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ContentOwnershipUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ContentOwnershipUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ContentOwnershipDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown ContentOwnership mutation op: %q", m.Op())
 	}
 }
 
@@ -11487,8 +11628,8 @@ type (
 		CommercialAuditEntry, CommercialFlag, CommercialGroup, CommercialGroupMember,
 		CommercialOperation, CommercialOperationAttempt, ContentNode,
 		ContentNodeConcept, ContentNodeExercise, ContentNodeInstrument,
-		ContentNodeLanguage, ContentNodeSkill, ContentNodeVersion, Course,
-		CourseCheckpoint, CourseEnrollment, CourseInstrument, CourseVersion,
+		ContentNodeLanguage, ContentNodeSkill, ContentNodeVersion, ContentOwnership,
+		Course, CourseCheckpoint, CourseEnrollment, CourseInstrument, CourseVersion,
 		CourseVersionCheckpoint, Diagram, DiagramConcept, DiagramInstrument,
 		DiagramRegion, DiagramShape, DiagramShapeFamily, DiagramSkill, DrillTemplate,
 		DrillThreshold, EmailSend, Exercise, ExerciseConcept, ExerciseInstrument,
@@ -11505,8 +11646,8 @@ type (
 		CommercialAuditEntry, CommercialFlag, CommercialGroup, CommercialGroupMember,
 		CommercialOperation, CommercialOperationAttempt, ContentNode,
 		ContentNodeConcept, ContentNodeExercise, ContentNodeInstrument,
-		ContentNodeLanguage, ContentNodeSkill, ContentNodeVersion, Course,
-		CourseCheckpoint, CourseEnrollment, CourseInstrument, CourseVersion,
+		ContentNodeLanguage, ContentNodeSkill, ContentNodeVersion, ContentOwnership,
+		Course, CourseCheckpoint, CourseEnrollment, CourseInstrument, CourseVersion,
 		CourseVersionCheckpoint, Diagram, DiagramConcept, DiagramInstrument,
 		DiagramRegion, DiagramShape, DiagramShapeFamily, DiagramSkill, DrillTemplate,
 		DrillThreshold, EmailSend, Exercise, ExerciseConcept, ExerciseInstrument,

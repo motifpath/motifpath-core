@@ -34,6 +34,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodelanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeversion"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentownership"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/course"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/coursecheckpoint"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseenrollment"
@@ -159,6 +160,7 @@ func checkColumn(t, c string) error {
 			contentnodelanguage.Table:        contentnodelanguage.ValidColumn,
 			contentnodeskill.Table:           contentnodeskill.ValidColumn,
 			contentnodeversion.Table:         contentnodeversion.ValidColumn,
+			contentownership.Table:           contentownership.ValidColumn,
 			course.Table:                     course.ValidColumn,
 			coursecheckpoint.Table:           coursecheckpoint.ValidColumn,
 			courseenrollment.Table:           courseenrollment.ValidColumn,

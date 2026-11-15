@@ -14,6 +14,8 @@ import (
 // that may be linked to any number of Challenges and ContentNodes (as a path
 // exercise), and selected into practice sessions by skill tag.
 type ExerciseService struct {
+	// ownership records who owns each item this service creates.
+	ownership  *OwnershipRecorder
 	challenges ports.ChallengeRepository
 	exercises  ports.ExerciseRepository
 	nodes      ports.ContentNodeRepository
@@ -51,7 +53,7 @@ func NewExerciseService(
 	now func() time.Time,
 	shuffle func(n int, swap func(i, j int)),
 ) *ExerciseService {
-	return &ExerciseService{challenges: challenges, exercises: exercises, nodes: nodes, knowledge: knowledge, diagrams: diagrams, instruments: instruments, voices: voices, users: users, references: references, newID: newID, now: now, shuffle: shuffle}
+	return &ExerciseService{ownership: NewOwnershipRecorder(domain.Environment{}, newID), challenges: challenges, exercises: exercises, nodes: nodes, knowledge: knowledge, diagrams: diagrams, instruments: instruments, voices: voices, users: users, references: references, newID: newID, now: now, shuffle: shuffle}
 }
 
 // diagramRefRepos are the repositories a diagram reference is checked
@@ -130,7 +132,7 @@ func (s *ExerciseService) CreateExercise(ctx context.Context, caller domain.User
 	if err := checkClassificationSuits(ctx, s.knowledge, skillIDs, conceptIDs, exercise.InstrumentIDs); err != nil {
 		return domain.Exercise{}, err
 	}
-	if err := s.exercises.Create(ctx, exercise); err != nil {
+	if err := s.exercises.Create(ctx, exercise, s.ownership.Native(domain.ContentRef{Kind: domain.ContentExercise, ID: exercise.ID}, caller, exercise.CreatedAt)); err != nil {
 		return domain.Exercise{}, err
 	}
 	putExerciseReference(ctx, s.references, exercise)
@@ -708,4 +710,12 @@ func (s *ExerciseService) ListPathExercisesForContentNode(ctx context.Context, c
 
 func (s *ExerciseService) shuffleOptions(options []domain.Option) {
 	s.shuffle(len(options), func(i, j int) { options[i], options[j] = options[j], options[i] })
+}
+
+// WithOwnershipRecorder sets the recorder that attributes created content to
+// its rights holder. Production wires the deployment's environment; without
+// it, ownership evidence names no environment and cannot be stored.
+func (s *ExerciseService) WithOwnershipRecorder(recorder *OwnershipRecorder) *ExerciseService {
+	s.ownership = recorder
+	return s
 }

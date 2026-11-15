@@ -17,6 +17,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 	"github.com/motifpath/core-domain/internal/domain"
+	"github.com/motifpath/core-domain/internal/ports"
 )
 
 // EntExerciseRepository persists Exercise, its ExerciseOption children, and
@@ -29,7 +30,7 @@ func NewEntExerciseRepository(client *ent.Client) *EntExerciseRepository {
 	return &EntExerciseRepository{client: client}
 }
 
-func (r *EntExerciseRepository) Create(ctx context.Context, ex domain.Exercise) error {
+func (r *EntExerciseRepository) Create(ctx context.Context, ex domain.Exercise, ownership ports.OwnershipRecord) error {
 	id, err := uuid.Parse(ex.ID)
 	if err != nil {
 		return err
@@ -91,10 +92,12 @@ func (r *EntExerciseRepository) Create(ctx context.Context, ex domain.Exercise) 
 	if err != nil {
 		return rollback(tx, err)
 	}
-	if len(optionBuilders) == 0 {
-		return tx.Commit()
+	if len(optionBuilders) > 0 {
+		if _, err := tx.ExerciseOption.CreateBulk(optionBuilders...).Save(ctx); err != nil {
+			return rollback(tx, err)
+		}
 	}
-	if _, err := tx.ExerciseOption.CreateBulk(optionBuilders...).Save(ctx); err != nil {
+	if err := recordOwnership(ctx, tx, ownership); err != nil {
 		return rollback(tx, err)
 	}
 	return tx.Commit()

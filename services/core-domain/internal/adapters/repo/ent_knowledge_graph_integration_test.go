@@ -193,7 +193,7 @@ func TestEntKnowledgeNodeRepository_UsageAndClassifiedInstruments(t *testing.T) 
 		Classification: domain.Classification{Skills: []domain.KnowledgeNode{skill}, Concepts: []domain.KnowledgeNode{concept}, DifficultyLevel: domain.DifficultyLevelBeginner, ReviewState: domain.ReviewStatePending},
 		CreatedAt:      fixedAt,
 	}
-	require.NoError(t, nodes.Create(ctx, content))
+	require.NoError(t, nodes.Create(ctx, content, testOwnership(t, domain.ContentContentNode, content.ID)))
 
 	t.Run("Usage counts children, edges and content", func(t *testing.T) {
 		got, err := repo.Usage(ctx, skill.ID)

@@ -180,9 +180,12 @@ func (f *fakeLanguageRepo) GetByCode(_ context.Context, code string) (domain.Lan
 }
 
 type fakeContentNodeRepo struct {
-	mu        sync.Mutex
-	byID      map[string]domain.ContentNode
-	knowledge *fakeKnowledgeNodeRepo
+	// recordOwnership receives the ownership record each created item is
+	// stored with, as Postgres stores both in one transaction.
+	recordOwnership func(ports.OwnershipRecord)
+	mu              sync.Mutex
+	byID            map[string]domain.ContentNode
+	knowledge       *fakeKnowledgeNodeRepo
 	// exercises and challenges are read by LinkedExerciseInstrumentSets,
 	// the way the real adapter queries the link tables.
 	exercises  *fakeExerciseRepo
@@ -230,9 +233,12 @@ func (f *fakeContentNodeRepo) resolveClassification(n domain.ContentNode) domain
 	return n
 }
 
-func (f *fakeContentNodeRepo) Create(_ context.Context, n domain.ContentNode) error {
+func (f *fakeContentNodeRepo) Create(_ context.Context, n domain.ContentNode, ownership ports.OwnershipRecord) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.recordOwnership != nil {
+		f.recordOwnership(ownership)
+	}
 	f.byID[n.ID] = f.resolveClassification(n)
 	return nil
 }
@@ -420,6 +426,9 @@ func (f *fakeChallengeRepo) Update(_ context.Context, c domain.Challenge) error 
 // different challenges/nodes can share exercises linked in different
 // orders — needed for scenarios asserting stable or shuffled order.
 type fakeExerciseRepo struct {
+	// recordOwnership receives the ownership record each created item is
+	// stored with, as Postgres stores both in one transaction.
+	recordOwnership  func(ports.OwnershipRecord)
 	mu               sync.Mutex
 	byID             map[string]domain.Exercise
 	byChallengeOrder map[string][]string
@@ -444,9 +453,12 @@ func (f *fakeExerciseRepo) resolveClassification(e domain.Exercise) domain.Exerc
 	return e
 }
 
-func (f *fakeExerciseRepo) Create(_ context.Context, e domain.Exercise) error {
+func (f *fakeExerciseRepo) Create(_ context.Context, e domain.Exercise, ownership ports.OwnershipRecord) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.recordOwnership != nil {
+		f.recordOwnership(ownership)
+	}
 	f.byID[e.ID] = f.resolveClassification(e)
 	return nil
 }
@@ -770,8 +782,11 @@ func sortExpandedContent(items []domain.ExpandedContent) {
 }
 
 type fakeLearningPathRepo struct {
-	mu   sync.Mutex
-	byID map[string]domain.LearningPath
+	// recordOwnership receives the ownership record each created item is
+	// stored with, as Postgres stores both in one transaction.
+	recordOwnership func(ports.OwnershipRecord)
+	mu              sync.Mutex
+	byID            map[string]domain.LearningPath
 	// nodes resolves items' classifications for the skill and concept
 	// filters; nil when a test never filters on them.
 	nodes *fakeContentNodeRepo
@@ -781,9 +796,12 @@ func newFakeLearningPathRepo() *fakeLearningPathRepo {
 	return &fakeLearningPathRepo{byID: map[string]domain.LearningPath{}}
 }
 
-func (f *fakeLearningPathRepo) Create(_ context.Context, p domain.LearningPath) error {
+func (f *fakeLearningPathRepo) Create(_ context.Context, p domain.LearningPath, ownership ports.OwnershipRecord) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.recordOwnership != nil {
+		f.recordOwnership(ownership)
+	}
 	f.byID[p.ID] = p
 	return nil
 }
@@ -929,8 +947,11 @@ func (f *fakeLearningPathRepo) Delete(_ context.Context, id string) error {
 }
 
 type fakeCourseRepo struct {
-	mu   sync.Mutex
-	byID map[string]domain.Course
+	// recordOwnership receives the ownership record each created item is
+	// stored with, as Postgres stores both in one transaction.
+	recordOwnership func(ports.OwnershipRecord)
+	mu              sync.Mutex
+	byID            map[string]domain.Course
 
 	// paths, nodes and versions let List resolve the transitive
 	// checkpoint -> learning path -> content node classification join and
@@ -944,9 +965,12 @@ func newFakeCourseRepo(paths *fakeLearningPathRepo, nodes *fakeContentNodeRepo, 
 	return &fakeCourseRepo{byID: map[string]domain.Course{}, paths: paths, nodes: nodes, versions: versions}
 }
 
-func (f *fakeCourseRepo) Create(_ context.Context, c domain.Course) error {
+func (f *fakeCourseRepo) Create(_ context.Context, c domain.Course, ownership ports.OwnershipRecord) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.recordOwnership != nil {
+		f.recordOwnership(ownership)
+	}
 	f.byID[c.ID] = c
 	return nil
 }
