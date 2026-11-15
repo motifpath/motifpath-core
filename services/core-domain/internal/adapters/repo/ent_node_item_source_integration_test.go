@@ -72,7 +72,7 @@ func TestEntNodeItemSource_ClassifiedItems(t *testing.T) {
 	guitarDrill := instrumentExercise("Guitar drill", skill, guitar.ID)
 	bassDrill := instrumentExercise("Bass drill", skill, bass.ID)
 	for _, e := range []domain.Exercise{anyDrill, guitarDrill, bassDrill} {
-		require.NoError(t, exercises.Create(ctx, e))
+		require.NoError(t, exercises.Create(ctx, e, testOwnership(t, domain.ContentExercise, e.ID)))
 	}
 	// mine keeps the items this test created: the migrations install
 	// catalog items too.

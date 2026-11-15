@@ -27,7 +27,7 @@ func TestThumbnails_Repositories(t *testing.T) {
 			ID: uuid.NewString(), CreatedBy: uuid.NewString(), Title: "Fingerstyle", Summary: "S", Level: domain.DifficultyLevelBeginner,
 			Language: "en", ThumbnailURL: thumbnail("course"), Status: domain.CourseStatusDraft, CreatedAt: fixedAt, Checkpoints: checkpointsOf(path),
 		}
-		require.NoError(t, f.courses.Create(f.ctx, c))
+		require.NoError(t, f.courses.Create(f.ctx, c, testOwnership(t, domain.ContentCourse, c.ID)))
 		require.NoError(t, f.versions.Create(f.ctx, domain.NewCourseVersionSnapshot(uuid.NewString(), c, 1, fixedAt)))
 
 		got, err := f.courses.GetByID(f.ctx, c.ID)

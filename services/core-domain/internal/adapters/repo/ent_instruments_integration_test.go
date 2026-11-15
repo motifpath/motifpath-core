@@ -26,7 +26,7 @@ func TestInstrumentTagging_Repositories(t *testing.T) {
 			ID: uuid.NewString(), CreatedBy: uuid.NewString(), Title: title, Summary: "S", Level: domain.DifficultyLevelBeginner,
 			Language: "en", InstrumentIDs: ids, Status: domain.CourseStatusDraft, CreatedAt: fixedAt, Checkpoints: checkpointsOf(path),
 		}
-		require.NoError(t, f.courses.Create(f.ctx, c))
+		require.NoError(t, f.courses.Create(f.ctx, c, testOwnership(t, domain.ContentCourse, c.ID)))
 		return c
 	}
 	publishWith := func(c domain.Course, ids ...string) {
@@ -85,7 +85,7 @@ func TestInstrumentTagging_Repositories(t *testing.T) {
 				Items:     []domain.LearningPathItem{{Position: 1, ContentNodeID: node.ID, Title: node.Title, ContentType: node.ContentType}},
 				CreatedAt: fixedAt, UpdatedAt: fixedAt,
 			}
-			require.NoError(t, f.paths.Create(f.ctx, p))
+			require.NoError(t, f.paths.Create(f.ctx, p, testOwnership(t, domain.ContentPath, p.ID)))
 			return p
 		}
 		guitarPath, everyPath, pianoPath := pathFor(guitar.ID), pathFor(), pathFor(piano.ID)

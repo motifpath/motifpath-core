@@ -592,6 +592,33 @@ var (
 			},
 		},
 	}
+	// ContentOwnershipsColumns holds the columns for the "content_ownerships" table.
+	ContentOwnershipsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "content_kind", Type: field.TypeEnum, Enums: []string{"course", "path", "content_node", "exercise"}},
+		{Name: "content_id", Type: field.TypeUUID},
+		{Name: "revision", Type: field.TypeInt},
+		{Name: "owner_kind", Type: field.TypeEnum, Enums: []string{"platform", "teacher", "unresolved"}},
+		{Name: "owner_id", Type: field.TypeUUID, Nullable: true},
+		{Name: "creator_id", Type: field.TypeUUID, Nullable: true},
+		{Name: "source", Type: field.TypeEnum, Enums: []string{"native", "imported", "reviewed_legacy"}},
+		{Name: "evidence_entry_id", Type: field.TypeUUID, Unique: true},
+		{Name: "copied_from", Type: field.TypeJSON, Nullable: true},
+		{Name: "recorded_at", Type: field.TypeTime},
+	}
+	// ContentOwnershipsTable holds the schema information for the "content_ownerships" table.
+	ContentOwnershipsTable = &schema.Table{
+		Name:       "content_ownerships",
+		Columns:    ContentOwnershipsColumns,
+		PrimaryKey: []*schema.Column{ContentOwnershipsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "contentownership_content_kind_content_id_revision",
+				Unique:  true,
+				Columns: []*schema.Column{ContentOwnershipsColumns[1], ContentOwnershipsColumns[2], ContentOwnershipsColumns[3]},
+			},
+		},
+	}
 	// CoursesColumns holds the columns for the "courses" table.
 	CoursesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -1790,6 +1817,7 @@ var (
 		ContentNodeLanguagesTable,
 		ContentNodeSkillsTable,
 		ContentNodeVersionsTable,
+		ContentOwnershipsTable,
 		CoursesTable,
 		CourseCheckpointsTable,
 		CourseEnrollmentsTable,

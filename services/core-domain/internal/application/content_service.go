@@ -14,6 +14,8 @@ import (
 // creation/retrieval, the expositive media items attached to them, and
 // publishing a content node's draft into an immutable ContentNodeVersion.
 type ContentService struct {
+	// ownership records who owns each item this service creates.
+	ownership   *OwnershipRecorder
 	nodes       ports.ContentNodeRepository
 	expanded    ports.ExpandedContentRepository
 	knowledge   ports.KnowledgeNodeRepository
@@ -33,8 +35,8 @@ func (s *ContentService) diagramRefRepos() diagramRefRepos {
 	return diagramRefRepos{diagrams: s.diagrams, instruments: s.instruments, voices: s.voices}
 }
 
-func NewContentService(nodes ports.ContentNodeRepository, expanded ports.ExpandedContentRepository, knowledge ports.KnowledgeNodeRepository, versions ports.ContentNodeVersionRepository, diagrams ports.DiagramRepository, instruments ports.InstrumentRepository, voices ports.VoiceRepository, songCharts ports.SongChartRepository, users ports.UserRepository, newID func() string, now func() time.Time) *ContentService {
-	return &ContentService{nodes: nodes, expanded: expanded, knowledge: knowledge, versions: versions, diagrams: diagrams, newID: newID, now: now, instruments: instruments, voices: voices, songCharts: songCharts, users: users}
+func NewContentService(ownership *OwnershipRecorder, nodes ports.ContentNodeRepository, expanded ports.ExpandedContentRepository, knowledge ports.KnowledgeNodeRepository, versions ports.ContentNodeVersionRepository, diagrams ports.DiagramRepository, instruments ports.InstrumentRepository, voices ports.VoiceRepository, songCharts ports.SongChartRepository, users ports.UserRepository, newID func() string, now func() time.Time) *ContentService {
+	return &ContentService{ownership: ownership, nodes: nodes, expanded: expanded, knowledge: knowledge, versions: versions, diagrams: diagrams, newID: newID, now: now, instruments: instruments, voices: voices, songCharts: songCharts, users: users}
 }
 
 // checkEmbeddedSongCharts refuses lesson content that embeds a song chart
@@ -178,7 +180,7 @@ func (s *ContentService) CreateContentNode(ctx context.Context, caller domain.Us
 	if err := s.checkEmbeddedSongCharts(ctx, input.RichContent); err != nil {
 		return domain.ContentNode{}, err
 	}
-	if err := s.nodes.Create(ctx, node); err != nil {
+	if err := s.nodes.Create(ctx, node, s.ownership.Native(domain.ContentRef{Kind: domain.ContentContentNode, ID: node.ID}, caller, node.CreatedAt)); err != nil {
 		return domain.ContentNode{}, err
 	}
 	// Re-fetched rather than returned as constructed: node.Languages/Skills/

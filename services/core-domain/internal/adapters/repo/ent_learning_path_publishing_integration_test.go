@@ -22,13 +22,13 @@ func TestEntLearningPathRepository_Publishing(t *testing.T) {
 			Classification: domain.Classification{DifficultyLevel: domain.DifficultyLevelBeginner, ReviewState: domain.ReviewStatePending},
 			CreatedAt:      fixedAt,
 		}
-		require.NoError(t, f.nodes.Create(f.ctx, node))
+		require.NoError(t, f.nodes.Create(f.ctx, node, testOwnership(t, domain.ContentContentNode, node.ID)))
 		created := domain.LearningPath{
 			ID: uuid.NewString(), TeacherID: teacher, Title: title, Summary: summary, Language: language, Status: status,
 			CreatedAt: fixedAt, UpdatedAt: fixedAt,
 			Items: []domain.LearningPathItem{{Position: 1, ContentNodeID: node.ID, Title: node.Title, ContentType: node.ContentType}},
 		}
-		require.NoError(t, f.paths.Create(f.ctx, created))
+		require.NoError(t, f.paths.Create(f.ctx, created, testOwnership(t, domain.ContentPath, created.ID)))
 		return created
 	}
 	chords := path("Open Chords", strOf("Your first chords"), strOf("en"), domain.LearningPathStatusPublished)
@@ -76,11 +76,12 @@ func TestEntLearningPathRepository_Publishing(t *testing.T) {
 			Classification: domain.Classification{DifficultyLevel: domain.DifficultyLevelBeginner, ReviewState: domain.ReviewStatePending},
 			CreatedAt:      fixedAt,
 		}
-		require.NoError(t, f.nodes.Create(f.ctx, node))
-		require.NoError(t, f.paths.Create(f.ctx, domain.LearningPath{
+		require.NoError(t, f.nodes.Create(f.ctx, node, testOwnership(t, domain.ContentContentNode, node.ID)))
+		other := domain.LearningPath{
 			ID: uuid.NewString(), TeacherID: otherTeacher, Title: "Other", Status: domain.LearningPathStatusDraft, CreatedAt: fixedAt, UpdatedAt: fixedAt,
 			Items: []domain.LearningPathItem{{Position: 1, ContentNodeID: node.ID, Title: node.Title, ContentType: node.ContentType}},
-		}))
+		}
+		require.NoError(t, f.paths.Create(f.ctx, other, testOwnership(t, domain.ContentPath, other.ID)))
 
 		published, err := listCreatorIDs(f.paths.ListCreatorCounts(f.ctx, domain.LearningPathFilter{Status: domain.LearningPathStatusPublished}))
 		require.NoError(t, err)

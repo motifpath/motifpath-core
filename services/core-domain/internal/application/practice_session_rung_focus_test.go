@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/motifpath/core-domain/internal/domain"
+	"github.com/motifpath/core-domain/internal/ports"
 )
 
 func TestPracticeSessionService_ComposePlan_RungsAndFocus(t *testing.T) {
@@ -22,7 +23,7 @@ func TestPracticeSessionService_ComposePlan_RungsAndFocus(t *testing.T) {
 		require.NoError(t, f.exercises.Create(ctx, domain.Exercise{
 			ID: "ex-ear", Title: "ex-ear", ExerciseType: domain.ExerciseTypeAudioRecognition,
 			Skills: []domain.KnowledgeNode{{ID: "skill-ears"}}, EstimatedDurationSeconds: &seconds, Languages: anyLanguage(),
-		}))
+		}, ports.OwnershipRecord{}))
 		f.onPathFor([]string{practiceGuitar}, "skill-cells", "skill-shapes", "skill-ears")
 
 		plan := f.composeInTheHead(t, 10)

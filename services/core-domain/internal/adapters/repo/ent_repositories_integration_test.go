@@ -258,7 +258,7 @@ func TestEntContentNodeRepository_CreateAndGet(t *testing.T) {
 		Languages:      []domain.Language{{Code: "en"}, {Code: "pt_BR"}},
 		CreatedAt:      fixedAt, UpdatedAt: fixedAt, HasUnpublishedChanges: true,
 	}
-	require.NoError(t, repo.Create(ctx, node))
+	require.NoError(t, repo.Create(ctx, node, testOwnership(t, domain.ContentContentNode, node.ID)))
 
 	got, err := repo.GetByID(ctx, node.ID)
 	require.NoError(t, err)
@@ -270,7 +270,7 @@ func TestEntContentNodeRepository_CreateAndGet(t *testing.T) {
 	node2 := node
 	node2.ID = uuid.NewString()
 	node2.Languages = []domain.Language{{Code: "any"}}
-	require.NoError(t, repo.Create(ctx, node2))
+	require.NoError(t, repo.Create(ctx, node2, testOwnership(t, domain.ContentContentNode, node2.ID)))
 
 	byIDs, err := repo.GetByIDs(ctx, []string{node.ID, node2.ID, uuid.NewString()})
 	require.NoError(t, err)
@@ -329,7 +329,7 @@ func TestEntContentNodeRepository_Update_ReplacesLanguages(t *testing.T) {
 				Languages: tt.existing,
 				CreatedAt: fixedAt,
 			}
-			require.NoError(t, repo.Create(ctx, node))
+			require.NoError(t, repo.Create(ctx, node, testOwnership(t, domain.ContentContentNode, node.ID)))
 
 			node.Languages = tt.updated
 			require.NoError(t, repo.Update(ctx, node))
@@ -361,7 +361,7 @@ func TestEntContentNodeRepository_PersistsAndUpdatesBody(t *testing.T) {
 	article.RichContent = &body
 	articleID := uuid.NewString()
 	article.ID = articleID
-	require.NoError(t, repo.Create(ctx, article))
+	require.NoError(t, repo.Create(ctx, article, testOwnership(t, domain.ContentContentNode, article.ID)))
 
 	gotArticle, err := repo.GetByID(ctx, articleID)
 	require.NoError(t, err)
@@ -511,7 +511,7 @@ func TestEntExerciseRepository_CreateAndGet(t *testing.T) {
 		Languages:      []domain.Language{{Code: "any"}},
 		CreatedAt:      fixedAt,
 	}
-	require.NoError(t, repo.Create(ctx, exercise))
+	require.NoError(t, repo.Create(ctx, exercise, testOwnership(t, domain.ContentExercise, exercise.ID)))
 
 	got, err := repo.GetByID(ctx, exercise.ID)
 	require.NoError(t, err)
@@ -538,7 +538,7 @@ func TestEntExerciseRepository_Instruments(t *testing.T) {
 		Options:   []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: strPtr("A")}},
 		Languages: []domain.Language{{Code: "en"}}, InstrumentIDs: []string{guitar.ID}, CreatedAt: fixedAt,
 	}
-	require.NoError(t, repo.Create(ctx, exercise))
+	require.NoError(t, repo.Create(ctx, exercise, testOwnership(t, domain.ContentExercise, exercise.ID)))
 
 	got, err := repo.GetByID(ctx, exercise.ID)
 	require.NoError(t, err)
@@ -575,7 +575,7 @@ func TestEntExerciseRepository_DiagramCellOptionsRoundTrip(t *testing.T) {
 		Languages:      []domain.Language{{Code: "any"}},
 		CreatedAt:      fixedAt,
 	}
-	require.NoError(t, repo.Create(ctx, exercise))
+	require.NoError(t, repo.Create(ctx, exercise, testOwnership(t, domain.ContentExercise, exercise.ID)))
 
 	got, err := repo.GetByID(ctx, exercise.ID)
 	require.NoError(t, err)
@@ -599,7 +599,7 @@ func TestEntExerciseRepository_Update_ReplacesLanguages(t *testing.T) {
 		Languages: []domain.Language{{Code: "en"}},
 		CreatedAt: fixedAt,
 	}
-	require.NoError(t, repo.Create(ctx, exercise))
+	require.NoError(t, repo.Create(ctx, exercise, testOwnership(t, domain.ContentExercise, exercise.ID)))
 
 	exercise.Languages = []domain.Language{{Code: "pt_BR"}}
 	require.NoError(t, repo.Update(ctx, exercise))
@@ -649,9 +649,9 @@ func TestEntExerciseRepository_ListByChallengeID(t *testing.T) {
 
 	label := "A major"
 	linked := domain.Exercise{ID: uuid.NewString(), Title: "Name the chord", Prompt: domain.NewPlainTextPrompt("Name this chord"), ExerciseType: domain.ExerciseTypeTextResponse, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
-	require.NoError(t, repo.Create(ctx, linked))
+	require.NoError(t, repo.Create(ctx, linked, testOwnership(t, domain.ContentExercise, linked.ID)))
 	unlinked := domain.Exercise{ID: uuid.NewString(), Title: "Name another chord", Prompt: domain.NewPlainTextPrompt("Name this other chord"), ExerciseType: domain.ExerciseTypeTextResponse, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
-	require.NoError(t, repo.Create(ctx, unlinked))
+	require.NoError(t, repo.Create(ctx, unlinked, testOwnership(t, domain.ContentExercise, unlinked.ID)))
 	require.NoError(t, repo.LinkChallenge(ctx, linked.ID, challenge.ID))
 	require.NoError(t, repo.LinkChallenge(ctx, unlinked.ID, otherChallenge.ID))
 
@@ -686,9 +686,9 @@ func TestEntExerciseRepository_ListByChallengeIDs(t *testing.T) {
 
 	label := "A major"
 	exA := domain.Exercise{ID: uuid.NewString(), Title: "Ex A", Prompt: domain.NewPlainTextPrompt("p"), ExerciseType: domain.ExerciseTypeTextResponse, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
-	require.NoError(t, repo.Create(ctx, exA))
+	require.NoError(t, repo.Create(ctx, exA, testOwnership(t, domain.ContentExercise, exA.ID)))
 	exB := domain.Exercise{ID: uuid.NewString(), Title: "Ex B", Prompt: domain.NewPlainTextPrompt("p"), ExerciseType: domain.ExerciseTypeTextResponse, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
-	require.NoError(t, repo.Create(ctx, exB))
+	require.NoError(t, repo.Create(ctx, exB, testOwnership(t, domain.ContentExercise, exB.ID)))
 	require.NoError(t, repo.LinkChallenge(ctx, exA.ID, challengeA.ID))
 	require.NoError(t, repo.LinkChallenge(ctx, exB.ID, challengeB.ID))
 
@@ -729,7 +729,7 @@ func TestEntExerciseRepository_ListByChallengeID_PreservesLinkOrder(t *testing.T
 	linkedIDs := make([]string, linkCount)
 	for i := range linkCount {
 		ex := domain.Exercise{ID: uuid.NewString(), Title: "Exercise", Prompt: domain.NewPlainTextPrompt("Prompt"), ExerciseType: domain.ExerciseTypeTextResponse, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
-		require.NoError(t, repo.Create(ctx, ex))
+		require.NoError(t, repo.Create(ctx, ex, testOwnership(t, domain.ContentExercise, ex.ID)))
 		linkedIDs[i] = ex.ID
 	}
 	// Link in reverse-ID order so link order and ID order disagree —
@@ -764,7 +764,7 @@ func TestEntExerciseRepository_LinkAndUnlinkContentNode(t *testing.T) {
 
 	label := "A major"
 	exercise := domain.Exercise{ID: uuid.NewString(), Title: "Name the chord", Prompt: domain.NewPlainTextPrompt("Name this chord"), ExerciseType: domain.ExerciseTypeTextResponse, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
-	require.NoError(t, repo.Create(ctx, exercise))
+	require.NoError(t, repo.Create(ctx, exercise, testOwnership(t, domain.ContentExercise, exercise.ID)))
 
 	require.NoError(t, repo.LinkContentNode(ctx, exercise.ID, nodeA.ID))
 	require.NoError(t, repo.LinkContentNode(ctx, exercise.ID, nodeB.ID))
@@ -802,7 +802,7 @@ func TestEntExerciseRepository_ListByContentNodeID_PreservesLinkOrder(t *testing
 	linkedIDs := make([]string, linkCount)
 	for i := range linkCount {
 		ex := domain.Exercise{ID: uuid.NewString(), Title: "Exercise", Prompt: domain.NewPlainTextPrompt("Prompt"), ExerciseType: domain.ExerciseTypeTextResponse, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
-		require.NoError(t, repo.Create(ctx, ex))
+		require.NoError(t, repo.Create(ctx, ex, testOwnership(t, domain.ContentExercise, ex.ID)))
 		linkedIDs[i] = ex.ID
 	}
 	for i := linkCount - 1; i >= 0; i-- {
@@ -844,7 +844,7 @@ func TestEntExerciseRepository_LinkAndUnlinkChallenge(t *testing.T) {
 		ChallengeIDs: []string{},
 		CreatedAt:    fixedAt,
 	}
-	require.NoError(t, repo.Create(ctx, exercise))
+	require.NoError(t, repo.Create(ctx, exercise, testOwnership(t, domain.ContentExercise, exercise.ID)))
 
 	require.NoError(t, repo.LinkChallenge(ctx, exercise.ID, challengeA.ID))
 	require.NoError(t, repo.LinkChallenge(ctx, exercise.ID, challengeB.ID))
@@ -891,7 +891,7 @@ func TestEntExerciseRepository_DiagramDrivenImageRecognition(t *testing.T) {
 		ChallengeIDs: []string{}, ContentNodeIDs: []string{}, Languages: []domain.Language{{Code: "any"}},
 		CreatedAt: fixedAt,
 	}
-	require.NoError(t, repo.Create(ctx, exercise))
+	require.NoError(t, repo.Create(ctx, exercise, testOwnership(t, domain.ContentExercise, exercise.ID)))
 
 	got, err := repo.GetByID(ctx, exercise.ID)
 	require.NoError(t, err)
@@ -926,7 +926,7 @@ func TestEntExerciseRepository_ImageChoiceOptionDiagramRef(t *testing.T) {
 		ChallengeIDs: []string{}, ContentNodeIDs: []string{}, Languages: []domain.Language{{Code: "any"}},
 		CreatedAt: fixedAt,
 	}
-	require.NoError(t, repo.Create(ctx, exercise))
+	require.NoError(t, repo.Create(ctx, exercise, testOwnership(t, domain.ContentExercise, exercise.ID)))
 
 	got, err := repo.GetByID(ctx, exercise.ID)
 	require.NoError(t, err)
@@ -962,7 +962,7 @@ func TestEntExerciseRepository_DiagramStackRefRoundTrips(t *testing.T) {
 		ChallengeIDs: []string{}, ContentNodeIDs: []string{}, Languages: []domain.Language{{Code: "any"}},
 		CreatedAt: fixedAt,
 	}
-	require.NoError(t, repo.Create(ctx, exercise))
+	require.NoError(t, repo.Create(ctx, exercise, testOwnership(t, domain.ContentExercise, exercise.ID)))
 
 	got, err := repo.GetByID(ctx, exercise.ID)
 	require.NoError(t, err)
@@ -1060,7 +1060,7 @@ func TestEntLearningPathRepository_CreateAndGet(t *testing.T) {
 		},
 		CreatedAt: fixedAt,
 	}
-	require.NoError(t, repo.Create(ctx, path))
+	require.NoError(t, repo.Create(ctx, path, testOwnership(t, domain.ContentPath, path.ID)))
 
 	got, err := repo.GetByID(ctx, path.ID)
 	require.NoError(t, err)
@@ -1106,7 +1106,7 @@ func TestEntLearningPathRepository_List(t *testing.T) {
 		},
 		CreatedAt: fixedAt,
 	}
-	require.NoError(t, repo.Create(ctx, pathA))
+	require.NoError(t, repo.Create(ctx, pathA, testOwnership(t, domain.ContentPath, pathA.ID)))
 	pathB := domain.LearningPath{
 		ID: uuid.NewString(), TeacherID: uuid.NewString(), Title: "Path B", Status: domain.LearningPathStatusDraft,
 		Items: []domain.LearningPathItem{
@@ -1114,7 +1114,7 @@ func TestEntLearningPathRepository_List(t *testing.T) {
 		},
 		CreatedAt: fixedAt,
 	}
-	require.NoError(t, repo.Create(ctx, pathB))
+	require.NoError(t, repo.Create(ctx, pathB, testOwnership(t, domain.ContentPath, pathB.ID)))
 
 	list, err := repo.List(ctx, domain.LearningPathFilter{}, domain.PageRequest{Limit: 20})
 	require.NoError(t, err)
@@ -1154,9 +1154,9 @@ func TestEntLearningPathRepository_CountItems(t *testing.T) {
 		},
 		CreatedAt: fixedAt,
 	}
-	require.NoError(t, repo.Create(ctx, twoItems))
+	require.NoError(t, repo.Create(ctx, twoItems, testOwnership(t, domain.ContentPath, twoItems.ID)))
 	noItems := domain.LearningPath{ID: uuid.NewString(), TeacherID: uuid.NewString(), Title: "No items", CreatedAt: fixedAt}
-	require.NoError(t, repo.Create(ctx, noItems))
+	require.NoError(t, repo.Create(ctx, noItems, testOwnership(t, domain.ContentPath, noItems.ID)))
 	missing := uuid.NewString()
 
 	counts, err := repo.CountItems(ctx, []string{twoItems.ID, noItems.ID, missing, "not-a-uuid"})
@@ -1181,7 +1181,7 @@ func TestEntLearningPathRepository_Delete(t *testing.T) {
 		Items:     []domain.LearningPathItem{{Position: 1, ContentNodeID: node.ID, Title: node.Title, ContentType: node.ContentType}},
 		CreatedAt: fixedAt,
 	}
-	require.NoError(t, repo.Create(ctx, path))
+	require.NoError(t, repo.Create(ctx, path, testOwnership(t, domain.ContentPath, path.ID)))
 
 	require.NoError(t, repo.Delete(ctx, path.ID))
 
@@ -1284,7 +1284,7 @@ func TestEntCourseVersionRepository_GetLatestByCourseID(t *testing.T) {
 		Status: domain.CourseStatusDraft, CreatedAt: fixedAt,
 		Checkpoints: []domain.CourseCheckpoint{{Position: 1, LearningPathID: path.ID, EffectiveTitle: path.Title}},
 	}
-	require.NoError(t, courseRepo.Create(ctx, course))
+	require.NoError(t, courseRepo.Create(ctx, course, testOwnership(t, domain.ContentCourse, course.ID)))
 
 	_, err := repo.GetLatestByCourseID(ctx, course.ID)
 	require.ErrorIs(t, err, domain.ErrNotFound)
@@ -1354,7 +1354,7 @@ func TestEntCourseVersionRepository_GetLatestByCourseIDs(t *testing.T) {
 		Status: domain.CourseStatusDraft, CreatedAt: fixedAt,
 		Checkpoints: []domain.CourseCheckpoint{{Position: 1, LearningPathID: path.ID, EffectiveTitle: path.Title}},
 	}
-	require.NoError(t, courseRepo.Create(ctx, published))
+	require.NoError(t, courseRepo.Create(ctx, published, testOwnership(t, domain.ContentCourse, published.ID)))
 	require.NoError(t, repo.Create(ctx, domain.CourseVersion{
 		ID: uuid.NewString(), CourseID: published.ID, VersionNumber: 1,
 		TitleSnapshot: "Fingerstyle Journey v1", SummarySnapshot: published.Summary, LevelSnapshot: published.Level,
@@ -1376,7 +1376,7 @@ func TestEntCourseVersionRepository_GetLatestByCourseIDs(t *testing.T) {
 		Status: domain.CourseStatusDraft, CreatedAt: fixedAt,
 		Checkpoints: []domain.CourseCheckpoint{{Position: 1, LearningPathID: path.ID, EffectiveTitle: path.Title}},
 	}
-	require.NoError(t, courseRepo.Create(ctx, draftOnly))
+	require.NoError(t, courseRepo.Create(ctx, draftOnly, testOwnership(t, domain.ContentCourse, draftOnly.ID)))
 
 	result, err := repo.GetLatestByCourseIDs(ctx, []string{published.ID, draftOnly.ID})
 	require.NoError(t, err)
@@ -1413,7 +1413,7 @@ func TestEntCourseVersionRepository_IsLearningPathReferenced(t *testing.T) {
 		Status: domain.CourseStatusDraft, CreatedAt: fixedAt,
 		Checkpoints: []domain.CourseCheckpoint{{Position: 1, LearningPathID: referenced.ID, EffectiveTitle: referenced.Title}},
 	}
-	require.NoError(t, courseRepo.Create(ctx, course))
+	require.NoError(t, courseRepo.Create(ctx, course, testOwnership(t, domain.ContentCourse, course.ID)))
 
 	got, err := repo.IsLearningPathReferenced(ctx, referenced.ID)
 	require.NoError(t, err)
@@ -1461,7 +1461,7 @@ func TestEntCourseRepository_UpdateStatus(t *testing.T) {
 		Status: domain.CourseStatusDraft, CreatedAt: fixedAt,
 		Checkpoints: []domain.CourseCheckpoint{{Position: 1, LearningPathID: path.ID, EffectiveTitle: path.Title}},
 	}
-	require.NoError(t, repo.Create(ctx, course))
+	require.NoError(t, repo.Create(ctx, course, testOwnership(t, domain.ContentCourse, course.ID)))
 
 	require.NoError(t, repo.UpdateStatus(ctx, course.ID, domain.CourseStatusPublished, fixedAt))
 
@@ -1560,7 +1560,7 @@ func seedContentNode(t *testing.T, ctx context.Context, repo *EntContentNodeRepo
 		Classification: domain.Classification{Skills: []domain.KnowledgeNode{skill}, Concepts: []domain.KnowledgeNode{concept}, DifficultyLevel: domain.DifficultyLevelBeginner, ReviewState: domain.ReviewStatePending},
 		CreatedAt:      fixedAt,
 	}
-	require.NoError(t, repo.Create(ctx, node))
+	require.NoError(t, repo.Create(ctx, node, testOwnership(t, domain.ContentContentNode, node.ID)))
 	return node
 }
 
@@ -1571,7 +1571,7 @@ func seedLearningPath(t *testing.T, ctx context.Context, repo *EntLearningPathRe
 		Items:     []domain.LearningPathItem{{Position: 1, ContentNodeID: node.ID, Title: node.Title, ContentType: node.ContentType}},
 		CreatedAt: fixedAt,
 	}
-	require.NoError(t, repo.Create(ctx, path))
+	require.NoError(t, repo.Create(ctx, path, testOwnership(t, domain.ContentPath, path.ID)))
 	return path
 }
 

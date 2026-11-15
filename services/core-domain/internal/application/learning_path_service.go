@@ -12,6 +12,8 @@ import (
 // LearningPathService manages LearningPath — ordered sequences of content
 // nodes that students follow.
 type LearningPathService struct {
+	// ownership records who owns each item this service creates.
+	ownership      *OwnershipRecorder
 	nodes          ports.ContentNodeRepository
 	paths          ports.LearningPathRepository
 	courseVersions ports.CourseVersionRepository
@@ -24,8 +26,8 @@ type LearningPathService struct {
 	knowledge      ports.KnowledgeNodeRepository
 }
 
-func NewLearningPathService(nodes ports.ContentNodeRepository, paths ports.LearningPathRepository, courseVersions ports.CourseVersionRepository, versions ports.ContentNodeVersionRepository, languages ports.LanguageRepository, users ports.UserRepository, instruments ports.InstrumentRepository, knowledge ports.KnowledgeNodeRepository, newID func() string, now func() time.Time) *LearningPathService {
-	return &LearningPathService{nodes: nodes, paths: paths, courseVersions: courseVersions, versions: versions, languages: languages, users: users, newID: newID, now: now, instruments: instruments, knowledge: knowledge}
+func NewLearningPathService(ownership *OwnershipRecorder, nodes ports.ContentNodeRepository, paths ports.LearningPathRepository, courseVersions ports.CourseVersionRepository, versions ports.ContentNodeVersionRepository, languages ports.LanguageRepository, users ports.UserRepository, instruments ports.InstrumentRepository, knowledge ports.KnowledgeNodeRepository, newID func() string, now func() time.Time) *LearningPathService {
+	return &LearningPathService{ownership: ownership, nodes: nodes, paths: paths, courseVersions: courseVersions, versions: versions, languages: languages, users: users, newID: newID, now: now, instruments: instruments, knowledge: knowledge}
 }
 
 // PathItemInput is one item the caller wants in a new learning path: the
@@ -84,7 +86,7 @@ func (s *LearningPathService) CreateLearningPath(ctx context.Context, caller dom
 	if err := checkInstrumentsExist(ctx, s.instruments, input.InstrumentIDs); err != nil {
 		return domain.LearningPath{}, err
 	}
-	if err := s.paths.Create(ctx, path); err != nil {
+	if err := s.paths.Create(ctx, path, s.ownership.Native(domain.ContentRef{Kind: domain.ContentPath, ID: path.ID}, caller, path.CreatedAt)); err != nil {
 		return domain.LearningPath{}, err
 	}
 	return path, nil

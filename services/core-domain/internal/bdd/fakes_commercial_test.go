@@ -26,6 +26,8 @@ type fakeCommercialState struct {
 	operations []domain.CommercialOperation
 	attempts   []domain.OperationAttempt
 	audit      []ports.AuditRecord
+	// ownership is every item's ownership revisions, oldest first.
+	ownership map[domain.ContentRef][]domain.ContentOwnership
 }
 
 type fakeFlagMeta struct {
@@ -51,6 +53,10 @@ func (s fakeCommercialState) clone() fakeCommercialState {
 	c.operations = append([]domain.CommercialOperation{}, s.operations...)
 	c.attempts = append([]domain.OperationAttempt{}, s.attempts...)
 	c.audit = append([]ports.AuditRecord{}, s.audit...)
+	c.ownership = make(map[domain.ContentRef][]domain.ContentOwnership, len(s.ownership))
+	for k, v := range s.ownership {
+		c.ownership[k] = append([]domain.ContentOwnership{}, v...)
+	}
 	return c
 }
 
@@ -63,14 +69,17 @@ type fakeCommercialStore struct {
 	// onInsert runs before an operation insert, to simulate a concurrent
 	// submission committing the same key first.
 	onInsert func(state *fakeCommercialState)
-	// userExists answers whether a core user exists, from the world's users.
-	userExists func(id string) bool
+	// findUser reads a core user from the world's users.
+	findUser func(id string) (domain.User, error)
+	// contentExists answers whether an item is still stored; a deleted
+	// item keeps its ownership history but has no current owner.
+	contentExists func(content domain.ContentRef) bool
 }
 
-func newFakeCommercialStore(userExists func(id string) bool) *fakeCommercialStore {
-	return &fakeCommercialStore{userExists: userExists, state: fakeCommercialState{
+func newFakeCommercialStore(findUser func(id string) (domain.User, error), contentExists func(content domain.ContentRef) bool) *fakeCommercialStore {
+	return &fakeCommercialStore{findUser: findUser, contentExists: contentExists, state: fakeCommercialState{
 		flags: map[domain.FlagName]domain.FlagSetting{}, flagMeta: map[domain.FlagName]fakeFlagMeta{},
-		groups: map[string]domain.CommercialGroup{},
+		groups: map[string]domain.CommercialGroup{}, ownership: map[domain.ContentRef][]domain.ContentOwnership{},
 	}}
 }
 
@@ -114,6 +123,7 @@ func (t *fakeCommercialTx) Activation() ports.CommercialActivationTx { return fa
 func (t *fakeCommercialTx) Groups() ports.CommercialGroupsTx         { return fakeGroupsTx(*t) }
 func (t *fakeCommercialTx) Operations() ports.CommercialOperationsTx { return fakeOperationsTx(*t) }
 func (t *fakeCommercialTx) Audit() ports.CommercialAuditWriter       { return fakeAuditWriter(*t) }
+func (t *fakeCommercialTx) Ownership() ports.ContentOwnershipTx      { return fakeOwnershipTx(*t) }
 
 type fakeActivationTx fakeCommercialTx
 
@@ -189,7 +199,7 @@ func (g fakeGroupsTx) SetMembers(_ context.Context, slug string, memberIDs []str
 func (g fakeGroupsTx) MissingUsers(_ context.Context, userIDs []string) ([]string, error) {
 	missing := []string{}
 	for _, userID := range userIDs {
-		if !g.store.userExists(userID) {
+		if _, err := g.store.findUser(userID); err != nil {
 			missing = append(missing, userID)
 		}
 	}
@@ -276,4 +286,55 @@ func (r fakeCommercialAuditReader) List(_ context.Context, environment domain.En
 		}
 	}
 	return records, nil
+}
+
+func (s *fakeCommercialStore) CurrentOwnership(_ context.Context, content domain.ContentRef) (domain.ContentOwnership, error) {
+	if s.storageFails {
+		return domain.ContentOwnership{}, errFakeStorage
+	}
+	return currentOwnership(s, s.state, content)
+}
+
+// currentOwnership is an item's latest ownership revision, or
+// domain.ErrNotFound when it has none or the item was deleted.
+func currentOwnership(s *fakeCommercialStore, state fakeCommercialState, content domain.ContentRef) (domain.ContentOwnership, error) {
+	history := state.ownership[content]
+	if len(history) == 0 || !s.contentExists(content) {
+		return domain.ContentOwnership{}, domain.ErrNotFound
+	}
+	return history[len(history)-1], nil
+}
+
+type fakeOwnershipTx fakeCommercialTx
+
+func (o fakeOwnershipTx) LockCurrent(_ context.Context, content domain.ContentRef) (domain.ContentOwnership, error) {
+	return currentOwnership(o.store, *o.state, content)
+}
+
+func (o fakeOwnershipTx) UserRole(_ context.Context, userID string) (domain.Role, error) {
+	user, err := o.store.findUser(userID)
+	if err != nil {
+		return "", err
+	}
+	return user.Role, nil
+}
+
+func (o fakeOwnershipTx) Append(_ context.Context, ownership domain.ContentOwnership) error {
+	history := o.state.ownership[ownership.Content]
+	if len(history) > 0 && history[len(history)-1].Revision >= ownership.Revision {
+		return domain.ErrConflict
+	}
+	o.state.ownership[ownership.Content] = append(history, ownership)
+	return nil
+}
+
+// recordOwnership stores a created item's ownership and its evidence in one
+// transaction, as the Postgres repositories do with the item itself.
+func (s *fakeCommercialStore) recordOwnership(record ports.OwnershipRecord) error {
+	return s.InTx(context.Background(), func(ctx context.Context, tx ports.CommercialTx) error {
+		if err := tx.Audit().Append(ctx, record.Evidence); err != nil {
+			return err
+		}
+		return tx.Ownership().Append(ctx, record.Ownership)
+	})
 }

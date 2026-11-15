@@ -32,6 +32,7 @@ type commercialWorld struct {
 	store   *fakeCommercialStore
 	rollout *application.CommercialRolloutService
 	audit   *application.CommercialAuditService
+	content *application.CommercialContentService
 
 	stepType messages.PickleStepType
 
@@ -54,20 +55,21 @@ type commercialRequest struct {
 }
 
 func newCommercialWorld(w *world, newID func() string) *commercialWorld {
-	store := newFakeCommercialStore(func(id string) bool {
-		_, err := w.users.GetByID(context.Background(), id)
-		return err == nil
-	})
+	store := newFakeCommercialStore(func(id string) (domain.User, error) {
+		return w.users.GetByID(context.Background(), id)
+	}, w.contentExists)
 	env, err := domain.ParseEnvironment("test")
 	if err != nil {
 		panic(err)
 	}
 	now := func() time.Time { return fixedNow }
 	commands := application.NewCommercialCommands(store, now, newID)
+	rollout := application.NewCommercialRolloutService(store, commands, env, now)
 	return &commercialWorld{
 		store:   store,
-		rollout: application.NewCommercialRolloutService(store, commands, env, now),
+		rollout: rollout,
 		audit:   application.NewCommercialAuditService(store, env, []byte("bdd-commercial-cursor-secret"), now, newID),
+		content: application.NewCommercialContentService(store, commands, rollout, env),
 		intents: map[string]int64{},
 	}
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathitem"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 	"github.com/motifpath/core-domain/internal/domain"
+	"github.com/motifpath/core-domain/internal/ports"
 )
 
 // EntLearningPathRepository persists LearningPath and LearningPathItem
@@ -29,7 +30,7 @@ func NewEntLearningPathRepository(client *ent.Client) *EntLearningPathRepository
 	return &EntLearningPathRepository{client: client}
 }
 
-func (r *EntLearningPathRepository) Create(ctx context.Context, path domain.LearningPath) error {
+func (r *EntLearningPathRepository) Create(ctx context.Context, path domain.LearningPath, ownership ports.OwnershipRecord) error {
 	id, err := uuid.Parse(path.ID)
 	if err != nil {
 		return err
@@ -81,6 +82,9 @@ func (r *EntLearningPathRepository) Create(ctx context.Context, path domain.Lear
 		return rollback(tx, err)
 	}
 
+	if err := recordOwnership(ctx, tx, ownership); err != nil {
+		return rollback(tx, err)
+	}
 	return tx.Commit()
 }
 

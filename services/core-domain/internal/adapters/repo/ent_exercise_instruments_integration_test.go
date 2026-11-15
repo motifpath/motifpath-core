@@ -41,7 +41,7 @@ func TestEntExerciseInstruments(t *testing.T) {
 	anyDrill := instrumentExercise("Any-instrument drill", skill)
 	pianoDrill := instrumentExercise("Piano drill", skill, piano.ID)
 	for _, e := range []domain.Exercise{guitarDrill, anyDrill, pianoDrill} {
-		require.NoError(t, exercises.Create(ctx, e))
+		require.NoError(t, exercises.Create(ctx, e, testOwnership(t, domain.ContentExercise, e.ID)))
 	}
 
 	node := seedContentNode(t, ctx, nodes)

@@ -13,6 +13,7 @@ import (
 
 	"github.com/motifpath/core-domain/internal/application"
 	"github.com/motifpath/core-domain/internal/domain"
+	"github.com/motifpath/core-domain/internal/ports"
 )
 
 // childSkill puts a skill part_of parentID on the knowledge map.
@@ -33,7 +34,7 @@ func (f *practiceFixture) exercisesOf(prefix, skillID string, exerciseType domai
 		require.NoError(f.t, f.exercises.Create(context.Background(), domain.Exercise{
 			ID: id, Title: id, ExerciseType: exerciseType,
 			Skills: []domain.KnowledgeNode{{ID: skillID}}, EstimatedDurationSeconds: &seconds, Languages: anyLanguage(),
-		}))
+		}, ports.OwnershipRecord{}))
 		keys[i] = domain.ExerciseItemKey(id)
 	}
 	return keys
@@ -457,7 +458,7 @@ func TestPracticeSessionService_ComposePlan_ChosenSubject(t *testing.T) {
 			require.NoError(t, f.exercises.Create(context.Background(), domain.Exercise{
 				ID: id, Title: id, ExerciseType: domain.ExerciseTypeTextResponse,
 				Concepts: []domain.KnowledgeNode{{ID: "concept-tones"}}, EstimatedDurationSeconds: &seconds, Languages: anyLanguage(),
-			}))
+			}, ports.OwnershipRecord{}))
 		}
 		f.playAlong("tones-riff", "Tones riff", practiceGuitar, "skill-riffs", 100)
 		f.conceptOf("tones-riff", "concept-tones")

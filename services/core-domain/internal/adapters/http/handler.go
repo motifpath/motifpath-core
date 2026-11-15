@@ -72,6 +72,7 @@ type Handler struct {
 	emailPreferences   *application.EmailPreferencesService
 	commercialRollout  *application.CommercialRolloutService
 	commercialAudit    *application.CommercialAuditService
+	commercialContent  *application.CommercialContentService
 
 	// pingers back the readiness probe only; the health probes never touch
 	// the application services above.

@@ -9,6 +9,7 @@ import (
 
 	"github.com/motifpath/core-domain/internal/application"
 	"github.com/motifpath/core-domain/internal/domain"
+	"github.com/motifpath/core-domain/internal/ports"
 )
 
 // A playback an exercise plays as its sound can't be removed from its
@@ -36,7 +37,7 @@ func TestDiagramService_PlaybackInUseAsSound(t *testing.T) {
 		} else {
 			exercise.Options = []domain.Option{{ID: "opt-1", IsCorrect: true, DiagramRef: sound}}
 		}
-		require.NoError(t, f.exercises.Create(ctx, exercise))
+		require.NoError(t, f.exercises.Create(ctx, exercise, ports.OwnershipRecord{}))
 		return f, d
 	}
 	keeping := func(d domain.Diagram, names ...string) []domain.DiagramPlayback {
