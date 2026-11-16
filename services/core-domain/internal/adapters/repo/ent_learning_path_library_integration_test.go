@@ -25,12 +25,12 @@ func TestEntLearningPathRepository_Library(t *testing.T) {
 			Classification: domain.Classification{Skills: skills, Concepts: concepts, DifficultyLevel: domain.DifficultyLevelBeginner, ReviewState: domain.ReviewStatePending},
 			CreatedAt:      fixedAt,
 		}
-		require.NoError(t, f.nodes.Create(f.ctx, node))
+		require.NoError(t, f.nodes.Create(f.ctx, node, testOwnership(t, domain.ContentContentNode, node.ID)))
 		created := domain.LearningPath{
 			ID: uuid.NewString(), TeacherID: teacher, Title: title, Level: level, CreatedAt: fixedAt, UpdatedAt: updated,
 			Items: []domain.LearningPathItem{{Position: 1, ContentNodeID: node.ID, Title: node.Title, ContentType: node.ContentType}},
 		}
-		require.NoError(t, f.paths.Create(f.ctx, created))
+		require.NoError(t, f.paths.Create(f.ctx, created, testOwnership(t, domain.ContentPath, created.ID)))
 		return created
 	}
 	day := func(d int) time.Time { return time.Date(2026, 9, d, 12, 0, 0, 0, time.UTC) }

@@ -31,7 +31,7 @@ func chartsForEmbedding() *fakeSongChartRepository {
 }
 
 func contentServiceWithCharts(nodes *fakeContentNodeRepository, expanded *fakeExpandedContentRepository) *application.ContentService {
-	return application.NewContentService(nodes, expanded, seededKnowledgeNodeRepository(), newFakeContentNodeVersionRepository(), newFakeDiagramRepository(),
+	return application.NewContentService(ownershipRecorderForTests(), nodes, expanded, seededKnowledgeNodeRepository(), newFakeContentNodeVersionRepository(), newFakeDiagramRepository(),
 		seededInstrumentRepository(), newFakeVoiceRepository(), chartsForEmbedding(), newFakeUserRepository(), idSequence(), func() time.Time { return fixedCreatedAt })
 }
 

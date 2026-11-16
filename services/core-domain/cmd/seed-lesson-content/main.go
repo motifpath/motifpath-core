@@ -46,9 +46,9 @@ import (
 
 	"github.com/motifpath/core-domain/internal/adapters/repo"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/user"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/user"
 	"github.com/motifpath/core-domain/internal/application"
 	"github.com/motifpath/core-domain/internal/domain"
 	"github.com/motifpath/core-domain/internal/ports"
@@ -179,7 +179,12 @@ func run(completed int, current string) error {
 
 	newID := uuid.NewString
 	now := func() time.Time { return time.Now().UTC() }
+	ownership, err := ownershipRecorder(newID)
+	if err != nil {
+		return err
+	}
 	contentService := application.NewContentService(
+		ownership,
 		repo.NewEntContentNodeRepository(conns.ent),
 		repo.NewEntExpandedContentRepository(conns.ent),
 		repo.NewEntKnowledgeNodeRepository(conns.ent),
@@ -562,4 +567,14 @@ func firstUserID(ctx context.Context, client *ent.Client) (string, error) {
 		return "", fmt.Errorf("find a registered user (sign in once through the SPA first): %w", err)
 	}
 	return row.ID.String(), nil
+}
+
+// ownershipRecorder attributes seeded content to its rights holder the way
+// the service does, under MOTIFPATH_ENV (local unless set).
+func ownershipRecorder(newID func() string) (*application.OwnershipRecorder, error) {
+	environment, err := domain.ParseEnvironment(getenvDefault("MOTIFPATH_ENV", "local"))
+	if err != nil {
+		return nil, fmt.Errorf("MOTIFPATH_ENV: %w", err)
+	}
+	return application.NewOwnershipRecorder(environment, newID), nil
 }

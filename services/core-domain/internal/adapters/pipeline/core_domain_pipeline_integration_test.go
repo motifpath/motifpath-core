@@ -75,11 +75,14 @@ func setupPipeline(t *testing.T) *pipeline {
 	knowledgeRepo := repo.NewEntKnowledgeNodeRepository(entClient)
 	diagramRepo := repo.NewEntDiagramRepository(entClient)
 	instrumentRepo := repo.NewEntInstrumentRepository(entClient)
+	environment, err := domain.ParseEnvironment("test")
+	require.NoError(t, err)
+	ownership := application.NewOwnershipRecorder(environment, newID)
 
 	return &pipeline{
-		content:     application.NewContentService(nodes, expanded, knowledgeRepo, versions, diagramRepo, instrumentRepo, repo.NewEntVoiceRepository(entClient), repo.NewEntSongChartRepository(entClient), users, newID, now),
+		content:     application.NewContentService(ownership, nodes, expanded, knowledgeRepo, versions, diagramRepo, instrumentRepo, repo.NewEntVoiceRepository(entClient), repo.NewEntSongChartRepository(entClient), users, newID, now),
 		challenge:   application.NewChallengeService(nodes, challenges, exercises, newID, now),
-		path:        application.NewLearningPathService(nodes, paths, courseVersions, versions, repo.NewEntLanguageRepository(entClient), users, instrumentRepo, knowledgeRepo, newID, now),
+		path:        application.NewLearningPathService(ownership, nodes, paths, courseVersions, versions, repo.NewEntLanguageRepository(entClient), users, instrumentRepo, knowledgeRepo, newID, now),
 		studentPath: application.NewStudentPathService(users, paths, studentPaths, versions, learningState, courseEnrollments, courseVersions, nodes, exercises, completion, newID, now),
 		knowledge:   application.NewKnowledgeNodeService(knowledgeRepo, instrumentRepo, repo.NewEntLanguageRepository(entClient), newID),
 		users:       users,

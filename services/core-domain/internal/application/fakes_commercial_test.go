@@ -24,7 +24,9 @@ type fakeCommercialState struct {
 	operations []domain.CommercialOperation
 	attempts   []domain.OperationAttempt
 	audit      []ports.AuditRecord
-	users      map[string]bool
+	// ownership is every item's ownership revisions, oldest first.
+	ownership map[domain.ContentRef][]domain.ContentOwnership
+	users     map[string]bool
 }
 
 type fakeFlagMeta struct {
@@ -50,6 +52,10 @@ func (s fakeCommercialState) clone() fakeCommercialState {
 	c.operations = append([]domain.CommercialOperation{}, s.operations...)
 	c.attempts = append([]domain.OperationAttempt{}, s.attempts...)
 	c.audit = append([]ports.AuditRecord{}, s.audit...)
+	c.ownership = make(map[domain.ContentRef][]domain.ContentOwnership, len(s.ownership))
+	for k, v := range s.ownership {
+		c.ownership[k] = append([]domain.ContentOwnership{}, v...)
+	}
 	c.users = make(map[string]bool, len(s.users))
 	for k, v := range s.users {
 		c.users[k] = v
@@ -66,12 +72,16 @@ type fakeCommercialStore struct {
 	// onInsert runs before an operation insert, to simulate a concurrent
 	// submission committing the same key first.
 	onInsert func(state *fakeCommercialState)
+	// roles is each core user's current role, for users a test names.
+	roles map[string]domain.Role
+	// deleted marks content whose row is gone; its ownership history stays.
+	deleted map[domain.ContentRef]bool
 }
 
 func newFakeCommercialStore() *fakeCommercialStore {
-	return &fakeCommercialStore{state: fakeCommercialState{
+	return &fakeCommercialStore{roles: map[string]domain.Role{}, deleted: map[domain.ContentRef]bool{}, state: fakeCommercialState{
 		flags: map[domain.FlagName]domain.FlagSetting{}, flagMeta: map[domain.FlagName]fakeFlagMeta{},
-		groups: map[string]domain.CommercialGroup{}, users: map[string]bool{},
+		groups: map[string]domain.CommercialGroup{}, users: map[string]bool{}, ownership: map[domain.ContentRef][]domain.ContentOwnership{},
 	}}
 }
 
@@ -115,6 +125,7 @@ func (t *fakeCommercialTx) Activation() ports.CommercialActivationTx { return fa
 func (t *fakeCommercialTx) Groups() ports.CommercialGroupsTx         { return fakeGroupsTx(*t) }
 func (t *fakeCommercialTx) Operations() ports.CommercialOperationsTx { return fakeOperationsTx(*t) }
 func (t *fakeCommercialTx) Audit() ports.CommercialAuditWriter       { return fakeAuditWriter(*t) }
+func (t *fakeCommercialTx) Ownership() ports.ContentOwnershipTx      { return fakeOwnershipTx(*t) }
 
 type fakeActivationTx fakeCommercialTx
 
@@ -295,4 +306,44 @@ func (s *fakeCommercialStore) attemptOutcomes() []domain.AuditOutcome {
 		outcomes[i] = attempt.Outcome
 	}
 	return outcomes
+}
+
+func (s *fakeCommercialStore) CurrentOwnership(_ context.Context, content domain.ContentRef) (domain.ContentOwnership, error) {
+	if s.storageFails {
+		return domain.ContentOwnership{}, errFakeStorage
+	}
+	return currentOwnership(s, s.state, content)
+}
+
+// currentOwnership is an item's latest ownership revision, or
+// domain.ErrNotFound when it has none or the item was deleted.
+func currentOwnership(s *fakeCommercialStore, state fakeCommercialState, content domain.ContentRef) (domain.ContentOwnership, error) {
+	history := state.ownership[content]
+	if len(history) == 0 || s.deleted[content] {
+		return domain.ContentOwnership{}, domain.ErrNotFound
+	}
+	return history[len(history)-1], nil
+}
+
+type fakeOwnershipTx fakeCommercialTx
+
+func (o fakeOwnershipTx) LockCurrent(_ context.Context, content domain.ContentRef) (domain.ContentOwnership, error) {
+	return currentOwnership(o.store, *o.state, content)
+}
+
+func (o fakeOwnershipTx) UserRole(_ context.Context, userID string) (domain.Role, error) {
+	role, ok := o.store.roles[userID]
+	if !ok || !o.state.users[userID] {
+		return "", domain.ErrNotFound
+	}
+	return role, nil
+}
+
+func (o fakeOwnershipTx) Append(_ context.Context, ownership domain.ContentOwnership) error {
+	history := o.state.ownership[ownership.Content]
+	if len(history) > 0 && history[len(history)-1].Revision >= ownership.Revision {
+		return domain.ErrConflict
+	}
+	o.state.ownership[ownership.Content] = append(history, ownership)
+	return nil
 }

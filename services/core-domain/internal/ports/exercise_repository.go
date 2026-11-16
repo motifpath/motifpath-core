@@ -9,7 +9,7 @@ import (
 // ExerciseRepository persists Exercise records, including their many-to-many
 // links to Challenge and to ContentNode (as a path exercise).
 type ExerciseRepository interface {
-	Create(ctx context.Context, exercise domain.Exercise) error
+	Create(ctx context.Context, exercise domain.Exercise, ownership OwnershipRecord) error
 
 	// GetByID returns domain.ErrNotFound if no exercise exists with the
 	// given id. The returned Exercise's ChallengeIDs and ContentNodeIDs

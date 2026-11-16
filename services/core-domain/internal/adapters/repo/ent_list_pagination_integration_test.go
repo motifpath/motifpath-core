@@ -29,7 +29,7 @@ func seedTitledContentNode(t *testing.T, ctx context.Context, repo *EntContentNo
 		Classification: domain.Classification{DifficultyLevel: domain.DifficultyLevelBeginner, ReviewState: domain.ReviewStatePending},
 		CreatedAt:      fixedAt,
 	}
-	require.NoError(t, repo.Create(ctx, node))
+	require.NoError(t, repo.Create(ctx, node, testOwnership(t, domain.ContentContentNode, node.ID)))
 }
 
 func TestEntContentNodeRepository_List_PagesSearchesAndCombinesFilters(t *testing.T) {
@@ -96,11 +96,12 @@ func TestEntLearningPathRepository_List_PagesAndSearches(t *testing.T) {
 	node := seedContentNode(t, ctx, nodeRepo)
 
 	for _, title := range []string{"Open Chords Path", "Barre Chords Path", "Strumming Path"} {
-		require.NoError(t, repo.Create(ctx, domain.LearningPath{
+		path := domain.LearningPath{
 			ID: uuid.NewString(), TeacherID: uuid.NewString(), Title: title,
 			Items:     []domain.LearningPathItem{{Position: 1, ContentNodeID: node.ID, Title: node.Title, ContentType: node.ContentType}},
 			CreatedAt: fixedAt,
-		}))
+		}
+		require.NoError(t, repo.Create(ctx, path, testOwnership(t, domain.ContentPath, path.ID)))
 	}
 
 	t.Run("orders by title and pages", func(t *testing.T) {
@@ -140,7 +141,7 @@ func TestEntExerciseRepository_List_PagesAndFilters(t *testing.T) {
 			ChallengeIDs: []string{}, ContentNodeIDs: []string{},
 			Languages: []domain.Language{{Code: "any"}}, CreatedAt: fixedAt,
 		}
-		require.NoError(t, repo.Create(ctx, ex))
+		require.NoError(t, repo.Create(ctx, ex, testOwnership(t, domain.ContentExercise, ex.ID)))
 		ids = append(ids, ex.ID)
 	}
 	exerciseID := func(e domain.Exercise) string { return e.ID }
@@ -184,7 +185,7 @@ func TestEntExerciseRepository_List_TextLanguageConceptAndCreatorFilters(t *test
 			ChallengeIDs: []string{}, ContentNodeIDs: []string{},
 			Languages: []domain.Language{{Code: lang}}, CreatedBy: createdBy, CreatedAt: fixedAt,
 		}
-		require.NoError(t, repo.Create(ctx, ex))
+		require.NoError(t, repo.Create(ctx, ex, testOwnership(t, domain.ContentExercise, ex.ID)))
 		return ex
 	}
 	bobsTriad := exercise("Major Triad Shapes", "en", bob, triad)
