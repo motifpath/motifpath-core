@@ -33,13 +33,14 @@ type SaleBlocker struct {
 	Content *domain.ContentRef
 }
 
-// CommercialContent is an item's authoritative commercial state. Until
-// selling exists every item is free at commercial revision 1, has no
-// commercial release, and lists the blockers core can already evaluate.
+// CommercialContent is an item's authoritative commercial state: its
+// commercial revision and latest release, if any. Until selling exists every
+// item is free and lists the blockers core can already evaluate.
 type CommercialContent struct {
 	Ownership    domain.ContentOwnership
 	Revision     int
 	SaleState    SaleState
+	Release      *domain.CommercialRelease
 	SaleBlockers []SaleBlocker
 }
 
@@ -93,7 +94,33 @@ func (s *CommercialContentService) Get(ctx context.Context, caller domain.User, 
 	if err != nil {
 		return CommercialContent{}, err
 	}
-	return CommercialContent{Ownership: ownership, Revision: 1, SaleState: SaleStateFree, SaleBlockers: blockers}, nil
+	state, err := s.store.CommercialState(ctx, content)
+	if err != nil {
+		return CommercialContent{}, err
+	}
+	release, err := latestRelease(ctx, s.store, state)
+	if err != nil {
+		return CommercialContent{}, err
+	}
+	return CommercialContent{Ownership: ownership, Revision: state.Revision, SaleState: SaleStateFree, Release: release, SaleBlockers: blockers}, nil
+}
+
+// latestRelease is the item's latest release, or nil when it has none. A
+// recorded release that cannot be read makes the item's state unavailable.
+func latestRelease(ctx context.Context, releases releaseReader, state domain.CommercialState) (*domain.CommercialRelease, error) {
+	if state.LatestReleaseID == nil {
+		return nil, nil
+	}
+	release, err := releases.Release(ctx, *state.LatestReleaseID)
+	if err != nil {
+		return nil, fmt.Errorf("%w: latest release %s: %w", domain.ErrUnavailable, *state.LatestReleaseID, err)
+	}
+	return &release, nil
+}
+
+// releaseReader reads a stored release, in or outside a transaction.
+type releaseReader interface {
+	Release(ctx context.Context, releaseID string) (domain.CommercialRelease, error)
 }
 
 func canReadCommercialContent(caller domain.User, ownership domain.ContentOwnership) bool {

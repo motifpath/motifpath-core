@@ -331,7 +331,7 @@ func (w *world) holdsCopy(name, title string) error {
 		return err
 	}
 	w.ownership.copies[name] = copied.StudentPathId.String()
-	return nil
+	return w.rememberCopy(name)
 }
 
 func (w *world) renameAndReplacePath(name, title, renamed string) error {

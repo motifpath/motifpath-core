@@ -301,6 +301,7 @@ type world struct {
 	// commercial holds the commercial activation and audit state.
 	commercial *commercialWorld
 	ownership  *ownershipWorld
+	release    *releaseWorld
 
 	// lastRouterStatus is the status of the last request sent through the
 	// generated router rather than straight to the handler — only for a
@@ -430,6 +431,7 @@ func newWorld() *world {
 		w.pgPinger, w.mongoPinger)
 	w.commercial = newCommercialWorld(w, newID)
 	w.ownership = newOwnershipWorld()
+	w.release = newReleaseWorld()
 	w.handler = w.handler.WithCommercial(w.commercial.rollout, w.commercial.audit).WithCommercialContent(w.commercial.content)
 	w.nodes.recordOwnership = w.commercial.store.recordOwnership
 	w.exercises.recordOwnership = w.commercial.store.recordOwnership

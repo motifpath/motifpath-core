@@ -5464,7 +5464,7 @@ type CommercialContent struct {
 	// Release Latest validated manifest, or null before first commercial validation.
 	Release *Release `json:"release"`
 
-	// Revision Optimistic commercial state revision.
+	// Revision Optimistic commercial state revision, 1 until the item's first release and one more each time a new release becomes its latest.
 	Revision int `json:"revision"`
 
 	// SaleBlockers Current reasons a paid change or new sale would be refused, evaluated by core for the caller; empty when nothing blocks. A UI hint only; the command re-evaluates them.
@@ -10256,7 +10256,7 @@ type PromptNodeType string
 
 // PublishRelease Validate and freeze the current dependency manifest without updating existing learner copies.
 type PublishRelease struct {
-	// ExpectedRevision Observed commercial revision.
+	// ExpectedRevision Observed commercial revision (CommercialContent.revision), not a manifest revision.
 	ExpectedRevision int `json:"expected_revision"`
 
 	// Reason Attributable commercial manifest-publication reason.
@@ -10403,10 +10403,10 @@ type Release struct {
 	// Content Stable sale scope.
 	Content ContentRef `json:"content"`
 
-	// ContentSha256 Immutable digest of the referenced content state.
+	// ContentSha256 Immutable digest of the item's learner-visible state when released.
 	ContentSha256 string `json:"content_sha256"`
 
-	// CoreVersionRef Existing core version reference where one exists; null for live path content, whose digest is captured.
+	// CoreVersionRef The released published version of a course or lesson; null for a path or an exercise, which have no versions and whose digest is captured.
 	CoreVersionRef *string `json:"core_version_ref"`
 
 	// CreatedAt Trusted manifest commit time.
@@ -10430,7 +10430,7 @@ type Release struct {
 	// ReleaseId Server-issued immutable commercial release identifier.
 	ReleaseId openapi_types.UUID `json:"release_id"`
 
-	// Revision Monotonic manifest revision for this content.
+	// Revision Manifest revision for this content, 1 for its first release and one more for each new manifest; an unchanged republication creates none.
 	Revision int `json:"revision"`
 }
 

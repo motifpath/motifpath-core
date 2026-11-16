@@ -43,19 +43,11 @@ func (h *Handler) CreateCommercialOffer(_ context.Context, _ generated.CreateCom
 	return nil, errOperationNotBuilt
 }
 
-func (h *Handler) PublishCommercialRelease(_ context.Context, _ generated.PublishCommercialReleaseRequestObject) (generated.PublishCommercialReleaseResponseObject, error) {
-	return nil, errOperationNotBuilt
-}
-
 func (h *Handler) ChangeCommercialSaleState(_ context.Context, _ generated.ChangeCommercialSaleStateRequestObject) (generated.ChangeCommercialSaleStateResponseObject, error) {
 	return nil, errOperationNotBuilt
 }
 
 func (h *Handler) ListCommercialOffers(_ context.Context, _ generated.ListCommercialOffersRequestObject) (generated.ListCommercialOffersResponseObject, error) {
-	return nil, errOperationNotBuilt
-}
-
-func (h *Handler) GetCommercialRelease(_ context.Context, _ generated.GetCommercialReleaseRequestObject) (generated.GetCommercialReleaseResponseObject, error) {
 	return nil, errOperationNotBuilt
 }
 

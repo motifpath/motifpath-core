@@ -129,6 +129,18 @@ func (f CommercialAuditEntryFunc) Mutate(ctx context.Context, m ent.Mutation) (e
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.CommercialAuditEntryMutation", m)
 }
 
+// The CommercialContentStateFunc type is an adapter to allow the use of ordinary
+// function as CommercialContentState mutator.
+type CommercialContentStateFunc func(context.Context, *ent.CommercialContentStateMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f CommercialContentStateFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.CommercialContentStateMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.CommercialContentStateMutation", m)
+}
+
 // The CommercialFlagFunc type is an adapter to allow the use of ordinary
 // function as CommercialFlag mutator.
 type CommercialFlagFunc func(context.Context, *ent.CommercialFlagMutation) (ent.Value, error)
@@ -187,6 +199,18 @@ func (f CommercialOperationAttemptFunc) Mutate(ctx context.Context, m ent.Mutati
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.CommercialOperationAttemptMutation", m)
+}
+
+// The CommercialReleaseFunc type is an adapter to allow the use of ordinary
+// function as CommercialRelease mutator.
+type CommercialReleaseFunc func(context.Context, *ent.CommercialReleaseMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f CommercialReleaseFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.CommercialReleaseMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.CommercialReleaseMutation", m)
 }
 
 // The ContentNodeFunc type is an adapter to allow the use of ordinary

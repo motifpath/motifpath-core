@@ -36,6 +36,9 @@ type CommercialActivation func(*sql.Selector)
 // CommercialAuditEntry is the predicate function for commercialauditentry builders.
 type CommercialAuditEntry func(*sql.Selector)
 
+// CommercialContentState is the predicate function for commercialcontentstate builders.
+type CommercialContentState func(*sql.Selector)
+
 // CommercialFlag is the predicate function for commercialflag builders.
 type CommercialFlag func(*sql.Selector)
 
@@ -50,6 +53,9 @@ type CommercialOperation func(*sql.Selector)
 
 // CommercialOperationAttempt is the predicate function for commercialoperationattempt builders.
 type CommercialOperationAttempt func(*sql.Selector)
+
+// CommercialRelease is the predicate function for commercialrelease builders.
+type CommercialRelease func(*sql.Selector)
 
 // ContentNode is the predicate function for contentnode builders.
 type ContentNode func(*sql.Selector)

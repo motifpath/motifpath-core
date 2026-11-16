@@ -57,7 +57,7 @@ type commercialRequest struct {
 func newCommercialWorld(w *world, newID func() string) *commercialWorld {
 	store := newFakeCommercialStore(func(id string) (domain.User, error) {
 		return w.users.GetByID(context.Background(), id)
-	}, w.contentExists)
+	}, w.contentExists, w.releaseSnapshot)
 	env, err := domain.ParseEnvironment("test")
 	if err != nil {
 		panic(err)

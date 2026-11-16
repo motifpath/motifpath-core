@@ -115,6 +115,10 @@ func (o entContentOwnershipTx) LockCurrent(ctx context.Context, content domain.C
 	return latestOwnership(ctx, o.tx, lockedLatestOwnershipQuery, content)
 }
 
+func (o entContentOwnershipTx) Current(ctx context.Context, content domain.ContentRef) (domain.ContentOwnership, error) {
+	return latestOwnership(ctx, o.tx, latestOwnershipQuery, content)
+}
+
 func (o entContentOwnershipTx) Append(ctx context.Context, ownership domain.ContentOwnership) error {
 	err := insertOwnership(ctx, o.tx, ownership)
 	if ent.IsConstraintError(err) {

@@ -403,6 +403,30 @@ curl -s "${auth[@]}" -X POST "$API/commercial-content/path/<path uuid>/ownership
   -d '{"expected_revision":1,"owner_kind":"teacher","owner_id":"<user uuid>","reason":"signed licence on file"}'
 ```
 
+### Commercial releases (owner or admin)
+
+A commercial release is the stored evidence of exactly what an owner offered for sale: the
+item's learner-visible state, its rights holder and every item it depends on (a course's paths, a
+path's lessons, a lesson's exercises). Releasing changes nothing learners read, and a release
+never changes afterwards. Postgres refuses any update or delete of `commercial_releases`.
+
+The item's owner or an admin publishes while the `content_versions` flag is on for them (it
+needs `content_ownership`). `expected_revision` is the `revision` that
+`GET /commercial-content/...` answered. Publishing unchanged content returns the latest release
+and creates none. A draft, unresolved ownership, or a dependency owned by someone else answers
+409. Releases stay readable whatever the flag says, including after the item is deleted or its
+ownership corrected.
+
+```bash
+# Release a path, its lessons and their exercises
+curl -s "${auth[@]}" -X POST "$API/commercial-content/path/<path uuid>/releases" \
+  -H "Idempotency-Key: $(uuidgen | tr A-Z a-z)" \
+  -d '{"expected_revision":1,"reason":"first paid offer"}'
+
+# Read a release (admin, current owner or the owner it recorded; anyone else gets 404)
+curl -s "${auth[@]}" "$API/commercial-releases/<release uuid>"
+```
+
 ## Architecture
 
 Each service follows hexagonal architecture:

@@ -28,6 +28,10 @@ type fakeCommercialState struct {
 	audit      []ports.AuditRecord
 	// ownership is every item's ownership revisions, oldest first.
 	ownership map[domain.ContentRef][]domain.ContentOwnership
+	// releases is every stored release, in insertion order.
+	releases []domain.CommercialRelease
+	// states is each released item's commercial state.
+	states map[domain.ContentRef]domain.CommercialState
 }
 
 type fakeFlagMeta struct {
@@ -57,6 +61,11 @@ func (s fakeCommercialState) clone() fakeCommercialState {
 	for k, v := range s.ownership {
 		c.ownership[k] = append([]domain.ContentOwnership{}, v...)
 	}
+	c.releases = append([]domain.CommercialRelease{}, s.releases...)
+	c.states = make(map[domain.ContentRef]domain.CommercialState, len(s.states))
+	for k, v := range s.states {
+		c.states[k] = v
+	}
 	return c
 }
 
@@ -74,11 +83,14 @@ type fakeCommercialStore struct {
 	// contentExists answers whether an item is still stored; a deleted
 	// item keeps its ownership history but has no current owner.
 	contentExists func(content domain.ContentRef) bool
+	// snapshot reads an item's releasable state from the world's content.
+	snapshot func(content domain.ContentRef) (domain.ReleaseSnapshot, error)
 }
 
-func newFakeCommercialStore(findUser func(id string) (domain.User, error), contentExists func(content domain.ContentRef) bool) *fakeCommercialStore {
-	return &fakeCommercialStore{findUser: findUser, contentExists: contentExists, state: fakeCommercialState{
-		flags: map[domain.FlagName]domain.FlagSetting{}, flagMeta: map[domain.FlagName]fakeFlagMeta{},
+func newFakeCommercialStore(findUser func(id string) (domain.User, error), contentExists func(content domain.ContentRef) bool, snapshot func(content domain.ContentRef) (domain.ReleaseSnapshot, error)) *fakeCommercialStore {
+	return &fakeCommercialStore{findUser: findUser, contentExists: contentExists, snapshot: snapshot, state: fakeCommercialState{
+		states: map[domain.ContentRef]domain.CommercialState{},
+		flags:  map[domain.FlagName]domain.FlagSetting{}, flagMeta: map[domain.FlagName]fakeFlagMeta{},
 		groups: map[string]domain.CommercialGroup{}, ownership: map[domain.ContentRef][]domain.ContentOwnership{},
 	}}
 }
@@ -124,6 +136,7 @@ func (t *fakeCommercialTx) Groups() ports.CommercialGroupsTx         { return fa
 func (t *fakeCommercialTx) Operations() ports.CommercialOperationsTx { return fakeOperationsTx(*t) }
 func (t *fakeCommercialTx) Audit() ports.CommercialAuditWriter       { return fakeAuditWriter(*t) }
 func (t *fakeCommercialTx) Ownership() ports.ContentOwnershipTx      { return fakeOwnershipTx(*t) }
+func (t *fakeCommercialTx) Releases() ports.CommercialReleasesTx     { return fakeReleasesTx(*t) }
 
 type fakeActivationTx fakeCommercialTx
 
@@ -311,6 +324,10 @@ func (o fakeOwnershipTx) LockCurrent(_ context.Context, content domain.ContentRe
 	return currentOwnership(o.store, *o.state, content)
 }
 
+func (o fakeOwnershipTx) Current(_ context.Context, content domain.ContentRef) (domain.ContentOwnership, error) {
+	return currentOwnership(o.store, *o.state, content)
+}
+
 func (o fakeOwnershipTx) UserRole(_ context.Context, userID string) (domain.Role, error) {
 	user, err := o.store.findUser(userID)
 	if err != nil {
@@ -337,4 +354,81 @@ func (s *fakeCommercialStore) recordOwnership(record ports.OwnershipRecord) erro
 		}
 		return tx.Ownership().Append(ctx, record.Ownership)
 	})
+}
+
+func (s *fakeCommercialStore) CommercialState(_ context.Context, content domain.ContentRef) (domain.CommercialState, error) {
+	if s.storageFails {
+		return domain.CommercialState{}, errFakeStorage
+	}
+	return stateOf(s.state, content), nil
+}
+
+func (s *fakeCommercialStore) Release(_ context.Context, releaseID string) (domain.CommercialRelease, error) {
+	if s.storageFails {
+		return domain.CommercialRelease{}, errFakeStorage
+	}
+	return releaseByID(s.state, releaseID)
+}
+
+// releasesOf is every stored release of content, oldest first.
+func (s *fakeCommercialStore) releasesOf(content domain.ContentRef) []domain.CommercialRelease {
+	var found []domain.CommercialRelease
+	for _, release := range s.state.releases {
+		if release.Content == content {
+			found = append(found, release)
+		}
+	}
+	return found
+}
+
+func stateOf(state fakeCommercialState, content domain.ContentRef) domain.CommercialState {
+	if current, ok := state.states[content]; ok {
+		return current
+	}
+	return domain.NewCommercialState(content)
+}
+
+func releaseByID(state fakeCommercialState, releaseID string) (domain.CommercialRelease, error) {
+	for _, release := range state.releases {
+		if release.ReleaseID == releaseID {
+			return release, nil
+		}
+	}
+	return domain.CommercialRelease{}, domain.ErrNotFound
+}
+
+type fakeReleasesTx fakeCommercialTx
+
+func (r fakeReleasesTx) Snapshot(_ context.Context, content domain.ContentRef) (domain.ReleaseSnapshot, error) {
+	if !r.store.contentExists(content) {
+		return domain.ReleaseSnapshot{}, domain.ErrNotFound
+	}
+	return r.store.snapshot(content)
+}
+
+func (r fakeReleasesTx) LockStates(_ context.Context, contents []domain.ContentRef) ([]domain.CommercialState, error) {
+	states := make([]domain.CommercialState, 0, len(contents))
+	for _, content := range contents {
+		states = append(states, stateOf(*r.state, content))
+	}
+	return states, nil
+}
+
+func (r fakeReleasesTx) Release(_ context.Context, releaseID string) (domain.CommercialRelease, error) {
+	return releaseByID(*r.state, releaseID)
+}
+
+func (r fakeReleasesTx) Insert(_ context.Context, release domain.CommercialRelease) error {
+	for _, stored := range r.state.releases {
+		if stored.Content == release.Content && stored.Revision == release.Revision {
+			return domain.ErrConflict
+		}
+	}
+	r.state.releases = append(r.state.releases, release)
+	return nil
+}
+
+func (r fakeReleasesTx) SaveState(_ context.Context, state domain.CommercialState) error {
+	r.state.states[state.Content] = state
+	return nil
 }

@@ -260,6 +260,28 @@ var (
 			},
 		},
 	}
+	// CommercialContentStatesColumns holds the columns for the "commercial_content_states" table.
+	CommercialContentStatesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "content_kind", Type: field.TypeEnum, Enums: []string{"course", "path", "content_node", "exercise"}},
+		{Name: "content_id", Type: field.TypeUUID},
+		{Name: "revision", Type: field.TypeInt},
+		{Name: "latest_release_id", Type: field.TypeUUID, Nullable: true},
+		{Name: "updated_at", Type: field.TypeTime},
+	}
+	// CommercialContentStatesTable holds the schema information for the "commercial_content_states" table.
+	CommercialContentStatesTable = &schema.Table{
+		Name:       "commercial_content_states",
+		Columns:    CommercialContentStatesColumns,
+		PrimaryKey: []*schema.Column{CommercialContentStatesColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "commercialcontentstate_content_kind_content_id",
+				Unique:  true,
+				Columns: []*schema.Column{CommercialContentStatesColumns[1], CommercialContentStatesColumns[2]},
+			},
+		},
+	}
 	// CommercialFlagsColumns holds the columns for the "commercial_flags" table.
 	CommercialFlagsColumns = []*schema.Column{
 		{Name: "flag", Type: field.TypeString},
@@ -368,6 +390,33 @@ var (
 				Columns:    []*schema.Column{CommercialOperationAttemptsColumns[4]},
 				RefColumns: []*schema.Column{CommercialOperationsColumns[0]},
 				OnDelete:   schema.NoAction,
+			},
+		},
+	}
+	// CommercialReleasesColumns holds the columns for the "commercial_releases" table.
+	CommercialReleasesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "content_kind", Type: field.TypeEnum, Enums: []string{"course", "path", "content_node", "exercise"}},
+		{Name: "content_id", Type: field.TypeUUID},
+		{Name: "revision", Type: field.TypeInt},
+		{Name: "manifest_sha256", Type: field.TypeString},
+		{Name: "content_sha256", Type: field.TypeString},
+		{Name: "core_version_ref", Type: field.TypeString, Nullable: true},
+		{Name: "ownership", Type: field.TypeJSON},
+		{Name: "dependencies", Type: field.TypeJSON},
+		{Name: "evidence_entry_id", Type: field.TypeUUID},
+		{Name: "created_at", Type: field.TypeTime},
+	}
+	// CommercialReleasesTable holds the schema information for the "commercial_releases" table.
+	CommercialReleasesTable = &schema.Table{
+		Name:       "commercial_releases",
+		Columns:    CommercialReleasesColumns,
+		PrimaryKey: []*schema.Column{CommercialReleasesColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "commercialrelease_content_kind_content_id_revision",
+				Unique:  true,
+				Columns: []*schema.Column{CommercialReleasesColumns[1], CommercialReleasesColumns[2], CommercialReleasesColumns[3]},
 			},
 		},
 	}
@@ -1805,11 +1854,13 @@ var (
 		ChordVoicingsTable,
 		CommercialActivationsTable,
 		CommercialAuditEntriesTable,
+		CommercialContentStatesTable,
 		CommercialFlagsTable,
 		CommercialGroupsTable,
 		CommercialGroupMembersTable,
 		CommercialOperationsTable,
 		CommercialOperationAttemptsTable,
+		CommercialReleasesTable,
 		ContentNodesTable,
 		ContentNodeConceptsTable,
 		ContentNodeExercisesTable,

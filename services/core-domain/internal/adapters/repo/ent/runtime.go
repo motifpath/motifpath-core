@@ -16,11 +16,13 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/chordvoicing"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialactivation"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialauditentry"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialcontentstate"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialflag"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialgroup"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialgroupmember"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialoperation"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialoperationattempt"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialrelease"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
@@ -318,6 +320,22 @@ func init() {
 	commercialauditentryDescConfigurationRevision := commercialauditentryFields[17].Descriptor()
 	// commercialauditentry.ConfigurationRevisionValidator is a validator for the "configuration_revision" field. It is called by the builders before save.
 	commercialauditentry.ConfigurationRevisionValidator = commercialauditentryDescConfigurationRevision.Validators[0].(func(string) error)
+	commercialcontentstateFields := schema.CommercialContentState{}.Fields()
+	_ = commercialcontentstateFields
+	// commercialcontentstateDescRevision is the schema descriptor for revision field.
+	commercialcontentstateDescRevision := commercialcontentstateFields[3].Descriptor()
+	// commercialcontentstate.RevisionValidator is a validator for the "revision" field. It is called by the builders before save.
+	commercialcontentstate.RevisionValidator = commercialcontentstateDescRevision.Validators[0].(func(int) error)
+	// commercialcontentstateDescUpdatedAt is the schema descriptor for updated_at field.
+	commercialcontentstateDescUpdatedAt := commercialcontentstateFields[5].Descriptor()
+	// commercialcontentstate.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	commercialcontentstate.DefaultUpdatedAt = commercialcontentstateDescUpdatedAt.Default.(func() time.Time)
+	// commercialcontentstate.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	commercialcontentstate.UpdateDefaultUpdatedAt = commercialcontentstateDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// commercialcontentstateDescID is the schema descriptor for id field.
+	commercialcontentstateDescID := commercialcontentstateFields[0].Descriptor()
+	// commercialcontentstate.DefaultID holds the default value on creation for the id field.
+	commercialcontentstate.DefaultID = commercialcontentstateDescID.Default.(func() uuid.UUID)
 	commercialflagFields := schema.CommercialFlag{}.Fields()
 	_ = commercialflagFields
 	// commercialflagDescEnabled is the schema descriptor for enabled field.
@@ -406,6 +424,12 @@ func init() {
 	commercialoperationattemptDescFingerprint := commercialoperationattemptFields[2].Descriptor()
 	// commercialoperationattempt.FingerprintValidator is a validator for the "fingerprint" field. It is called by the builders before save.
 	commercialoperationattempt.FingerprintValidator = commercialoperationattemptDescFingerprint.Validators[0].(func(string) error)
+	commercialreleaseFields := schema.CommercialRelease{}.Fields()
+	_ = commercialreleaseFields
+	// commercialreleaseDescRevision is the schema descriptor for revision field.
+	commercialreleaseDescRevision := commercialreleaseFields[3].Descriptor()
+	// commercialrelease.RevisionValidator is a validator for the "revision" field. It is called by the builders before save.
+	commercialrelease.RevisionValidator = commercialreleaseDescRevision.Validators[0].(func(int) error)
 	contentnodeFields := schema.ContentNode{}.Fields()
 	_ = contentnodeFields
 	// contentnodeDescCreatedAt is the schema descriptor for created_at field.

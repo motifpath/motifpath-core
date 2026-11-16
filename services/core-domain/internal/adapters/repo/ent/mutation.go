@@ -23,11 +23,13 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/chordvoicing"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialactivation"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialauditentry"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialcontentstate"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialflag"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialgroup"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialgroupmember"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialoperation"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialoperationattempt"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialrelease"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
@@ -102,11 +104,13 @@ const (
 	TypeChordVoicing               = "ChordVoicing"
 	TypeCommercialActivation       = "CommercialActivation"
 	TypeCommercialAuditEntry       = "CommercialAuditEntry"
+	TypeCommercialContentState     = "CommercialContentState"
 	TypeCommercialFlag             = "CommercialFlag"
 	TypeCommercialGroup            = "CommercialGroup"
 	TypeCommercialGroupMember      = "CommercialGroupMember"
 	TypeCommercialOperation        = "CommercialOperation"
 	TypeCommercialOperationAttempt = "CommercialOperationAttempt"
+	TypeCommercialRelease          = "CommercialRelease"
 	TypeContentNode                = "ContentNode"
 	TypeContentNodeConcept         = "ContentNodeConcept"
 	TypeContentNodeExercise        = "ContentNodeExercise"
@@ -8025,6 +8029,612 @@ func (m *CommercialAuditEntryMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown CommercialAuditEntry edge %s", name)
 }
 
+// CommercialContentStateMutation represents an operation that mutates the CommercialContentState nodes in the graph.
+type CommercialContentStateMutation struct {
+	config
+	op                Op
+	typ               string
+	id                *uuid.UUID
+	content_kind      *commercialcontentstate.ContentKind
+	content_id        *uuid.UUID
+	revision          *int
+	addrevision       *int
+	latest_release_id *uuid.UUID
+	updated_at        *time.Time
+	clearedFields     map[string]struct{}
+	done              bool
+	oldValue          func(context.Context) (*CommercialContentState, error)
+	predicates        []predicate.CommercialContentState
+}
+
+var _ ent.Mutation = (*CommercialContentStateMutation)(nil)
+
+// commercialcontentstateOption allows management of the mutation configuration using functional options.
+type commercialcontentstateOption func(*CommercialContentStateMutation)
+
+// newCommercialContentStateMutation creates new mutation for the CommercialContentState entity.
+func newCommercialContentStateMutation(c config, op Op, opts ...commercialcontentstateOption) *CommercialContentStateMutation {
+	m := &CommercialContentStateMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeCommercialContentState,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withCommercialContentStateID sets the ID field of the mutation.
+func withCommercialContentStateID(id uuid.UUID) commercialcontentstateOption {
+	return func(m *CommercialContentStateMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *CommercialContentState
+		)
+		m.oldValue = func(ctx context.Context) (*CommercialContentState, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().CommercialContentState.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withCommercialContentState sets the old CommercialContentState of the mutation.
+func withCommercialContentState(node *CommercialContentState) commercialcontentstateOption {
+	return func(m *CommercialContentStateMutation) {
+		m.oldValue = func(context.Context) (*CommercialContentState, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m CommercialContentStateMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m CommercialContentStateMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of CommercialContentState entities.
+func (m *CommercialContentStateMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *CommercialContentStateMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *CommercialContentStateMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().CommercialContentState.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetContentKind sets the "content_kind" field.
+func (m *CommercialContentStateMutation) SetContentKind(ck commercialcontentstate.ContentKind) {
+	m.content_kind = &ck
+}
+
+// ContentKind returns the value of the "content_kind" field in the mutation.
+func (m *CommercialContentStateMutation) ContentKind() (r commercialcontentstate.ContentKind, exists bool) {
+	v := m.content_kind
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldContentKind returns the old "content_kind" field's value of the CommercialContentState entity.
+// If the CommercialContentState object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CommercialContentStateMutation) OldContentKind(ctx context.Context) (v commercialcontentstate.ContentKind, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldContentKind is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldContentKind requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldContentKind: %w", err)
+	}
+	return oldValue.ContentKind, nil
+}
+
+// ResetContentKind resets all changes to the "content_kind" field.
+func (m *CommercialContentStateMutation) ResetContentKind() {
+	m.content_kind = nil
+}
+
+// SetContentID sets the "content_id" field.
+func (m *CommercialContentStateMutation) SetContentID(u uuid.UUID) {
+	m.content_id = &u
+}
+
+// ContentID returns the value of the "content_id" field in the mutation.
+func (m *CommercialContentStateMutation) ContentID() (r uuid.UUID, exists bool) {
+	v := m.content_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldContentID returns the old "content_id" field's value of the CommercialContentState entity.
+// If the CommercialContentState object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CommercialContentStateMutation) OldContentID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldContentID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldContentID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldContentID: %w", err)
+	}
+	return oldValue.ContentID, nil
+}
+
+// ResetContentID resets all changes to the "content_id" field.
+func (m *CommercialContentStateMutation) ResetContentID() {
+	m.content_id = nil
+}
+
+// SetRevision sets the "revision" field.
+func (m *CommercialContentStateMutation) SetRevision(i int) {
+	m.revision = &i
+	m.addrevision = nil
+}
+
+// Revision returns the value of the "revision" field in the mutation.
+func (m *CommercialContentStateMutation) Revision() (r int, exists bool) {
+	v := m.revision
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRevision returns the old "revision" field's value of the CommercialContentState entity.
+// If the CommercialContentState object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CommercialContentStateMutation) OldRevision(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRevision is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRevision requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRevision: %w", err)
+	}
+	return oldValue.Revision, nil
+}
+
+// AddRevision adds i to the "revision" field.
+func (m *CommercialContentStateMutation) AddRevision(i int) {
+	if m.addrevision != nil {
+		*m.addrevision += i
+	} else {
+		m.addrevision = &i
+	}
+}
+
+// AddedRevision returns the value that was added to the "revision" field in this mutation.
+func (m *CommercialContentStateMutation) AddedRevision() (r int, exists bool) {
+	v := m.addrevision
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetRevision resets all changes to the "revision" field.
+func (m *CommercialContentStateMutation) ResetRevision() {
+	m.revision = nil
+	m.addrevision = nil
+}
+
+// SetLatestReleaseID sets the "latest_release_id" field.
+func (m *CommercialContentStateMutation) SetLatestReleaseID(u uuid.UUID) {
+	m.latest_release_id = &u
+}
+
+// LatestReleaseID returns the value of the "latest_release_id" field in the mutation.
+func (m *CommercialContentStateMutation) LatestReleaseID() (r uuid.UUID, exists bool) {
+	v := m.latest_release_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLatestReleaseID returns the old "latest_release_id" field's value of the CommercialContentState entity.
+// If the CommercialContentState object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CommercialContentStateMutation) OldLatestReleaseID(ctx context.Context) (v *uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLatestReleaseID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLatestReleaseID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLatestReleaseID: %w", err)
+	}
+	return oldValue.LatestReleaseID, nil
+}
+
+// ClearLatestReleaseID clears the value of the "latest_release_id" field.
+func (m *CommercialContentStateMutation) ClearLatestReleaseID() {
+	m.latest_release_id = nil
+	m.clearedFields[commercialcontentstate.FieldLatestReleaseID] = struct{}{}
+}
+
+// LatestReleaseIDCleared returns if the "latest_release_id" field was cleared in this mutation.
+func (m *CommercialContentStateMutation) LatestReleaseIDCleared() bool {
+	_, ok := m.clearedFields[commercialcontentstate.FieldLatestReleaseID]
+	return ok
+}
+
+// ResetLatestReleaseID resets all changes to the "latest_release_id" field.
+func (m *CommercialContentStateMutation) ResetLatestReleaseID() {
+	m.latest_release_id = nil
+	delete(m.clearedFields, commercialcontentstate.FieldLatestReleaseID)
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *CommercialContentStateMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *CommercialContentStateMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the CommercialContentState entity.
+// If the CommercialContentState object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CommercialContentStateMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *CommercialContentStateMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// Where appends a list predicates to the CommercialContentStateMutation builder.
+func (m *CommercialContentStateMutation) Where(ps ...predicate.CommercialContentState) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the CommercialContentStateMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *CommercialContentStateMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.CommercialContentState, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *CommercialContentStateMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *CommercialContentStateMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (CommercialContentState).
+func (m *CommercialContentStateMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *CommercialContentStateMutation) Fields() []string {
+	fields := make([]string, 0, 5)
+	if m.content_kind != nil {
+		fields = append(fields, commercialcontentstate.FieldContentKind)
+	}
+	if m.content_id != nil {
+		fields = append(fields, commercialcontentstate.FieldContentID)
+	}
+	if m.revision != nil {
+		fields = append(fields, commercialcontentstate.FieldRevision)
+	}
+	if m.latest_release_id != nil {
+		fields = append(fields, commercialcontentstate.FieldLatestReleaseID)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, commercialcontentstate.FieldUpdatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *CommercialContentStateMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case commercialcontentstate.FieldContentKind:
+		return m.ContentKind()
+	case commercialcontentstate.FieldContentID:
+		return m.ContentID()
+	case commercialcontentstate.FieldRevision:
+		return m.Revision()
+	case commercialcontentstate.FieldLatestReleaseID:
+		return m.LatestReleaseID()
+	case commercialcontentstate.FieldUpdatedAt:
+		return m.UpdatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *CommercialContentStateMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case commercialcontentstate.FieldContentKind:
+		return m.OldContentKind(ctx)
+	case commercialcontentstate.FieldContentID:
+		return m.OldContentID(ctx)
+	case commercialcontentstate.FieldRevision:
+		return m.OldRevision(ctx)
+	case commercialcontentstate.FieldLatestReleaseID:
+		return m.OldLatestReleaseID(ctx)
+	case commercialcontentstate.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown CommercialContentState field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *CommercialContentStateMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case commercialcontentstate.FieldContentKind:
+		v, ok := value.(commercialcontentstate.ContentKind)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetContentKind(v)
+		return nil
+	case commercialcontentstate.FieldContentID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetContentID(v)
+		return nil
+	case commercialcontentstate.FieldRevision:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRevision(v)
+		return nil
+	case commercialcontentstate.FieldLatestReleaseID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLatestReleaseID(v)
+		return nil
+	case commercialcontentstate.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown CommercialContentState field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *CommercialContentStateMutation) AddedFields() []string {
+	var fields []string
+	if m.addrevision != nil {
+		fields = append(fields, commercialcontentstate.FieldRevision)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *CommercialContentStateMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case commercialcontentstate.FieldRevision:
+		return m.AddedRevision()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *CommercialContentStateMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case commercialcontentstate.FieldRevision:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddRevision(v)
+		return nil
+	}
+	return fmt.Errorf("unknown CommercialContentState numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *CommercialContentStateMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(commercialcontentstate.FieldLatestReleaseID) {
+		fields = append(fields, commercialcontentstate.FieldLatestReleaseID)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *CommercialContentStateMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *CommercialContentStateMutation) ClearField(name string) error {
+	switch name {
+	case commercialcontentstate.FieldLatestReleaseID:
+		m.ClearLatestReleaseID()
+		return nil
+	}
+	return fmt.Errorf("unknown CommercialContentState nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *CommercialContentStateMutation) ResetField(name string) error {
+	switch name {
+	case commercialcontentstate.FieldContentKind:
+		m.ResetContentKind()
+		return nil
+	case commercialcontentstate.FieldContentID:
+		m.ResetContentID()
+		return nil
+	case commercialcontentstate.FieldRevision:
+		m.ResetRevision()
+		return nil
+	case commercialcontentstate.FieldLatestReleaseID:
+		m.ResetLatestReleaseID()
+		return nil
+	case commercialcontentstate.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown CommercialContentState field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *CommercialContentStateMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *CommercialContentStateMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *CommercialContentStateMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *CommercialContentStateMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *CommercialContentStateMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *CommercialContentStateMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *CommercialContentStateMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown CommercialContentState unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *CommercialContentStateMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown CommercialContentState edge %s", name)
+}
+
 // CommercialFlagMutation represents an operation that mutates the CommercialFlag nodes in the graph.
 type CommercialFlagMutation struct {
 	config
@@ -11039,6 +11649,914 @@ func (m *CommercialOperationAttemptMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown CommercialOperationAttempt edge %s", name)
+}
+
+// CommercialReleaseMutation represents an operation that mutates the CommercialRelease nodes in the graph.
+type CommercialReleaseMutation struct {
+	config
+	op                 Op
+	typ                string
+	id                 *uuid.UUID
+	content_kind       *commercialrelease.ContentKind
+	content_id         *uuid.UUID
+	revision           *int
+	addrevision        *int
+	manifest_sha256    *string
+	content_sha256     *string
+	core_version_ref   *string
+	ownership          *jsontext.Value
+	appendownership    jsontext.Value
+	dependencies       *jsontext.Value
+	appenddependencies jsontext.Value
+	evidence_entry_id  *uuid.UUID
+	created_at         *time.Time
+	clearedFields      map[string]struct{}
+	done               bool
+	oldValue           func(context.Context) (*CommercialRelease, error)
+	predicates         []predicate.CommercialRelease
+}
+
+var _ ent.Mutation = (*CommercialReleaseMutation)(nil)
+
+// commercialreleaseOption allows management of the mutation configuration using functional options.
+type commercialreleaseOption func(*CommercialReleaseMutation)
+
+// newCommercialReleaseMutation creates new mutation for the CommercialRelease entity.
+func newCommercialReleaseMutation(c config, op Op, opts ...commercialreleaseOption) *CommercialReleaseMutation {
+	m := &CommercialReleaseMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeCommercialRelease,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withCommercialReleaseID sets the ID field of the mutation.
+func withCommercialReleaseID(id uuid.UUID) commercialreleaseOption {
+	return func(m *CommercialReleaseMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *CommercialRelease
+		)
+		m.oldValue = func(ctx context.Context) (*CommercialRelease, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().CommercialRelease.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withCommercialRelease sets the old CommercialRelease of the mutation.
+func withCommercialRelease(node *CommercialRelease) commercialreleaseOption {
+	return func(m *CommercialReleaseMutation) {
+		m.oldValue = func(context.Context) (*CommercialRelease, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m CommercialReleaseMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m CommercialReleaseMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of CommercialRelease entities.
+func (m *CommercialReleaseMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *CommercialReleaseMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *CommercialReleaseMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().CommercialRelease.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetContentKind sets the "content_kind" field.
+func (m *CommercialReleaseMutation) SetContentKind(ck commercialrelease.ContentKind) {
+	m.content_kind = &ck
+}
+
+// ContentKind returns the value of the "content_kind" field in the mutation.
+func (m *CommercialReleaseMutation) ContentKind() (r commercialrelease.ContentKind, exists bool) {
+	v := m.content_kind
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldContentKind returns the old "content_kind" field's value of the CommercialRelease entity.
+// If the CommercialRelease object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CommercialReleaseMutation) OldContentKind(ctx context.Context) (v commercialrelease.ContentKind, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldContentKind is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldContentKind requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldContentKind: %w", err)
+	}
+	return oldValue.ContentKind, nil
+}
+
+// ResetContentKind resets all changes to the "content_kind" field.
+func (m *CommercialReleaseMutation) ResetContentKind() {
+	m.content_kind = nil
+}
+
+// SetContentID sets the "content_id" field.
+func (m *CommercialReleaseMutation) SetContentID(u uuid.UUID) {
+	m.content_id = &u
+}
+
+// ContentID returns the value of the "content_id" field in the mutation.
+func (m *CommercialReleaseMutation) ContentID() (r uuid.UUID, exists bool) {
+	v := m.content_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldContentID returns the old "content_id" field's value of the CommercialRelease entity.
+// If the CommercialRelease object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CommercialReleaseMutation) OldContentID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldContentID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldContentID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldContentID: %w", err)
+	}
+	return oldValue.ContentID, nil
+}
+
+// ResetContentID resets all changes to the "content_id" field.
+func (m *CommercialReleaseMutation) ResetContentID() {
+	m.content_id = nil
+}
+
+// SetRevision sets the "revision" field.
+func (m *CommercialReleaseMutation) SetRevision(i int) {
+	m.revision = &i
+	m.addrevision = nil
+}
+
+// Revision returns the value of the "revision" field in the mutation.
+func (m *CommercialReleaseMutation) Revision() (r int, exists bool) {
+	v := m.revision
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRevision returns the old "revision" field's value of the CommercialRelease entity.
+// If the CommercialRelease object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CommercialReleaseMutation) OldRevision(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRevision is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRevision requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRevision: %w", err)
+	}
+	return oldValue.Revision, nil
+}
+
+// AddRevision adds i to the "revision" field.
+func (m *CommercialReleaseMutation) AddRevision(i int) {
+	if m.addrevision != nil {
+		*m.addrevision += i
+	} else {
+		m.addrevision = &i
+	}
+}
+
+// AddedRevision returns the value that was added to the "revision" field in this mutation.
+func (m *CommercialReleaseMutation) AddedRevision() (r int, exists bool) {
+	v := m.addrevision
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetRevision resets all changes to the "revision" field.
+func (m *CommercialReleaseMutation) ResetRevision() {
+	m.revision = nil
+	m.addrevision = nil
+}
+
+// SetManifestSha256 sets the "manifest_sha256" field.
+func (m *CommercialReleaseMutation) SetManifestSha256(s string) {
+	m.manifest_sha256 = &s
+}
+
+// ManifestSha256 returns the value of the "manifest_sha256" field in the mutation.
+func (m *CommercialReleaseMutation) ManifestSha256() (r string, exists bool) {
+	v := m.manifest_sha256
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldManifestSha256 returns the old "manifest_sha256" field's value of the CommercialRelease entity.
+// If the CommercialRelease object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CommercialReleaseMutation) OldManifestSha256(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldManifestSha256 is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldManifestSha256 requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldManifestSha256: %w", err)
+	}
+	return oldValue.ManifestSha256, nil
+}
+
+// ResetManifestSha256 resets all changes to the "manifest_sha256" field.
+func (m *CommercialReleaseMutation) ResetManifestSha256() {
+	m.manifest_sha256 = nil
+}
+
+// SetContentSha256 sets the "content_sha256" field.
+func (m *CommercialReleaseMutation) SetContentSha256(s string) {
+	m.content_sha256 = &s
+}
+
+// ContentSha256 returns the value of the "content_sha256" field in the mutation.
+func (m *CommercialReleaseMutation) ContentSha256() (r string, exists bool) {
+	v := m.content_sha256
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldContentSha256 returns the old "content_sha256" field's value of the CommercialRelease entity.
+// If the CommercialRelease object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CommercialReleaseMutation) OldContentSha256(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldContentSha256 is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldContentSha256 requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldContentSha256: %w", err)
+	}
+	return oldValue.ContentSha256, nil
+}
+
+// ResetContentSha256 resets all changes to the "content_sha256" field.
+func (m *CommercialReleaseMutation) ResetContentSha256() {
+	m.content_sha256 = nil
+}
+
+// SetCoreVersionRef sets the "core_version_ref" field.
+func (m *CommercialReleaseMutation) SetCoreVersionRef(s string) {
+	m.core_version_ref = &s
+}
+
+// CoreVersionRef returns the value of the "core_version_ref" field in the mutation.
+func (m *CommercialReleaseMutation) CoreVersionRef() (r string, exists bool) {
+	v := m.core_version_ref
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCoreVersionRef returns the old "core_version_ref" field's value of the CommercialRelease entity.
+// If the CommercialRelease object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CommercialReleaseMutation) OldCoreVersionRef(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCoreVersionRef is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCoreVersionRef requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCoreVersionRef: %w", err)
+	}
+	return oldValue.CoreVersionRef, nil
+}
+
+// ClearCoreVersionRef clears the value of the "core_version_ref" field.
+func (m *CommercialReleaseMutation) ClearCoreVersionRef() {
+	m.core_version_ref = nil
+	m.clearedFields[commercialrelease.FieldCoreVersionRef] = struct{}{}
+}
+
+// CoreVersionRefCleared returns if the "core_version_ref" field was cleared in this mutation.
+func (m *CommercialReleaseMutation) CoreVersionRefCleared() bool {
+	_, ok := m.clearedFields[commercialrelease.FieldCoreVersionRef]
+	return ok
+}
+
+// ResetCoreVersionRef resets all changes to the "core_version_ref" field.
+func (m *CommercialReleaseMutation) ResetCoreVersionRef() {
+	m.core_version_ref = nil
+	delete(m.clearedFields, commercialrelease.FieldCoreVersionRef)
+}
+
+// SetOwnership sets the "ownership" field.
+func (m *CommercialReleaseMutation) SetOwnership(j jsontext.Value) {
+	m.ownership = &j
+	m.appendownership = nil
+}
+
+// Ownership returns the value of the "ownership" field in the mutation.
+func (m *CommercialReleaseMutation) Ownership() (r jsontext.Value, exists bool) {
+	v := m.ownership
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldOwnership returns the old "ownership" field's value of the CommercialRelease entity.
+// If the CommercialRelease object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CommercialReleaseMutation) OldOwnership(ctx context.Context) (v jsontext.Value, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldOwnership is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldOwnership requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldOwnership: %w", err)
+	}
+	return oldValue.Ownership, nil
+}
+
+// AppendOwnership adds j to the "ownership" field.
+func (m *CommercialReleaseMutation) AppendOwnership(j jsontext.Value) {
+	m.appendownership = append(m.appendownership, j...)
+}
+
+// AppendedOwnership returns the list of values that were appended to the "ownership" field in this mutation.
+func (m *CommercialReleaseMutation) AppendedOwnership() (jsontext.Value, bool) {
+	if len(m.appendownership) == 0 {
+		return nil, false
+	}
+	return m.appendownership, true
+}
+
+// ResetOwnership resets all changes to the "ownership" field.
+func (m *CommercialReleaseMutation) ResetOwnership() {
+	m.ownership = nil
+	m.appendownership = nil
+}
+
+// SetDependencies sets the "dependencies" field.
+func (m *CommercialReleaseMutation) SetDependencies(j jsontext.Value) {
+	m.dependencies = &j
+	m.appenddependencies = nil
+}
+
+// Dependencies returns the value of the "dependencies" field in the mutation.
+func (m *CommercialReleaseMutation) Dependencies() (r jsontext.Value, exists bool) {
+	v := m.dependencies
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDependencies returns the old "dependencies" field's value of the CommercialRelease entity.
+// If the CommercialRelease object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CommercialReleaseMutation) OldDependencies(ctx context.Context) (v jsontext.Value, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDependencies is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDependencies requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDependencies: %w", err)
+	}
+	return oldValue.Dependencies, nil
+}
+
+// AppendDependencies adds j to the "dependencies" field.
+func (m *CommercialReleaseMutation) AppendDependencies(j jsontext.Value) {
+	m.appenddependencies = append(m.appenddependencies, j...)
+}
+
+// AppendedDependencies returns the list of values that were appended to the "dependencies" field in this mutation.
+func (m *CommercialReleaseMutation) AppendedDependencies() (jsontext.Value, bool) {
+	if len(m.appenddependencies) == 0 {
+		return nil, false
+	}
+	return m.appenddependencies, true
+}
+
+// ResetDependencies resets all changes to the "dependencies" field.
+func (m *CommercialReleaseMutation) ResetDependencies() {
+	m.dependencies = nil
+	m.appenddependencies = nil
+}
+
+// SetEvidenceEntryID sets the "evidence_entry_id" field.
+func (m *CommercialReleaseMutation) SetEvidenceEntryID(u uuid.UUID) {
+	m.evidence_entry_id = &u
+}
+
+// EvidenceEntryID returns the value of the "evidence_entry_id" field in the mutation.
+func (m *CommercialReleaseMutation) EvidenceEntryID() (r uuid.UUID, exists bool) {
+	v := m.evidence_entry_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEvidenceEntryID returns the old "evidence_entry_id" field's value of the CommercialRelease entity.
+// If the CommercialRelease object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CommercialReleaseMutation) OldEvidenceEntryID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEvidenceEntryID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEvidenceEntryID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEvidenceEntryID: %w", err)
+	}
+	return oldValue.EvidenceEntryID, nil
+}
+
+// ResetEvidenceEntryID resets all changes to the "evidence_entry_id" field.
+func (m *CommercialReleaseMutation) ResetEvidenceEntryID() {
+	m.evidence_entry_id = nil
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *CommercialReleaseMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *CommercialReleaseMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the CommercialRelease entity.
+// If the CommercialRelease object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CommercialReleaseMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *CommercialReleaseMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// Where appends a list predicates to the CommercialReleaseMutation builder.
+func (m *CommercialReleaseMutation) Where(ps ...predicate.CommercialRelease) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the CommercialReleaseMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *CommercialReleaseMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.CommercialRelease, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *CommercialReleaseMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *CommercialReleaseMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (CommercialRelease).
+func (m *CommercialReleaseMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *CommercialReleaseMutation) Fields() []string {
+	fields := make([]string, 0, 10)
+	if m.content_kind != nil {
+		fields = append(fields, commercialrelease.FieldContentKind)
+	}
+	if m.content_id != nil {
+		fields = append(fields, commercialrelease.FieldContentID)
+	}
+	if m.revision != nil {
+		fields = append(fields, commercialrelease.FieldRevision)
+	}
+	if m.manifest_sha256 != nil {
+		fields = append(fields, commercialrelease.FieldManifestSha256)
+	}
+	if m.content_sha256 != nil {
+		fields = append(fields, commercialrelease.FieldContentSha256)
+	}
+	if m.core_version_ref != nil {
+		fields = append(fields, commercialrelease.FieldCoreVersionRef)
+	}
+	if m.ownership != nil {
+		fields = append(fields, commercialrelease.FieldOwnership)
+	}
+	if m.dependencies != nil {
+		fields = append(fields, commercialrelease.FieldDependencies)
+	}
+	if m.evidence_entry_id != nil {
+		fields = append(fields, commercialrelease.FieldEvidenceEntryID)
+	}
+	if m.created_at != nil {
+		fields = append(fields, commercialrelease.FieldCreatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *CommercialReleaseMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case commercialrelease.FieldContentKind:
+		return m.ContentKind()
+	case commercialrelease.FieldContentID:
+		return m.ContentID()
+	case commercialrelease.FieldRevision:
+		return m.Revision()
+	case commercialrelease.FieldManifestSha256:
+		return m.ManifestSha256()
+	case commercialrelease.FieldContentSha256:
+		return m.ContentSha256()
+	case commercialrelease.FieldCoreVersionRef:
+		return m.CoreVersionRef()
+	case commercialrelease.FieldOwnership:
+		return m.Ownership()
+	case commercialrelease.FieldDependencies:
+		return m.Dependencies()
+	case commercialrelease.FieldEvidenceEntryID:
+		return m.EvidenceEntryID()
+	case commercialrelease.FieldCreatedAt:
+		return m.CreatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *CommercialReleaseMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case commercialrelease.FieldContentKind:
+		return m.OldContentKind(ctx)
+	case commercialrelease.FieldContentID:
+		return m.OldContentID(ctx)
+	case commercialrelease.FieldRevision:
+		return m.OldRevision(ctx)
+	case commercialrelease.FieldManifestSha256:
+		return m.OldManifestSha256(ctx)
+	case commercialrelease.FieldContentSha256:
+		return m.OldContentSha256(ctx)
+	case commercialrelease.FieldCoreVersionRef:
+		return m.OldCoreVersionRef(ctx)
+	case commercialrelease.FieldOwnership:
+		return m.OldOwnership(ctx)
+	case commercialrelease.FieldDependencies:
+		return m.OldDependencies(ctx)
+	case commercialrelease.FieldEvidenceEntryID:
+		return m.OldEvidenceEntryID(ctx)
+	case commercialrelease.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown CommercialRelease field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *CommercialReleaseMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case commercialrelease.FieldContentKind:
+		v, ok := value.(commercialrelease.ContentKind)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetContentKind(v)
+		return nil
+	case commercialrelease.FieldContentID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetContentID(v)
+		return nil
+	case commercialrelease.FieldRevision:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRevision(v)
+		return nil
+	case commercialrelease.FieldManifestSha256:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetManifestSha256(v)
+		return nil
+	case commercialrelease.FieldContentSha256:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetContentSha256(v)
+		return nil
+	case commercialrelease.FieldCoreVersionRef:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCoreVersionRef(v)
+		return nil
+	case commercialrelease.FieldOwnership:
+		v, ok := value.(jsontext.Value)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetOwnership(v)
+		return nil
+	case commercialrelease.FieldDependencies:
+		v, ok := value.(jsontext.Value)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDependencies(v)
+		return nil
+	case commercialrelease.FieldEvidenceEntryID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEvidenceEntryID(v)
+		return nil
+	case commercialrelease.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown CommercialRelease field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *CommercialReleaseMutation) AddedFields() []string {
+	var fields []string
+	if m.addrevision != nil {
+		fields = append(fields, commercialrelease.FieldRevision)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *CommercialReleaseMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case commercialrelease.FieldRevision:
+		return m.AddedRevision()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *CommercialReleaseMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case commercialrelease.FieldRevision:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddRevision(v)
+		return nil
+	}
+	return fmt.Errorf("unknown CommercialRelease numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *CommercialReleaseMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(commercialrelease.FieldCoreVersionRef) {
+		fields = append(fields, commercialrelease.FieldCoreVersionRef)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *CommercialReleaseMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *CommercialReleaseMutation) ClearField(name string) error {
+	switch name {
+	case commercialrelease.FieldCoreVersionRef:
+		m.ClearCoreVersionRef()
+		return nil
+	}
+	return fmt.Errorf("unknown CommercialRelease nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *CommercialReleaseMutation) ResetField(name string) error {
+	switch name {
+	case commercialrelease.FieldContentKind:
+		m.ResetContentKind()
+		return nil
+	case commercialrelease.FieldContentID:
+		m.ResetContentID()
+		return nil
+	case commercialrelease.FieldRevision:
+		m.ResetRevision()
+		return nil
+	case commercialrelease.FieldManifestSha256:
+		m.ResetManifestSha256()
+		return nil
+	case commercialrelease.FieldContentSha256:
+		m.ResetContentSha256()
+		return nil
+	case commercialrelease.FieldCoreVersionRef:
+		m.ResetCoreVersionRef()
+		return nil
+	case commercialrelease.FieldOwnership:
+		m.ResetOwnership()
+		return nil
+	case commercialrelease.FieldDependencies:
+		m.ResetDependencies()
+		return nil
+	case commercialrelease.FieldEvidenceEntryID:
+		m.ResetEvidenceEntryID()
+		return nil
+	case commercialrelease.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown CommercialRelease field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *CommercialReleaseMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *CommercialReleaseMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *CommercialReleaseMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *CommercialReleaseMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *CommercialReleaseMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *CommercialReleaseMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *CommercialReleaseMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown CommercialRelease unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *CommercialReleaseMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown CommercialRelease edge %s", name)
 }
 
 // ContentNodeMutation represents an operation that mutates the ContentNode nodes in the graph.

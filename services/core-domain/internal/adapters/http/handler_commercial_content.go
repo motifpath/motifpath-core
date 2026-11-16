@@ -98,9 +98,17 @@ func commercialContentResponse(content application.CommercialContent) (generated
 		}
 		blockers = append(blockers, item)
 	}
+	var release *generated.Release
+	if content.Release != nil {
+		latest, err := releaseResponse(*content.Release)
+		if err != nil {
+			return generated.CommercialContent{}, err
+		}
+		release = &latest
+	}
 	return generated.CommercialContent{
 		Ownership: ownership, Revision: content.Revision, SaleState: generated.CommercialContentSaleState(content.SaleState),
-		Release: nil, SaleBlockers: blockers,
+		Release: release, SaleBlockers: blockers,
 	}, nil
 }
 
