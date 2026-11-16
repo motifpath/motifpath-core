@@ -98,22 +98,29 @@ func (s *CommercialContentService) Get(ctx context.Context, caller domain.User, 
 	if err != nil {
 		return CommercialContent{}, err
 	}
-	release, err := s.latestStoredRelease(ctx, state)
+	release, err := latestRelease(ctx, s.store, state)
 	if err != nil {
 		return CommercialContent{}, err
 	}
 	return CommercialContent{Ownership: ownership, Revision: state.Revision, SaleState: SaleStateFree, Release: release, SaleBlockers: blockers}, nil
 }
 
-func (s *CommercialContentService) latestStoredRelease(ctx context.Context, state domain.CommercialState) (*domain.CommercialRelease, error) {
+// latestRelease is the item's latest release, or nil when it has none. A
+// recorded release that cannot be read makes the item's state unavailable.
+func latestRelease(ctx context.Context, releases releaseReader, state domain.CommercialState) (*domain.CommercialRelease, error) {
 	if state.LatestReleaseID == nil {
 		return nil, nil
 	}
-	release, err := s.store.Release(ctx, *state.LatestReleaseID)
+	release, err := releases.Release(ctx, *state.LatestReleaseID)
 	if err != nil {
 		return nil, fmt.Errorf("%w: latest release %s: %w", domain.ErrUnavailable, *state.LatestReleaseID, err)
 	}
 	return &release, nil
+}
+
+// releaseReader reads a stored release, in or outside a transaction.
+type releaseReader interface {
+	Release(ctx context.Context, releaseID string) (domain.CommercialRelease, error)
 }
 
 func canReadCommercialContent(caller domain.User, ownership domain.ContentOwnership) bool {

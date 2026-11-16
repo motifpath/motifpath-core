@@ -229,6 +229,10 @@ func TestCommercialContentService_PublishRelease(t *testing.T) {
 		"another teacher": {
 			caller: contentDan, expect: 1, wantErr: domain.ErrForbidden,
 		},
+		"another teacher, before anything about the item's dependencies is revealed": {
+			arrange: func(_ *testing.T, f commercialContentFixture) { f.store.deleted[releaseLesson] = true },
+			caller:  contentDan, expect: 1, wantErr: domain.ErrForbidden,
+		},
 		"a student": {
 			caller: contentStudent, expect: 1, wantErr: domain.ErrForbidden,
 		},
@@ -253,12 +257,16 @@ func TestCommercialContentService_PublishRelease(t *testing.T) {
 			caller: contentBea, expect: 1, wantErr: domain.ErrConflict, message: "Shells",
 		},
 		"a dependency with unresolved ownership": {
-			arrange: func(t *testing.T, f commercialContentFixture) { f.ownUnresolved(t, domain.ContentExercise, releaseExercise.ID) },
-			caller:  contentAdmin, expect: 1, wantErr: domain.ErrConflict, message: "unresolved",
+			arrange: func(t *testing.T, f commercialContentFixture) {
+				f.ownUnresolved(t, domain.ContentExercise, releaseExercise.ID)
+			},
+			caller: contentAdmin, expect: 1, wantErr: domain.ErrConflict, message: "unresolved",
 		},
 		"a dependency with another rights holder": {
-			arrange: func(t *testing.T, f commercialContentFixture) { f.own(t, domain.ContentExercise, releaseExercise.ID, contentAdmin) },
-			caller:  contentBea, expect: 1, wantErr: domain.ErrConflict, message: "Shell voicings in C",
+			arrange: func(t *testing.T, f commercialContentFixture) {
+				f.own(t, domain.ContentExercise, releaseExercise.ID, contentAdmin)
+			},
+			caller: contentBea, expect: 1, wantErr: domain.ErrConflict, message: "Shell voicings in C",
 		},
 		"a stated revision the item is not at": {
 			caller: contentBea, expect: 2, wantErr: domain.ErrConflict,

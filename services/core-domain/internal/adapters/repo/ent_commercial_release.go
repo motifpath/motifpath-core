@@ -13,6 +13,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialrelease"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeversion"
+	entcourse "github.com/motifpath/core-domain/internal/adapters/repo/ent/course"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseversion"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseversioncheckpoint"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
@@ -281,7 +282,7 @@ func (r entCommercialReleasesTx) Snapshot(ctx context.Context, content domain.Co
 }
 
 // courseSnapshot is a course at its latest published version; a course with
-// none is not published.
+// none, or a retired one learners can no longer enroll in, is not published.
 func (r entCommercialReleasesTx) courseSnapshot(ctx context.Context, id uuid.UUID) (domain.ReleaseSnapshot, error) {
 	course, err := r.tx.Course.Get(ctx, id)
 	if err != nil {
@@ -312,7 +313,7 @@ func (r entCommercialReleasesTx) courseSnapshot(ctx context.Context, id uuid.UUI
 		children = append(children, domain.ContentRef{Kind: domain.ContentPath, ID: checkpoint.LearningPathID.String()})
 	}
 	versionRef := version.ID.String()
-	return domain.ReleaseSnapshot{Title: course.Title, Published: true, VersionRef: &versionRef, State: state, Children: children}, nil
+	return domain.ReleaseSnapshot{Title: course.Title, Published: course.Status == entcourse.StatusPublished, VersionRef: &versionRef, State: state, Children: children}, nil
 }
 
 // pathSnapshot is a path's live description and ordered lessons.
@@ -403,7 +404,7 @@ func (r entCommercialReleasesTx) exerciseSnapshot(ctx context.Context, id uuid.U
 	state := domain.ExerciseReleaseState{
 		Title: row.Title, Prompt: row.Prompt, ExerciseType: string(row.ExerciseType),
 		ImageURL: row.ImageURL, AudioURL: row.AudioURL, EstimatedDurationSeconds: row.EstimatedDurationSeconds,
-		DiagramRef: row.DiagramRef, DiagramStackRef: row.DiagramStackRef,
+		DiagramRef: row.DiagramRef, DiagramStackRef: row.DiagramStackRef, RemediationTargets: row.RemediationTargets,
 		Languages: sortedStrings(languages), Options: make([]domain.ExerciseReleaseOption, 0, len(options)),
 	}
 	for _, option := range options {

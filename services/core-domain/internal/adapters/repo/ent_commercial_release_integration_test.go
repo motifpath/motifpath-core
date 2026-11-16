@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	entcourse "github.com/motifpath/core-domain/internal/adapters/repo/ent/course"
 	"github.com/motifpath/core-domain/internal/domain"
 	"github.com/motifpath/core-domain/internal/ports"
 )
@@ -51,7 +52,7 @@ func seedReleaseFixture(t *testing.T, ctx context.Context) releaseFixture {
 
 	course := domain.Course{
 		ID: uuid.NewString(), CreatedBy: uuid.NewString(), Title: "Guitar from zero", Summary: "Start here.",
-		Level: domain.DifficultyLevelBeginner, Status: domain.CourseStatusDraft, CreatedAt: fixedAt,
+		Level: domain.DifficultyLevelBeginner, Status: domain.CourseStatusPublished, CreatedAt: fixedAt,
 		Checkpoints: []domain.CourseCheckpoint{{Position: 1, LearningPathID: path.ID, EffectiveTitle: path.Title}},
 	}
 	require.NoError(t, NewEntCourseRepository(client).Create(ctx, course, testOwnership(t, domain.ContentCourse, course.ID)))
@@ -152,6 +153,38 @@ func TestEntCommercialStore_ReleaseSnapshots(t *testing.T) {
 		assert.False(t, path.Published)
 		assert.False(t, lesson.Published)
 		assert.Nil(t, lesson.VersionRef)
+	})
+
+	t.Run("an exercise's remediation is part of what learners see", func(t *testing.T) {
+		before, err := snapshotOf(t, ctx, f.store, exerciseRef)
+		require.NoError(t, err)
+		beforeSHA, err := before.ContentSHA256()
+		require.NoError(t, err)
+		remediation := `[{"Caption":"Revisit the shell shapes"}]`
+		require.NoError(t, f.store.client.Exercise.UpdateOneID(uuid.MustParse(f.exercise.ID)).SetRemediationTargets(remediation).Exec(ctx))
+		t.Cleanup(func() {
+			require.NoError(t, f.store.client.Exercise.UpdateOneID(uuid.MustParse(f.exercise.ID)).ClearRemediationTargets().Exec(ctx))
+		})
+
+		after, err := snapshotOf(t, ctx, f.store, exerciseRef)
+		require.NoError(t, err)
+		afterSHA, err := after.ContentSHA256()
+		require.NoError(t, err)
+
+		assert.NotEqual(t, beforeSHA, afterSHA)
+	})
+
+	t.Run("a retired course is not published", func(t *testing.T) {
+		courseID := uuid.MustParse(f.course.ID)
+		require.NoError(t, f.store.client.Course.UpdateOneID(courseID).SetStatus(entcourse.StatusRetired).Exec(ctx))
+		t.Cleanup(func() {
+			require.NoError(t, f.store.client.Course.UpdateOneID(courseID).SetStatus(entcourse.StatusPublished).Exec(ctx))
+		})
+
+		snapshot, err := snapshotOf(t, ctx, f.store, courseRef)
+
+		require.NoError(t, err)
+		assert.False(t, snapshot.Published)
 	})
 
 	t.Run("a deleted path is not found", func(t *testing.T) {

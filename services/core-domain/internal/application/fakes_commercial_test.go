@@ -93,7 +93,7 @@ type fakeCommercialStore struct {
 func newFakeCommercialStore() *fakeCommercialStore {
 	return &fakeCommercialStore{roles: map[string]domain.Role{}, deleted: map[domain.ContentRef]bool{}, snapshots: map[domain.ContentRef]domain.ReleaseSnapshot{}, state: fakeCommercialState{
 		states: map[domain.ContentRef]domain.CommercialState{},
-		flags: map[domain.FlagName]domain.FlagSetting{}, flagMeta: map[domain.FlagName]fakeFlagMeta{},
+		flags:  map[domain.FlagName]domain.FlagSetting{}, flagMeta: map[domain.FlagName]fakeFlagMeta{},
 		groups: map[string]domain.CommercialGroup{}, users: map[string]bool{}, ownership: map[domain.ContentRef][]domain.ContentOwnership{},
 	}}
 }
@@ -342,6 +342,10 @@ func currentOwnership(s *fakeCommercialStore, state fakeCommercialState, content
 type fakeOwnershipTx fakeCommercialTx
 
 func (o fakeOwnershipTx) LockCurrent(_ context.Context, content domain.ContentRef) (domain.ContentOwnership, error) {
+	return currentOwnership(o.store, *o.state, content)
+}
+
+func (o fakeOwnershipTx) Current(_ context.Context, content domain.ContentRef) (domain.ContentOwnership, error) {
 	return currentOwnership(o.store, *o.state, content)
 }
 

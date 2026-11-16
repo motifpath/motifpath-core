@@ -70,6 +70,10 @@ type ContentOwnershipTx interface {
 	// with no ownership record, or one that was deleted, is
 	// domain.ErrNotFound.
 	LockCurrent(ctx context.Context, content domain.ContentRef) (domain.ContentOwnership, error)
+	// Current returns an item's current revision without holding it, for a
+	// check that must not wait on, or block, a concurrent writer. Absent
+	// revisions are domain.ErrNotFound, as for LockCurrent.
+	Current(ctx context.Context, content domain.ContentRef) (domain.ContentOwnership, error)
 	// Append records the item's next revision.
 	Append(ctx context.Context, ownership domain.ContentOwnership) error
 	// UserRole is a core user's current role, or domain.ErrNotFound when

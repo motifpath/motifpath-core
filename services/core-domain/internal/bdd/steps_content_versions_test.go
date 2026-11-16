@@ -158,11 +158,25 @@ func (w *world) setContentVersionsRollout(on bool) {
 
 // ── Content as the scenarios describe it ─────────────────────────────────────
 
+// pathItemBody is the anonymous item type generated for both the create and
+// the replace path requests, so one alias builds either request's items.
+type pathItemBody = struct {
+	ContentNodeId uuid.UUID `json:"content_node_id"`
+	SectionLabel  *string   `json:"section_label,omitempty"`
+}
+
+func newLearningPathBody(title string, summary, language *string, items []pathItemBody) generated.CreateLearningPathRequest {
+	return generated.CreateLearningPathRequest{
+		Title: title, Summary: summary, Language: language, Level: generated.CreateLearningPathRequestLevelBeginner,
+		InstrumentIds: generated.InstrumentIds{}, Items: items,
+	}
+}
+
 // createPublishedPath creates and publishes one lesson per title, embedding
 // any exercise named for it, then a path of those lessons that an
 // administrator publishes.
 func (w *world) createPublishedPath(name, title string, lessons []string, exercises map[string]string) error {
-	items := make([]map[string]any, 0, len(lessons))
+	items := make([]pathItemBody, 0, len(lessons))
 	for _, lessonTitle := range lessons {
 		lesson, err := w.createLesson(name, lessonTitle)
 		if err != nil {
@@ -177,12 +191,9 @@ func (w *world) createPublishedPath(name, title string, lessons []string, exerci
 		if err := w.publish(name, "/content-nodes/"+lesson.String()+"/publish"); err != nil {
 			return err
 		}
-		items = append(items, map[string]any{"content_node_id": lesson})
+		items = append(items, pathItemBody{ContentNodeId: lesson})
 	}
-	body := map[string]any{
-		"title": title, "summary": "A complete path", "language": "en", "level": "beginner", "instrument_ids": []string{}, "items": items,
-	}
-	id, err := w.create(name, "/learning-paths", body)
+	id, err := w.create(name, "/learning-paths", newLearningPathBody(title, ptr("A complete path"), ptr("en"), items))
 	if err != nil {
 		return err
 	}
@@ -212,9 +223,9 @@ func (w *world) createCourseWithVersion(name, title string, version int, pathTit
 		return err
 	}
 	path := w.ownership.content[pathTitle]
-	id, err := w.create(name, "/courses", map[string]any{
-		"title": title, "summary": "Start here.", "level": "beginner", "language": "en", "instrument_ids": []string{},
-		"checkpoints": []map[string]any{{"learning_path_id": path.ID}},
+	id, err := w.create(name, "/courses", generated.CreateCourseRequest{
+		Title: title, Summary: "Start here.", Level: generated.CreateCourseRequestLevelBeginner, Language: "en",
+		InstrumentIds: generated.InstrumentIds{}, Checkpoints: []courseCheckpointBody{{LearningPathId: uuid.MustParse(path.ID)}},
 	})
 	if err != nil {
 		return err
@@ -244,14 +255,11 @@ func (w *world) renamePath(name, title, renamed string) error {
 	if err != nil {
 		return err
 	}
-	items := make([]map[string]any, 0, len(path.Items))
+	items := make([]pathItemBody, 0, len(path.Items))
 	for _, item := range path.Items {
-		items = append(items, map[string]any{"content_node_id": item.ContentNodeID})
+		items = append(items, pathItemBody{ContentNodeId: uuid.MustParse(item.ContentNodeID)})
 	}
-	body := map[string]any{
-		"title": renamed, "summary": path.Summary, "language": path.Language, "level": "beginner", "instrument_ids": []string{}, "items": items,
-	}
-	status, raw, err := w.send(name, http.MethodPut, "/learning-paths/"+ref.ID, body)
+	status, raw, err := w.send(name, http.MethodPut, "/learning-paths/"+ref.ID, newLearningPathBody(renamed, path.Summary, path.Language, items))
 	if err != nil {
 		return err
 	}
@@ -276,7 +284,7 @@ func (w *world) unpublishAndDelete(name, title string) error {
 // ── Publishing and reading releases ──────────────────────────────────────────
 
 func (w *world) publishRelease(name string, ref domain.ContentRef, revision int, key string) error {
-	body, err := json.Marshal(map[string]any{"expected_revision": revision, "reason": "Offer for sale"})
+	body, err := json.Marshal(generated.PublishRelease{ExpectedRevision: revision, Reason: "Offer for sale"})
 	if err != nil {
 		return err
 	}

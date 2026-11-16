@@ -74,6 +74,7 @@ type ExerciseReleaseState struct {
 	EstimatedDurationSeconds *int                    `json:"estimated_duration_seconds"`
 	DiagramRef               *string                 `json:"diagram_ref"`
 	DiagramStackRef          *string                 `json:"diagram_stack_ref"`
+	RemediationTargets       *string                 `json:"remediation_targets"`
 	Languages                []string                `json:"languages"`
 	Options                  []ExerciseReleaseOption `json:"options"`
 }

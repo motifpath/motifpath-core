@@ -324,6 +324,10 @@ func (o fakeOwnershipTx) LockCurrent(_ context.Context, content domain.ContentRe
 	return currentOwnership(o.store, *o.state, content)
 }
 
+func (o fakeOwnershipTx) Current(_ context.Context, content domain.ContentRef) (domain.ContentOwnership, error) {
+	return currentOwnership(o.store, *o.state, content)
+}
+
 func (o fakeOwnershipTx) UserRole(_ context.Context, userID string) (domain.Role, error) {
 	user, err := o.store.findUser(userID)
 	if err != nil {

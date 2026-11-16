@@ -19,6 +19,10 @@ const ActionPublishCommercialRelease = "publish_commercial_release"
 // releasePolicyRevision is the release policy publications are decided under.
 const releasePolicyRevision = "commercial-releases-r1"
 
+// releaseConfigurationRevision is recorded on release evidence: a release
+// is decided by its policy alone, with no configuration of its own.
+const releaseConfigurationRevision = "not_applicable"
+
 const releasePublicationIntentVersion = 1
 
 // PublishReleaseRequest asks for an item's release, against the commercial
@@ -134,15 +138,21 @@ func (s *CommercialContentService) releaseEffect(caller domain.User, content dom
 			return CommercialEffectResult{}, err
 		}
 		return CommercialEffectResult{
-			Result: result, AuthorizedRevision: revision, ConfigurationRevision: ownershipConfigurationRevision,
+			Result: result, AuthorizedRevision: revision, ConfigurationRevision: releaseConfigurationRevision,
 			Before: before, After: releaseView(release),
 		}, nil
 	}
 }
 
-// prepareRelease reads and locks the item's dependency graph, then refuses
-// a caller who may not publish it and anything that cannot be released.
+// prepareRelease refuses a caller who may not publish the item before reading
+// anything else, so a refusal never names another owner's content and no
+// lock is taken on it. It then reads and locks the dependency graph, checks
+// the caller again against the locked ownership, and refuses anything that
+// cannot be released.
 func prepareRelease(ctx context.Context, tx ports.CommercialTx, caller domain.User, content domain.ContentRef) ([]domain.ContentRef, map[domain.ContentRef]*releaseItem, error) {
+	if err := authorizeRelease(ctx, tx, caller, content); err != nil {
+		return nil, nil, err
+	}
 	order, items, err := readReleaseGraph(ctx, tx, content)
 	if err != nil {
 		return nil, nil, err
@@ -160,6 +170,23 @@ func prepareRelease(ctx context.Context, tx ports.CommercialTx, caller domain.Us
 		}
 	}
 	return order, items, nil
+}
+
+// authorizeRelease checks the caller against the item's current ownership
+// without locking it. An administrator may publish anything; anyone else must
+// own the item.
+func authorizeRelease(ctx context.Context, tx ports.CommercialTx, caller domain.User, content domain.ContentRef) error {
+	if caller.Role == domain.RoleAdmin {
+		return nil
+	}
+	ownership, err := tx.Ownership().Current(ctx, content)
+	if err != nil {
+		return err
+	}
+	if !canPublishRelease(caller, ownership) {
+		return fmt.Errorf("%w: only the item's owner or an administrator publishes its release", domain.ErrForbidden)
+	}
+	return nil
 }
 
 func canPublishRelease(caller domain.User, ownership domain.ContentOwnership) bool {
@@ -269,7 +296,7 @@ func (s *CommercialContentService) releaseOne(ctx context.Context, tx ports.Comm
 	if err != nil {
 		return domain.CommercialRelease{}, err
 	}
-	latest, err := latestRelease(ctx, tx, item.state)
+	latest, err := latestRelease(ctx, tx.Releases(), item.state)
 	if err != nil {
 		return domain.CommercialRelease{}, err
 	}
@@ -294,17 +321,6 @@ func (s *CommercialContentService) releaseOne(ctx context.Context, tx ports.Comm
 		return domain.CommercialRelease{}, err
 	}
 	return release, nil
-}
-
-func latestRelease(ctx context.Context, tx ports.CommercialTx, state domain.CommercialState) (*domain.CommercialRelease, error) {
-	if state.LatestReleaseID == nil {
-		return nil, nil
-	}
-	latest, err := tx.Releases().Release(ctx, *state.LatestReleaseID)
-	if err != nil {
-		return nil, fmt.Errorf("%w: latest release %s: %w", domain.ErrUnavailable, *state.LatestReleaseID, err)
-	}
-	return &latest, nil
 }
 
 // transitiveDependencies lists every item ref depends on, nearest first, each
