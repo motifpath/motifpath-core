@@ -26,11 +26,13 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/chordvoicing"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialactivation"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialauditentry"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialcontentstate"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialflag"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialgroup"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialgroupmember"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialoperation"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialoperationattempt"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialrelease"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
@@ -111,6 +113,8 @@ type Client struct {
 	CommercialActivation *CommercialActivationClient
 	// CommercialAuditEntry is the client for interacting with the CommercialAuditEntry builders.
 	CommercialAuditEntry *CommercialAuditEntryClient
+	// CommercialContentState is the client for interacting with the CommercialContentState builders.
+	CommercialContentState *CommercialContentStateClient
 	// CommercialFlag is the client for interacting with the CommercialFlag builders.
 	CommercialFlag *CommercialFlagClient
 	// CommercialGroup is the client for interacting with the CommercialGroup builders.
@@ -121,6 +125,8 @@ type Client struct {
 	CommercialOperation *CommercialOperationClient
 	// CommercialOperationAttempt is the client for interacting with the CommercialOperationAttempt builders.
 	CommercialOperationAttempt *CommercialOperationAttemptClient
+	// CommercialRelease is the client for interacting with the CommercialRelease builders.
+	CommercialRelease *CommercialReleaseClient
 	// ContentNode is the client for interacting with the ContentNode builders.
 	ContentNode *ContentNodeClient
 	// ContentNodeConcept is the client for interacting with the ContentNodeConcept builders.
@@ -244,11 +250,13 @@ func (c *Client) init() {
 	c.ChordVoicing = NewChordVoicingClient(c.config)
 	c.CommercialActivation = NewCommercialActivationClient(c.config)
 	c.CommercialAuditEntry = NewCommercialAuditEntryClient(c.config)
+	c.CommercialContentState = NewCommercialContentStateClient(c.config)
 	c.CommercialFlag = NewCommercialFlagClient(c.config)
 	c.CommercialGroup = NewCommercialGroupClient(c.config)
 	c.CommercialGroupMember = NewCommercialGroupMemberClient(c.config)
 	c.CommercialOperation = NewCommercialOperationClient(c.config)
 	c.CommercialOperationAttempt = NewCommercialOperationAttemptClient(c.config)
+	c.CommercialRelease = NewCommercialReleaseClient(c.config)
 	c.ContentNode = NewContentNodeClient(c.config)
 	c.ContentNodeConcept = NewContentNodeConceptClient(c.config)
 	c.ContentNodeExercise = NewContentNodeExerciseClient(c.config)
@@ -402,11 +410,13 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		ChordVoicing:               NewChordVoicingClient(cfg),
 		CommercialActivation:       NewCommercialActivationClient(cfg),
 		CommercialAuditEntry:       NewCommercialAuditEntryClient(cfg),
+		CommercialContentState:     NewCommercialContentStateClient(cfg),
 		CommercialFlag:             NewCommercialFlagClient(cfg),
 		CommercialGroup:            NewCommercialGroupClient(cfg),
 		CommercialGroupMember:      NewCommercialGroupMemberClient(cfg),
 		CommercialOperation:        NewCommercialOperationClient(cfg),
 		CommercialOperationAttempt: NewCommercialOperationAttemptClient(cfg),
+		CommercialRelease:          NewCommercialReleaseClient(cfg),
 		ContentNode:                NewContentNodeClient(cfg),
 		ContentNodeConcept:         NewContentNodeConceptClient(cfg),
 		ContentNodeExercise:        NewContentNodeExerciseClient(cfg),
@@ -487,11 +497,13 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		ChordVoicing:               NewChordVoicingClient(cfg),
 		CommercialActivation:       NewCommercialActivationClient(cfg),
 		CommercialAuditEntry:       NewCommercialAuditEntryClient(cfg),
+		CommercialContentState:     NewCommercialContentStateClient(cfg),
 		CommercialFlag:             NewCommercialFlagClient(cfg),
 		CommercialGroup:            NewCommercialGroupClient(cfg),
 		CommercialGroupMember:      NewCommercialGroupMemberClient(cfg),
 		CommercialOperation:        NewCommercialOperationClient(cfg),
 		CommercialOperationAttempt: NewCommercialOperationAttemptClient(cfg),
+		CommercialRelease:          NewCommercialReleaseClient(cfg),
 		ContentNode:                NewContentNodeClient(cfg),
 		ContentNodeConcept:         NewContentNodeConceptClient(cfg),
 		ContentNodeExercise:        NewContentNodeExerciseClient(cfg),
@@ -574,12 +586,13 @@ func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.AppConfig, c.Challenge, c.ChallengeExercise, c.ChangeTarget,
 		c.ChordChangePair, c.ChordDefinition, c.ChordDrill, c.ChordVoicing,
-		c.CommercialActivation, c.CommercialAuditEntry, c.CommercialFlag,
-		c.CommercialGroup, c.CommercialGroupMember, c.CommercialOperation,
-		c.CommercialOperationAttempt, c.ContentNode, c.ContentNodeConcept,
-		c.ContentNodeExercise, c.ContentNodeInstrument, c.ContentNodeLanguage,
-		c.ContentNodeSkill, c.ContentNodeVersion, c.ContentOwnership, c.Course,
-		c.CourseCheckpoint, c.CourseEnrollment, c.CourseInstrument, c.CourseVersion,
+		c.CommercialActivation, c.CommercialAuditEntry, c.CommercialContentState,
+		c.CommercialFlag, c.CommercialGroup, c.CommercialGroupMember,
+		c.CommercialOperation, c.CommercialOperationAttempt, c.CommercialRelease,
+		c.ContentNode, c.ContentNodeConcept, c.ContentNodeExercise,
+		c.ContentNodeInstrument, c.ContentNodeLanguage, c.ContentNodeSkill,
+		c.ContentNodeVersion, c.ContentOwnership, c.Course, c.CourseCheckpoint,
+		c.CourseEnrollment, c.CourseInstrument, c.CourseVersion,
 		c.CourseVersionCheckpoint, c.Diagram, c.DiagramConcept, c.DiagramInstrument,
 		c.DiagramRegion, c.DiagramShape, c.DiagramShapeFamily, c.DiagramSkill,
 		c.DrillTemplate, c.DrillThreshold, c.EmailSend, c.Exercise, c.ExerciseConcept,
@@ -601,12 +614,13 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.AppConfig, c.Challenge, c.ChallengeExercise, c.ChangeTarget,
 		c.ChordChangePair, c.ChordDefinition, c.ChordDrill, c.ChordVoicing,
-		c.CommercialActivation, c.CommercialAuditEntry, c.CommercialFlag,
-		c.CommercialGroup, c.CommercialGroupMember, c.CommercialOperation,
-		c.CommercialOperationAttempt, c.ContentNode, c.ContentNodeConcept,
-		c.ContentNodeExercise, c.ContentNodeInstrument, c.ContentNodeLanguage,
-		c.ContentNodeSkill, c.ContentNodeVersion, c.ContentOwnership, c.Course,
-		c.CourseCheckpoint, c.CourseEnrollment, c.CourseInstrument, c.CourseVersion,
+		c.CommercialActivation, c.CommercialAuditEntry, c.CommercialContentState,
+		c.CommercialFlag, c.CommercialGroup, c.CommercialGroupMember,
+		c.CommercialOperation, c.CommercialOperationAttempt, c.CommercialRelease,
+		c.ContentNode, c.ContentNodeConcept, c.ContentNodeExercise,
+		c.ContentNodeInstrument, c.ContentNodeLanguage, c.ContentNodeSkill,
+		c.ContentNodeVersion, c.ContentOwnership, c.Course, c.CourseCheckpoint,
+		c.CourseEnrollment, c.CourseInstrument, c.CourseVersion,
 		c.CourseVersionCheckpoint, c.Diagram, c.DiagramConcept, c.DiagramInstrument,
 		c.DiagramRegion, c.DiagramShape, c.DiagramShapeFamily, c.DiagramSkill,
 		c.DrillTemplate, c.DrillThreshold, c.EmailSend, c.Exercise, c.ExerciseConcept,
@@ -645,6 +659,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.CommercialActivation.mutate(ctx, m)
 	case *CommercialAuditEntryMutation:
 		return c.CommercialAuditEntry.mutate(ctx, m)
+	case *CommercialContentStateMutation:
+		return c.CommercialContentState.mutate(ctx, m)
 	case *CommercialFlagMutation:
 		return c.CommercialFlag.mutate(ctx, m)
 	case *CommercialGroupMutation:
@@ -655,6 +671,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.CommercialOperation.mutate(ctx, m)
 	case *CommercialOperationAttemptMutation:
 		return c.CommercialOperationAttempt.mutate(ctx, m)
+	case *CommercialReleaseMutation:
+		return c.CommercialRelease.mutate(ctx, m)
 	case *ContentNodeMutation:
 		return c.ContentNode.mutate(ctx, m)
 	case *ContentNodeConceptMutation:
@@ -2220,6 +2238,139 @@ func (c *CommercialAuditEntryClient) mutate(ctx context.Context, m *CommercialAu
 	}
 }
 
+// CommercialContentStateClient is a client for the CommercialContentState schema.
+type CommercialContentStateClient struct {
+	config
+}
+
+// NewCommercialContentStateClient returns a client for the CommercialContentState from the given config.
+func NewCommercialContentStateClient(c config) *CommercialContentStateClient {
+	return &CommercialContentStateClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `commercialcontentstate.Hooks(f(g(h())))`.
+func (c *CommercialContentStateClient) Use(hooks ...Hook) {
+	c.hooks.CommercialContentState = append(c.hooks.CommercialContentState, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `commercialcontentstate.Intercept(f(g(h())))`.
+func (c *CommercialContentStateClient) Intercept(interceptors ...Interceptor) {
+	c.inters.CommercialContentState = append(c.inters.CommercialContentState, interceptors...)
+}
+
+// Create returns a builder for creating a CommercialContentState entity.
+func (c *CommercialContentStateClient) Create() *CommercialContentStateCreate {
+	mutation := newCommercialContentStateMutation(c.config, OpCreate)
+	return &CommercialContentStateCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of CommercialContentState entities.
+func (c *CommercialContentStateClient) CreateBulk(builders ...*CommercialContentStateCreate) *CommercialContentStateCreateBulk {
+	return &CommercialContentStateCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *CommercialContentStateClient) MapCreateBulk(slice any, setFunc func(*CommercialContentStateCreate, int)) *CommercialContentStateCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &CommercialContentStateCreateBulk{err: fmt.Errorf("calling to CommercialContentStateClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*CommercialContentStateCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &CommercialContentStateCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for CommercialContentState.
+func (c *CommercialContentStateClient) Update() *CommercialContentStateUpdate {
+	mutation := newCommercialContentStateMutation(c.config, OpUpdate)
+	return &CommercialContentStateUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *CommercialContentStateClient) UpdateOne(_m *CommercialContentState) *CommercialContentStateUpdateOne {
+	mutation := newCommercialContentStateMutation(c.config, OpUpdateOne, withCommercialContentState(_m))
+	return &CommercialContentStateUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *CommercialContentStateClient) UpdateOneID(id uuid.UUID) *CommercialContentStateUpdateOne {
+	mutation := newCommercialContentStateMutation(c.config, OpUpdateOne, withCommercialContentStateID(id))
+	return &CommercialContentStateUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for CommercialContentState.
+func (c *CommercialContentStateClient) Delete() *CommercialContentStateDelete {
+	mutation := newCommercialContentStateMutation(c.config, OpDelete)
+	return &CommercialContentStateDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *CommercialContentStateClient) DeleteOne(_m *CommercialContentState) *CommercialContentStateDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *CommercialContentStateClient) DeleteOneID(id uuid.UUID) *CommercialContentStateDeleteOne {
+	builder := c.Delete().Where(commercialcontentstate.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &CommercialContentStateDeleteOne{builder}
+}
+
+// Query returns a query builder for CommercialContentState.
+func (c *CommercialContentStateClient) Query() *CommercialContentStateQuery {
+	return &CommercialContentStateQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeCommercialContentState},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a CommercialContentState entity by its id.
+func (c *CommercialContentStateClient) Get(ctx context.Context, id uuid.UUID) (*CommercialContentState, error) {
+	return c.Query().Where(commercialcontentstate.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *CommercialContentStateClient) GetX(ctx context.Context, id uuid.UUID) *CommercialContentState {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *CommercialContentStateClient) Hooks() []Hook {
+	return c.hooks.CommercialContentState
+}
+
+// Interceptors returns the client interceptors.
+func (c *CommercialContentStateClient) Interceptors() []Interceptor {
+	return c.inters.CommercialContentState
+}
+
+func (c *CommercialContentStateClient) mutate(ctx context.Context, m *CommercialContentStateMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&CommercialContentStateCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&CommercialContentStateUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&CommercialContentStateUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&CommercialContentStateDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown CommercialContentState mutation op: %q", m.Op())
+	}
+}
+
 // CommercialFlagClient is a client for the CommercialFlag schema.
 type CommercialFlagClient struct {
 	config
@@ -2930,6 +3081,139 @@ func (c *CommercialOperationAttemptClient) mutate(ctx context.Context, m *Commer
 		return (&CommercialOperationAttemptDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown CommercialOperationAttempt mutation op: %q", m.Op())
+	}
+}
+
+// CommercialReleaseClient is a client for the CommercialRelease schema.
+type CommercialReleaseClient struct {
+	config
+}
+
+// NewCommercialReleaseClient returns a client for the CommercialRelease from the given config.
+func NewCommercialReleaseClient(c config) *CommercialReleaseClient {
+	return &CommercialReleaseClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `commercialrelease.Hooks(f(g(h())))`.
+func (c *CommercialReleaseClient) Use(hooks ...Hook) {
+	c.hooks.CommercialRelease = append(c.hooks.CommercialRelease, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `commercialrelease.Intercept(f(g(h())))`.
+func (c *CommercialReleaseClient) Intercept(interceptors ...Interceptor) {
+	c.inters.CommercialRelease = append(c.inters.CommercialRelease, interceptors...)
+}
+
+// Create returns a builder for creating a CommercialRelease entity.
+func (c *CommercialReleaseClient) Create() *CommercialReleaseCreate {
+	mutation := newCommercialReleaseMutation(c.config, OpCreate)
+	return &CommercialReleaseCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of CommercialRelease entities.
+func (c *CommercialReleaseClient) CreateBulk(builders ...*CommercialReleaseCreate) *CommercialReleaseCreateBulk {
+	return &CommercialReleaseCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *CommercialReleaseClient) MapCreateBulk(slice any, setFunc func(*CommercialReleaseCreate, int)) *CommercialReleaseCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &CommercialReleaseCreateBulk{err: fmt.Errorf("calling to CommercialReleaseClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*CommercialReleaseCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &CommercialReleaseCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for CommercialRelease.
+func (c *CommercialReleaseClient) Update() *CommercialReleaseUpdate {
+	mutation := newCommercialReleaseMutation(c.config, OpUpdate)
+	return &CommercialReleaseUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *CommercialReleaseClient) UpdateOne(_m *CommercialRelease) *CommercialReleaseUpdateOne {
+	mutation := newCommercialReleaseMutation(c.config, OpUpdateOne, withCommercialRelease(_m))
+	return &CommercialReleaseUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *CommercialReleaseClient) UpdateOneID(id uuid.UUID) *CommercialReleaseUpdateOne {
+	mutation := newCommercialReleaseMutation(c.config, OpUpdateOne, withCommercialReleaseID(id))
+	return &CommercialReleaseUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for CommercialRelease.
+func (c *CommercialReleaseClient) Delete() *CommercialReleaseDelete {
+	mutation := newCommercialReleaseMutation(c.config, OpDelete)
+	return &CommercialReleaseDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *CommercialReleaseClient) DeleteOne(_m *CommercialRelease) *CommercialReleaseDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *CommercialReleaseClient) DeleteOneID(id uuid.UUID) *CommercialReleaseDeleteOne {
+	builder := c.Delete().Where(commercialrelease.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &CommercialReleaseDeleteOne{builder}
+}
+
+// Query returns a query builder for CommercialRelease.
+func (c *CommercialReleaseClient) Query() *CommercialReleaseQuery {
+	return &CommercialReleaseQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeCommercialRelease},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a CommercialRelease entity by its id.
+func (c *CommercialReleaseClient) Get(ctx context.Context, id uuid.UUID) (*CommercialRelease, error) {
+	return c.Query().Where(commercialrelease.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *CommercialReleaseClient) GetX(ctx context.Context, id uuid.UUID) *CommercialRelease {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *CommercialReleaseClient) Hooks() []Hook {
+	return c.hooks.CommercialRelease
+}
+
+// Interceptors returns the client interceptors.
+func (c *CommercialReleaseClient) Interceptors() []Interceptor {
+	return c.inters.CommercialRelease
+}
+
+func (c *CommercialReleaseClient) mutate(ctx context.Context, m *CommercialReleaseMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&CommercialReleaseCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&CommercialReleaseUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&CommercialReleaseUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&CommercialReleaseDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown CommercialRelease mutation op: %q", m.Op())
 	}
 }
 
@@ -11625,38 +11909,39 @@ type (
 	hooks struct {
 		AppConfig, Challenge, ChallengeExercise, ChangeTarget, ChordChangePair,
 		ChordDefinition, ChordDrill, ChordVoicing, CommercialActivation,
-		CommercialAuditEntry, CommercialFlag, CommercialGroup, CommercialGroupMember,
-		CommercialOperation, CommercialOperationAttempt, ContentNode,
-		ContentNodeConcept, ContentNodeExercise, ContentNodeInstrument,
-		ContentNodeLanguage, ContentNodeSkill, ContentNodeVersion, ContentOwnership,
-		Course, CourseCheckpoint, CourseEnrollment, CourseInstrument, CourseVersion,
-		CourseVersionCheckpoint, Diagram, DiagramConcept, DiagramInstrument,
-		DiagramRegion, DiagramShape, DiagramShapeFamily, DiagramSkill, DrillTemplate,
-		DrillThreshold, EmailSend, Exercise, ExerciseConcept, ExerciseInstrument,
-		ExerciseLanguage, ExerciseOption, ExerciseSkill, ExpandedContent,
-		FretboardCellRange, Instrument, KnowledgeEdge, KnowledgeNode,
-		KnowledgeNodeInstrument, Language, LearningPath, LearningPathInstrument,
-		LearningPathItem, Position, PracticeContentVersion, PracticeSubjectCatalog,
-		Progression, SongChart, SongChartRevision, StudentLearningState, StudentPath,
-		StudentPathItem, User, Voice []ent.Hook
+		CommercialAuditEntry, CommercialContentState, CommercialFlag, CommercialGroup,
+		CommercialGroupMember, CommercialOperation, CommercialOperationAttempt,
+		CommercialRelease, ContentNode, ContentNodeConcept, ContentNodeExercise,
+		ContentNodeInstrument, ContentNodeLanguage, ContentNodeSkill,
+		ContentNodeVersion, ContentOwnership, Course, CourseCheckpoint,
+		CourseEnrollment, CourseInstrument, CourseVersion, CourseVersionCheckpoint,
+		Diagram, DiagramConcept, DiagramInstrument, DiagramRegion, DiagramShape,
+		DiagramShapeFamily, DiagramSkill, DrillTemplate, DrillThreshold, EmailSend,
+		Exercise, ExerciseConcept, ExerciseInstrument, ExerciseLanguage,
+		ExerciseOption, ExerciseSkill, ExpandedContent, FretboardCellRange, Instrument,
+		KnowledgeEdge, KnowledgeNode, KnowledgeNodeInstrument, Language, LearningPath,
+		LearningPathInstrument, LearningPathItem, Position, PracticeContentVersion,
+		PracticeSubjectCatalog, Progression, SongChart, SongChartRevision,
+		StudentLearningState, StudentPath, StudentPathItem, User, Voice []ent.Hook
 	}
 	inters struct {
 		AppConfig, Challenge, ChallengeExercise, ChangeTarget, ChordChangePair,
 		ChordDefinition, ChordDrill, ChordVoicing, CommercialActivation,
-		CommercialAuditEntry, CommercialFlag, CommercialGroup, CommercialGroupMember,
-		CommercialOperation, CommercialOperationAttempt, ContentNode,
-		ContentNodeConcept, ContentNodeExercise, ContentNodeInstrument,
-		ContentNodeLanguage, ContentNodeSkill, ContentNodeVersion, ContentOwnership,
-		Course, CourseCheckpoint, CourseEnrollment, CourseInstrument, CourseVersion,
-		CourseVersionCheckpoint, Diagram, DiagramConcept, DiagramInstrument,
-		DiagramRegion, DiagramShape, DiagramShapeFamily, DiagramSkill, DrillTemplate,
-		DrillThreshold, EmailSend, Exercise, ExerciseConcept, ExerciseInstrument,
-		ExerciseLanguage, ExerciseOption, ExerciseSkill, ExpandedContent,
-		FretboardCellRange, Instrument, KnowledgeEdge, KnowledgeNode,
-		KnowledgeNodeInstrument, Language, LearningPath, LearningPathInstrument,
-		LearningPathItem, Position, PracticeContentVersion, PracticeSubjectCatalog,
-		Progression, SongChart, SongChartRevision, StudentLearningState, StudentPath,
-		StudentPathItem, User, Voice []ent.Interceptor
+		CommercialAuditEntry, CommercialContentState, CommercialFlag, CommercialGroup,
+		CommercialGroupMember, CommercialOperation, CommercialOperationAttempt,
+		CommercialRelease, ContentNode, ContentNodeConcept, ContentNodeExercise,
+		ContentNodeInstrument, ContentNodeLanguage, ContentNodeSkill,
+		ContentNodeVersion, ContentOwnership, Course, CourseCheckpoint,
+		CourseEnrollment, CourseInstrument, CourseVersion, CourseVersionCheckpoint,
+		Diagram, DiagramConcept, DiagramInstrument, DiagramRegion, DiagramShape,
+		DiagramShapeFamily, DiagramSkill, DrillTemplate, DrillThreshold, EmailSend,
+		Exercise, ExerciseConcept, ExerciseInstrument, ExerciseLanguage,
+		ExerciseOption, ExerciseSkill, ExpandedContent, FretboardCellRange, Instrument,
+		KnowledgeEdge, KnowledgeNode, KnowledgeNodeInstrument, Language, LearningPath,
+		LearningPathInstrument, LearningPathItem, Position, PracticeContentVersion,
+		PracticeSubjectCatalog, Progression, SongChart, SongChartRevision,
+		StudentLearningState, StudentPath, StudentPathItem, User,
+		Voice []ent.Interceptor
 	}
 )
 

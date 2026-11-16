@@ -24,6 +24,13 @@ type CommercialStore interface {
 	// command, or domain.ErrNotFound when it has none or the item was
 	// deleted; a deleted item's history is kept as evidence.
 	CurrentOwnership(ctx context.Context, content domain.ContentRef) (domain.ContentOwnership, error)
+	// CommercialState reads an item's commercial revision and latest release
+	// outside any command; an item never released is at revision 1 with no
+	// release.
+	CommercialState(ctx context.Context, content domain.ContentRef) (domain.CommercialState, error)
+	// Release reads one stored release, or domain.ErrNotFound. A release is
+	// kept after its item is deleted or its ownership corrected.
+	Release(ctx context.Context, releaseID string) (domain.CommercialRelease, error)
 }
 
 // CommercialTx is what a command may read and change inside its transaction.
@@ -33,6 +40,26 @@ type CommercialTx interface {
 	Operations() CommercialOperationsTx
 	Audit() CommercialAuditWriter
 	Ownership() ContentOwnershipTx
+	Releases() CommercialReleasesTx
+}
+
+// CommercialReleasesTx reads what a release covers and stores releases.
+// Releases are never changed: a new manifest is a new release.
+type CommercialReleasesTx interface {
+	// Snapshot reads an item's releasable state as of this transaction, or
+	// domain.ErrNotFound when the item does not exist or was deleted.
+	Snapshot(ctx context.Context, content domain.ContentRef) (domain.ReleaseSnapshot, error)
+	// LockStates locks each item's commercial state, in the order given,
+	// until the transaction ends, and returns them in that order. An item
+	// never released gets its first state.
+	LockStates(ctx context.Context, contents []domain.ContentRef) ([]domain.CommercialState, error)
+	// Release reads one stored release, or domain.ErrNotFound.
+	Release(ctx context.Context, releaseID string) (domain.CommercialRelease, error)
+	// Insert stores a new release. A release revision already stored for
+	// the item is domain.ErrConflict.
+	Insert(ctx context.Context, release domain.CommercialRelease) error
+	// SaveState stores an item's advanced commercial state.
+	SaveState(ctx context.Context, state domain.CommercialState) error
 }
 
 // ContentOwnershipTx reads and appends ownership revisions. Revisions are

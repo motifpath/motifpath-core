@@ -34,6 +34,8 @@ type Tx struct {
 	CommercialActivation *CommercialActivationClient
 	// CommercialAuditEntry is the client for interacting with the CommercialAuditEntry builders.
 	CommercialAuditEntry *CommercialAuditEntryClient
+	// CommercialContentState is the client for interacting with the CommercialContentState builders.
+	CommercialContentState *CommercialContentStateClient
 	// CommercialFlag is the client for interacting with the CommercialFlag builders.
 	CommercialFlag *CommercialFlagClient
 	// CommercialGroup is the client for interacting with the CommercialGroup builders.
@@ -44,6 +46,8 @@ type Tx struct {
 	CommercialOperation *CommercialOperationClient
 	// CommercialOperationAttempt is the client for interacting with the CommercialOperationAttempt builders.
 	CommercialOperationAttempt *CommercialOperationAttemptClient
+	// CommercialRelease is the client for interacting with the CommercialRelease builders.
+	CommercialRelease *CommercialReleaseClient
 	// ContentNode is the client for interacting with the ContentNode builders.
 	ContentNode *ContentNodeClient
 	// ContentNodeConcept is the client for interacting with the ContentNodeConcept builders.
@@ -287,11 +291,13 @@ func (tx *Tx) init() {
 	tx.ChordVoicing = NewChordVoicingClient(tx.config)
 	tx.CommercialActivation = NewCommercialActivationClient(tx.config)
 	tx.CommercialAuditEntry = NewCommercialAuditEntryClient(tx.config)
+	tx.CommercialContentState = NewCommercialContentStateClient(tx.config)
 	tx.CommercialFlag = NewCommercialFlagClient(tx.config)
 	tx.CommercialGroup = NewCommercialGroupClient(tx.config)
 	tx.CommercialGroupMember = NewCommercialGroupMemberClient(tx.config)
 	tx.CommercialOperation = NewCommercialOperationClient(tx.config)
 	tx.CommercialOperationAttempt = NewCommercialOperationAttemptClient(tx.config)
+	tx.CommercialRelease = NewCommercialReleaseClient(tx.config)
 	tx.ContentNode = NewContentNodeClient(tx.config)
 	tx.ContentNodeConcept = NewContentNodeConceptClient(tx.config)
 	tx.ContentNodeExercise = NewContentNodeExerciseClient(tx.config)

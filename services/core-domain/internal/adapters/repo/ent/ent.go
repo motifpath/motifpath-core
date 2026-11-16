@@ -22,11 +22,13 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/chordvoicing"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialactivation"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialauditentry"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialcontentstate"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialflag"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialgroup"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialgroupmember"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialoperation"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialoperationattempt"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/commercialrelease"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
@@ -148,11 +150,13 @@ func checkColumn(t, c string) error {
 			chordvoicing.Table:               chordvoicing.ValidColumn,
 			commercialactivation.Table:       commercialactivation.ValidColumn,
 			commercialauditentry.Table:       commercialauditentry.ValidColumn,
+			commercialcontentstate.Table:     commercialcontentstate.ValidColumn,
 			commercialflag.Table:             commercialflag.ValidColumn,
 			commercialgroup.Table:            commercialgroup.ValidColumn,
 			commercialgroupmember.Table:      commercialgroupmember.ValidColumn,
 			commercialoperation.Table:        commercialoperation.ValidColumn,
 			commercialoperationattempt.Table: commercialoperationattempt.ValidColumn,
+			commercialrelease.Table:          commercialrelease.ValidColumn,
 			contentnode.Table:                contentnode.ValidColumn,
 			contentnodeconcept.Table:         contentnodeconcept.ValidColumn,
 			contentnodeexercise.Table:        contentnodeexercise.ValidColumn,
