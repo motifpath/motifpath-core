@@ -47,7 +47,7 @@ func TestEntExerciseSoundUses(t *testing.T) {
 	thumbnail.Options = []domain.Option{{ID: uuid.NewString(), IsCorrect: true, DiagramRef: soundRefOf(diagramID, "pb-strum")}}
 
 	for _, e := range []domain.Exercise{recognition, selection, clipOnly, thumbnail} {
-		require.NoError(t, exercises.Create(ctx, e))
+		require.NoError(t, exercises.Create(ctx, e, testOwnership(t, domain.ContentExercise, e.ID)))
 	}
 
 	t.Run("lists the stimulus and option sounds that play the diagram", func(t *testing.T) {

@@ -320,7 +320,7 @@ func (w *world) putSoundExercise(e domain.Exercise) error {
 	e.Prompt = domain.NewPlainTextPrompt("Listen")
 	e.Languages = []domain.Language{{Code: "en"}}
 	e.CreatedAt = fixedNow
-	if err := w.exercises.Create(w.ctx(), e); err != nil {
+	if err := w.exercises.Create(w.ctx(), e, seedOwnership(domain.ContentExercise, e.ID)); err != nil {
 		return err
 	}
 	w.soundExerciseID = uuid.MustParse(e.ID)

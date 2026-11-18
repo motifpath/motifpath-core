@@ -15,6 +15,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 	"github.com/motifpath/core-domain/internal/domain"
+	"github.com/motifpath/core-domain/internal/ports"
 )
 
 // EntContentNodeRepository persists ContentNode records via ent/Postgres.
@@ -26,7 +27,7 @@ func NewEntContentNodeRepository(client *ent.Client) *EntContentNodeRepository {
 	return &EntContentNodeRepository{client: client}
 }
 
-func (r *EntContentNodeRepository) Create(ctx context.Context, node domain.ContentNode) error {
+func (r *EntContentNodeRepository) Create(ctx context.Context, node domain.ContentNode, ownership ports.OwnershipRecord) error {
 	id, err := uuid.Parse(node.ID)
 	if err != nil {
 		return err
@@ -55,7 +56,11 @@ func (r *EntContentNodeRepository) Create(ctx context.Context, node domain.Conte
 	if err != nil {
 		return err
 	}
-	_, err = r.client.ContentNode.Create().
+	tx, err := r.client.Tx(ctx)
+	if err != nil {
+		return err
+	}
+	_, err = tx.ContentNode.Create().
 		SetID(id).
 		SetTeacherID(teacherID).
 		SetTitle(node.Title).
@@ -74,7 +79,13 @@ func (r *EntContentNodeRepository) Create(ctx context.Context, node domain.Conte
 		AddInstrumentIDs(instrumentIDs...).
 		SetNillableThumbnailURL(node.ThumbnailURL).
 		Save(ctx)
-	return err
+	if err != nil {
+		return rollback(tx, err)
+	}
+	if err := recordOwnership(ctx, tx, ownership); err != nil {
+		return rollback(tx, err)
+	}
+	return tx.Commit()
 }
 
 func (r *EntContentNodeRepository) GetByID(ctx context.Context, id string) (domain.ContentNode, error) {

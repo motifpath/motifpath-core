@@ -35,6 +35,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodelanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeversion"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentownership"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/course"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/coursecheckpoint"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseenrollment"
@@ -113,6 +114,7 @@ const (
 	TypeContentNodeLanguage        = "ContentNodeLanguage"
 	TypeContentNodeSkill           = "ContentNodeSkill"
 	TypeContentNodeVersion         = "ContentNodeVersion"
+	TypeContentOwnership           = "ContentOwnership"
 	TypeCourse                     = "Course"
 	TypeCourseCheckpoint           = "CourseCheckpoint"
 	TypeCourseEnrollment           = "CourseEnrollment"
@@ -16685,6 +16687,937 @@ func (m *ContentNodeVersionMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *ContentNodeVersionMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown ContentNodeVersion edge %s", name)
+}
+
+// ContentOwnershipMutation represents an operation that mutates the ContentOwnership nodes in the graph.
+type ContentOwnershipMutation struct {
+	config
+	op                Op
+	typ               string
+	id                *uuid.UUID
+	content_kind      *contentownership.ContentKind
+	content_id        *uuid.UUID
+	revision          *int
+	addrevision       *int
+	owner_kind        *contentownership.OwnerKind
+	owner_id          *uuid.UUID
+	creator_id        *uuid.UUID
+	source            *contentownership.Source
+	evidence_entry_id *uuid.UUID
+	copied_from       *jsontext.Value
+	appendcopied_from jsontext.Value
+	recorded_at       *time.Time
+	clearedFields     map[string]struct{}
+	done              bool
+	oldValue          func(context.Context) (*ContentOwnership, error)
+	predicates        []predicate.ContentOwnership
+}
+
+var _ ent.Mutation = (*ContentOwnershipMutation)(nil)
+
+// contentownershipOption allows management of the mutation configuration using functional options.
+type contentownershipOption func(*ContentOwnershipMutation)
+
+// newContentOwnershipMutation creates new mutation for the ContentOwnership entity.
+func newContentOwnershipMutation(c config, op Op, opts ...contentownershipOption) *ContentOwnershipMutation {
+	m := &ContentOwnershipMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeContentOwnership,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withContentOwnershipID sets the ID field of the mutation.
+func withContentOwnershipID(id uuid.UUID) contentownershipOption {
+	return func(m *ContentOwnershipMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *ContentOwnership
+		)
+		m.oldValue = func(ctx context.Context) (*ContentOwnership, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().ContentOwnership.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withContentOwnership sets the old ContentOwnership of the mutation.
+func withContentOwnership(node *ContentOwnership) contentownershipOption {
+	return func(m *ContentOwnershipMutation) {
+		m.oldValue = func(context.Context) (*ContentOwnership, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m ContentOwnershipMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m ContentOwnershipMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of ContentOwnership entities.
+func (m *ContentOwnershipMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *ContentOwnershipMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *ContentOwnershipMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().ContentOwnership.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetContentKind sets the "content_kind" field.
+func (m *ContentOwnershipMutation) SetContentKind(ck contentownership.ContentKind) {
+	m.content_kind = &ck
+}
+
+// ContentKind returns the value of the "content_kind" field in the mutation.
+func (m *ContentOwnershipMutation) ContentKind() (r contentownership.ContentKind, exists bool) {
+	v := m.content_kind
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldContentKind returns the old "content_kind" field's value of the ContentOwnership entity.
+// If the ContentOwnership object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ContentOwnershipMutation) OldContentKind(ctx context.Context) (v contentownership.ContentKind, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldContentKind is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldContentKind requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldContentKind: %w", err)
+	}
+	return oldValue.ContentKind, nil
+}
+
+// ResetContentKind resets all changes to the "content_kind" field.
+func (m *ContentOwnershipMutation) ResetContentKind() {
+	m.content_kind = nil
+}
+
+// SetContentID sets the "content_id" field.
+func (m *ContentOwnershipMutation) SetContentID(u uuid.UUID) {
+	m.content_id = &u
+}
+
+// ContentID returns the value of the "content_id" field in the mutation.
+func (m *ContentOwnershipMutation) ContentID() (r uuid.UUID, exists bool) {
+	v := m.content_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldContentID returns the old "content_id" field's value of the ContentOwnership entity.
+// If the ContentOwnership object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ContentOwnershipMutation) OldContentID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldContentID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldContentID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldContentID: %w", err)
+	}
+	return oldValue.ContentID, nil
+}
+
+// ResetContentID resets all changes to the "content_id" field.
+func (m *ContentOwnershipMutation) ResetContentID() {
+	m.content_id = nil
+}
+
+// SetRevision sets the "revision" field.
+func (m *ContentOwnershipMutation) SetRevision(i int) {
+	m.revision = &i
+	m.addrevision = nil
+}
+
+// Revision returns the value of the "revision" field in the mutation.
+func (m *ContentOwnershipMutation) Revision() (r int, exists bool) {
+	v := m.revision
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRevision returns the old "revision" field's value of the ContentOwnership entity.
+// If the ContentOwnership object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ContentOwnershipMutation) OldRevision(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRevision is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRevision requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRevision: %w", err)
+	}
+	return oldValue.Revision, nil
+}
+
+// AddRevision adds i to the "revision" field.
+func (m *ContentOwnershipMutation) AddRevision(i int) {
+	if m.addrevision != nil {
+		*m.addrevision += i
+	} else {
+		m.addrevision = &i
+	}
+}
+
+// AddedRevision returns the value that was added to the "revision" field in this mutation.
+func (m *ContentOwnershipMutation) AddedRevision() (r int, exists bool) {
+	v := m.addrevision
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetRevision resets all changes to the "revision" field.
+func (m *ContentOwnershipMutation) ResetRevision() {
+	m.revision = nil
+	m.addrevision = nil
+}
+
+// SetOwnerKind sets the "owner_kind" field.
+func (m *ContentOwnershipMutation) SetOwnerKind(ck contentownership.OwnerKind) {
+	m.owner_kind = &ck
+}
+
+// OwnerKind returns the value of the "owner_kind" field in the mutation.
+func (m *ContentOwnershipMutation) OwnerKind() (r contentownership.OwnerKind, exists bool) {
+	v := m.owner_kind
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldOwnerKind returns the old "owner_kind" field's value of the ContentOwnership entity.
+// If the ContentOwnership object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ContentOwnershipMutation) OldOwnerKind(ctx context.Context) (v contentownership.OwnerKind, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldOwnerKind is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldOwnerKind requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldOwnerKind: %w", err)
+	}
+	return oldValue.OwnerKind, nil
+}
+
+// ResetOwnerKind resets all changes to the "owner_kind" field.
+func (m *ContentOwnershipMutation) ResetOwnerKind() {
+	m.owner_kind = nil
+}
+
+// SetOwnerID sets the "owner_id" field.
+func (m *ContentOwnershipMutation) SetOwnerID(u uuid.UUID) {
+	m.owner_id = &u
+}
+
+// OwnerID returns the value of the "owner_id" field in the mutation.
+func (m *ContentOwnershipMutation) OwnerID() (r uuid.UUID, exists bool) {
+	v := m.owner_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldOwnerID returns the old "owner_id" field's value of the ContentOwnership entity.
+// If the ContentOwnership object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ContentOwnershipMutation) OldOwnerID(ctx context.Context) (v *uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldOwnerID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldOwnerID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldOwnerID: %w", err)
+	}
+	return oldValue.OwnerID, nil
+}
+
+// ClearOwnerID clears the value of the "owner_id" field.
+func (m *ContentOwnershipMutation) ClearOwnerID() {
+	m.owner_id = nil
+	m.clearedFields[contentownership.FieldOwnerID] = struct{}{}
+}
+
+// OwnerIDCleared returns if the "owner_id" field was cleared in this mutation.
+func (m *ContentOwnershipMutation) OwnerIDCleared() bool {
+	_, ok := m.clearedFields[contentownership.FieldOwnerID]
+	return ok
+}
+
+// ResetOwnerID resets all changes to the "owner_id" field.
+func (m *ContentOwnershipMutation) ResetOwnerID() {
+	m.owner_id = nil
+	delete(m.clearedFields, contentownership.FieldOwnerID)
+}
+
+// SetCreatorID sets the "creator_id" field.
+func (m *ContentOwnershipMutation) SetCreatorID(u uuid.UUID) {
+	m.creator_id = &u
+}
+
+// CreatorID returns the value of the "creator_id" field in the mutation.
+func (m *ContentOwnershipMutation) CreatorID() (r uuid.UUID, exists bool) {
+	v := m.creator_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatorID returns the old "creator_id" field's value of the ContentOwnership entity.
+// If the ContentOwnership object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ContentOwnershipMutation) OldCreatorID(ctx context.Context) (v *uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatorID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatorID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatorID: %w", err)
+	}
+	return oldValue.CreatorID, nil
+}
+
+// ClearCreatorID clears the value of the "creator_id" field.
+func (m *ContentOwnershipMutation) ClearCreatorID() {
+	m.creator_id = nil
+	m.clearedFields[contentownership.FieldCreatorID] = struct{}{}
+}
+
+// CreatorIDCleared returns if the "creator_id" field was cleared in this mutation.
+func (m *ContentOwnershipMutation) CreatorIDCleared() bool {
+	_, ok := m.clearedFields[contentownership.FieldCreatorID]
+	return ok
+}
+
+// ResetCreatorID resets all changes to the "creator_id" field.
+func (m *ContentOwnershipMutation) ResetCreatorID() {
+	m.creator_id = nil
+	delete(m.clearedFields, contentownership.FieldCreatorID)
+}
+
+// SetSource sets the "source" field.
+func (m *ContentOwnershipMutation) SetSource(c contentownership.Source) {
+	m.source = &c
+}
+
+// Source returns the value of the "source" field in the mutation.
+func (m *ContentOwnershipMutation) Source() (r contentownership.Source, exists bool) {
+	v := m.source
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSource returns the old "source" field's value of the ContentOwnership entity.
+// If the ContentOwnership object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ContentOwnershipMutation) OldSource(ctx context.Context) (v contentownership.Source, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSource is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSource requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSource: %w", err)
+	}
+	return oldValue.Source, nil
+}
+
+// ResetSource resets all changes to the "source" field.
+func (m *ContentOwnershipMutation) ResetSource() {
+	m.source = nil
+}
+
+// SetEvidenceEntryID sets the "evidence_entry_id" field.
+func (m *ContentOwnershipMutation) SetEvidenceEntryID(u uuid.UUID) {
+	m.evidence_entry_id = &u
+}
+
+// EvidenceEntryID returns the value of the "evidence_entry_id" field in the mutation.
+func (m *ContentOwnershipMutation) EvidenceEntryID() (r uuid.UUID, exists bool) {
+	v := m.evidence_entry_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEvidenceEntryID returns the old "evidence_entry_id" field's value of the ContentOwnership entity.
+// If the ContentOwnership object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ContentOwnershipMutation) OldEvidenceEntryID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEvidenceEntryID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEvidenceEntryID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEvidenceEntryID: %w", err)
+	}
+	return oldValue.EvidenceEntryID, nil
+}
+
+// ResetEvidenceEntryID resets all changes to the "evidence_entry_id" field.
+func (m *ContentOwnershipMutation) ResetEvidenceEntryID() {
+	m.evidence_entry_id = nil
+}
+
+// SetCopiedFrom sets the "copied_from" field.
+func (m *ContentOwnershipMutation) SetCopiedFrom(j jsontext.Value) {
+	m.copied_from = &j
+	m.appendcopied_from = nil
+}
+
+// CopiedFrom returns the value of the "copied_from" field in the mutation.
+func (m *ContentOwnershipMutation) CopiedFrom() (r jsontext.Value, exists bool) {
+	v := m.copied_from
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCopiedFrom returns the old "copied_from" field's value of the ContentOwnership entity.
+// If the ContentOwnership object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ContentOwnershipMutation) OldCopiedFrom(ctx context.Context) (v jsontext.Value, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCopiedFrom is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCopiedFrom requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCopiedFrom: %w", err)
+	}
+	return oldValue.CopiedFrom, nil
+}
+
+// AppendCopiedFrom adds j to the "copied_from" field.
+func (m *ContentOwnershipMutation) AppendCopiedFrom(j jsontext.Value) {
+	m.appendcopied_from = append(m.appendcopied_from, j...)
+}
+
+// AppendedCopiedFrom returns the list of values that were appended to the "copied_from" field in this mutation.
+func (m *ContentOwnershipMutation) AppendedCopiedFrom() (jsontext.Value, bool) {
+	if len(m.appendcopied_from) == 0 {
+		return nil, false
+	}
+	return m.appendcopied_from, true
+}
+
+// ClearCopiedFrom clears the value of the "copied_from" field.
+func (m *ContentOwnershipMutation) ClearCopiedFrom() {
+	m.copied_from = nil
+	m.appendcopied_from = nil
+	m.clearedFields[contentownership.FieldCopiedFrom] = struct{}{}
+}
+
+// CopiedFromCleared returns if the "copied_from" field was cleared in this mutation.
+func (m *ContentOwnershipMutation) CopiedFromCleared() bool {
+	_, ok := m.clearedFields[contentownership.FieldCopiedFrom]
+	return ok
+}
+
+// ResetCopiedFrom resets all changes to the "copied_from" field.
+func (m *ContentOwnershipMutation) ResetCopiedFrom() {
+	m.copied_from = nil
+	m.appendcopied_from = nil
+	delete(m.clearedFields, contentownership.FieldCopiedFrom)
+}
+
+// SetRecordedAt sets the "recorded_at" field.
+func (m *ContentOwnershipMutation) SetRecordedAt(t time.Time) {
+	m.recorded_at = &t
+}
+
+// RecordedAt returns the value of the "recorded_at" field in the mutation.
+func (m *ContentOwnershipMutation) RecordedAt() (r time.Time, exists bool) {
+	v := m.recorded_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRecordedAt returns the old "recorded_at" field's value of the ContentOwnership entity.
+// If the ContentOwnership object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ContentOwnershipMutation) OldRecordedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRecordedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRecordedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRecordedAt: %w", err)
+	}
+	return oldValue.RecordedAt, nil
+}
+
+// ResetRecordedAt resets all changes to the "recorded_at" field.
+func (m *ContentOwnershipMutation) ResetRecordedAt() {
+	m.recorded_at = nil
+}
+
+// Where appends a list predicates to the ContentOwnershipMutation builder.
+func (m *ContentOwnershipMutation) Where(ps ...predicate.ContentOwnership) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the ContentOwnershipMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *ContentOwnershipMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.ContentOwnership, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *ContentOwnershipMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *ContentOwnershipMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (ContentOwnership).
+func (m *ContentOwnershipMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *ContentOwnershipMutation) Fields() []string {
+	fields := make([]string, 0, 10)
+	if m.content_kind != nil {
+		fields = append(fields, contentownership.FieldContentKind)
+	}
+	if m.content_id != nil {
+		fields = append(fields, contentownership.FieldContentID)
+	}
+	if m.revision != nil {
+		fields = append(fields, contentownership.FieldRevision)
+	}
+	if m.owner_kind != nil {
+		fields = append(fields, contentownership.FieldOwnerKind)
+	}
+	if m.owner_id != nil {
+		fields = append(fields, contentownership.FieldOwnerID)
+	}
+	if m.creator_id != nil {
+		fields = append(fields, contentownership.FieldCreatorID)
+	}
+	if m.source != nil {
+		fields = append(fields, contentownership.FieldSource)
+	}
+	if m.evidence_entry_id != nil {
+		fields = append(fields, contentownership.FieldEvidenceEntryID)
+	}
+	if m.copied_from != nil {
+		fields = append(fields, contentownership.FieldCopiedFrom)
+	}
+	if m.recorded_at != nil {
+		fields = append(fields, contentownership.FieldRecordedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *ContentOwnershipMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case contentownership.FieldContentKind:
+		return m.ContentKind()
+	case contentownership.FieldContentID:
+		return m.ContentID()
+	case contentownership.FieldRevision:
+		return m.Revision()
+	case contentownership.FieldOwnerKind:
+		return m.OwnerKind()
+	case contentownership.FieldOwnerID:
+		return m.OwnerID()
+	case contentownership.FieldCreatorID:
+		return m.CreatorID()
+	case contentownership.FieldSource:
+		return m.Source()
+	case contentownership.FieldEvidenceEntryID:
+		return m.EvidenceEntryID()
+	case contentownership.FieldCopiedFrom:
+		return m.CopiedFrom()
+	case contentownership.FieldRecordedAt:
+		return m.RecordedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *ContentOwnershipMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case contentownership.FieldContentKind:
+		return m.OldContentKind(ctx)
+	case contentownership.FieldContentID:
+		return m.OldContentID(ctx)
+	case contentownership.FieldRevision:
+		return m.OldRevision(ctx)
+	case contentownership.FieldOwnerKind:
+		return m.OldOwnerKind(ctx)
+	case contentownership.FieldOwnerID:
+		return m.OldOwnerID(ctx)
+	case contentownership.FieldCreatorID:
+		return m.OldCreatorID(ctx)
+	case contentownership.FieldSource:
+		return m.OldSource(ctx)
+	case contentownership.FieldEvidenceEntryID:
+		return m.OldEvidenceEntryID(ctx)
+	case contentownership.FieldCopiedFrom:
+		return m.OldCopiedFrom(ctx)
+	case contentownership.FieldRecordedAt:
+		return m.OldRecordedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown ContentOwnership field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ContentOwnershipMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case contentownership.FieldContentKind:
+		v, ok := value.(contentownership.ContentKind)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetContentKind(v)
+		return nil
+	case contentownership.FieldContentID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetContentID(v)
+		return nil
+	case contentownership.FieldRevision:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRevision(v)
+		return nil
+	case contentownership.FieldOwnerKind:
+		v, ok := value.(contentownership.OwnerKind)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetOwnerKind(v)
+		return nil
+	case contentownership.FieldOwnerID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetOwnerID(v)
+		return nil
+	case contentownership.FieldCreatorID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatorID(v)
+		return nil
+	case contentownership.FieldSource:
+		v, ok := value.(contentownership.Source)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSource(v)
+		return nil
+	case contentownership.FieldEvidenceEntryID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEvidenceEntryID(v)
+		return nil
+	case contentownership.FieldCopiedFrom:
+		v, ok := value.(jsontext.Value)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCopiedFrom(v)
+		return nil
+	case contentownership.FieldRecordedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRecordedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ContentOwnership field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *ContentOwnershipMutation) AddedFields() []string {
+	var fields []string
+	if m.addrevision != nil {
+		fields = append(fields, contentownership.FieldRevision)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *ContentOwnershipMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case contentownership.FieldRevision:
+		return m.AddedRevision()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ContentOwnershipMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case contentownership.FieldRevision:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddRevision(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ContentOwnership numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *ContentOwnershipMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(contentownership.FieldOwnerID) {
+		fields = append(fields, contentownership.FieldOwnerID)
+	}
+	if m.FieldCleared(contentownership.FieldCreatorID) {
+		fields = append(fields, contentownership.FieldCreatorID)
+	}
+	if m.FieldCleared(contentownership.FieldCopiedFrom) {
+		fields = append(fields, contentownership.FieldCopiedFrom)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *ContentOwnershipMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *ContentOwnershipMutation) ClearField(name string) error {
+	switch name {
+	case contentownership.FieldOwnerID:
+		m.ClearOwnerID()
+		return nil
+	case contentownership.FieldCreatorID:
+		m.ClearCreatorID()
+		return nil
+	case contentownership.FieldCopiedFrom:
+		m.ClearCopiedFrom()
+		return nil
+	}
+	return fmt.Errorf("unknown ContentOwnership nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *ContentOwnershipMutation) ResetField(name string) error {
+	switch name {
+	case contentownership.FieldContentKind:
+		m.ResetContentKind()
+		return nil
+	case contentownership.FieldContentID:
+		m.ResetContentID()
+		return nil
+	case contentownership.FieldRevision:
+		m.ResetRevision()
+		return nil
+	case contentownership.FieldOwnerKind:
+		m.ResetOwnerKind()
+		return nil
+	case contentownership.FieldOwnerID:
+		m.ResetOwnerID()
+		return nil
+	case contentownership.FieldCreatorID:
+		m.ResetCreatorID()
+		return nil
+	case contentownership.FieldSource:
+		m.ResetSource()
+		return nil
+	case contentownership.FieldEvidenceEntryID:
+		m.ResetEvidenceEntryID()
+		return nil
+	case contentownership.FieldCopiedFrom:
+		m.ResetCopiedFrom()
+		return nil
+	case contentownership.FieldRecordedAt:
+		m.ResetRecordedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown ContentOwnership field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *ContentOwnershipMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *ContentOwnershipMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *ContentOwnershipMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *ContentOwnershipMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *ContentOwnershipMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *ContentOwnershipMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *ContentOwnershipMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown ContentOwnership unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *ContentOwnershipMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown ContentOwnership edge %s", name)
 }
 
 // CourseMutation represents an operation that mutates the Course nodes in the graph.

@@ -12,6 +12,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/coursecheckpoint"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpath"
 	"github.com/motifpath/core-domain/internal/domain"
+	"github.com/motifpath/core-domain/internal/ports"
 )
 
 // EntCourseRepository persists Course and CourseCheckpoint records via
@@ -27,7 +28,7 @@ func NewEntCourseRepository(client *ent.Client) *EntCourseRepository {
 	return &EntCourseRepository{client: client}
 }
 
-func (r *EntCourseRepository) Create(ctx context.Context, c domain.Course) error {
+func (r *EntCourseRepository) Create(ctx context.Context, c domain.Course, ownership ports.OwnershipRecord) error {
 	id, err := uuid.Parse(c.ID)
 	if err != nil {
 		return err
@@ -67,6 +68,9 @@ func (r *EntCourseRepository) Create(ctx context.Context, c domain.Course) error
 		return rollback(tx, err)
 	}
 
+	if err := recordOwnership(ctx, tx, ownership); err != nil {
+		return rollback(tx, err)
+	}
 	return tx.Commit()
 }
 

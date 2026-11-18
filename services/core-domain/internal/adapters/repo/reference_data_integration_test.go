@@ -84,17 +84,27 @@ func TestFreshInstall(t *testing.T) {
 	})
 
 	t.Run("the knowledge map has its nodes and edges, with fixed ids", func(t *testing.T) {
-		assert.Equal(t, map[string]string{"skill": "221", "concept": "125"}, stringPairs(t, ctx, db, "SELECT kind, count(*)::text FROM knowledge_nodes GROUP BY kind"))
-		assert.Equal(t, map[string]string{"applies": "370", "requires": "144"}, stringPairs(t, ctx, db, "SELECT type, count(*)::text FROM knowledge_edges GROUP BY type"))
+		assert.Equal(t, map[string]string{"skill": "223", "concept": "125"}, stringPairs(t, ctx, db, "SELECT kind, count(*)::text FROM knowledge_nodes GROUP BY kind"))
+		assert.Equal(t, map[string]string{"applies": "377", "requires": "147"}, stringPairs(t, ctx, db, "SELECT type, count(*)::text FROM knowledge_edges GROUP BY type"))
 		assert.Equal(t, 1, count(t, "SELECT count(*) FROM knowledge_nodes WHERE key = 'scales' AND id = '"+catalogID("knowledge-node/scales")+"'"))
 		assert.Equal(t, 1, count(t, "SELECT count(*) FROM knowledge_edges WHERE id = '"+catalogID("knowledge-edge/requires/change-chords/play-open-chords")+"'"))
-		for key, applied := range map[string][]string{
-			"interpret-note-names": {"note-names", "octaves"},
-			"count-semitone-steps": {"tones-and-semitones", "sharps-and-flats"},
+		// Skills added to the map after the first production install.
+		for key, skill := range map[string]struct {
+			parent   string
+			applies  []string
+			requires []string
+		}{
+			"interpret-note-names":  {parent: "reading", applies: []string{"note-names", "octaves"}},
+			"count-semitone-steps":  {parent: "reading", applies: []string{"tones-and-semitones", "sharps-and-flats"}},
+			"build-major-scale":     {parent: "reading", applies: []string{"major-scale", "tones-and-semitones", "sharps-and-flats", "key-center"}, requires: []string{"count-semitone-steps"}},
+			"transpose-chord-chart": {parent: "chords-rhythm", applies: []string{"transposition", "key-center", "chord-charts"}, requires: []string{"build-major-scale", "read-chord-charts"}},
 		} {
-			assert.Equal(t, 1, count(t, "SELECT count(*) FROM knowledge_nodes n JOIN knowledge_nodes p ON p.id = n.parent_id WHERE n.key = '"+key+"' AND n.id = '"+catalogID("knowledge-node/"+key)+"' AND p.key = 'reading'"), key)
-			for _, concept := range applied {
-				assert.Equal(t, 1, count(t, "SELECT count(*) FROM knowledge_edges e JOIN knowledge_nodes t ON t.id = e.to_id WHERE e.id = '"+catalogID("knowledge-edge/applies/"+key+"/"+concept)+"' AND e.from_id = '"+catalogID("knowledge-node/"+key)+"' AND t.key = '"+concept+"'"), key+" applies "+concept)
+			assert.Equal(t, 1, count(t, "SELECT count(*) FROM knowledge_nodes n JOIN knowledge_nodes p ON p.id = n.parent_id WHERE n.key = '"+key+"' AND n.kind = 'skill' AND n.id = '"+catalogID("knowledge-node/"+key)+"' AND p.key = '"+skill.parent+"'"), key)
+			for _, concept := range skill.applies {
+				assert.Equal(t, 1, count(t, "SELECT count(*) FROM knowledge_edges e JOIN knowledge_nodes t ON t.id = e.to_id WHERE e.id = '"+catalogID("knowledge-edge/applies/"+key+"/"+concept)+"' AND e.from_id = '"+catalogID("knowledge-node/"+key)+"' AND t.key = '"+concept+"' AND e.level IS NULL"), key+" applies "+concept)
+			}
+			for _, required := range skill.requires {
+				assert.Equal(t, 1, count(t, "SELECT count(*) FROM knowledge_edges e JOIN knowledge_nodes t ON t.id = e.to_id WHERE e.id = '"+catalogID("knowledge-edge/requires/"+key+"/"+required)+"' AND e.from_id = '"+catalogID("knowledge-node/"+key)+"' AND t.key = '"+required+"' AND e.level = 'accurate'"), key+" requires "+required)
 			}
 		}
 	})

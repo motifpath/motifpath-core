@@ -185,7 +185,7 @@ func TestPracticeReferenceService_SyncExercises(t *testing.T) {
 			require.NoError(t, exercises.Create(ctx, domain.Exercise{
 				ID: fmt.Sprintf("e-%03d", i), Title: fmt.Sprintf("Exercise %03d", i),
 				ExerciseType: domain.ExerciseTypeTextResponse, Options: textResponseOptions(),
-			}))
+			}, ports.OwnershipRecord{}))
 		}
 		return exercises
 	}
@@ -480,7 +480,7 @@ func TestPracticeReferenceService_Sync(t *testing.T) {
 
 	t.Run("counts every part it wrote", func(t *testing.T) {
 		exercises := newFakeExerciseRepository()
-		require.NoError(t, exercises.Create(ctx, domain.Exercise{ID: "e-1", ExerciseType: domain.ExerciseTypeTextResponse, Options: textResponseOptions()}))
+		require.NoError(t, exercises.Create(ctx, domain.Exercise{ID: "e-1", ExerciseType: domain.ExerciseTypeTextResponse, Options: textResponseOptions()}, ports.OwnershipRecord{}))
 		svc := application.NewPracticeReferenceService(newFakeDiagramRepository(), exercises, newFakeInstrumentRepository(), fakeDrillThresholds(installed), fakeProgressions(catalogProgressions()), fakeChordDrills{}, newFakeSongChartRepository(), newFakePracticeReferenceWriter())
 
 		synced, err := svc.Sync(ctx)

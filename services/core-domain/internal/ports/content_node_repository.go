@@ -8,7 +8,7 @@ import (
 
 // ContentNodeRepository persists ContentNode records.
 type ContentNodeRepository interface {
-	Create(ctx context.Context, node domain.ContentNode) error
+	Create(ctx context.Context, node domain.ContentNode, ownership OwnershipRecord) error
 
 	// GetByID returns domain.ErrNotFound if no node exists with the given id.
 	GetByID(ctx context.Context, id string) (domain.ContentNode, error)

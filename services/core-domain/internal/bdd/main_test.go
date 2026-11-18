@@ -53,6 +53,7 @@ func TestFeatures(t *testing.T) {
 				featuresBase + "/monetization/commercial-activation.feature",
 				featuresBase + "/monetization/commercial-audit.feature",
 				featuresBase + "/monetization/commercial-controls.feature",
+				featuresBase + "/monetization/content-ownership.feature",
 			},
 			TestingT: t,
 			// Without this, godog reports an undefined step as a warning and
@@ -100,6 +101,7 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	registerCommonSteps(sc, w)
 	registerCommercialActivationSteps(sc, w)
 	registerCommercialAuditSteps(sc, w)
+	registerContentOwnershipSteps(sc, w)
 	registerProgressionAuthoringSteps(sc, w)
 	registerUserRegistrationSteps(sc, w)
 	registerDisplayNameSteps(sc, w)

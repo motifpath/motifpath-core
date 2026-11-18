@@ -72,6 +72,9 @@ type ContentNodeSkill func(*sql.Selector)
 // ContentNodeVersion is the predicate function for contentnodeversion builders.
 type ContentNodeVersion func(*sql.Selector)
 
+// ContentOwnership is the predicate function for contentownership builders.
+type ContentOwnership func(*sql.Selector)
+
 // Course is the predicate function for course builders.
 type Course func(*sql.Selector)
 

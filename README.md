@@ -375,6 +375,34 @@ Two settings belong to this feature, and the service refuses to start without ei
 Locally, `.env.example` has values for both. Deployed environments get the secret from SSM, which
 motifpath-infra generates.
 
+### Content ownership (admin)
+
+Every course, path, content node and exercise has one rights holder. Core records it when the
+item is created: an admin's content belongs to the platform (owner: the MotifPath Catalog
+profile), anyone else's to that teacher. The creator is always kept.
+
+Content created before ownership existed gets its record on start-up. Every start runs the
+backfill before the listener opens and logs `content ownership backfilled` with `recorded`, the
+number of items it attributed. It's 0 once everything is attributed. It's restartable: an
+interrupted or failed run (`backfill content ownership`, logged with the error) is completed by
+the next start, and the service keeps serving meanwhile. Content with no recorded creator becomes
+`unresolved`. It stays free and learnable, but can't be sold until an admin corrects it.
+
+An admin corrects ownership while the `content_ownership` flag is on for them. The new owner is
+the platform, or a user whose role is teacher or admin. `expected_revision` is the ownership
+revision you read. Each correction appends a revision and keeps the history. A deleted item
+answers 404.
+
+```bash
+# Current ownership and sale blockers (owner or admin only; anyone else gets 404)
+curl -s "${auth[@]}" "$API/commercial-content/path/<path uuid>"
+
+# Make a teacher the rights holder of a path at ownership revision 1
+curl -s "${auth[@]}" -X POST "$API/commercial-content/path/<path uuid>/ownership" \
+  -H "Idempotency-Key: $(uuidgen | tr A-Z a-z)" \
+  -d '{"expected_revision":1,"owner_kind":"teacher","owner_id":"<user uuid>","reason":"signed licence on file"}'
+```
+
 ## Architecture
 
 Each service follows hexagonal architecture:

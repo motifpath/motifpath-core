@@ -11,7 +11,7 @@ import (
 // currently-being-authored draft. Snapshotting a draft into an immutable
 // CourseVersion is a separate concern this repository does not implement.
 type CourseRepository interface {
-	Create(ctx context.Context, course domain.Course) error
+	Create(ctx context.Context, course domain.Course, ownership OwnershipRecord) error
 
 	// GetByID returns domain.ErrNotFound if no course exists with the given id.
 	GetByID(ctx context.Context, id string) (domain.Course, error)

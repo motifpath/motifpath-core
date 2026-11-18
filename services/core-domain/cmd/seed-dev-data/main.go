@@ -100,12 +100,16 @@ func run() error {
 
 	newID := uuid.NewString
 	now := func() time.Time { return time.Now().UTC() }
+	ownership, err := ownershipRecorder(newID)
+	if err != nil {
+		return err
+	}
 
-	contentService := application.NewContentService(nodeRepo, expandedRepo, knowledgeRepo, contentNodeVersionRepo, diagramRepo, instrumentRepo, voiceRepo, repo.NewEntSongChartRepository(entClient), userRepo, newID, now)
-	pathService := application.NewLearningPathService(nodeRepo, pathRepo, courseVersionRepo, contentNodeVersionRepo, repo.NewEntLanguageRepository(entClient), userRepo, instrumentRepo, knowledgeRepo, newID, now)
+	contentService := application.NewContentService(ownership, nodeRepo, expandedRepo, knowledgeRepo, contentNodeVersionRepo, diagramRepo, instrumentRepo, voiceRepo, repo.NewEntSongChartRepository(entClient), userRepo, newID, now)
+	pathService := application.NewLearningPathService(ownership, nodeRepo, pathRepo, courseVersionRepo, contentNodeVersionRepo, repo.NewEntLanguageRepository(entClient), userRepo, instrumentRepo, knowledgeRepo, newID, now)
 	studentPathService := application.NewStudentPathService(userRepo, pathRepo, studentPathRepo, contentNodeVersionRepo, studentLearningStateRepo, courseEnrollmentRepo, courseVersionRepo, nodeRepo, exerciseRepo, nil, newID, now)
 	challengeService := application.NewChallengeService(nodeRepo, challengeRepo, exerciseRepo, newID, now)
-	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, knowledgeRepo, diagramRepo, instrumentRepo, voiceRepo, userRepo, repo.NewMongoPracticeReferenceWriter(mongoClient.Database(mongoDatabase), now), newID, now, rand.Shuffle)
+	exerciseService := application.NewExerciseService(ownership, challengeRepo, exerciseRepo, nodeRepo, knowledgeRepo, diagramRepo, instrumentRepo, voiceRepo, userRepo, repo.NewMongoPracticeReferenceWriter(mongoClient.Database(mongoDatabase), now), newID, now, rand.Shuffle)
 
 	student, err := findFirstStudent(ctx, entClient)
 	if err != nil {
@@ -381,3 +385,13 @@ func seedCompletionStatuses(ctx context.Context, db *mongo.Database, studentID s
 }
 
 func strPtr(s string) *string { return &s }
+
+// ownershipRecorder attributes seeded content to its rights holder the way
+// the service does, under MOTIFPATH_ENV (local unless set).
+func ownershipRecorder(newID func() string) (*application.OwnershipRecorder, error) {
+	environment, err := domain.ParseEnvironment(getenvDefault("MOTIFPATH_ENV", "local"))
+	if err != nil {
+		return nil, fmt.Errorf("MOTIFPATH_ENV: %w", err)
+	}
+	return application.NewOwnershipRecorder(environment, newID), nil
+}

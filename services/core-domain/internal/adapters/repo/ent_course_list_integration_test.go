@@ -43,7 +43,7 @@ func (f courseListFixture) pathWith(skills []domain.KnowledgeNode, concepts []do
 		Classification: domain.Classification{Skills: skills, Concepts: concepts, DifficultyLevel: domain.DifficultyLevelBeginner, ReviewState: domain.ReviewStatePending},
 		CreatedAt:      fixedAt,
 	}
-	require.NoError(f.t, f.nodes.Create(f.ctx, node))
+	require.NoError(f.t, f.nodes.Create(f.ctx, node, testOwnership(f.t, domain.ContentContentNode, node.ID)))
 	return seedLearningPath(f.t, f.ctx, f.paths, node)
 }
 
@@ -70,7 +70,7 @@ func (f courseListFixture) draft(title, summary string, level domain.DifficultyL
 		ID: uuid.NewString(), CreatedBy: createdBy, Title: title, Summary: summary, Level: level,
 		Status: domain.CourseStatusDraft, CreatedAt: fixedAt, Checkpoints: checkpointsOf(live...),
 	}
-	require.NoError(f.t, f.courses.Create(f.ctx, course))
+	require.NoError(f.t, f.courses.Create(f.ctx, course, testOwnership(f.t, domain.ContentCourse, course.ID)))
 	return course
 }
 
@@ -334,7 +334,7 @@ func TestEntCourseRepository_Language(t *testing.T) {
 			ID: uuid.NewString(), CreatedBy: uuid.NewString(), Title: title, Summary: "S", Level: domain.DifficultyLevelBeginner,
 			Language: language, Status: domain.CourseStatusDraft, CreatedAt: fixedAt, Checkpoints: checkpointsOf(path),
 		}
-		require.NoError(t, f.courses.Create(f.ctx, c))
+		require.NoError(t, f.courses.Create(f.ctx, c, testOwnership(t, domain.ContentCourse, c.ID)))
 		return c
 	}
 	english, portuguese := course("English course", "en"), course("Curso em português", "pt_BR")

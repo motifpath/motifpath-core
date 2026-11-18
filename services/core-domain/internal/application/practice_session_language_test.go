@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/motifpath/core-domain/internal/domain"
+	"github.com/motifpath/core-domain/internal/ports"
 )
 
 // anyLanguage tags an exercise as language-agnostic, offered whatever the
@@ -35,7 +36,7 @@ func (f *practiceFixture) exerciseIn(id, skillID string, languageCodes ...string
 	require.NoError(f.t, f.exercises.Create(context.Background(), domain.Exercise{
 		ID: id, Title: id, ExerciseType: domain.ExerciseTypeTextResponse,
 		Skills: []domain.KnowledgeNode{{ID: skillID}}, EstimatedDurationSeconds: &seconds, Languages: languages,
-	}))
+	}, ports.OwnershipRecord{}))
 }
 
 func TestPracticeSessionService_ComposePlanLanguage(t *testing.T) {

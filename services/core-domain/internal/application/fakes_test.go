@@ -198,6 +198,8 @@ func (f *fakeLanguageRepository) GetByCode(_ context.Context, code string) (doma
 
 // fakeContentNodeRepository is a minimal in-memory ports.ContentNodeRepository.
 type fakeContentNodeRepository struct {
+	// ownership is the ownership record each created item was stored with.
+	ownership map[string]ports.OwnershipRecord
 	mu        sync.Mutex
 	byID      map[string]domain.ContentNode
 	createErr error
@@ -210,12 +212,16 @@ func newFakeContentNodeRepository() *fakeContentNodeRepository {
 	return &fakeContentNodeRepository{byID: map[string]domain.ContentNode{}}
 }
 
-func (f *fakeContentNodeRepository) Create(_ context.Context, node domain.ContentNode) error {
+func (f *fakeContentNodeRepository) Create(_ context.Context, node domain.ContentNode, ownership ports.OwnershipRecord) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.createErr != nil {
 		return f.createErr
 	}
+	if f.ownership == nil {
+		f.ownership = map[string]ports.OwnershipRecord{}
+	}
+	f.ownership[node.ID] = ownership
 	f.byID[node.ID] = node
 	return nil
 }
@@ -447,6 +453,8 @@ func (f *fakeChallengeRepository) Update(_ context.Context, challenge domain.Cha
 // since two different challenges can share exercises linked in different
 // orders.
 type fakeExerciseRepository struct {
+	// ownership is the ownership record each created item was stored with.
+	ownership        map[string]ports.OwnershipRecord
 	mu               sync.Mutex
 	byID             map[string]domain.Exercise
 	byChallengeOrder map[string][]string
@@ -464,12 +472,16 @@ func newFakeExerciseRepository() *fakeExerciseRepository {
 	}
 }
 
-func (f *fakeExerciseRepository) Create(_ context.Context, exercise domain.Exercise) error {
+func (f *fakeExerciseRepository) Create(_ context.Context, exercise domain.Exercise, ownership ports.OwnershipRecord) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.createErr != nil {
 		return f.createErr
 	}
+	if f.ownership == nil {
+		f.ownership = map[string]ports.OwnershipRecord{}
+	}
+	f.ownership[exercise.ID] = ownership
 	f.byID[exercise.ID] = exercise
 	return nil
 }
@@ -779,8 +791,10 @@ func (f *fakeExpandedContentRepository) Delete(_ context.Context, id string) err
 
 // fakeLearningPathRepository is a minimal in-memory ports.LearningPathRepository.
 type fakeLearningPathRepository struct {
-	mu   sync.Mutex
-	byID map[string]domain.LearningPath
+	// ownership is the ownership record each created item was stored with.
+	ownership map[string]ports.OwnershipRecord
+	mu        sync.Mutex
+	byID      map[string]domain.LearningPath
 	// lastFilter records the filter most recently passed to List.
 	lastFilter      domain.LearningPathFilter
 	createErr       error
@@ -791,12 +805,16 @@ func newFakeLearningPathRepository() *fakeLearningPathRepository {
 	return &fakeLearningPathRepository{byID: map[string]domain.LearningPath{}}
 }
 
-func (f *fakeLearningPathRepository) Create(_ context.Context, path domain.LearningPath) error {
+func (f *fakeLearningPathRepository) Create(_ context.Context, path domain.LearningPath, ownership ports.OwnershipRecord) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.createErr != nil {
 		return f.createErr
 	}
+	if f.ownership == nil {
+		f.ownership = map[string]ports.OwnershipRecord{}
+	}
+	f.ownership[path.ID] = ownership
 	f.byID[path.ID] = path
 	return nil
 }
@@ -912,8 +930,10 @@ func (f *fakeLearningPathRepository) Delete(_ context.Context, id string) error 
 
 // fakeCourseRepository is a minimal in-memory ports.CourseRepository.
 type fakeCourseRepository struct {
-	mu   sync.Mutex
-	byID map[string]domain.Course
+	// ownership is the ownership record each created item was stored with.
+	ownership map[string]ports.OwnershipRecord
+	mu        sync.Mutex
+	byID      map[string]domain.Course
 	// lastFilter records the filter most recently passed to List, so tests
 	// can assert what the service asked the repository for.
 	lastFilter domain.CourseListFilter
@@ -927,9 +947,13 @@ func newFakeCourseRepository() *fakeCourseRepository {
 	return &fakeCourseRepository{byID: map[string]domain.Course{}}
 }
 
-func (f *fakeCourseRepository) Create(_ context.Context, course domain.Course) error {
+func (f *fakeCourseRepository) Create(_ context.Context, course domain.Course, ownership ports.OwnershipRecord) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.ownership == nil {
+		f.ownership = map[string]ports.OwnershipRecord{}
+	}
+	f.ownership[course.ID] = ownership
 	f.byID[course.ID] = course
 	return nil
 }

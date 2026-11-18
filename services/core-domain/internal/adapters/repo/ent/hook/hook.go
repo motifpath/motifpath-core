@@ -273,6 +273,18 @@ func (f ContentNodeVersionFunc) Mutate(ctx context.Context, m ent.Mutation) (ent
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ContentNodeVersionMutation", m)
 }
 
+// The ContentOwnershipFunc type is an adapter to allow the use of ordinary
+// function as ContentOwnership mutator.
+type ContentOwnershipFunc func(context.Context, *ent.ContentOwnershipMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ContentOwnershipFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ContentOwnershipMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ContentOwnershipMutation", m)
+}
+
 // The CourseFunc type is an adapter to allow the use of ordinary
 // function as Course mutator.
 type CourseFunc func(context.Context, *ent.CourseMutation) (ent.Value, error)

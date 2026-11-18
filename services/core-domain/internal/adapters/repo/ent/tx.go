@@ -58,6 +58,8 @@ type Tx struct {
 	ContentNodeSkill *ContentNodeSkillClient
 	// ContentNodeVersion is the client for interacting with the ContentNodeVersion builders.
 	ContentNodeVersion *ContentNodeVersionClient
+	// ContentOwnership is the client for interacting with the ContentOwnership builders.
+	ContentOwnership *ContentOwnershipClient
 	// Course is the client for interacting with the Course builders.
 	Course *CourseClient
 	// CourseCheckpoint is the client for interacting with the CourseCheckpoint builders.
@@ -297,6 +299,7 @@ func (tx *Tx) init() {
 	tx.ContentNodeLanguage = NewContentNodeLanguageClient(tx.config)
 	tx.ContentNodeSkill = NewContentNodeSkillClient(tx.config)
 	tx.ContentNodeVersion = NewContentNodeVersionClient(tx.config)
+	tx.ContentOwnership = NewContentOwnershipClient(tx.config)
 	tx.Course = NewCourseClient(tx.config)
 	tx.CourseCheckpoint = NewCourseCheckpointClient(tx.config)
 	tx.CourseEnrollment = NewCourseEnrollmentClient(tx.config)
