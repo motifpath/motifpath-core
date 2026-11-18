@@ -176,6 +176,10 @@ jobs:
   deploy-production:
     name: Deploy to production
     needs: release
+    # A stage → main release skips the build, since staging already built its
+    # images. A skipped job skips every job after it unless the later job has
+    # an explicit if, so without this line the tag is made and nothing deploys.
+    if: always() && needs.release.result == 'success'
     uses: ./.github/workflows/deploy.yml
     # deploy.yml's GitHub Release job needs contents: write; see deploy-staging.
     permissions:
