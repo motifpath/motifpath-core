@@ -84,8 +84,8 @@ func TestFreshInstall(t *testing.T) {
 	})
 
 	t.Run("the knowledge map has its nodes and edges, with fixed ids", func(t *testing.T) {
-		assert.Equal(t, map[string]string{"skill": "223", "concept": "125"}, stringPairs(t, ctx, db, "SELECT kind, count(*)::text FROM knowledge_nodes GROUP BY kind"))
-		assert.Equal(t, map[string]string{"applies": "377", "requires": "147"}, stringPairs(t, ctx, db, "SELECT type, count(*)::text FROM knowledge_edges GROUP BY type"))
+		assert.Equal(t, map[string]string{"skill": "228", "concept": "125"}, stringPairs(t, ctx, db, "SELECT kind, count(*)::text FROM knowledge_nodes GROUP BY kind"))
+		assert.Equal(t, map[string]string{"applies": "393", "requires": "162"}, stringPairs(t, ctx, db, "SELECT type, count(*)::text FROM knowledge_edges GROUP BY type"))
 		assert.Equal(t, 1, count(t, "SELECT count(*) FROM knowledge_nodes WHERE key = 'scales' AND id = '"+catalogID("knowledge-node/scales")+"'"))
 		assert.Equal(t, 1, count(t, "SELECT count(*) FROM knowledge_edges WHERE id = '"+catalogID("knowledge-edge/requires/change-chords/play-open-chords")+"'"))
 		// Skills added to the map after the first production install.
@@ -98,6 +98,12 @@ func TestFreshInstall(t *testing.T) {
 			"count-semitone-steps":  {parent: "reading", applies: []string{"tones-and-semitones", "sharps-and-flats"}},
 			"build-major-scale":     {parent: "reading", applies: []string{"major-scale", "tones-and-semitones", "sharps-and-flats", "key-center"}, requires: []string{"count-semitone-steps"}},
 			"transpose-chord-chart": {parent: "chords-rhythm", applies: []string{"transposition", "key-center", "chord-charts"}, requires: []string{"build-major-scale", "read-chord-charts"}},
+			// The theory paths after sh-first-notes (MOT-200).
+			"find-intervals":              {parent: "reading", applies: []string{"interval-names", "interval-quality", "tones-and-semitones"}, requires: []string{"count-semitone-steps"}},
+			"find-chord-notes":            {parent: "chords-rhythm", applies: []string{"major-triads", "minor-triads", "chord-construction", "root-note"}, requires: []string{"find-intervals"}},
+			"find-chords-of-key":          {parent: "chords-rhythm", applies: []string{"diatonic-chords", "major-scale", "key-center"}, requires: []string{"find-chord-notes", "build-major-scale"}},
+			"find-seventh-chord-notes":    {parent: "chords-rhythm", applies: []string{"seventh-chords", "dominant-seventh", "diminished-seventh", "chord-construction"}, requires: []string{"find-chord-notes"}},
+			"find-intervals-on-fretboard": {parent: "fretboard-fluency", applies: []string{"interval-shapes", "interval-names"}, requires: []string{"find-intervals"}},
 		} {
 			assert.Equal(t, 1, count(t, "SELECT count(*) FROM knowledge_nodes n JOIN knowledge_nodes p ON p.id = n.parent_id WHERE n.key = '"+key+"' AND n.kind = 'skill' AND n.id = '"+catalogID("knowledge-node/"+key)+"' AND p.key = '"+skill.parent+"'"), key)
 			for _, concept := range skill.applies {
@@ -105,6 +111,22 @@ func TestFreshInstall(t *testing.T) {
 			}
 			for _, required := range skill.requires {
 				assert.Equal(t, 1, count(t, "SELECT count(*) FROM knowledge_edges e JOIN knowledge_nodes t ON t.id = e.to_id WHERE e.id = '"+catalogID("knowledge-edge/requires/"+key+"/"+required)+"' AND e.from_id = '"+catalogID("knowledge-node/"+key)+"' AND t.key = '"+required+"' AND e.level = 'accurate'"), key+" requires "+required)
+			}
+		}
+		// Find intervals on the fretboard is scoped to the fretted instruments.
+		assert.Equal(t, 3, count(t, "SELECT count(*) FROM knowledge_node_instruments WHERE knowledge_node_id = '"+catalogID("knowledge-node/find-intervals-on-fretboard")+"' AND instrument_id IN ('"+acousticGuitarID+"', '"+electricGuitarID+"', '"+electricBassID+"')"))
+		// Skills already installed that now require the new ones (MOT-200).
+		for key, required := range map[string][]string{
+			"play-triad-arpeggios":   {"find-chord-notes", "find-intervals-on-fretboard"},
+			"play-chord-tone-lines":  {"find-chord-notes", "find-intervals-on-fretboard"},
+			"play-mpb-voicings":      {"find-seventh-chord-notes"},
+			"play-movable-sevenths":  {"find-seventh-chord-notes"},
+			"find-key-by-ear":        {"find-chords-of-key"},
+			"write-progression":      {"find-chords-of-key"},
+			"play-shapes-in-any-key": {"find-chords-of-key"},
+		} {
+			for _, to := range required {
+				assert.Equal(t, 1, count(t, "SELECT count(*) FROM knowledge_edges e JOIN knowledge_nodes f ON f.id = e.from_id JOIN knowledge_nodes t ON t.id = e.to_id WHERE e.id = '"+catalogID("knowledge-edge/requires/"+key+"/"+to)+"' AND f.key = '"+key+"' AND t.key = '"+to+"' AND e.level = 'accurate'"), key+" requires "+to)
 			}
 		}
 	})
