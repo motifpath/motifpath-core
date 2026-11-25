@@ -1,4 +1,4 @@
-h1:8zZxgkIXzK4t/Ubmtqg/+BNeBg0QKIgYgLjSYBAINmU=
+h1://0xWQoankM/mPauSlMZ1yECkX/2OPfgB2ATkzukBng=
 20261006144122_baseline_schema.up.sql h1:Mz7yS3khUoGF+JqUcqUl3UJhpxM3snY9i31Og9IRxs4=
 20261006144123_baseline_reference_data.up.sql h1:vd6h7t7ldITFFgH5BW/UfN4tDq6Dk+Q2JsD9JvZpccg=
 20261006223929_diagram_purpose.up.sql h1:9ZXjjkdDMhIbUdDHtw6edIVjiW1XiIbV67aqpLVZhLw=
@@ -28,3 +28,4 @@ h1:8zZxgkIXzK4t/Ubmtqg/+BNeBg0QKIgYgLjSYBAINmU=
 20261115153640_content_ownership.up.sql h1:eT/B3GfcpxuTwVhg2omhXV6uk/4EcXyKdZO27zF+5HU=
 20261115153641_content_ownership_guards.up.sql h1:WfvNlzqx7tzmubwa0wSS8mDl0FMdYUkRjiZKjXKQPR4=
 20261116120000_knowledge_map_first_notes_skills.up.sql h1:vQSM4GB6zwT/4YhYeNbffRH3/4SUKxynCZdtueM2jb8=
+20261124120000_knowledge_map_chord_notes_skills.up.sql h1:exnYxSwvhQv0pVgHnMS37LrqdWtigMFuI6hu/bmTTT0=
